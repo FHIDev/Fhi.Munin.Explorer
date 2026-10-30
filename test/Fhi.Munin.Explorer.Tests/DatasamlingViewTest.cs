@@ -2845,6 +2845,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.Single(BlockHeadings(cut), heading => heading == "Variabler");
         Assert.Single(cut.FindAll("a[href='https://eksempel.no/variabler/oppfolging']"));
     }
+
     private static DatasamlingDetail Inheriting() => Sparse() with
     {
         ParentKildeId = Guid.NewGuid(),
@@ -2895,6 +2896,42 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.Equal("Inherited from the source Tromsøundersøkelsen", caption.TextContent);
         Assert.Equal("no", caption.QuerySelector("span")!.GetAttribute("lang"));
         Assert.Contains("Website", Labels(box));
+    }
+
+    [Theory]
+    [InlineData("[Tromsø 7-siden](https://uit.no/tromso7)")]
+    [InlineData("Se nettstedet til UiT")]
+    public void SourceInformation_WhenAWordedWebsiteIsReadInEnglish_ThenTheValueIsMarkedNorwegianAndTheCaptionEnglish(
+        string website)
+    {
+        var datasamling = Inheriting() with
+        {
+            InheritedProperties = new Dictionary<string, InheritedValue>
+            {
+                [InheritedCaptions.Homepage] = new()
+                {
+                    Value = website, SourceLevel = "delkilde", SourceId = Guid.NewGuid(), SourceName = "Tromsø7",
+                },
+            },
+        };
+
+        var row = Row(SourceInformation(Render(datasamling, language: "en")), "Website");
+
+        Assert.Equal("no", row.QuerySelector("dd")!.GetAttribute("lang"));
+        var caption = row.QuerySelector("dd p.caption")!;
+        Assert.Equal("en", caption.GetAttribute("lang"));
+        Assert.Equal("Inherited from the sub-source Tromsø7", caption.TextContent);
+        Assert.Equal("no", caption.QuerySelector("span")!.GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void Placement_WhenTheSourceFactsJoinAPlacedSection_ThenTheInheritedRowsKeepTheirCaption()
+    {
+        var cut = Render(Placed() with { InheritedProperties = Inheriting().InheritedProperties });
+
+        Assert.Empty(cut.FindAll($"#{DetailSectionIds.Source}"));
+        var website = cut.FindAll("dl > div").Single(row => row.QuerySelector("dt")?.TextContent == "Hjemmeside");
+        Assert.Equal("Arvet fra delkilden Tromsø7", website.QuerySelector("dd p.caption")!.TextContent);
     }
 
     [Fact]

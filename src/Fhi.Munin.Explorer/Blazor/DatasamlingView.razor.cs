@@ -365,30 +365,10 @@ public sealed partial class DatasamlingView : ComponentBase
     private static (string Label, string? Value, bool Norwegian, string? Href) Unlinked(
         string label, string? value, bool norwegian) => (label, value, norwegian, null);
 
-    /// <summary>
-    /// The facts every datasamling has, labelled as the kilde view labels the same fields.
-    /// </summary>
+    /// <summary>Where the datasamling's data comes from, labelled as the kilde view labels the same fields.</summary>
     /// <remarks>
-    /// The third element says whether the value is the catalogue's own words, and the fourth is
-    /// where the row goes. The kildetype and the identification level are vocabularies this package
-    /// translates; the rest are stored once, in Norwegian, however the reader is reading.
-    /// <para>
-    /// Every row but Kilde, Kildetype and the two Munin timestamps is a column-backed property the
-    /// catalogue can place in a section of its own, and each yields when it does — see
-    /// <see cref="UnlessPlaced"/> and <see cref="ValidityRows"/>, which answers for Gyldig fra and
-    /// Gyldig til apart although they share one row. The four are not among them: no section can
-    /// draw a fact nothing merges into the renderable set, and the timestamps are Munin's own.
-    /// </para>
-    /// <para>
-    /// Kilde is the one row with somewhere to go, and only where <see cref="KildeHref"/> was wired:
-    /// the id is on the payload for exactly this, so the return path out of a collection costs no
-    /// second request (Fhi.Metadata-35w0p.50).
-    /// </para>
-    /// <para>
-    /// What is left after the yielding follows the yielded fields into their section rather than
-    /// heading one of its own — see <see cref="BuildLayout"/>, and Fhi.Metadata-lr6yh for why a
-    /// page carrying both Kildeinformasjon and Datakilde was the defect.
-    /// </para>
+    /// Column-backed rows yield to a section that places them (<see cref="UnlessPlaced"/>) and the rest follow them
+    /// there (Fhi.Metadata-lr6yh); Kilde, Kildetype, the inherited kilde fields and the timestamps cannot be placed.
     /// </remarks>
     private IReadOnlyList<(string Label, string? Value, bool Norwegian, string? Href)> SourceInformation =>
         Datasamling is not { } datasamling
@@ -434,7 +414,8 @@ public sealed partial class DatasamlingView : ComponentBase
                 continue;
             }
 
-            yield return (label, inherited.Value, false, null);
+            // A Hjemmeside that is no address is the catalogue's words; the codes are in no language.
+            yield return (label, inherited.Value, key == InheritedCaptions.Homepage, null);
         }
     }
 

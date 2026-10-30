@@ -202,7 +202,7 @@ public class DetailBlocksTest : ExplorerTestContext
     [Fact]
     public void GroupBody_WhenARowIsInherited_ThenItsCaptionSitsOnceUnderItsLastLanguageAndNowhereElse()
     {
-        var caption = new InheritedCaption("Arvet fra kilden", "Tromsøundersøkelsen", null);
+        var caption = new InheritedCaption("Arvet fra kilden", "Tromsøundersøkelsen", null, "no");
         var group = new PropertyGroup("Innhold", ReaderLanguage.Norwegian,
             [
                 new PropertyRow("Formål", "no", [new LocalisedText("Overvåking", "no")]),

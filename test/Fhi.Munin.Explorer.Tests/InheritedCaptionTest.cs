@@ -40,7 +40,7 @@ public class InheritedCaptionTest : ExplorerTestContext
             EffectiveDataProcessor = "FHI",
         }, Texts.For("nb"), ReaderLanguage.Norwegian, NothingOmitted);
 
-        Assert.Equal(new InheritedCaption("Arvet fra kilden", "Tromsøundersøkelsen", null),
+        Assert.Equal(new InheritedCaption("Arvet fra kilden", "Tromsøundersøkelsen", null, "no"),
                      captions[CatalogueColumns.LegalBasis]);
         Assert.True(captions.ContainsKey(CatalogueColumns.DataProcessor));
         Assert.False(captions.ContainsKey(CatalogueColumns.DataController));
@@ -66,10 +66,10 @@ public class InheritedCaptionTest : ExplorerTestContext
 
         var english = InheritedCaptions.For(datasamling, Texts.For("en"), ReaderLanguage.English);
 
-        Assert.Equal(new InheritedCaption("Inherited from the sub-source", "Tromsø 7", null),
+        Assert.Equal(new InheritedCaption("Inherited from the sub-source", "Tromsø 7", null, "en"),
                      english[InheritedCaptions.Homepage]);
         // No English name, so the Norwegian one, marked for an English reader.
-        Assert.Equal(new InheritedCaption("Inherited from the source", "Tromsøundersøkelsen", "no"),
+        Assert.Equal(new InheritedCaption("Inherited from the source", "Tromsøundersøkelsen", "no", "en"),
                      english[InheritedCaptions.DataControllerHerId]);
     }
 
@@ -118,12 +118,13 @@ public class InheritedCaptionTest : ExplorerTestContext
     public void Render_WhenDrawn_ThenItIsAQuietParagraphWithTheNameMarkedApart(
         string name, string? language, string text, string? spanLanguage)
     {
-        var caption = new InheritedCaption("Arvet fra delkilden", name, language);
+        var caption = new InheritedCaption("Arvet fra delkilden", name, language, "no");
 
         var cut = Render((RenderFragment)(builder => caption.Render(builder, 0)));
 
         var paragraph = cut.Find("p");
         Assert.Equal("caption margin--none", paragraph.GetAttribute("class"));
+        Assert.Equal("no", paragraph.GetAttribute("lang"));
         Assert.Equal(text, paragraph.TextContent);
         Assert.Equal(spanLanguage, paragraph.QuerySelector("span")?.GetAttribute("lang"));
     }

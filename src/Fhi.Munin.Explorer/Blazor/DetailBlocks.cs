@@ -155,7 +155,7 @@ internal static class DetailBlocks
 
             builder.CloseElement();
 
-            // Thirty: a row's dd branches and its caption run to seq + 25. No rendered markup differs
+            // Thirty: a row's dd branches and its caption run to seq + 26. No rendered markup differs
             // either way, so this is the numbering contract kept, not a defect fixed.
             seq += 30;
         }

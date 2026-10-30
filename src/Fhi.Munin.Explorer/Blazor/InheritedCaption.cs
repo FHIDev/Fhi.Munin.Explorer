@@ -7,10 +7,11 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <param name="Lead">«Arvet fra kilden» or «Arvet fra delkilden», in the reader's language.</param>
 /// <param name="Name">The source's name, or empty where Munin sent none.</param>
 /// <param name="NameLanguage">A <c>lang</c> for <paramref name="Name"/> when it is not in the reader's language.</param>
-internal readonly record struct InheritedCaption(string Lead, string Name, string? NameLanguage)
+/// <param name="Language">The reader's own tag, written on the caption since the value around it may be marked otherwise.</param>
+internal readonly record struct InheritedCaption(string Lead, string Name, string? NameLanguage, string Language)
 {
     /// <summary>
-    /// The caption as a quiet paragraph inside the value's <c>dd</c>. Consumes six sequence numbers.
+    /// The caption as a quiet paragraph inside the value's <c>dd</c>. Consumes seven sequence numbers.
     /// </summary>
     /// <remarks>
     /// Stiler's own <c>caption</c>, the grey of the hero row's note, so no new class name needs a rule.
@@ -19,13 +20,14 @@ internal readonly record struct InheritedCaption(string Lead, string Name, strin
     {
         builder.OpenElement(seq, "p");
         builder.AddAttribute(seq + 1, "class", "caption margin--none");
-        builder.AddContent(seq + 2, string.IsNullOrWhiteSpace(Name) ? Lead : $"{Lead} ");
+        builder.AddAttribute(seq + 2, "lang", Language);
+        builder.AddContent(seq + 3, string.IsNullOrWhiteSpace(Name) ? Lead : $"{Lead} ");
 
         if (!string.IsNullOrWhiteSpace(Name))
         {
-            builder.OpenElement(seq + 3, "span");
-            builder.AddAttribute(seq + 4, "lang", NameLanguage);
-            builder.AddContent(seq + 5, Name);
+            builder.OpenElement(seq + 4, "span");
+            builder.AddAttribute(seq + 5, "lang", NameLanguage);
+            builder.AddContent(seq + 6, Name);
             builder.CloseElement();
         }
 
@@ -51,10 +53,7 @@ internal static class InheritedCaptions
     /// <summary>
     /// Fields normally set only on the kilde, so a caption would repeat on every page and add little.
     /// </summary>
-    /// <remarks>
-    /// On test (2026-10-30) none of 483 datasamlinger holds its own value for any of these; Kildetype
-    /// has no datasamling column at all. The list is the display owner's to confirm.
-    /// </remarks>
+    /// <remarks>Kildetype has no datasamling column at all. The list is the display owner's to confirm.</remarks>
     internal static readonly IReadOnlySet<string> Omitted = new HashSet<string>(StringComparer.Ordinal)
     {
         CatalogueColumns.Kildetype,
@@ -119,6 +118,6 @@ internal static class InheritedCaptions
     {
         var (text, norwegian) = ReaderLanguage.Pick(name, nameEn, reader);
 
-        return new(lead, text ?? "", CatalogueProperties.Foreign(norwegian, reader));
+        return new(lead, text ?? "", CatalogueProperties.Foreign(norwegian, reader), reader);
     }
 }
