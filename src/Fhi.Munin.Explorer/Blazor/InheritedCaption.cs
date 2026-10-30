@@ -112,7 +112,7 @@ internal static class InheritedCaptions
         {
             var lead = Lead(value.SourceLevel, text);
 
-            if (lead is not null && !string.IsNullOrWhiteSpace(value.Value))
+            if (lead is not null && !string.IsNullOrWhiteSpace(value.Value) && !HoldsItself(datasamling, key))
             {
                 captions[key] = Caption(lead, value.SourceName, value.SourceNameEn, reader);
             }
@@ -122,6 +122,10 @@ internal static class InheritedCaptions
 
         return captions;
     }
+
+    // The row's own value is the one drawn, so a caption naming an ancestor would be wrong.
+    private static bool HoldsItself(DatasamlingDetail datasamling, string key) =>
+        datasamling.OwnKildeProperties.TryGetValue(key, out var own) && !string.IsNullOrWhiteSpace(own);
 
     private static void Inherit(Dictionary<string, InheritedCaption> captions, string key, string? own,
                                 string? effective, InheritedCaption source)

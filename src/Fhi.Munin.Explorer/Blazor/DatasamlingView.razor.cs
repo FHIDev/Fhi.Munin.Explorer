@@ -393,7 +393,7 @@ public sealed partial class DatasamlingView : ComponentBase
                 (T.FieldCreatedInMunin, CatalogueDate.DayOrNothing(datasamling.Created, Language), false, null),
             ];
 
-    /// <summary>The public kilde fields this datasamling inherits, each only where Munin sent a value.</summary>
+    /// <summary>The public kilde fields this datasamling holds or inherits, each only where Munin sent a value.</summary>
     /// <remarks>
     /// Not in the datasamling's own metadata, so no section can place them and they carry this package's labels.
     /// </remarks>
@@ -402,22 +402,30 @@ public sealed partial class DatasamlingView : ComponentBase
     {
         foreach (var (key, label) in InheritedLabels)
         {
-            if (!datasamling.InheritedProperties.TryGetValue(key, out var inherited)
-                || string.IsNullOrWhiteSpace(inherited.Value))
+            var value = KildeFieldValue(datasamling, key);
+
+            if (string.IsNullOrWhiteSpace(value))
             {
                 continue;
             }
 
-            if (key == InheritedCaptions.Homepage && CatalogueMarkdown.Link(inherited.Value) is { } link)
+            if (key == InheritedCaptions.Homepage && CatalogueMarkdown.Link(value) is { } link)
             {
                 yield return (label, link.Label, !CatalogueMarkdown.IsAddress(link), link.Href);
                 continue;
             }
 
             // A Hjemmeside that is no address is the catalogue's words; the codes are in no language.
-            yield return (label, inherited.Value, key == InheritedCaptions.Homepage, null);
+            yield return (label, value, key == InheritedCaptions.Homepage, null);
         }
     }
+
+    private static string? KildeFieldValue(DatasamlingDetail datasamling, string key) =>
+        datasamling.OwnKildeProperties.TryGetValue(key, out var own) && !string.IsNullOrWhiteSpace(own)
+            ? own
+            : datasamling.InheritedProperties.TryGetValue(key, out var inherited)
+                ? inherited.Value
+                : null;
 
     private IReadOnlyList<(string Key, string Label)> InheritedLabels =>
     [

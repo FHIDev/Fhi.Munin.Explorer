@@ -133,6 +133,14 @@ public sealed record DatasamlingDetail
     public IReadOnlyDictionary<string, InheritedValue> InheritedProperties { get; init; } =
         new Dictionary<string, InheritedValue>();
 
+    /// <summary>
+    /// The same public kilde fields where this datasamling holds a value itself, by key; never a key of
+    /// <see cref="InheritedProperties"/> or <see cref="AdditionalProperties"/>. Empty from a Munin that predates it.
+    /// </summary>
+    [JsonPropertyName("ownKildeProperties")]
+    public IReadOnlyDictionary<string, string?> OwnKildeProperties { get; init; } =
+        new Dictionary<string, string?>();
+
     /// <summary>Labels, grouping and order for the keys in <see cref="AdditionalProperties"/>.</summary>
     [JsonPropertyName("propertyMetadata")] public IReadOnlyList<PropertyMetadataEntry> PropertyMetadata { get; init; } = [];
 

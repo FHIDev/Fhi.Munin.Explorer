@@ -47,6 +47,9 @@
     "healthTheme": "[\"healthdcatap:rare-diseases\",\"NONCOMMUNICABLE_DISEASES\"]"
   },
   "inheritedProperties": {},
+  "ownKildeProperties": {
+    "Hjemmeside": "www.norskalsregister.no"
+  },
   "propertyMetadata": [
     {
       "key": "Beskrivelse",
