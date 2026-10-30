@@ -1,28 +1,189 @@
-# Conventions
+# AGENTS.md: FHIDev/Fhi.Munin.Explorer
 
-Rules for anyone working in this repository, human or otherwise. The architectural rules the
-components must follow — no `@page`, no `@rendermode`, no CSS, nothing host-specific — live in
-[`README.md`](README.md) under "Rules the components follow" and are enforced by
-`BannedSymbols.txt`. This file covers the conventions a compiler cannot check.
+<!-- team-doc:begin sha256=8c5fcf69e3f9adfbf42c85fdb23416208bf54a0a5b6b3544fabfbc57c7b29481 source=FHIDev/Fhi.Munin.DevInfra/docs/team/working-together.md -->
+## The team's rules, in short
 
-## Beads: Varde's tools first, bd only where they don't exist
+Full text: FHIDev/Fhi.Munin.DevInfra `docs/team/working-together.md`. This block is a synced copy; edit the
+canonical doc, not this block.
 
-When the `varde-chat` MCP tools (`beads_*`) are available, as on every devbox, read and write beads with them and never run `bd`. Use `bd` only where they are not: the Forge, or a laptop without Varde. The table applies only where the Varde tools are; the `bd` sections further down are for the places without them, and there they still hold (`bd worktree create`, for one, writes the `.beads/redirect` bd needs).
+- **FHI's guidelines apply:** RL-KI-001 «Bruk av KI-agenter i programvareutvikling» and RL-KI-002 «Marketplace for
+  KI-agenter og skills» (utvikling.sky.fhi.no/KI/). Each shared skill has a named owner (see the full doc).
+- **What reaches the model providers** (Anthropic; GitHub Copilot for the PR diffs it reviews): code, bead and PR
+  text (which carry team members' names) and team chat.
+  Never paste personal data about citizens, patients or research participants, production data or secrets into
+  what an agent reads or sends. Details and open questions in the full doc.
+- **Beads are written only through Varde** (the `beads_*` tools), never with `bd`. When Varde cannot write, tell
+  your coordinator; a single bd write then happens only on the owner's word.
+- **Every bead has a type and a parent epic.** Order inside an epic is a `blocks` dependency; a real wait is a
+  `venter:<what or whom>:<YYYY-MM-DD>` label. Notes are append-only.
+- **Decisions go to your owner through your coordinator**, with a recommendation, the way your owner's lanes file
+  says. A question left only in a bead note has not been asked.
+- **Every PR body** has one `Pre-PR review:` line, `Testing:`, `Risk:` (matching the `risk:` label) and
+  `How to revert:` lines, and `Closes-Bead:` or `Bead:`. Run the pre-PR review before opening it.
+- **Open PRs without asking.** A PR merges when CI is green and its risk tier's review requirements are met
+  (DevInfra `docs/review-risk-tiers.md`); who approves and who merges is each owner's own arrangement, in their
+  lanes file. Never touch someone else's PR or branch.
+- **Work hours** are each owner's, set on Varde. Outside them messages wait in the inbox; where Varde's relay runs,
+  it wakes no session (only a stop) and wakes each one once when the hours open.
+- **Never print the environment** or a secret, never roll, deploy or touch prod yourself, and do not work around a
+  permission denial: report it.
+<!-- team-doc:end -->
 
-| Instead of | Use |
-| --- | --- |
-| `bd show <id>`, `bd dep tree`, `bd graph` | `beads_show` (blockers, what it blocks, children) |
-| `bd list …`, `bd children`, `bd blocked`, `bd stale` | `beads_list` (`status`, `type`, `label`, `assignee`, `q`, `parent`, `blocked`, `stale_days`; `next` pages) |
-| `bd ready` | `beads_ready` |
-| waits (`venter:`, needs-human, blocked) | `beads_waiting` |
-| `bd create` | `beads_create` (a type, and a parent epic unless it is one) |
-| `bd update --claim` / an empty assignee | `beads_claim` / `beads_release` |
-| `bd update --append-notes` | `beads_note` (never `--notes`: it replaces every earlier note) |
-| `bd update --title/--description/--priority/--parent/--type/--acceptance` | `beads_update` |
-| `bd label add`, `bd dep add` | `beads_label`, `beads_dep` (forge labels: `beads_forge_label`, the coordinator only) |
-| `bd close`, `bd reopen` | `beads_close` (normally the bead-closer does it; `kind` done, not-doing, duplicate-of or superseded-by otherwise), `beads_reopen` |
-| `bd worktree create` | `git worktree add` (the `.beads/redirect` matters only to bd) |
-| `bd remember`/`recall`, `bd preflight`, `bd mol`, `bd prime`, `bd doctor` | nothing: skip them where Varde's tools are |
+The Munin variable explorer, packaged as a Blazor Razor Class Library for helsedata.no (the NuGet package
+`Fhi.Munin.Explorer`). This file is the one set of instructions for every agent in this repo, and it covers the
+conventions a compiler cannot check; the architectural rules the components follow are in `README.md` under «Rules
+the components follow». `CLAUDE.md` imports this file; Copilot's review reads `.github/copilot-instructions.md` and
+`.github/instructions/code-review.instructions.md`.
+
+## Before opening a PR
+
+```bash
+dotnet build && dotnet test
+dotnet pack -c Release -o artifacts && ./scripts/assert-package-contents.sh artifacts
+./scripts/assert-sample-css-in-step.sh          # only if you touched samples/ or a class name
+./scripts/assert-sample-css-matches-stiler.sh   # same trigger; needs Stiler restored, see below
+bash scripts/test-sample-css-declarations.sh    # only if you touched the comparison engine
+./scripts/assert-portability-guard-armed.sh     # only if you touched Directory.Build.props
+python3 scripts/comment-budget.py               # comment blocks this branch added, against origin/main
+```
+
+**Pre-PR review.** The `pre-pr-reviewer` agent on `git diff origin/main...HEAD`, which answers the warden checklist
+(`python3 scripts/warden-checklist.py`; each rule ✓, ✗ with `file:line`, or n/a), and one line in the PR body in one of four forms: `Pre-PR review: ran, no findings`, `ran, N findings,
+fixed`, `ran, N findings, M fixed, K left: <why>` or `skipped, <reason>` (only for a change with nothing to review;
+`prove-it` section 8). The body also carries `Testing:`, `Risk: low|medium|high – <why>` (the tier the `risk:`
+label gives) and `How to revert:`, each on its own line; the review-line check fails a PR where one is missing or
+empty, or the tier differs from the label.
+
+The Stiler comparison needs the package on disk, which means credentials for helsedata's Azure
+Artifacts feed and `dotnet restore samples/HostileHost/HostileHost.csproj` first — see
+`nuget.config`. Without them it exits 2 saying so rather than passing having read nothing; CI runs
+it in the job that holds the feed secret. The engine's own test needs neither — it runs against
+fixtures, and it exists because the engine's borrowed half is all deliberate asymmetries that look
+like bugs and can be tidied away without a single other check going red.
+
+- **A `src/` change needs a changelog fragment** in `changelog.d/`. CI fails without one.
+  Fragments here are **English only** — deliberately unlike Munin's bilingual `.en.md`/`.nb.md`
+  pair. See `changelog.d/README.md`.
+- **Comments have a three-line ceiling** — the why, never the what; incident history goes in the
+  bead; the package's public XML docs are the exception, because their reader has only the
+  package. Full rule under «Comments» below. Prose that outgrows the ceiling belongs in
+  the bead, the PR description, or this file — not in a file people reopen on every visit.
+  The `comment budget` CI job enforces it on what a PR adds.
+- `dotnet format` on a Windows checkout reports pre-existing whitespace noise from CRLF. Compare
+  the count against untouched `main` before believing it is yours; `.gitattributes` normalises to
+  LF, so CI sees clean files.
+
+## Beads for this repository
+
+Work is tracked in the **Munin** bead pool, not this repository's issues. Epics: `Fhi.Metadata-l9l2n` (v1
+read-only), `Fhi.Metadata-dfy9u` (v2 login and variable lists), `Fhi.Metadata-2fomm` (Kelda).
+
+- **Every bead for this repository gets the labels `helsedata` and `rcl`** (`beads_create` with
+  `labels: ["helsedata", "rcl"]`, or `beads_label` later), and `repo:explorer` so Varde files it under Explorer;
+  add `kelda` for kildeutforsker work. Among hundreds of Munin beads the label is the only thing that finds this
+  repository's work: eleven unlabelled beads were invisible to that filter by 19 August 2026.
+- Close a bead with a **`Closes-Bead: Fhi.Metadata-abc12`** line in the PR body; the bead-closer reads merged PRs
+  here. `Bead: <id>` when the PR only partly delivers it. `Closes FHIDev/Munin#N` closes no bead.
+- Varde's reads come from a snapshot up to five minutes old: the claim (`beads_claim`) or the write itself is the
+  check, not an earlier read.
+- Work in a git worktree; work is not done until it is pushed.
+
+## Gates by kind of change
+
+- **If the change touches markup, run `./scripts/check-accessibility.sh`.** WCAG 2.1 AA applies
+  to this package by law, and green means no detected regression rather than accessible — what the
+  gate cannot see is under "Accessibility is a requirement, not a preference". CI runs
+  the same script, so a red check there is never a surprise. It takes
+  `PLAYWRIGHT_BROWSER_CHANNEL=msedge` on the same terms as the layout gate below, for the same
+  Node 26 reason — a different engine build from CI's, so the run says which it used. On a Linux
+  box with no root and no browser libraries, the Forge's, every browser gate unpacks them into a
+  user prefix itself; see `docs/running-locally.md`.
+- **If the change touches layout, run `./scripts/check-hostile-host.sh` as well.** It renders the
+  component in helsedata's real stylesheet under their top-anchored header and measures boxes, which
+  is the only thing here that would have caught the four defects of 2026-09-03 — axe was green
+  through every one. It does **not** need Azure Artifacts credentials any more:
+  `STILER_FROM_SOURCE=1 ./scripts/check-hostile-host.sh` builds Stiler from a checkout beside
+  this repository instead of restoring the pinned package. Add
+  `PLAYWRIGHT_BROWSER_CHANNEL=msedge` if `playwright install chromium` will not complete — on
+  Node 26 it cannot. Both flags change what is being measured and CI sets neither; the run prints
+  which it used. See `docs/running-locally.md`.
+- **If the change touches a control the reader presses, run `./scripts/check-component-state.sh`.**
+  It drives a real browser and asks whether the DOM and the component still agree after a press the
+  component refused — the one thing no test in `test/` can see, because the browser flips a checkbox
+  itself before any handler runs and bUnit renders a render tree where that never happened.
+  Deleting `SetUpdatesAttributeName("checked")` from the column picker or the facet panel leaves the
+  suite green and fails this, each removal failing only its own assertion. No feed credentials, and
+  `PLAYWRIGHT_BROWSER_CHANNEL=msedge` on the terms above.
+- **A new or renamed `munin-explorer*` name needs a rule in `Fhi.Helsedata.Stiler`, filed as its
+  own bead before this PR merges** — `beads_create` with the labels `stiler`, `rcl` and `helsedata` —
+  not as a clause in the RCL bead's criteria, which is in nobody's `beads_ready` and cannot be
+  claimed by anyone. Green here is still not evidence the element is styled on helsedata.no —
+  nothing in this repository reads Stiler — but you can go and look, and
+  `docs/running-locally.md` says how without needing feed credentials. Do that before asserting
+  what Stiler does or does not have. Reasoning under «Class names in markup» below.
+- **Working in Stiler is Azure DevOps, not GitHub.** Clone it from
+  `https://dev.azure.com/fhi/Fhi.Helsedata/_git/Fhi.Helsedata.Stiler` wherever you keep checkouts;
+  it is not a submodule of this one and this file deliberately does not name a path, because the
+  last one it named had rotted. It needs a bearer header rather than a credential helper:
+  `git -c http.extraHeader="Authorization: Bearer $(az account get-access-token --resource
+  499b84ac-1321-427f-aa17-267ca6975798 --query accessToken -o tsv)" clone …`, and fetches need it
+  too. Rules go under `Static/scss/components/munin-explorer/`, one file per area (`_trail.scss`,
+  `_filters.scss`, `_results.scss`, and so on). No `gh`, no Copilot review, and no
+  `Closes-Bead` either: nothing reads Azure DevOps, so close a Stiler bead by hand once its PR
+  merges. And `az repos pr create --description` truncates at the first newline and turns æøå
+  into question marks: create the PR, then PATCH title and description over the REST API with
+  explicit UTF-8 bytes, and read it back.
+
+## The rules that bite
+
+Five things here fail *silently* when broken — no build error, no failing test, just wrong
+behaviour found later by someone else.
+
+Identifiers are English, and borrowed class names belong to `Fhi.Helsedata.Stiler` while the `munin-explorer`
+prefix is ours: both have full sections below. Two things about the class names that the section takes for granted:
+
+- **Know what the guards here can see.** Both guards (`HostClassNames` in the tests and
+  `scripts/assert-sample-css-in-step.sh`) ask whether a name has a rule that declares something, in
+  `test/host-class-names.txt` (a capture of the live helsedata page, its page-specific stylesheets included) or in
+  the sample stylesheet. Neither reads Stiler at all, and neither can say which declarations a rule has to carry.
+  `skiplink-pagination` was in both sources the whole time it was broken, because helsedata styles it and so do the
+  samples, while a Stiler-only host got nothing: a rule somewhere is not a rule where it is needed, and that host is the one the prefix
+  exists for.
+- **Read the selector, not just the name.** The first Stiler rule for that link, on the unpublished
+  `feature/munin-explorer-scss` branch, was scoped `.munin-explorer-header .skiplink-pagination` and could never have
+  matched, since that header opens and closes entirely inside `ColumnPicker()`.
+
+The other three:
+
+3. **The package ships no CSS.** No `.razor.css`, and nothing in `wwwroot` but the one JavaScript
+   module `explorer-interop.js` (Fhi.Metadata-35w0p.14) and `version.json`, which the build writes
+   from the package version and git ignores (Fhi.Metadata-l9l2n.123). Sample hosts carry their own styling
+   because they have no Stiler; the package must not.
+   `scripts/assert-package-contents.sh` enforces it and runs in CI on every PR — by naming every
+   packed entry, so a second module fails there exactly as a stylesheet does. Adding a file to
+   `wwwroot` and adding its entry to that script are one commit: either alone is red.
+
+4. **The two sample stylesheets are one file, copied — and they style every name we invent.**
+   `samples/ModernHost/wwwroot/host.css` and `samples/LegacyHost/wwwroot/css/host.css` must be
+   byte-identical, and between them must have a rule for every `munin-explorer*` class the
+   package invents. The samples carry no Stiler, so they are the only stylesheet those names have
+   here. Edit one, copy it over the other. Both halves have already failed quietly: the kodeverk
+   block reached LegacyHost only, and the kilde view shipped with rules for none of its nine names
+   in either copy. `scripts/assert-sample-css-in-step.sh` enforces both and runs in CI on every
+   PR. Two families are exempt, each by exact match in `HostClassNames.OrphansIn`: the
+   `munin-explorer-kilder-scroll--cols-N` count modifier and the eighteen
+   `munin-explorer-kilder-header__<key>` handles, which only Stiler's sticky-head thresholds select on.
+
+5. **A rule that declares *something* is not a rule that declares the right thing.** The check
+   above stayed green while around forty divergences from `Fhi.Helsedata.Stiler` stood in the
+   samples. `scripts/assert-sample-css-matches-stiler.sh` compares declarations — property and
+   value — against the published package `samples/HostileHost` pins, for the `munin-explorer`
+   names and for the borrowed ones the sample writes a rule for, and the ones standing today
+   are listed in `test/sample-css-known-divergences.txt`. **Never add a line to that file to get a
+   branch green**: a new divergence and a stale line both fail the build, so the count can only go
+   down. Adding one is a hand edit that needs a reason in the PR.
+
+---
 
 ## Identifiers are English
 
@@ -231,20 +392,6 @@ Pre-existing blocks are trimmed opportunistically, never by the job. An earned e
 
 **No `<summary>` / `<param>` / `<returns>` that restates the name.** Document constraints only —
 units, null semantics, what a host must do, what a null means.
-
-## Claiming a bead names whose agent it is
-
-**Claim with `bd update <id> --claim`. Never `--assignee Claude`.**
-
-`--claim` takes the assignee from the actor `bd` already resolves — `$BEADS_ACTOR`, then
-`git user.name`, then `$USER` — and sets `in_progress` in the same step. Each box sets
-`BEADS_ACTOR` to `claude/<person>`: `claude/robin`, `claude/sophie`.
-
-The assignee exists to say *whose* agent holds the bead, and this repository's beads live in
-Munin's pool, which several people's agents write to. A literal `Claude` is the same string in
-all of them, so `in_progress / Claude` reads identically whether the work is live or abandoned —
-which is how PR #145 came to be opened for `Fhi.Metadata-l9l2n.33` three and a half hours after
-that bead had merged (`Fhi.Metadata-e97p0`).
 
 ## Tests
 
@@ -620,7 +767,7 @@ it as evidence about the package has already produced one confidently-wrong bead
 
 **The Stiler rule therefore gets its own bead, filed before the PR that introduces the name
 merges** — labels `stiler`, `rcl` and `helsedata` — and not a clause inside the RCL bead's own
-acceptance criteria. A clause is not work anyone can be handed: it is in nobody's `bd ready`, it
+acceptance criteria. A clause is not work anyone can be handed: it is in nobody's `beads_ready`, it
 cannot be claimed, and the bead holding it reads as finished the moment its PR merges. #161
 (`Fhi.Metadata-3osk6`) was careful about exactly this and it still was not enough — it used `Refs`
 rather than `Closes` so the bead would stay open until the Stiler half landed, and the bead is open
@@ -630,4 +777,63 @@ can check had passed: a rule in both sample stylesheets, a row in the README tab
 `changelog.d`.
 
 The mechanics of working in Stiler — which of the checkouts on the box is the right one, and why
-`az repos` cannot be trusted with a description — are in `CLAUDE.md` under "Finishing".
+`az repos` cannot be trusted with a description — are under «Gates by kind of change» above.
+
+## Publishing
+
+Tag-triggered: `git tag v0.2.0 && git push origin v0.2.0`. The one package, `Fhi.Munin.Explorer`,
+goes to `Fhi.Helsedata.no`, the Azure Artifacts feed helsedata restores from — **not** nuget.org,
+which this package has never been published to. Requires the `ADO_PACKAGING_TOKEN` secret. The
+workflow refuses a tag whose commit is not on `main`, a malformed version, a packed version that
+disagrees with the tag, and a version already on the feed: deleting one there does not take it
+back from anyone who restored it. See "Releasing" in `README.md` for the rest.
+
+**The tag also assembles the changelog, before it packs** — the version's `changelog.d/` fragments
+become one `CHANGELOG.md` section and that section is the package's `PackageReleaseNotes`. Never
+run `assemble-changelog.ps1` by hand to release: it was a documented manual step for three weeks
+and eight versions shipped without it (`Fhi.Metadata-l9l2n.44`). `-DryRun`, and
+`scripts/release-changelog.sh --dry-run`, are the rehearsals. The commit reaches `main` as a pull
+request, since `MainRules` has no bypass actors. The workflow opens it as the fhi-munin GitHub App
+(FHIDev withholds pull-request permission from `GITHUB_TOKEN`), and prints the `gh pr create`
+command instead only if that fails. Merging it is the one step left to a person, and the next
+release refuses to run until the section is on `main`.
+
+## Host constraints worth remembering
+
+The component must render inside helsedata's **legacy** Blazor Server (`AddServerSideBlazor` +
+`MapBlazorHub`, mounted with the `<component>` tag helper) as well as a modern Blazor Web App.
+So: no `@page`, no `@rendermode`, no `HeadOutlet`, nothing host-specific. `BannedSymbols.txt`
+turns the last one into a build error — and `scripts/assert-portability-guard-armed.sh` is what
+keeps that true, because it was quietly not for a while: the ItemGroup wiring the analyzer up is
+conditioned on the RCL's project name, and the name it held was one project rename out of date.
+
+There is **no `HttpContext` during circuit activity**. Anything reaching for
+`IHttpContextAccessor` finds nothing and fails quietly rather than loudly — see
+`samples/LegacyHost/Authentication/` for the pattern that works, and why a token provider must
+be singleton-safe and resolve the user per call.
+
+## Review risk tier
+
+Every pull request gets `risk:low`, `risk:medium` or `risk:high` from its paths and `.github/risk-tiers.txt`
+(`risk-label.yml`). What each tier needs: FHIDev/Fhi.Munin.DevInfra `docs/review-risk-tiers.md`. A path the rules
+get wrong: change the rule and add the path to `.github/risk-tiers.examples`.
+
+<!-- team-doc:bd-fallback:begin -->
+## Only where Varde's bead tools are missing
+
+Everywhere the `beads_*` tools exist, use them and never `bd`. This section is only for a session without them: the
+Forge, until it writes through Varde (DevInfra-gbx.8 step 4). There, `.beads/redirect` points `bd` at Munin's pool:
+
+```bash
+bd ready
+bd show <id>
+bd update <id> --claim                     # never --assignee Claude: that string is the same on every box
+bd update <id> --append-notes "..."        # never --notes: it replaces every earlier note
+bd create --title="..." --description="..." --label=helsedata --label=rcl
+bd worktree create .worktrees/<name> --branch feature/<name>   # writes the .beads/redirect a checkout needs
+bd preflight --check                       # before opening the PR
+```
+
+Never run `bd label list-all`: it once blocked the shared Dolt cluster for thirteen minutes. `bd list --json` carries
+every bead's labels.
+<!-- team-doc:bd-fallback:end -->

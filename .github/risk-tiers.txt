@@ -30,6 +30,7 @@ medium CLAUDE.md
 medium .claude/**
 medium BannedSymbols.txt
 medium .github/instructions/**
+medium .github/copilot-instructions.md
 medium .forge/warden-rules.yaml
 medium test/*/*.csproj
 

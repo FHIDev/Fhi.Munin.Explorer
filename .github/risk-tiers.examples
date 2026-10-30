@@ -22,3 +22,4 @@ high   src/Fhi.Munin.Explorer/Client/ServiceCollectionExtensions.cs
 medium .github/instructions/code-review.instructions.md
 low    scripts/test-scan-shard.mjs
 low    scripts/test_comment_budget.py
+medium .github/copilot-instructions.md

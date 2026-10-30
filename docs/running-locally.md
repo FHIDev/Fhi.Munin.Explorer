@@ -186,7 +186,7 @@ helsedata's private Azure Artifacts feed. So:
   interchangeable with the bundled chromium's.
 
   **`check-accessibility.sh` takes the same variable**, and until `Fhi.Metadata-2nfvm` it did not:
-  it ran the install unconditionally, so on Node 26 the gate CLAUDE.md makes mandatory for every
+  it ran the install unconditionally, so on Node 26 the gate AGENTS.md makes mandatory for every
   markup change could not be run at all, and the hang looked like a slow download rather than a
   failed unpack. Both scripts now skip the install when a channel is set and name the browser they
   used.
