@@ -152,10 +152,10 @@ public sealed partial class KildeSearch : ComponentBase
     /// does not publish opens a view that says so rather than throwing — an id in a URL somebody
     /// edited is a normal event on a public page.
     /// </remarks>
+    [Parameter] public Guid? SelectedKildeId { get; set; }
+
     /// <summary>Where the loaded kilder's codes go, when <see cref="KildeExplorer"/> mounts this; null otherwise.</summary>
     [CascadingParameter(Name = KildeCodeBook.CascadeName)] private KildeCodeBook? Codes { get; set; }
-
-    [Parameter] public Guid? SelectedKildeId { get; set; }
 
     /// <summary>
     /// Raised when the open kilde changes, so the host can reflect it in its own URL. The

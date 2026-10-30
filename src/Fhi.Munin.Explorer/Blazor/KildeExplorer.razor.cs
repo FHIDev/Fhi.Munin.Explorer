@@ -1,7 +1,7 @@
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Logging;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
-using Fhi.Munin.Explorer.Logging;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
@@ -533,7 +533,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
         // On every arrival, not only a changed one: an entry pushed from the list, reached by Back or
         // Forward, has the list under it; one a link or a host parameter made has something else.
-        var pushedFromList = e.HistoryEntryState == UrlMirror.OpenedFromList && arrived.Item1 is not null;
+        var pushedFromList = e.HistoryEntryState == UrlMirror.OpenedFromList && (arrived.Item1 is not null || code is not null);
 
         if (code is null
             && arrived == (_selectedKildeId, _selectedDatasamlingId, _order, _direction)
@@ -669,7 +669,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     private string KildeValue(Guid id) =>
         id == Guid.Empty && _missingCode is { } missing
             ? missing
-            : KildeCodes.ShortForm(_codes.For(id)) ?? id.ToString();
+            : _codes.ShortFormFor(id) ?? id.ToString();
 
     /// <summary>
     /// This page's address showing the open kilde, and the datasamling named — or the kilde alone

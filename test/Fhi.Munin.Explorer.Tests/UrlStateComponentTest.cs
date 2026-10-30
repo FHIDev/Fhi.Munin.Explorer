@@ -617,20 +617,23 @@ public class UrlStateComponentTest : ExplorerTestContext
     /// A row in the kilde list. <paramref name="datasamlinger"/> is what decides whether it has a
     /// drawer at all — <c>KildeSearch.CanExpand</c> draws no toggle on a kilde with none.
     /// </summary>
-    private static KildeSummary Kilde(Guid id, string name, int datasamlinger = 0) =>
-        new() { Id = id, Name = name, Code = "", DatasamlingCount = datasamlinger };
+    private static KildeSummary Kilde(Guid id, string name, int datasamlinger = 0, string code = "") =>
+        new() { Id = id, Name = name, Code = code, DatasamlingCount = datasamlinger };
 
     /// <summary>Answers with one kilde, so there is a row to open and a selection to hand over.</summary>
     /// <remarks>
     /// And one datasamling under it, because the drill-in Kelda offers out of a kilde is a link
     /// this component builds the address for — the tree has to have a node to hang it on.
     /// </remarks>
-    private sealed class OneKildeClient(Guid id, Guid? datasamling = null, bool expandable = false)
+    private sealed class OneKildeClient(Guid id, Guid? datasamling = null, bool expandable = false, string code = "")
         : EmptyMuninExplorerClient
     {
         public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
             string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<KildeSummary>>([Kilde(id, "Als registeret", expandable ? 1 : 0)]);
+            Task.FromResult<IReadOnlyList<KildeSummary>>([Kilde(id, "Als registeret", expandable ? 1 : 0, code)]);
+
+        public override Task<Guid?> FindKildeIdByCodeAsync(string linkCode, CancellationToken cancellationToken = default) =>
+            Task.FromResult<Guid?>(code.Length > 0 && string.Equals(linkCode, code[2..], StringComparison.OrdinalIgnoreCase) ? id : null);
 
         public override Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult<KildeDetail?>(new KildeDetail
@@ -813,6 +816,30 @@ public class UrlStateComponentTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".munin-explorer-drilldown")));
         Navigation.NavigateTo(
             $"http://localhost/kilder?kilde={id}",
+            new NavigationOptions { HistoryEntryState = UrlMirror.OpenedFromList });
+        cut.WaitForAssertion(() => cut.Find(".munin-explorer-kilder__back").Click());
+
+        cut.WaitForAssertion(() => Assert.Equal(1, Backs()));
+    }
+
+    [Fact]
+    public void History_WhenForwardReturnsToACodedKildeOpenedFromTheList_ThenClosingItIsBackAgain()
+    {
+        // The entry the list pushed carries the code (?kilde=als), and Forward onto it is still one the list opened.
+        var id = Guid.NewGuid();
+        Services.AddSingleton<IMuninExplorerClient>(new OneKildeClient(id, code: "K_ALS"));
+        Prepare();
+        Navigation.NavigateTo("http://localhost/kilder");
+        var cut = Render<KildeExplorer>();
+
+        cut.Find(".munin-explorer-kilder__name").Click();
+        cut.WaitForAssertion(() => Assert.Equal(1, Pushes()));
+        Assert.Equal("/kilder?kilde=als", JSInterop.Invocations["history.pushState"][^1].Arguments[2]);
+
+        Navigation.NavigateTo("http://localhost/kilder");
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".munin-explorer-drilldown")));
+        Navigation.NavigateTo(
+            "http://localhost/kilder?kilde=als",
             new NavigationOptions { HistoryEntryState = UrlMirror.OpenedFromList });
         cut.WaitForAssertion(() => cut.Find(".munin-explorer-kilder__back").Click());
 
