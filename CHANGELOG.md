@@ -29,6 +29,69 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 2.15.0 — 2026-10-30
+
+### Added
+
+- **A delkilde and the datasamling detail carry the kilde fields they inherit.** `KildeDelkilde` and
+  `DatasamlingDetail` get `InheritedProperties`: the public kilde fields they leave blank, by key, each as an
+  `InheritedValue` with the value and where it comes from (`SourceLevel` `"delkilde"` or `"kilde"`, `SourceId`,
+  `SourceName`, `SourceNameEn`). Munin has sent it since FHIDev/Munin#6871; the package now reads it instead of
+  dropping it. Nothing renders it yet. An older Munin that doesn't send it gives an empty dictionary.
+  (Fhi.Metadata-l9l2n.152, Fhi.Metadata-l9l2n.153)
+- **The datasamling page shows the public kilde fields it inherits, and where Website and the data controller's HER-ID
+  come from.** A value the datasamling leaves to its kilde or a delkilde carries a quiet «Arvet fra kilden …» /
+  «Arvet fra delkilden …» line under it, in Stiler's own `caption`, so no new class name. Website and the data
+  controller's HER-ID, org. no. and the data source's HER-ID now appear in Kildeinformasjon when the datasamling
+  inherits them, and only then. Fields normally set only on the kilde carry no caption: kildetype, lovverk,
+  dataansvarlig, databehandler, the org. no. and the data source's HER-ID. Validity and identification level wait for
+  Munin to say which level supplied them (Fhi.Metadata-zogen.1.2).
+  (Fhi.Metadata-zogen.1)
+
+### Changed
+
+- **Share codes of 10 characters open beside the 6-character ones.** `SharedList.NormalizeCode`, and so the
+  `?delekode=` URL state, the field for opening a shared list and `GetSharedListAsync`, accept 6 or 10 ASCII letters
+  or digits. Munin will mint 10-character codes once helsedata pins this version; codes already handed out keep
+  working until they expire. (Fhi.Metadata-ayqlp.7)
+- **Ticks in different branches of the Variabelutforsker's kilde tree are combined with OR.** A whole datasamling
+  ticked beside variabelgrupper under another datasamling now lists both instead of nothing, as the old
+  helsedata.no explorer did. A tick with a more specific tick below it still only narrows, the other facets are
+  still ANDed, and the list, the rows, the counts and the export follow the same rule. «Vis bare variabler fra denne
+  datakilden/datasamlingen», a datasamling's «Vis variablene» and a kilde handed over from the kildeutforsker mean
+  «this kilde's variabler in that datasamling» and are ANDed until the reader ticks the tree again; removing a chip or
+  choosing a variabelgruppe in its own facet keeps the mode in force. Needs a Munin with Fhi.Metadata-jk7fp (Munin
+  #6961); an older Munin ignores the parameter and keeps ANDing.
+
+### Fixed
+
+- **A code for a saved list stops working when the list is deleted.** «Del liste» now asks Munin's
+  `POST api/explorer/my/lists/{id}/share`, which builds the snapshot from the stored list (without
+  notes or «Ønskede data») and ties the code to it, instead of posting the items to the anonymous
+  `api/explorer/lists/share`. The caption under the code says so: «Koden slutter å virke hvis du sletter
+  listen, og senest etter 90 dager». The view no longer reads the whole list before sharing it. Needs a
+  Munin with Fhi.Metadata-9huq2.6 (Munin #6956).
+
+### Deprecated
+
+- **`SharedList.CodeLength` is obsolete and will be removed in 3.0.0.** A share code has 6 or 10 characters now, so
+  one length no longer describes it; check a code with `SharedList.NormalizeCode` instead. Nothing in the package or
+  in helsedata reads the constant. A host that does now gets warning CS0618, which fails the build under
+  `TreatWarningsAsErrors`. (Fhi.Metadata-ayqlp.7)
+
+### Notes for hosts
+
+- **This version needs a Munin with `POST api/explorer/my/lists/{id}/share` (Munin #6956, Fhi.Metadata-9huq2.6).**
+  Against an older Munin API the route answers 404, and «Del liste» shows its error for every saved list.
+  Move a host's pin only once the Munin it calls serves the route. `IMuninExplorerClient` gains
+  `ShareMyListAsync(Guid id)`, which the list view now calls: a host that consumes `MuninExplorerClient` needs
+  no code change, while one with its own `IMuninExplorerClient` gets the interface's default, which throws
+  `NotSupportedException`, until it implements the member. `ShareListAsync` stays, for a list that is not saved.
+- **`VariableFilter` gains `OrTreeTicks`, written as `treeTicks=or` in the explorer's address.** It is in
+  `VariableFilter.QueryKeys`, so a host that keeps its own query parameters apart from the explorer's needs no change.
+  It is written only when two or more of the tree's levels (kilde, delkilde, datasamling, variabelgruppe placement)
+  are ticked, and it does not count in `ActiveCount`.
+
 ## 2.14.0 — 2026-10-29
 
 ### Added
