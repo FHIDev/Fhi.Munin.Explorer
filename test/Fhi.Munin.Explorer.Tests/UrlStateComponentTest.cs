@@ -632,6 +632,8 @@ public class UrlStateComponentTest : ExplorerTestContext
     {
         public int DetailFetches { get; private set; }
 
+        public Guid? LastDetailId { get; private set; }
+
         public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
             string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<KildeSummary>>([Kilde(id, "Als registeret", expandable ? 1 : 0, code)]);
@@ -643,6 +645,7 @@ public class UrlStateComponentTest : ExplorerTestContext
         public override Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default)
         {
             DetailFetches++;
+            LastDetailId = id;
             return Task.FromResult<KildeDetail?>(new KildeDetail
             {
                 Id = id,
@@ -904,7 +907,8 @@ public class UrlStateComponentTest : ExplorerTestContext
         // ?kilde=als, Back, Forward to it again: two lookups of one code; the first ends in nothing, after the second opened.
         var id = Guid.NewGuid();
         TaskCompletionSource<Guid?> first = new(), second = new();
-        var cut = RenderCoded(new OneKildeClient(id, code: "K_ALS", lookups: new([first, second])), "http://localhost/kilder");
+        var client = new OneKildeClient(id, code: "K_ALS", lookups: new([first, second]));
+        var cut = RenderCoded(client, "http://localhost/kilder");
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".munin-explorer-kilder__name")));
 
         Navigation.NavigateTo("http://localhost/kilder?kilde=als");
@@ -915,7 +919,8 @@ public class UrlStateComponentTest : ExplorerTestContext
         cut.InvokeAsync(() => first.SetResult(null));
         cut.InvokeAsync(() => second.SetResult(id));
 
-        cut.WaitForAssertion(() => Assert.Contains("Als registeret", cut.Markup, StringComparison.Ordinal));
+        // The fake answers any id, so the not-found path (an empty id) is told apart by what was fetched.
+        cut.WaitForAssertion(() => Assert.Equal(id, client.LastDetailId));
         Assert.NotEmpty(cut.FindAll(".munin-explorer-drilldown"));
     }
 
