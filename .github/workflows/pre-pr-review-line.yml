@@ -76,7 +76,11 @@ jobs:
             found=${BASH_REMATCH[1]}; noun=${BASH_REMATCH[2]}
           elif [[ $lines =~ $countfixed ]]; then
             found=${BASH_REMATCH[1]}; noun=${BASH_REMATCH[2]}; fixed=${BASH_REMATCH[3]}
-            if [ "$(( 10#$fixed ))" -ne "$(( 10#$found ))" ]; then
+            if [ "$(( 10#$fixed ))" -gt "$(( 10#$found ))" ]; then
+              echo "::error::$(( 10#$fixed )) fixed is more than $(( 10#$found )) $noun; correct the counts."
+              exit 1
+            fi
+            if [ "$(( 10#$fixed ))" -lt "$(( 10#$found ))" ]; then
               echo "::error::$(( 10#$fixed )) fixed of $(( 10#$found )): say what is left, 'Pre-PR review: ran, $found $noun, $fixed fixed, $(( 10#$found - 10#$fixed )) left: why'."
               exit 1
             fi
