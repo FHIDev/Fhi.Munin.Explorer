@@ -58,6 +58,8 @@ jobs:
           fi
           left='^Pre-PR review: ran, ([0-9]{1,6}) (findings?), ([0-9]{1,6}) fixed, ([0-9]{1,6}) left: .+$'
           allfixed='^Pre-PR review: ran, ([0-9]{1,6}) (findings?), fixed$'
+          # «ran, 3 findings, 3 fixed» says the same as «fixed» (DevInfra-0f5.5); unequal numbers need «Y left: why».
+          countfixed='^Pre-PR review: ran, ([0-9]{1,6}) (findings?), ([0-9]{1,6}) fixed$'
           other='^Pre-PR review: (ran, no findings|skipped, .+)$'
           found=''; noun=''
           if [[ $lines =~ $left ]]; then
@@ -72,6 +74,16 @@ jobs:
             fi
           elif [[ $lines =~ $allfixed ]]; then
             found=${BASH_REMATCH[1]}; noun=${BASH_REMATCH[2]}
+          elif [[ $lines =~ $countfixed ]]; then
+            found=${BASH_REMATCH[1]}; noun=${BASH_REMATCH[2]}; fixed=${BASH_REMATCH[3]}
+            if [ "$(( 10#$fixed ))" -gt "$(( 10#$found ))" ]; then
+              echo "::error::$(( 10#$fixed )) fixed is more than $(( 10#$found )) $noun; correct the counts."
+              exit 1
+            fi
+            if [ "$(( 10#$fixed ))" -lt "$(( 10#$found ))" ]; then
+              echo "::error::$(( 10#$fixed )) fixed of $(( 10#$found )): say what is left, 'Pre-PR review: ran, $found $noun, $fixed fixed, $(( 10#$found - 10#$fixed )) left: why'."
+              exit 1
+            fi
           elif [[ ! $lines =~ $other ]]; then
             echo "::error::'$lines' is not one of the four forms: 'ran, no findings' | 'ran, N findings, fixed' | 'ran, N findings, X fixed, Y left: why' | 'skipped, reason'."
             exit 1
