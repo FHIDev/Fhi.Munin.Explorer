@@ -29,6 +29,29 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 2.16.0 — 2026-11-02
+
+### Added
+
+- **A kilde can be linked by its code, the same link in every environment.** `KildeExplorer` opens `?kilde=dar` as the kilde whose code is K_DAR: the code with or without «K_», in any case, and with the reader's Æ, Ø and Å. The address bar then shows the short form (`?kilde=dar`), so the link a reader copies opens the same kilde on test and in prod, where ids differ. An old `?kilde=<id>` link still opens and is rewritten to the code, and a code that names no kilde shows the normal not-found view with the code left in the address. Needs Munin's `GET /api/explorer/kilder/code/{code}` (Munin #6973) and the route on the public gateway; against an older Munin a code link shows not found and id links work as before. (Fhi.Metadata-9huq2.12)
+- **The datasamling page says where its inherited validity and identification level come from.** «Gyldig fra»,
+  «Gyldig til» and «Grad av personidentifikasjon» carry the «Arvet fra kilden …» / «Arvet fra delkilden …» line when
+  Munin says the delkilde or kilde supplied them, and none when the datasamling holds them itself.
+  `DatasamlingDetail` gains `ValidFromSource`, `ValidToSource` and `PersonIdentificationLevelSource`, of the new
+  `ValueSource`; each is null for a value the datasamling holds itself, and when the API or a cached response
+  predates them. The «Gyldighet» row, which draws both ends, is captioned only when every end it shows came from the
+  same place.
+  (Fhi.Metadata-zogen.1.2)
+- **A datasamling's own Hjemmeside, organisation number and HER-IDs show in Kildeinformasjon without a caption.**
+  The values come from `ownKildeProperties`, a new key on Munin's datasamling detail, read into the new
+  `DatasamlingDetail.OwnKildeProperties`. Where the datasamling holds a field itself, its own value is drawn in place
+  of an inherited one; a field it only inherits keeps its «Arvet fra …» caption. A Hjemmeside becomes a link only
+  for an http(s) or mailto address, as the inherited one does. A response without the key draws what it drew before.
+
+### Notes for hosts
+
+- **`IMuninExplorerClient` has a new member, `FindKildeIdByCodeAsync`, with a default body.** A host that implements the contract itself keeps building; until it implements the member, a code link (`?kilde=dar`) shows the not-found view. Hosts that consume `MuninExplorerClient` need nothing. (Fhi.Metadata-9huq2.12)
+
 ## 2.15.0 — 2026-10-30
 
 ### Added
