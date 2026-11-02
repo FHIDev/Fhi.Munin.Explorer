@@ -47,10 +47,15 @@ public class KildeMountTest : ExplorerTestContext
                     ? new KildeDetail
                     {
                         Id = id,
+                        Code = "K_ALS",
                         PreferredTerm = "Als registeret",
                         Datasamlinger = [new() { Name = "Inklusjon", VariableCount = 12 }],
                     }
                     : null);
+
+        /// <summary>As the API resolves it: with or without «K_», in any case (Fhi.Metadata-9huq2.12).</summary>
+        public override Task<Guid?> FindKildeIdByCodeAsync(string code, CancellationToken cancellationToken = default) =>
+            Task.FromResult<Guid?>(code.Trim().ToUpperInvariant() is "ALS" or "K_ALS" ? KildeId : null);
     }
 
     /// <summary>The type a CMS field holding <paramref name="name"/> resolves to, or null.</summary>
@@ -125,7 +130,40 @@ public class KildeMountTest : ExplorerTestContext
 
         OpenTheKilde(cut);
 
-        Assert.Equal($"/kilder?kilde={KildeId}", Mirrored());
+        Assert.Equal("/kilder?kilde=als", Mirrored());
+    }
+
+    [Theory]
+    [InlineData("als")]
+    [InlineData("ALS")]
+    [InlineData("K_ALS")]
+    public void KildeExplorer_WhenALinkNamesTheKildeByItsCode_ThenItOpensAndTheAddressShowsTheShortCode(string code)
+    {
+        // The same link in every environment, where an id is not (Fhi.Metadata-9huq2.12).
+        var cut = MountByName("KildeExplorer", $"http://localhost/kilder?kilde={code}");
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".munin-explorer-drilldown")));
+        Assert.Contains("Als registeret", cut.Markup, StringComparison.Ordinal);
+        cut.WaitForAssertion(() => Assert.Equal("/kilder?kilde=als", Mirrored()));
+    }
+
+    [Fact]
+    public void KildeExplorer_WhenALinkNamesTheKildeById_ThenTheAddressIsRewrittenToItsCode()
+    {
+        // An old id link still opens, and the address the reader copies from then on is the permanent one.
+        var cut = MountByName("KildeExplorer", $"http://localhost/kilder?kilde={KildeId}");
+
+        cut.WaitForAssertion(() => Assert.Equal("/kilder?kilde=als", Mirrored()));
+    }
+
+    [Fact]
+    public void KildeExplorer_WhenALinksCodeNamesNoKilde_ThenItSaysSoAndTheAddressKeepsTheCode()
+    {
+        var cut = MountByName("KildeExplorer", "http://localhost/kilder?kilde=ukjent");
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".munin-explorer-drilldown")));
+        Assert.DoesNotContain("Als registeret", cut.Markup, StringComparison.Ordinal);
+        Assert.True(Mirrored() is null or "/kilder?kilde=ukjent", $"wrote {Mirrored()}");
     }
 
     [Fact]

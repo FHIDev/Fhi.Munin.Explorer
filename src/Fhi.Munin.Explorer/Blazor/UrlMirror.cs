@@ -216,6 +216,17 @@ internal sealed class UrlMirror
         return "";
     }
 
+    /// <summary>
+    /// The same view said another way (a kilde's id rewritten to its code): the incoming fragment still belongs to it.
+    /// </summary>
+    public void Reown(string from, string to)
+    {
+        if (!_fragmentSpent && string.Equals(_fragmentOwner, from, StringComparison.Ordinal))
+        {
+            _fragmentOwner = to;
+        }
+    }
+
     private static string Join(string left, string right) =>
         left.Length == 0 ? right : right.Length == 0 ? left : left + "&" + right;
 }
