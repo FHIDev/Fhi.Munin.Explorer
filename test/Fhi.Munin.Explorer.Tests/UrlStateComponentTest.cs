@@ -627,7 +627,7 @@ public class UrlStateComponentTest : ExplorerTestContext
     /// </remarks>
     private sealed class OneKildeClient(
         Guid id, Guid? datasamling = null, bool expandable = false, string code = "", bool resolves = true,
-        TaskCompletionSource<Guid?>? held = null)
+        TaskCompletionSource<Guid?>? held = null, Queue<TaskCompletionSource<Guid?>>? lookups = null)
         : EmptyMuninExplorerClient
     {
         public int DetailFetches { get; private set; }
@@ -637,8 +637,8 @@ public class UrlStateComponentTest : ExplorerTestContext
             Task.FromResult<IReadOnlyList<KildeSummary>>([Kilde(id, "Als registeret", expandable ? 1 : 0, code)]);
 
         public override Task<Guid?> FindKildeIdByCodeAsync(string linkCode, CancellationToken cancellationToken = default) =>
-            held?.Task ?? Task.FromResult<Guid?>(
-                resolves && code.Length > 0 && string.Equals(linkCode, code[2..], StringComparison.OrdinalIgnoreCase) ? id : null);
+            lookups is { Count: > 0 } ? lookups.Dequeue().Task : held?.Task ?? Task.FromResult<Guid?>(
+                resolves && code.Length > 0 && (string.Equals(linkCode, code[2..], StringComparison.OrdinalIgnoreCase) || string.Equals(linkCode, code, StringComparison.OrdinalIgnoreCase)) ? id : null);
 
         public override Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default)
         {
@@ -893,6 +893,43 @@ public class UrlStateComponentTest : ExplorerTestContext
         var fetches = client.DetailFetches;
 
         Navigation.NavigateTo("http://localhost/kilder?kilde=als#munin-explorer-metadata");
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".munin-explorer-drilldown")));
+        Assert.Equal(fetches, client.DetailFetches);
+    }
+
+    [Fact]
+    public void Code_WhenAnOlderLookupOfTheSameCodeLandsLast_ThenItDoesNotUndoTheNewerAnswer()
+    {
+        // ?kilde=als, Back, Forward to it again: two lookups of one code; the first ends in nothing, after the second opened.
+        var id = Guid.NewGuid();
+        TaskCompletionSource<Guid?> first = new(), second = new();
+        var cut = RenderCoded(new OneKildeClient(id, code: "K_ALS", lookups: new([first, second])), "http://localhost/kilder");
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".munin-explorer-kilder__name")));
+
+        Navigation.NavigateTo("http://localhost/kilder?kilde=als");
+        Navigation.NavigateTo("http://localhost/kilder");
+        Navigation.NavigateTo("http://localhost/kilder?kilde=als");
+
+        // The older lookup lands while the newer one is still out; only the newer may decide.
+        cut.InvokeAsync(() => first.SetResult(null));
+        cut.InvokeAsync(() => second.SetResult(id));
+
+        cut.WaitForAssertion(() => Assert.Contains("Als registeret", cut.Markup, StringComparison.Ordinal));
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-drilldown"));
+    }
+
+    [Fact]
+    public void Code_WhenAHostParameterIsAddedToTheFullCodeTheLinkUsed_ThenTheViewIsKept()
+    {
+        // Opened as ?kilde=K_ALS, the address then shows als; the host still builds on K_ALS, which names the same kilde.
+        var id = Guid.NewGuid();
+        var client = new OneKildeClient(id, code: "K_ALS");
+        var cut = RenderCoded(client, "http://localhost/kilder?kilde=K_ALS");
+        cut.WaitForAssertion(() => Assert.Equal("/kilder?kilde=als", Mirrored()));
+        var fetches = client.DetailFetches;
+
+        Navigation.NavigateTo("http://localhost/kilder?kilde=K_ALS&utm_source=x");
 
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".munin-explorer-drilldown")));
         Assert.Equal(fetches, client.DetailFetches);

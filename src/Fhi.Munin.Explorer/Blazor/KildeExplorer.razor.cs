@@ -260,6 +260,9 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     private string? _pendingCode;
     private string? _missingCode;
 
+    // Every arrival takes a number; only the lookup of the latest one may land, though two may ask for the same code.
+    private int _arrivalGeneration;
+
     /// <summary>
     /// How many times the address has moved under a standing circuit, which is the key
     /// <see cref="KildeSearch"/> is mounted under.
@@ -335,6 +338,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// <summary>Open the kilde <paramref name="code"/> names, or the not-found view when it names none.</summary>
     private async Task ResolveCodeAsync(string code)
     {
+        var generation = ++_arrivalGeneration;
         Guid? id;
         try
         {
@@ -347,7 +351,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
             id = null;
         }
 
-        if (_pendingCode != code)
+        if (generation != _arrivalGeneration || _pendingCode != code)
         {
             return;
         }
@@ -560,7 +564,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
         // A code already resolved to the open kilde is that kilde: a section jump or a host parameter keeps the view.
         if (code is not null && _pendingCode is null && _selectedKildeId is { } current
-            && string.Equals(code, _codes.ShortFormFor(current), StringComparison.OrdinalIgnoreCase))
+            && _codes.IsAliasOf(current, code))
         {
             arrived = (current, arrived.Datasamling, arrived.Order, arrived.Direction);
             code = null;
@@ -592,6 +596,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
         // A remount: the browser already shows this address, and a late write could overwrite a Forward entry.
         mirror.Arrived();
+        _arrivalGeneration++;
         (_selectedKildeId, _selectedDatasamlingId, _order, _direction) = arrived;
         (_search, _facets, _ticked, _marked, _expanded, _columns) = list;
         _arrival++;

@@ -351,6 +351,12 @@ code, and ask for a test where none reaches it:
 - **A rewrite that changes only the representation** (id to code, a key's order) must keep what `UrlMirror` ties to
   the first query. `TakeFragment` spends the section fragment at the first different query, so a representation-only
   rewrite has to re-own it (`UrlMirror.Reown`). Test with a delayed source and a `#fragment` link.
+- **Two lookups of the same value.** A guard that compares the value being resolved (the code) cannot tell an older
+  request from a newer one for the same value: Back and Forward to one link make two. Number each arrival and let only
+  the latest land; test with two independently held lookups, the older one landing first.
+- **Every spelling the reader's address may still carry.** When a value is rewritten to a preferred form (K_ALS to
+  als), the host's own URL still holds the old one. A comparison that recognises only the preferred form remounts on
+  a host-parameter navigation. Keep each confirmed spelling as an alias, and test starting from the long form.
 - **A link the component writes must open what it names, on every host.** Writing a form into the address because the
   data has it (a code from the list) is not proof that the link opens: a host on the contract's default body, or an
   older API, would turn a working link into not found. Write the new form only after the API has confirmed it, and

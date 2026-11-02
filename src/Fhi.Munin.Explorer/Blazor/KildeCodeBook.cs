@@ -10,6 +10,7 @@ internal sealed class KildeCodeBook
 
     private readonly Dictionary<Guid, string> _codes = [];
     private readonly Dictionary<Guid, string> _verified = [];
+    private readonly Dictionary<Guid, HashSet<string>> _aliases = [];
     private readonly HashSet<(Guid, string)> _asked = [];
 
     /// <summary>Raised when a kilde's code becomes known or changes.</summary>
@@ -32,11 +33,21 @@ internal sealed class KildeCodeBook
         if (id != Guid.Empty && KildeCodes.IsLinkCode(linkCode))
         {
             _verified[id] = linkCode.Trim();
+            if (!_aliases.TryGetValue(id, out var aliases))
+            {
+                _aliases[id] = aliases = new(StringComparer.OrdinalIgnoreCase);
+            }
+
+            aliases.Add(linkCode.Trim());
         }
     }
 
     /// <summary>What the address may carry for <paramref name="id"/>: a code the API has resolved to it, else null.</summary>
     public string? ShortFormFor(Guid id) => _verified.GetValueOrDefault(id);
+
+    /// <summary>Whether the API has resolved <paramref name="linkCode"/> to <paramref name="id"/>, in any spelling seen.</summary>
+    public bool IsAliasOf(Guid id, string linkCode) =>
+        _aliases.TryGetValue(id, out var aliases) && aliases.Contains(linkCode.Trim());
 
     /// <summary>
     /// The short form of <paramref name="id"/>'s learned code when it is a link code, not yet the one verified and not
