@@ -366,30 +366,32 @@ Each miss is **Important**.
 
 ## 11b. The cases behind what Copilot found after a pre-PR round read the code
 
-In Munin's week 44, Copilot found these on code a pre-PR round had already read. The defect kinds in brackets are those
-of `docs/review-warden.md` in FHIDev/Fhi.Munin.DevInfra; the concrete cases were not worked through. Explorer writes to
+These are the cases behind findings Copilot made in Munin after a pre-PR round had already read the code
+(DevInfra-0f5.8, FHIDev/Munin#7012). The defect kinds in brackets are those of `docs/review-warden.md` in
+FHIDev/Fhi.Munin.DevInfra; earlier rounds applied the kinds but did not work through these cases. Explorer writes to
 no database, so Munin's server-write checks do not apply here; the rest do. Do each one that applies to the diff, and
-give every finding the cell or shape it comes from; the async-source table goes before the findings. A miss is
-**Important**.
+give every finding the cell or shape it comes from; the async-source table goes after the count line and before the
+per-section lines. A miss is **Important**.
 
-- **Component state fed by more than one async source (async state).** List the sources the touched state depends on: an
-  API call, a parameter change (`OnParametersSetAsync`), a `LocationChanged` navigation, a JS interop answer, a remount
-  by `@key`. Write a table in the review with one row per source and one column per state change the diff makes (filter,
-  seed, open, scroll, unmount), and say in each cell what happens when the source settles before, during and after that
-  change. Fill every time the cell for which row a reader's open item belongs to when the list is filtered or reloaded
-  under it (`@key`). With more than three sources, make a second pass over the diff that looks for async-state races
-  only. Section 11a has the address-bar cases.
+- **Component state fed by more than one async source (async state).** List the sources the touched state depends on:
+  an API call, a parameter change (`OnParametersSetAsync`), a `LocationChanged` navigation, a JS interop answer, a
+  re-creation by `@key`. Write a table in the review with one row per source and one column per state change the diff
+  makes (filter, load, open, scroll, dispose), and say in each cell what happens when the source settles before, during
+  and after that change. Always fill the cell for which list row a reader's open item stays attached to when the list
+  is filtered or reloaded under it (`@key`). With more than three sources, make a second pass over the diff that looks
+  for async-state races only. Section 11a has the address-bar cases.
 - **Contract JSON and language maps (edge inputs).** For each read of a contract member that is a JSON object or a
   language-keyed map (titles, translations), check each shape with a test or a stated reason: an empty string in the
   language shown first; that language missing; two keys that differ only in case (`nb` and `NB`), or two tags for one
-  slot (`no` and `nb`); the same key twice; a value of the wrong JSON type. Say which value the reader sees.
-- **New log lines (unsafe output).** The logs are the host's, on helsedata's side. A log line must not carry what a
-  reader typed or the address they came from in full (search text, query values); log the kind of failure, not the
-  input.
-- **Claims in design notes and docs (text that claims too much).** For a document that says how code behaves, check each
-  claim against the file it names and give the line. Check each claim about a library, a host or a service against its
-  primary source at the version the repo pins. Quote the sentence or line your verdict rests on and the version you read
-  it at; a claim you could not check is a finding, not a pass.
+  slot (`no` and `nb`); the same key twice; a value of the wrong JSON type. Say which value the reader sees. A typed
+  member read through `NullAsEmptyCollections.DictionaryConverter` throws `JsonException` for the whole response on a
+  non-string value, so the reader sees the load-failure sentence; the raw readers in `CatalogueProperties` skip it.
+- **New log lines (unsafe output).** The logs belong to the host that embeds the package. Check each new or changed
+  line against AGENTS.md («A swallowed exception is written down before it is swallowed»: what a log must not carry,
+  and the ids and page numbers it may). No reader identity (owner, name, e-mail from the token) goes into a line.
+- **Claims in design notes and docs (text that claims too much).** Section 1 applies; in addition, check each claim
+  about a library, a host or a service against its primary source at the version the repo pins. Quote the sentence or
+  line your verdict rests on and the version you read it at; a claim you could not check is a finding, not a pass.
 
 ## 12. Scope
 
