@@ -247,7 +247,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       # The scripts run node; pin the fleet's major (DevInfra-jna.4) instead of the runner's own.
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 26.13.0
 
@@ -452,7 +452,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       # The scripts run node; pin the fleet's major (DevInfra-jna.4) instead of the runner's own.
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 26.13.0
 
@@ -514,7 +514,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       # The scripts run node; pin the fleet's major (DevInfra-jna.4) instead of the runner's own.
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 26.13.0
 
@@ -592,7 +592,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       # The scripts run node; pin the fleet's major (DevInfra-jna.4) instead of the runner's own.
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 26.13.0
 
