@@ -364,29 +364,30 @@ code, and ask for a test where none reaches it:
 
 Each miss is **Important**.
 
-## 11b. The cases behind what Copilot found after two reviewers passed the code
+## 11b. The cases behind what Copilot found after a pre-PR round read the code
 
-In Munin's week 44, Copilot found these on code a pre-PR round had already read; the kinds were on the warden list,
-the concrete cases were not worked through. Explorer writes to no database, so Munin's server-write checks do not
-apply here; the rest do. Do each one that applies to the diff, and give every finding the cell or shape it comes
-from. A miss is **Important**.
+In Munin's week 44, Copilot found these on code a pre-PR round had already read. The defect kinds in brackets are those
+of DevInfra `docs/review-warden.md`; the concrete cases were not worked through. Explorer writes to no database, so
+Munin's server-write checks do not apply here; the rest do. Do each one that applies to the diff, and give every finding
+the cell or shape it comes from. A miss is **Important**.
 
-- **Component state fed by more than one async source (kind 1).** List the sources the touched state depends on: an
-  API call, a parameter change (`OnParametersSetAsync`), a `LocationChanged` navigation, a JS interop answer, a
-  remount by `@key`. Write a table in the review with one row per source and one column per state change the diff
-  makes (filter, seed, open, scroll, unmount), and say in each cell what happens when the source settles before,
-  during and after that change. Fill every time the cell for which row a reader's open item belongs to when the list
-  is filtered or reloaded under it (`@key`). With more than three sources, make a second pass over the diff that
-  looks for kind 1 only. Section 11a has the address-bar cases.
-- **Contract JSON and language maps (kind 12).** For each read of a contract member that is a JSON object or a
+- **Component state fed by more than one async source (async state).** List the sources the touched state depends on: an
+  API call, a parameter change (`OnParametersSetAsync`), a `LocationChanged` navigation, a JS interop answer, a remount
+  by `@key`. Write a table in the review with one row per source and one column per state change the diff makes (filter,
+  seed, open, scroll, unmount), and say in each cell what happens when the source settles before, during and after that
+  change. Fill every time the cell for which row a reader's open item belongs to when the list is filtered or reloaded
+  under it (`@key`). With more than three sources, make a second pass over the diff that looks for async-state races
+  only. Section 11a has the address-bar cases.
+- **Contract JSON and language maps (edge inputs).** For each read of a contract member that is a JSON object or a
   language-keyed map (titles, translations), check each shape with a test or a stated reason: an empty string in the
   language shown first; that language missing; two keys that differ only in case (`nb` and `NB`), or two tags for one
   slot (`no` and `nb`); the same key twice; a value of the wrong JSON type. Say which value the reader sees.
-- **New log lines (kind 9).** The logs are the host's, on helsedata's side. A log line must not carry what a reader
-  typed or the address they came from in full (search text, query values); log the kind of failure, not the input.
-- **Claims in design notes and docs (kind 2).** For a document that says how code behaves, check each claim against
-  the file it names and give the line. Check each claim about a library, a host or a service against its primary
-  source at the version the repo pins. A claim you could not check is a finding, not a pass.
+- **New log lines (unsafe output).** The logs are the host's, on helsedata's side. A log line must not carry what a
+  reader typed or the address they came from in full (search text, query values); log the kind of failure, not the
+  input.
+- **Claims in design notes and docs (text that claims too much).** For a document that says how code behaves, check each
+  claim against the file it names and give the line. Check each claim about a library, a host or a service against its
+  primary source at the version the repo pins. A claim you could not check is a finding, not a pass.
 
 ## 12. Scope
 
