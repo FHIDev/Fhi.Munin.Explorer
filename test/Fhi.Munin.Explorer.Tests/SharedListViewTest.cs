@@ -105,7 +105,7 @@ public class SharedListViewTest : ExplorerTestContext
                 return Task.FromResult<string?>(null);
             }
 
-            var code = $"SHARE{store.ByCode.Count}";
+            var code = $"SHARE{store.ByCode.Count:D5}";
             store.ByCode[code] = new SharedList(list.Name, [.. _items[id]]);
 
             return Task.FromResult<string?>(code);
@@ -286,7 +286,7 @@ public class SharedListViewTest : ExplorerTestContext
         cut.WaitForAssertion(() =>
         {
             code = Labelled(cut, "Delekode").GetAttribute("value") ?? "";
-            Assert.Matches("^([A-Z0-9]{6}|[A-Z0-9]{10})$", code);
+            Assert.Matches("^[A-Z0-9]{10}$", code);
         });
 
         // A fresh context is a fresh circuit: its own VariableListState, the same share endpoint.
@@ -308,7 +308,7 @@ public class SharedListViewTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
         Button(cut, "Del liste").Click();
 
-        cut.WaitForAssertion(() => Assert.Matches("^([A-Z0-9]{6}|[A-Z0-9]{10})$", Labelled(cut, "Delekode").GetAttribute("value") ?? ""));
+        cut.WaitForAssertion(() => Assert.Matches("^[A-Z0-9]{10}$", Labelled(cut, "Delekode").GetAttribute("value") ?? ""));
         Assert.Equal([OwnListId], client.SharedListIds);
         Assert.Contains(
             cut.FindAll("p.caption"),
@@ -593,7 +593,7 @@ public class SharedListViewTest : ExplorerTestContext
         var store = new ShareStore();
         store.ByCode["AB12CD"] = new SharedList("Kollegas liste", Three);
 
-        var cut = RenderExplorer(this, new ShareClient(store), "/variabler?delekode=AB12CD", signedIn: false);
+        var cut = RenderExplorer(this, new ShareClient(store), "/variabler?delekode=ab12cd", signedIn: false);
         cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
 
         Button(cut, "Lukk delt liste").Click();
@@ -884,15 +884,15 @@ public class SharedListViewTest : ExplorerTestContext
 
         Button(cut, w.ShareList).Click();
 
-        cut.WaitForAssertion(() => Assert.Matches("^SHARE0$", Labelled(cut, w.CodeLabel).GetAttribute("value")));
-        Assert.Equal("https://helsedata.example/variabler?delekode=SHARE0", Labelled(cut, w.LinkLabel).GetAttribute("value"));
+        cut.WaitForAssertion(() => Assert.Matches("^SHARE00000$", Labelled(cut, w.CodeLabel).GetAttribute("value")));
+        Assert.Equal("https://helsedata.example/variabler?delekode=SHARE00000", Labelled(cut, w.LinkLabel).GetAttribute("value"));
         Assert.Contains(w.Validity, cut.Markup);
 
         var mail = cut.FindAll("a").Single(a => a.TextContent.Trim() == w.ByEmail);
         var href = Uri.UnescapeDataString(mail.GetAttribute("href")!);
         Assert.StartsWith("mailto:", href);
         Assert.Contains(w.Subject, href);
-        Assert.Contains("SHARE0", href);
+        Assert.Contains("SHARE00000", href);
 
         Button(cut, w.OpenShared).Click();
         Labelled(cut, w.FieldLabel).Change("zz99zz");
