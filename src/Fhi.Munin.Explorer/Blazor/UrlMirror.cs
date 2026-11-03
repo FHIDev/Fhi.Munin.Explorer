@@ -41,7 +41,8 @@ internal sealed class UrlMirror
     public UrlMirror(Uri address, IJSRuntime js, Func<string, bool> owns)
     {
         _js = js;
-        _path = address.AbsolutePath;
+        // A path starting // makes every link and address-bar write built from it point at another host.
+        _path = "/" + address.AbsolutePath.TrimStart('/', '\\');
 
         // Kept with its '#', and null for "#" alone: an empty fragment names no section, and writing
         // one back would put a bare hash in the address bar for nothing.
