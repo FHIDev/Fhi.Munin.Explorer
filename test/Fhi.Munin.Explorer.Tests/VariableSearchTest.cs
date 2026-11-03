@@ -4911,7 +4911,7 @@ public class VariableSearchTest : ExplorerTestContext
     };
 
     [Fact]
-    public void Render_FilterAndVariabelgruppeTrees_StartWithTheirParentsShut()
+    public void Render_WhenTheFilterAndVariabelgruppeTreesHaveParents_ThenTheParentsStartShut()
     {
         var cut = RenderWith(new FilteringClient(OnePage(), WithFilterTree()));
 
@@ -4922,7 +4922,7 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Arrival_WithASubFilterChosen_ThenItsBranchIsOpenAndTheParentSaysSo()
+    public void Arrival_WhenASubFilterIsChosen_ThenItsBranchIsOpen()
     {
         var cut = RenderWith(new FilteringClient(OnePage(), WithFilterTree()),
             b => b.Add(c => c.Filter, new VariableFilter { FilterIds = [FilterChild] }));
@@ -4932,7 +4932,7 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Arrival_WithAVariabelgruppeChosenUnderAParent_ThenItsBranchIsOpen()
+    public void Arrival_WhenAVariabelgruppeUnderAParentIsChosen_ThenItsBranchIsOpen()
     {
         var cut = RenderWith(new FilteringClient(OnePage(), WithFilterTree()),
             b => b.Add(c => c.Filter, new VariableFilter { VariabelgruppeIds = [Levekaar] }));
