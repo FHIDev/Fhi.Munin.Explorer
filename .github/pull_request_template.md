@@ -19,7 +19,7 @@
      and goes on in one of four forms: "ran, no findings" / "ran, 3 findings, fixed" /
      "ran, 2 findings, 1 fixed, 1 left: why" / "skipped, reason". See the prove-it skill, section 8.
      A person may leave the section empty.
-     Under it, unless the review was skipped, a session writes one "review-registration" comment whose rounds each
+     Under it, unless the review was skipped, a session writes one registration comment whose rounds each
      name the commit they read ("head"); from 10 November 2026 the check holds the PR's head to the last one (the
      prove-it skill, section 8). -->
 

@@ -32,7 +32,7 @@ medium .claude/**
 medium BannedSymbols.txt
 medium .github/instructions/**
 medium .github/copilot-instructions.md
-medium .forge/warden-rules.yaml
+medium .forge/warden-rules*.yaml
 medium test/*/*.csproj
 medium .github/pull_request_template.md
 medium scripts/warden-checklist.py
