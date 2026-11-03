@@ -95,7 +95,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <see cref="ExploreVariablesRequested"/> gets in front of them, with
 /// <c>munin-explorer-kilde__datasamlinger--selectable</c> and
 /// <c>munin-explorer-kilde__datasamling-select</c> for the matching column an expanded row's
-/// datasamling table gets once <see cref="ExploreDatasamlingerRequested"/> is wired too (a
+/// datasamling table gets once <see cref="ExploreSelectionRequested"/> is wired too (a
 /// modifier and not a cell class alone, because Stiler sizes that table's columns by position),
 /// <c>munin-explorer-kilder__sort</c> for the button inside each of the four sortable column
 /// headings, and <c>munin-explorer-filters__toggle</c> and <c>munin-explorer-filters__facets</c>
@@ -274,6 +274,8 @@ public sealed partial class KildeSearch : ComponentBase
     /// What it carries is not always what is ticked. Ticked rows win; with nothing ticked but a
     /// search or a facet in force it carries the rows the reader is looking at; with neither it
     /// carries an empty list, which means the whole catalogue rather than a selection of none.
+    /// Past 100 kilder the press is refused and the selection line says so: the variable explorer
+    /// reads back no more than that.
     /// </para>
     /// <para>
     /// A host that leaves this unwired gets no checkbox column, no count and no button — the ticks
@@ -805,9 +807,8 @@ public sealed partial class KildeSearch : ComponentBase
         // is a selection they cannot undo. Nothing at all without either. (Fhi.Metadata-75yov)
         await OpenSeededRowsAsync();
 
-        // Ticks and marks arrive together from the address whenever a reader shares a link or
-        // navigates back, and every later mark and tick tops the union up but none of these did —
-        // so the first press handed over the marks alone, and said so nowhere. (Fhi.Metadata-75yov)
+        // On the obsolete union path, ticks and marks from the address need the union built before
+        // the first press, or it would hand over the marks alone. (Fhi.Metadata-75yov)
         await EnsureUnionAsync();
 
         // The datasamling instead of the kilde, not beside it: the drill-in draws one view, and the

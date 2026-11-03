@@ -298,15 +298,10 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
             : EventCallback.Factory.Create<IReadOnlyList<Guid>>(this, ExploreVariables);
 
     /// <summary>The marks' own way over, wired on the same one path <see cref="Handover"/> is.</summary>
-    /// <remarks>
-    /// A second callback rather than a widened first one: <c>ExploreVariablesRequested</c> is a
-    /// published parameter carrying kilde ids, and changing its payload would break every host
-    /// composing <see cref="KildeSearch"/> itself.
-    /// </remarks>
-    private EventCallback<IReadOnlyList<Guid>> DatasamlingHandover =>
+    private EventCallback<VariableFilter> SelectionHandover =>
         string.IsNullOrWhiteSpace(VariableExplorerPath)
             ? default
-            : EventCallback.Factory.Create<IReadOnlyList<Guid>>(this, ExploreDatasamlinger);
+            : EventCallback.Factory.Create<VariableFilter>(this, ExploreSelection);
 
     protected override void OnInitialized()
     {
@@ -820,15 +815,9 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         Navigation.NavigateTo(VariableExplorerAddress(VariableExplorerPath ?? "",
                               new VariableFilter { KildeIds = kildeIds }), forceLoad: true);
 
-    /// <summary>The same journey for a selection holding marks, which travels as collections.</summary>
-    /// <remarks>
-    /// <c>DatasamlingIds</c> alone and never beside <c>KildeIds</c>: the API ANDs the two, so a
-    /// query carrying both would drop every variable pinned into another kilde's datasamling —
-    /// which is exactly what a reader marking across kilder is asking for.
-    /// </remarks>
-    private void ExploreDatasamlinger(IReadOnlyList<Guid> datasamlingIds) =>
-        Navigation.NavigateTo(VariableExplorerAddress(VariableExplorerPath ?? "",
-                              new VariableFilter { DatasamlingIds = datasamlingIds }), forceLoad: true);
+    /// <summary>The same journey for a selection holding marks, as the filter the list built.</summary>
+    private void ExploreSelection(VariableFilter filter) =>
+        Navigation.NavigateTo(VariableExplorerAddress(VariableExplorerPath ?? "", filter), forceLoad: true);
 
     /// <summary>The variable explorer's address, narrowed to <paramref name="filter"/>.</summary>
     /// <remarks>

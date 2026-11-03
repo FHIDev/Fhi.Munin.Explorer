@@ -2431,6 +2431,25 @@ public class UrlStateComponentTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Kilder_WhenAKildeIsTickedAndAnotherKildesDatasamlingIsMarked_ThenTheAddressOrsTheTwo()
+    {
+        // The ticked kilde travels as itself beside the one mark, ORed (Fhi.Metadata-9huq2.13).
+        var cut = RenderDrawers("http://localhost/kilder");
+
+        OpenDrawer(cut, "Als registeret");
+        DrawerBox(cut, MarkKildeOne, "Inklusjon").Change(true);
+        DrawerRow(cut, "Dødsårsaksregisteret").QuerySelector(".munin-explorer-kilder__select input")!.Change(true);
+
+        Handover(cut).Click();
+
+        var filter = VariableFilter.Parse(new Uri(Navigation.Uri).Query);
+
+        Assert.Equal([MarkKildeTwo], filter.KildeIds);
+        Assert.Equal([MarkOneA], filter.DatasamlingIds);
+        Assert.True(filter.OrTreeTicks);
+    }
+
+    [Fact]
     public void Kilder_WhenTheMarkedAddressIsReloaded_ThenBothRowsOpenThemselvesWithTheMarksOn()
     {
         // What Back lands on. The rows open without a press because a mark inside a shut drawer is

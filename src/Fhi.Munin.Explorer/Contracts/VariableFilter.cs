@@ -129,9 +129,9 @@ public sealed record VariableFilter
     /// </summary>
     /// <remarks>
     /// The API's <c>treeTicks=or</c> (Munin #6961, Fhi.Metadata-emsc0.1.1): a tick with a more specific tick below it still
-    /// only narrows, and every other filter stays ANDed. A tick in the explorer's kilde tree sets it. A hand-over from the
-    /// kildeutforsker, «Vis bare variabler fra denne datakilden/datasamlingen» and a datasamling's «Vis variablene» clear
-    /// it, until the reader ticks the tree again. Sent only when two or more of the four levels are ticked, the only case the API combines; not counted in
+    /// only narrows, and every other filter stays ANDed. A tick in the explorer's kilde tree sets it, and so does the
+    /// kildeutforsker's hand-over of a selection holding marked datasamlinger. «Vis bare variabler fra denne
+    /// datakilden/datasamlingen» and a datasamling's «Vis variablene» clear it, until the reader ticks the tree again. Sent only when two or more of the four levels are ticked, the only case the API combines; not counted in
     /// <see cref="ActiveCount"/>, since it narrows nothing on its own.
     /// </remarks>
     public bool OrTreeTicks { get; init; }
@@ -332,18 +332,9 @@ public sealed record VariableFilter
         return query.ToString();
     }
 
-    /// <summary>How many values <see cref="Parse"/> keeps for one facet.</summary>
-    /// <remarks>
-    /// What <see cref="Parse"/> reads is untrusted: this renders on a public, unauthenticated page,
-    /// and the remarks below invite a host to hand over whatever the request carried. The filter it
-    /// produces is then held for the life of a circuit, scanned once per selected value on every
-    /// render, and written back onto the outbound API URL on every fetch — so an unbounded list
-    /// turns one cheap crafted link into sustained server work and a multi-megabyte upstream
-    /// request. The cap is far above any selection the catalogue can offer, the API's own facets
-    /// being hundreds of values rather than thousands, so it only ever truncates input that was
-    /// never a selection a reader could make — which "drop what you cannot read" already allows.
-    /// </remarks>
-    private const int MaxValuesPerFacet = 100;
+    // Parse reads an untrusted public link, so an unbounded list would cost server work on every render and fetch.
+    // A kildeutforsker selection can reach this, so KildeSearch refuses a handover past it rather than have it cut.
+    internal const int MaxValuesPerFacet = 100;
 
     /// <summary>Mirrors the API's <c>MaxVariabelgruppeScopes</c>.</summary>
     public const int MaxVariabelgruppeScopes = 50;

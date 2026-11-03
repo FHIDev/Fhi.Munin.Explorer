@@ -667,14 +667,17 @@ internal sealed record Texts(
     // marked anywhere, and the row's number is a part of the bar's. (Fhi.Metadata-75yov)
     Func<int, string> MarkedDatasamlingCount,
     Func<int, string> SelectedDatasamlingCount,
-    // What a mixed selection cannot reach. The API ANDs kildeIds with datasamlingIds, so a
-    // selection holding marks travels as datasamlinger alone — and a variable in none of them is
-    // then out of reach however its kilde was chosen. (Fhi.Metadata-75yov)
+    // What a mixed selection cannot reach on the obsolete union path, where marks travel as
+    // datasamlinger alone and a variable in none of them is out of reach. (Fhi.Metadata-75yov)
     string MixedSelectionNote,
     // (names) — the ticked kilder that hold no datasamling and so add nothing to that selection.
     Func<string, string> KilderWithoutDatasamlinger,
     string SelectionDatasamlingerError,
     string RetrySelectionDatasamlinger,
+    // Beside a marked selection too large for the address it would travel in (Fhi.Metadata-9huq2.13).
+    string SelectionTooLarge,
+    // The same, when nothing is ticked and the rows a search or facet leaves are what would travel.
+    string FilteredTooLarge,
     // Kelda's filter panel. Its heading is FiltersTitle, and two of its four facet headings are
     // strings this record already holds: the kildetype facet is headed with ColumnKildetype and
     // the databehandler facet with FieldDataProcessor, because each facet is a filter over the
@@ -1638,6 +1641,8 @@ internal sealed record Texts(
         SelectionDatasamlingerError:
             "Kunne ikke hente datasamlingene for alle kildene som er valgt.",
         RetrySelectionDatasamlinger: "Prøv å hente datasamlingene på nytt",
+        SelectionTooLarge: "Utvalget er for stort til å utforske samlet. Fjern noen kilder eller datasamlinger.",
+        FilteredTooLarge: "Søket gir for mange kilder til å utforske samlet. Snevr inn søket eller filtrene.",
         FacetCategory: "Kategori",
         FacetDataCategory: "Datakategori (EHDS)",
         FacetDateFrom: "Fra og med",
@@ -2206,6 +2211,8 @@ internal sealed record Texts(
         SelectionDatasamlingerError:
             "Could not load the data collections for every source you have selected.",
         RetrySelectionDatasamlinger: "Try loading the data collections again",
+        SelectionTooLarge: "This selection is too large to explore at once. Remove some sources or data collections.",
+        FilteredTooLarge: "Too many sources match to explore at once. Narrow the search or the filters.",
         FacetCategory: "Category",
         FacetDataCategory: "Data category (EHDS)",
         FacetDateFrom: "From",

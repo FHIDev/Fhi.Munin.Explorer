@@ -14,10 +14,9 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// themselves leave through <see cref="TickedKildeIdsChanged"/>. (Fhi.Metadata-5ghur, -nvf2w)
 /// </para>
 /// <para>
-/// Ticks and marks are independent selections over different things, and either can be held without
-/// the other. What they are not is two payloads: with any mark present the whole selection travels
-/// as datasamlinger through <see cref="ExploreDatasamlingerRequested"/>, each ticked kilde expanded
-/// to all of its own, because the API ANDs the two filters. (Fhi.Metadata-75yov)
+/// Ticks and marks are independent selections, and with any mark present they travel together
+/// through <see cref="ExploreSelectionRequested"/> as one filter the API ORs (Fhi.Metadata-9huq2.13);
+/// a host wiring only the obsolete <see cref="ExploreDatasamlingerRequested"/> still gets the union.
 /// </para>
 /// </remarks>
 public sealed partial class KildeSearch
@@ -66,33 +65,54 @@ public sealed partial class KildeSearch
 
     /// <summary>
     /// Raised when the reader asks to explore variables for a selection holding marked
-    /// datasamlinger, carrying the datasamling ids that go with it.
+    /// datasamlinger, carrying the whole selection as one <see cref="VariableFilter"/>.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Beside <see cref="ExploreVariablesRequested"/> rather than instead of it, because that one is
-    /// a published parameter with a fixed payload: a host composing <see cref="KildeSearch"/> itself
-    /// keeps working untouched, and one that wants the marks as well wires this too.
-    /// <c>new VariableFilter { DatasamlingIds = ids }.ToQueryString()</c> is the pairing that lands
-    /// them in <see cref="VariableSearch.Filter"/>.
+    /// The filter holds the ticked kilder as <see cref="VariableFilter.KildeIds"/>, the marked
+    /// datasamlinger alone as <see cref="VariableFilter.DatasamlingIds"/>, and
+    /// <see cref="VariableFilter.OrTreeTicks"/>. With that set, Munin ORs the two lists, and a ticked
+    /// kilde holding a mark narrows to its marked datasamlinger. <c>filter.ToQueryString()</c> is
+    /// the pairing that lands it in <see cref="VariableSearch.Filter"/>.
     /// </para>
     /// <para>
-    /// <b>The two are never raised together.</b> Munin's API ANDs <c>kildeIds</c> with
-    /// <c>datasamlingIds</c>, so a handover carrying both would drop every variable pinned into
-    /// another kilde's datasamling. With any mark present the selection therefore travels as
-    /// datasamlinger alone — each ticked kilde expanded to all of its own, which is what makes a
-    /// mixed selection the union the reader sees rather than an intersection they did not ask for.
-    /// A selection with no marks is unchanged and still leaves through
-    /// <see cref="ExploreVariablesRequested"/>.
+    /// <b>Never raised together with <see cref="ExploreVariablesRequested"/>.</b> A selection with
+    /// no marks is unchanged and still leaves through that one, with kilde ids only.
+    /// </para>
+    /// <para>
+    /// A press is refused, with a sentence beside the button saying so, when either list holds more
+    /// than 100 ids, which is as many as <see cref="VariableFilter.Parse"/> reads back, or the query
+    /// would be longer than <see cref="MaxHandoverQueryLength"/> characters.
     /// </para>
     /// <para>
     /// Wire it, or no datasamling can be marked: the column, the per-row counts and the total are
-    /// drawn only where both callbacks are wired, on <see cref="ExploreVariablesRequested"/>'s
-    /// reasoning and with its trap — an <see cref="EventCallback"/> created in a statically
-    /// rendered parent arrives empty.
+    /// drawn only where this callback (or the obsolete <see cref="ExploreDatasamlingerRequested"/>)
+    /// is wired as well, on <see cref="ExploreVariablesRequested"/>'s reasoning and with its trap: an
+    /// <see cref="EventCallback"/> created in a statically rendered parent arrives empty.
     /// </para>
     /// </remarks>
+    [Parameter] public EventCallback<VariableFilter> ExploreSelectionRequested { get; set; }
+
+    /// <summary>
+    /// Obsolete: wire <see cref="ExploreSelectionRequested"/> instead. Raised for a selection holding
+    /// marked datasamlinger, carrying datasamling ids alone.
+    /// </summary>
+    /// <remarks>
+    /// Used only where <see cref="ExploreSelectionRequested"/> is not wired, and then as before:
+    /// each ticked kilde is fetched and expanded to every one of its datasamlinger. That can run to
+    /// hundreds of ids, which is why it was replaced, and the press is refused past 100 ids here too.
+    /// </remarks>
+    [Obsolete("Use ExploreSelectionRequested, which carries the ticked kilder and only the marked datasamlinger. ExploreDatasamlingerRequested is removed in 3.0.0.")]
     [Parameter] public EventCallback<IReadOnlyList<Guid>> ExploreDatasamlingerRequested { get; set; }
+
+    /// <summary>
+    /// The longest query a selection may hand over, in characters, with or without marks.
+    /// </summary>
+    /// <remarks>
+    /// helsedata's test site refuses an address over 8 KB with 414, and this leaves 1 KB of that for
+    /// the host's own path. Two full lists of 100 ids would not fit, so the length is checked as well.
+    /// </remarks>
+    public const int MaxHandoverQueryLength = 7 * 1024;
 
     /// <summary>
     /// The marks, in the order they were made, each naming the row that owns the panel it sits in.
@@ -117,11 +137,15 @@ public sealed partial class KildeSearch
     /// Whether a datasamling can be marked, which is whether the host wired the second handover.
     /// </summary>
     /// <remarks>
-    /// Both callbacks, not just the first: a mark has nowhere to go without
-    /// <see cref="ExploreDatasamlingerRequested"/>, and a checkbox over a button that would refuse
-    /// it is worse than no checkbox — <see cref="Selectable"/>'s own bargain one table further in.
+    /// Both callbacks, not just the first: a mark has nowhere to go without a second one, and a
+    /// checkbox over a button that would refuse it is worse than no checkbox.
     /// </remarks>
-    private bool Markable => Selectable && ExploreDatasamlingerRequested.HasDelegate;
+#pragma warning disable CS0618 // the obsolete handover still counts until 3.0.0 removes it
+    private bool Markable => Selectable && (ExploreSelectionRequested.HasDelegate || ExploreDatasamlingerRequested.HasDelegate);
+#pragma warning restore CS0618
+
+    /// <summary>Whether marks travel as the old union of datasamlinger, which needs every ticked kilde fetched.</summary>
+    private bool UsesUnion => !ExploreSelectionRequested.HasDelegate;
 
     /// <summary>Whether this kilde is ticked.</summary>
     private bool IsTicked(Guid id) => _ticked.Contains(id);
@@ -350,21 +374,21 @@ public sealed partial class KildeSearch
     /// has both has chosen two different kinds of thing. Either half alone reads as the one
     /// sentence it was before the other existed.
     /// </remarks>
-    private string? SelectionLine
+    private string? SelectionLine(string? refusal)
     {
-        get
-        {
-            var kilder = TickedCount > 0 ? T.SelectedKildeCount(TickedCount) : null;
-            var marks = TotalMarkCount > 0 ? T.SelectedDatasamlingCount(TotalMarkCount) : null;
+        var kilder = TickedCount > 0 ? T.SelectedKildeCount(TickedCount) : null;
+        var marks = TotalMarkCount > 0 ? T.SelectedDatasamlingCount(TotalMarkCount) : null;
 
-            return (kilder, marks) switch
-            {
-                (null, null) => null,
-                (null, { } alone) => alone,
-                ({ } alone, null) => alone,
-                _ => kilder + " " + marks,
-            };
-        }
+        var line = (kilder, marks) switch
+        {
+            (null, null) => null,
+            (null, { } alone) => alone,
+            ({ } alone, null) => alone,
+            _ => kilder + " " + marks,
+        };
+
+        // In the live line rather than a note beside it, so the refusal is heard as it arrives.
+        return refusal is null ? line : line is null ? refusal : line + " " + refusal;
     }
 
     /// <summary>The ticked kilder whose datasamlinger the union needs and has to fetch.</summary>
@@ -382,11 +406,13 @@ public sealed partial class KildeSearch
     /// <summary>Whether the union is still waiting on a fetch, which is when the button is busy.</summary>
     private bool UnionPending =>
         _marked.Count > 0
+        && UsesUnion
         && TickedNeedingDatasamlinger.Any(kilde => _datasamlingerLoading.Contains(kilde.Id));
 
     /// <summary>Whether a ticked kilde's datasamlinger could not be had, so the union is incomplete.</summary>
     private bool UnionFailed =>
         _marked.Count > 0
+        && UsesUnion
         && TickedNeedingDatasamlinger.Any(kilde => _datasamlingerError.ContainsKey(kilde.Id));
 
     /// <summary>Whether the union's retry is on screen, which outlives the failure it answers.</summary>
@@ -420,7 +446,7 @@ public sealed partial class KildeSearch
     {
         get
         {
-            if (_marked.Count == 0 || _ticked.Count == 0)
+            if (_marked.Count == 0 || _ticked.Count == 0 || !UsesUnion)
             {
                 return null;
             }
@@ -444,7 +470,7 @@ public sealed partial class KildeSearch
     /// </remarks>
     private async Task EnsureUnionAsync()
     {
-        if (_marked.Count == 0)
+        if (_marked.Count == 0 || !UsesUnion)
         {
             return;
         }
@@ -535,6 +561,46 @@ public sealed partial class KildeSearch
         return ids;
     }
 
+    /// <summary>The ticked kilder and the marks, as the one filter the API ORs.</summary>
+    /// <remarks>
+    /// Ticks in the list's order and marks in the reader's, so two readers making the same
+    /// selection produce the same link. A tick no kilde has is left out, as <see cref="Handover"/> does.
+    /// </remarks>
+    private VariableFilter SelectionFilter() =>
+        new()
+        {
+            KildeIds = [.. _kilder.Where(kilde => _ticked.Contains(kilde.Id)).Select(kilde => kilde.Id)],
+            DatasamlingIds = [.. _marked.Select(mark => mark.Datasamling).Distinct()],
+            OrTreeTicks = true,
+        };
+
+    /// <summary>What a marked selection would hand over, as the query the host's address carries.</summary>
+    private VariableFilter MarkedHandoverFilter() =>
+        UsesUnion ? new VariableFilter { DatasamlingIds = DatasamlingHandover() } : SelectionFilter();
+
+    /// <summary>The sentence a refused handover is said with, or null while the press would travel.</summary>
+    private string? HandoverRefusal(IReadOnlyList<KildeSummary> visible)
+    {
+        if (_marked.Count > 0)
+        {
+            return TooLarge(MarkedHandoverFilter()) ? T.SelectionTooLarge : null;
+        }
+
+        if (!TooLarge(new VariableFilter { KildeIds = Handover(visible) }))
+        {
+            return null;
+        }
+
+        // With nothing ticked the rows on screen travel, so the way out is a narrower search, not fewer ticks.
+        return _ticked.Count > 0 ? T.SelectionTooLarge : T.FilteredTooLarge;
+    }
+
+    // Past VariableFilter's own cap the variable explorer would open on fewer ids than were sent, and say nothing.
+    private static bool TooLarge(VariableFilter filter) =>
+        filter.KildeIds.Count > VariableFilter.MaxValuesPerFacet
+        || filter.DatasamlingIds.Count > VariableFilter.MaxValuesPerFacet
+        || filter.ToQueryString().Length > MaxHandoverQueryLength;
+
     /// <summary>Hand the selection to the host, which is what the ticks are for.</summary>
     /// <remarks>
     /// Through RaiseAsync, so a host handler that throws does not take the CMS page's circuit with
@@ -542,15 +608,27 @@ public sealed partial class KildeSearch
     /// </remarks>
     private Task ExploreVariablesAsync(IReadOnlyList<KildeSummary> visible)
     {
+        if (HandoverRefusal(visible) is not null)
+        {
+            return Task.CompletedTask;
+        }
+
         if (_marked.Count == 0)
         {
             return RaiseAsync(ExploreVariablesRequested, Handover(visible), Log);
         }
 
+        if (!UsesUnion)
+        {
+            return RaiseAsync(ExploreSelectionRequested, SelectionFilter(), Log);
+        }
+
         // A half-built union would hand over a narrower selection than the reader made, and say so
         // nowhere: the button reports both states beside itself instead of guessing.
+#pragma warning disable CS0618 // the obsolete handover, for hosts that have not moved yet
         return UnionPending || UnionFailed
             ? Task.CompletedTask
             : RaiseAsync(ExploreDatasamlingerRequested, DatasamlingHandover(), Log);
+#pragma warning restore CS0618
     }
 }
