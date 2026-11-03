@@ -274,6 +274,8 @@ public sealed partial class KildeSearch : ComponentBase
     /// What it carries is not always what is ticked. Ticked rows win; with nothing ticked but a
     /// search or a facet in force it carries the rows the reader is looking at; with neither it
     /// carries an empty list, which means the whole catalogue rather than a selection of none.
+    /// Past 100 kilder the press is refused and the selection line says so: the variable explorer
+    /// reads back no more than that.
     /// </para>
     /// <para>
     /// A host that leaves this unwired gets no checkbox column, no count and no button — the ticks

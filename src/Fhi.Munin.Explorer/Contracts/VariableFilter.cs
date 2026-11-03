@@ -332,17 +332,8 @@ public sealed record VariableFilter
         return query.ToString();
     }
 
-    /// <summary>How many values <see cref="Parse"/> keeps for one facet.</summary>
-    /// <remarks>
-    /// What <see cref="Parse"/> reads is untrusted: this renders on a public, unauthenticated page,
-    /// and the remarks below invite a host to hand over whatever the request carried. The filter it
-    /// produces is then held for the life of a circuit, scanned once per selected value on every
-    /// render, and written back onto the outbound API URL on every fetch — so an unbounded list
-    /// turns one cheap crafted link into sustained server work and a multi-megabyte upstream
-    /// request. The cap is far above any selection the catalogue can offer, the API's own facets
-    /// being hundreds of values rather than thousands, so it only ever truncates input that was
-    /// never a selection a reader could make — which "drop what you cannot read" already allows.
-    /// </remarks>
+    // Parse reads an untrusted public link, so an unbounded list would cost server work on every render and fetch.
+    // A kildeutforsker selection can reach this, so KildeSearch refuses a handover past it rather than have it cut.
     internal const int MaxValuesPerFacet = 100;
 
     /// <summary>Mirrors the API's <c>MaxVariabelgruppeScopes</c>.</summary>

@@ -567,7 +567,7 @@ else
             <button class="hd-button-square button-square--primary"
                     type="button"
                     aria-busy="@(UnionPending ? "true" : null)"
-                    aria-disabled="@(HandoverTooLarge ? "true" : null)"
+                    aria-disabled="@(HandoverTooLarge(visible) ? "true" : null)"
                     @onclick="() => ExploreVariablesAsync(visible)">@ExploreLabel</button>
 
             @if (TickedCount > 0 || TotalMarkCount > 0)
@@ -578,7 +578,7 @@ else
             }
 
             <p class="caption margin--none" role="status" aria-live="polite" aria-atomic="true">
-                @SelectionLine
+                @SelectionLine(visible)
             </p>
         </div>
 

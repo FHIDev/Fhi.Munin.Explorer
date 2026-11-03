@@ -2071,7 +2071,7 @@ public class KildeSelectionTest : ExplorerTestContext
     [Fact]
     public void Selection_WhenManyKilderAreTickedAndOneDatasamlingIsMarked_ThenOnlyThatDatasamlingTravels()
     {
-        // A hundred ticked kilder of five datasamlinger each travel as themselves, beside one mark.
+        // A hundred ticked kilder travel as themselves, beside one mark.
         var (client, ids) = ManyKilder(extra: 97);
         var (cut, _, selections) = RenderSelection(client, b => b.Add(c => c.TickedKildeIds, ids));
 
@@ -2173,7 +2173,7 @@ public class KildeSelectionTest : ExplorerTestContext
     public async Task Selection_WhenATickedKildesDrawerIsStillLoading_ThenTheButtonIsNotBusy()
     {
         var client = ThreeKilder();
-        client.Held[KildeOne] = new TaskCompletionSource<KildeDetail?>();
+        client.Held[KildeOne] = new(TaskCreationOptions.RunContinuationsAsynchronously);
         var (cut, _, selections) = RenderSelection(client);
 
         Expand(cut, "Als registeret");
@@ -2182,11 +2182,12 @@ public class KildeSelectionTest : ExplorerTestContext
         Mark(cut, KildeTwo, "Dødsfall");
 
         Assert.Null(ExploreButton(cut).GetAttribute("aria-busy"));
-        ExploreButton(cut).Click();
+        await ExploreButton(cut).ClickAsync(new());
         Assert.Single(selections);
 
-        client.Held[KildeOne].SetResult(DetailOne());
-        await cut.InvokeAsync(() => { });
+        await cut.InvokeAsync(() => client.Held[KildeOne].SetResult(DetailOne()));
+
+        cut.WaitForAssertion(() => Assert.Equal(3, MarkBoxes(cut, KildeOne).Count));
     }
 
     [Fact]
@@ -2217,18 +2218,20 @@ public class KildeSelectionTest : ExplorerTestContext
         Assert.Empty(datasamlinger);
     }
 
-    [Fact]
-    public void Union_WhenTheObsoleteHandoverWouldOutgrowTheAddress_ThenThePressIsRefusedThereToo()
+    [Theory]
+    [InlineData(99, true)]
+    [InlineData(100, false)]
+    public void Union_WhenTheObsoleteHandoverHoldsMoreThanAHundredIds_ThenThePressIsRefusedThereToo(int owned, bool travels)
     {
-        // 101 datasamlinger of one ticked kilde: one more than the variable explorer reads back.
+        // The ticked kilde's own datasamlinger plus the mark under the other kilde: 100 ids travel, 101 do not.
         var big = new KildeDetail
         {
             Id = KildeOne,
             PreferredTerm = "Als registeret",
-            Datasamlinger = [.. Enumerable.Range(0, 100).Select(i => Collection(Guid.NewGuid(), $"Serie {i:D3}"))],
+            Datasamlinger = [.. Enumerable.Range(0, owned).Select(i => Collection(Guid.NewGuid(), $"Serie {i:D3}"))],
         };
         var client = new DrawerClient(
-                Row(KildeOne, "Als registeret", datasamlinger: 100),
+                Row(KildeOne, "Als registeret", datasamlinger: owned),
                 Row(KildeTwo, "Dødsårsaksregisteret", datasamlinger: 2))
             .Describing(big, DetailTwo());
         var (cut, _, datasamlinger) = RenderMarkable(client);
@@ -2238,8 +2241,26 @@ public class KildeSelectionTest : ExplorerTestContext
         TickRow(cut, "Als registeret");
         ExploreButton(cut).Click();
 
-        Assert.Empty(datasamlinger);
-        Assert.Equal("true", ExploreButton(cut).GetAttribute("aria-disabled"));
+        Assert.Equal(travels ? 1 : 0, datasamlinger.Count);
+        Assert.Equal(travels ? null : "true", ExploreButton(cut).GetAttribute("aria-disabled"));
+    }
+
+    [Theory]
+    [InlineData(100, true)]
+    [InlineData(101, false)]
+    public void Handover_WhenMoreKilderAreTickedThanTheAddressReadsBack_ThenThePressIsRefusedAndSaidSo(int ticked, bool travels)
+    {
+        // With nothing marked as well: the variable explorer keeps 100 kilder and would drop the rest unannounced.
+        var (client, ids) = ManyKilder(extra: ticked - 3);
+        var (cut, kilder, _) = RenderSelection(client, b => b.Add(c => c.TickedKildeIds, ids));
+
+        ExploreButton(cut).Click();
+
+        Assert.Equal(travels ? 1 : 0, kilder.Count);
+        Assert.Equal(travels ? null : "true", ExploreButton(cut).GetAttribute("aria-disabled"));
+        Assert.Equal(!travels, BarLine(cut).EndsWith(
+            "Utvalget er for stort til å utforske samlet. Fjern noen kilder eller datasamlinger.",
+            StringComparison.Ordinal));
     }
 
     /// <summary>Every name under this package's own prefix that one render wrote.</summary>

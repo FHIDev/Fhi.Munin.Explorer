@@ -100,8 +100,7 @@ public sealed partial class KildeSearch
     /// <remarks>
     /// Used only where <see cref="ExploreSelectionRequested"/> is not wired, and then as before:
     /// each ticked kilde is fetched and expanded to every one of its datasamlinger. That can run to
-    /// hundreds of ids, which is why it was replaced, and the press is refused past 100 ids or
-    /// <see cref="MaxHandoverQueryLength"/> here too.
+    /// hundreds of ids, which is why it was replaced, and the press is refused past 100 ids here too.
     /// </remarks>
     [Obsolete("Use ExploreSelectionRequested, which carries the ticked kilder and only the marked datasamlinger. ExploreDatasamlingerRequested is removed in 3.0.0.")]
     [Parameter] public EventCallback<IReadOnlyList<Guid>> ExploreDatasamlingerRequested { get; set; }
@@ -375,24 +374,21 @@ public sealed partial class KildeSearch
     /// has both has chosen two different kinds of thing. Either half alone reads as the one
     /// sentence it was before the other existed.
     /// </remarks>
-    private string? SelectionLine
+    private string? SelectionLine(IReadOnlyList<KildeSummary> visible)
     {
-        get
+        var kilder = TickedCount > 0 ? T.SelectedKildeCount(TickedCount) : null;
+        var marks = TotalMarkCount > 0 ? T.SelectedDatasamlingCount(TotalMarkCount) : null;
+
+        var line = (kilder, marks) switch
         {
-            var kilder = TickedCount > 0 ? T.SelectedKildeCount(TickedCount) : null;
-            var marks = TotalMarkCount > 0 ? T.SelectedDatasamlingCount(TotalMarkCount) : null;
+            (null, null) => null,
+            (null, { } alone) => alone,
+            ({ } alone, null) => alone,
+            _ => kilder + " " + marks,
+        };
 
-            var line = (kilder, marks) switch
-            {
-                (null, null) => null,
-                (null, { } alone) => alone,
-                ({ } alone, null) => alone,
-                _ => kilder + " " + marks,
-            };
-
-            // In the live line rather than a note beside it, so the refusal is heard as it arrives.
-            return HandoverTooLarge ? line + " " + T.SelectionTooLarge : line;
-        }
+        // In the live line rather than a note beside it, so the refusal is heard as it arrives.
+        return HandoverTooLarge(visible) ? (line is null ? T.SelectionTooLarge : line + " " + T.SelectionTooLarge) : line;
     }
 
     /// <summary>The ticked kilder whose datasamlinger the union needs and has to fetch.</summary>
@@ -583,7 +579,8 @@ public sealed partial class KildeSearch
         UsesUnion ? new VariableFilter { DatasamlingIds = DatasamlingHandover() } : SelectionFilter();
 
     /// <summary>Whether a marked selection is too large for the address it would travel in.</summary>
-    private bool HandoverTooLarge => _marked.Count > 0 && TooLarge(MarkedHandoverFilter());
+    private bool HandoverTooLarge(IReadOnlyList<KildeSummary> visible) =>
+        TooLarge(_marked.Count > 0 ? MarkedHandoverFilter() : new VariableFilter { KildeIds = Handover(visible) });
 
     // Past VariableFilter's own cap the variable explorer would open on fewer ids than were sent, and say nothing.
     private static bool TooLarge(VariableFilter filter) =>
@@ -598,14 +595,14 @@ public sealed partial class KildeSearch
     /// </remarks>
     private Task ExploreVariablesAsync(IReadOnlyList<KildeSummary> visible)
     {
+        if (HandoverTooLarge(visible))
+        {
+            return Task.CompletedTask;
+        }
+
         if (_marked.Count == 0)
         {
             return RaiseAsync(ExploreVariablesRequested, Handover(visible), Log);
-        }
-
-        if (HandoverTooLarge)
-        {
-            return Task.CompletedTask;
         }
 
         if (!UsesUnion)
