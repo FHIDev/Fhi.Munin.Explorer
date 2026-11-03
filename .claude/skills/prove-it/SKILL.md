@@ -161,14 +161,18 @@ Every session does, on every PR; the Forge has a review step of its own and is n
 - Brief it with what the change is for and what to try to break. Fix what it finds, or say in the PR why a
   finding stands.
 - It is the review of the diff the PR is opened with, and each round names the commit it read (below). A commit
-  that answers an Important finding gets a new round over it. A commit that only fixes nits or code comments, in at
-  most 20 lines, with no renamed file and no file without a patch (a binary, a mode change), nothing in agent
-  instructions (a README, AGENTS, CLAUDE, SKILL or REVIEW file, `.claude/`, `.agents/` or `.claude-plugin/` at any depth, `.github/instructions/`,
+  that answers an Important finding gets a new full round. Any other later commit that changes code, a nit, CI or
+  Copilot fix included, gets a short confirming round: one reviewer reads only `git diff <previous head>..HEAD`, and
+  it is registered as the next round with its own `head` and only that model's entry; it does not count towards a
+  round limit, and an Important finding in it leads to a full round. A commit that changes no code (code comments
+  or whitespace only), in at most 20 lines, with no renamed file and no file without a patch (a binary, a mode
+  change), nothing in agent instructions (a README, AGENTS, CLAUDE, SKILL or REVIEW file, `.claude/`, `.agents/` or `.claude-plugin/` at any depth, `.github/instructions/`,
   `.github/copilot-instructions.md`, a workflow, `docs/team/`, `docs/review-*`, and what `.github/risk-tiers.txt`
-  lists under its «steer agents» header) and nothing on a high-risk path, says `Review-exempt: nit` or
-  `Review-exempt: comments` on a line below its subject instead (`git commit -m "<subject>" -m "Review-exempt: nit"`).
-  Any other later commit that changes more than docs (markdown under `docs/`, anything under `changelog.d/`, a
-  CHANGELOG file; not those instruction files) gets a round, a CI fix too. The registration example below has no numbers of its
+  lists under its «steer agents» header) and nothing on a
+  high-risk path, says `Review-exempt: comments` on a line below its subject instead
+  (`git commit -m "<subject>" -m "Review-exempt: comments"`). The check also accepts `Review-exempt: nit`; the rule
+  no longer uses it. A docs-only commit (markdown under `docs/`, anything under `changelog.d/`, a CHANGELOG file; not
+  those instruction files) needs neither. The registration example below has no numbers of its
   own: `tokens` is each reviewer's `subagent_tokens`, and `findings` lists each real finding (DevInfra's munin-lane
   skill, which also says when two reviewers run and are registered as `opus` and `sonnet`).
 - The PR body carries one line, on a line of its own, in one of four forms:
