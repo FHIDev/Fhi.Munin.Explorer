@@ -123,18 +123,23 @@ separate repo with its own ADO work item — but it is part of the job, not an o
 extra, and the release is only half done without it. Robin, 2026-09-23.
 
 **The repo is `Fhi.Helsedata`** — the Optimizely host, NOT `Fhi.Helsedata.Stiler` and
-NOT the RCL. Both pins live in one file:
+NOT the RCL. Three pins in two files:
 
 ```
 Fhi.Helsedata/Fhi.Helsedata.Optimizely/Fhi.Helsedata.Optimizely.csproj
-  :70  Fhi.Helsedata.Stiler
-  :84  Fhi.Munin.Explorer
+  Fhi.Helsedata.Stiler
+  Fhi.Munin.Explorer
+Fhi.Helsedata/Fhi.Helsedata.Backend.Legacy.Business/Fhi.Helsedata.Backend.Legacy.Business.csproj
+  Fhi.Helsedata.Stiler   (the same version as Optimizely's)
 ```
 
-Line numbers drift — **locate by package id**. Both sit in the `!= 'true'` ItemGroups;
-the `== 'true'` `ProjectReference` branches are local-dev and must not be touched.
+Line numbers drift — **locate by package id**. Every pin sits in a `!= 'true'` ItemGroup;
+the `== 'true'` `ProjectReference` branches are local-dev and must not be touched. The csproj
+comments say «bump begge samtidig» for Stiler: the Legacy pin was left at 0.1.202 while
+Optimizely moved on (helsedata PR 40596), caught at 2.17.0 (PR 40624). Grep the whole
+helsedata tree for `Fhi.Helsedata.Stiler` before the commit, in case another project joins.
 
-**BUMP BOTH IN ONE COMMIT, AND STILER FIRST IF YOU EVER SPLIT THEM.** The ordering is
+**BUMP ALL OF THEM IN ONE COMMIT, AND STILER FIRST IF YOU EVER SPLIT THEM.** The ordering is
 load-bearing and has bitten: Explorer `vdnm4` deleted a name tooltip on the assumption
 that a newer Stiler wraps the names. Explorer-first reintroduces ADO 121065 *worse* than
 the original — clipped names with no tooltip at all. One commit avoids the question.
