@@ -233,8 +233,8 @@ jobs:
           if [ "$head" = "$HEAD_SHA" ]; then
             echo "The last round read the head (${head:0:12}): covered."; exit 0
           fi
-          # Docs: markdown under docs/, anything under changelog.d/, a CHANGELOG anywhere. The team's rule and review
-          # docs, READMEs and AGENTS, CLAUDE, SKILL or REVIEW files can tell agents what to run: instructions, not docs.
+          # Docs: markdown under docs/, anything under changelog.d/, a CHANGELOG. INSTR wins: the team's rule docs, those
+          # instruction file names, and the agent folders at any depth can tell agents what to run.
           export DOCS='^(docs/.*\.md|changelog\.d/.*)$|(^|/)CHANGELOG[^/]*\.md$'
           export INSTR='^docs/(team/|review-)|(^|/)(README|AGENTS|CLAUDE|SKILL|REVIEW)\.md$|(^|/)\.(claude|agents|claude-plugin)/|^\.github/(instructions/|copilot-instructions\.md$|workflows/)'
           nondocs() { awk 'BEGIN { d = ENVIRON["DOCS"]; i = ENVIRON["INSTR"] } NF && ($0 !~ d || $0 ~ i) { print }' <<< "$1"; }

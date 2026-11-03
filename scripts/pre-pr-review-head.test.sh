@@ -94,12 +94,12 @@ elif case.startswith("exempt") or case.startswith("plain") or case.startswith("d
              "exempt-renamed-edit": [f("src/b.cs", "@@ -1 +1 @@\n-a\n+b", "renamed", "src/a.cs")],
              "exempt-comments": more, "docs-nested-claude": [f("docs/x/CLAUDE.md")],
              "docs-agents-changelog": [f(".agents/CHANGELOG.md")], "docs-nested-dotclaude": [f("api/.claude/CHANGELOG.md")],
-             "docs-plugin-changelog": [f(".claude-plugin/CHANGELOG.md")], "exempt-nested-agent": [f("api/.claude/x.md")],
+             "docs-plugin-changelog": [f(".claude-plugin/CHANGELOG.md")], "docs-dotlike": [f("src/x.claude/CHANGELOG.md")], "exempt-nested-agent": [f("api/.claude/x.md")],
              "exempt-dotagents": [f(".agents/skills/x.md")],
              "docs-claude-changelog": [f(".claude/agents/CHANGELOG.md")], "exempt-workflow": [f(".github/workflows/x.yml")], "docs-ok": [f("docs/x.md")],
              "docs-3000": [f(f"docs/{i}.md") for i in range(3000)]}[case]
     w[f"repos/o/r/compare/main...{X}"] = {"files": more if not case.startswith("docs") else code + [f("src/hidden.cs")]}
-    msg = SECRET if case in ("plain", "docs-ok", "docs-3000", "docs-nested-claude", "docs-claude-changelog", "docs-agents-changelog", "docs-nested-dotclaude", "docs-plugin-changelog") else exempt
+    msg = SECRET if case in ("plain", "docs-ok", "docs-3000", "docs-nested-claude", "docs-claude-changelog", "docs-agents-changelog", "docs-nested-dotclaude", "docs-plugin-changelog", "docs-dotlike") else exempt
     if case == "exempt-comments": msg = SECRET + "\n\nReview-exempt: comments\n"
     if case == "exempt-workflow": w.pop("repos/o/r/contents/.github/risk-tiers.txt")
     after(X, files, msg, {"exempt-big": 25, "exempt-nostats": None}.get(case, 3))
@@ -157,6 +157,7 @@ check docs-nested-dotclaude 1 "came after the last round and changes more than d
 check docs-plugin-changelog 1 "came after the last round and changes more than docs" ''
 check exempt-nested-agent 1 "changes agent instructions (api/.claude/x.md)" "refused: changes agent instructions"
 check exempt-dotagents 1 "changes agent instructions (.agents/skills/x.md)" "refused: changes agent instructions"
+check docs-dotlike     0 "docs only."                                 ''
 check bad-head         1 "is not a full commit id"                    ''
 check exempt-ok        0 "declared exempt, 3 lines in 1 files."      "| exempt |"
 check exempt-big       1 "changes 25 lines, more than 20"            "refused: changes 25 lines"
