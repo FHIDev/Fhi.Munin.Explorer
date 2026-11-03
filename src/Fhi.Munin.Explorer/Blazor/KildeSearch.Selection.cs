@@ -15,7 +15,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </para>
 /// <para>
 /// Ticks and marks are independent selections, and with any mark present they travel together
-/// through <see cref="ExploreSelectionRequested"/> as one filter the API ORs. (Fhi.Metadata-9huq2.13)
+/// through <see cref="ExploreSelectionRequested"/> as one filter the API ORs (Fhi.Metadata-9huq2.13);
+/// a host wiring only the obsolete <see cref="ExploreDatasamlingerRequested"/> still gets the union.
 /// </para>
 /// </remarks>
 public sealed partial class KildeSearch
@@ -79,9 +80,9 @@ public sealed partial class KildeSearch
     /// no marks is unchanged and still leaves through that one, with kilde ids only.
     /// </para>
     /// <para>
-    /// A press is refused, with a sentence beside the button saying so, when the query would be
-    /// longer than <see cref="MaxHandoverQueryLength"/> characters: past that, the address the
-    /// host builds from it is refused by the server before the variable explorer can open.
+    /// A press is refused, with a sentence beside the button saying so, when either list holds more
+    /// than 100 ids, which is as many as <see cref="VariableFilter.Parse"/> reads back, or the query
+    /// would be longer than <see cref="MaxHandoverQueryLength"/> characters.
     /// </para>
     /// <para>
     /// Wire it, or no datasamling can be marked: the column, the per-row counts and the total are
@@ -99,7 +100,7 @@ public sealed partial class KildeSearch
     /// <remarks>
     /// Used only where <see cref="ExploreSelectionRequested"/> is not wired, and then as before:
     /// each ticked kilde is fetched and expanded to every one of its datasamlinger. That can run to
-    /// hundreds of ids, which is why it was replaced, and the press is refused over
+    /// hundreds of ids, which is why it was replaced, and the press is refused past 100 ids or
     /// <see cref="MaxHandoverQueryLength"/> here too.
     /// </remarks>
     [Obsolete("Use ExploreSelectionRequested, which carries the ticked kilder and only the marked datasamlinger. ExploreDatasamlingerRequested is removed in 3.0.0.")]
@@ -109,8 +110,8 @@ public sealed partial class KildeSearch
     /// The longest query a marked selection may hand over, in characters.
     /// </summary>
     /// <remarks>
-    /// helsedata's test site refuses an address over 8 KB with 414. This leaves 1 KB of that for the
-    /// host's own path and keeps each id list under Munin's cap of 160, which answers 400 above it.
+    /// helsedata's test site refuses an address over 8 KB with 414, and this leaves 1 KB of that for
+    /// the host's own path. Two full lists of 100 ids would not fit, so the length is checked as well.
     /// </remarks>
     public const int MaxHandoverQueryLength = 7 * 1024;
 
@@ -582,8 +583,13 @@ public sealed partial class KildeSearch
         UsesUnion ? new VariableFilter { DatasamlingIds = DatasamlingHandover() } : SelectionFilter();
 
     /// <summary>Whether a marked selection is too large for the address it would travel in.</summary>
-    private bool HandoverTooLarge =>
-        _marked.Count > 0 && MarkedHandoverFilter().ToQueryString().Length > MaxHandoverQueryLength;
+    private bool HandoverTooLarge => _marked.Count > 0 && TooLarge(MarkedHandoverFilter());
+
+    // Past VariableFilter's own cap the variable explorer would open on fewer ids than were sent, and say nothing.
+    private static bool TooLarge(VariableFilter filter) =>
+        filter.KildeIds.Count > VariableFilter.MaxValuesPerFacet
+        || filter.DatasamlingIds.Count > VariableFilter.MaxValuesPerFacet
+        || filter.ToQueryString().Length > MaxHandoverQueryLength;
 
     /// <summary>Hand the selection to the host, which is what the ticks are for.</summary>
     /// <remarks>

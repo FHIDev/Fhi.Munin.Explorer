@@ -805,9 +805,8 @@ public sealed partial class KildeSearch : ComponentBase
         // is a selection they cannot undo. Nothing at all without either. (Fhi.Metadata-75yov)
         await OpenSeededRowsAsync();
 
-        // Ticks and marks arrive together from the address whenever a reader shares a link or
-        // navigates back, and every later mark and tick tops the union up but none of these did —
-        // so the first press handed over the marks alone, and said so nowhere. (Fhi.Metadata-75yov)
+        // On the obsolete union path, ticks and marks from the address need the union built before
+        // the first press, or it would hand over the marks alone. (Fhi.Metadata-75yov)
         await EnsureUnionAsync();
 
         // The datasamling instead of the kilde, not beside it: the drill-in draws one view, and the

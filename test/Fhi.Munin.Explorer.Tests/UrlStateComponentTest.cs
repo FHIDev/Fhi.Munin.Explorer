@@ -2433,8 +2433,7 @@ public class UrlStateComponentTest : ExplorerTestContext
     [Fact]
     public void Kilder_WhenAKildeIsTickedAndAnotherKildesDatasamlingIsMarked_ThenTheAddressOrsTheTwo()
     {
-        // Fhi.Metadata-9huq2.13: the ticked kilde travels as itself beside the one mark, not as
-        // every datasamling it holds, and treeTicks=or keeps the API from ANDing them.
+        // The ticked kilde travels as itself beside the one mark, ORed (Fhi.Metadata-9huq2.13).
         var cut = RenderDrawers("http://localhost/kilder");
 
         OpenDrawer(cut, "Als registeret");

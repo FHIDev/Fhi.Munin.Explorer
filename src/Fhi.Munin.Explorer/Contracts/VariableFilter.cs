@@ -129,9 +129,9 @@ public sealed record VariableFilter
     /// </summary>
     /// <remarks>
     /// The API's <c>treeTicks=or</c> (Munin #6961, Fhi.Metadata-emsc0.1.1): a tick with a more specific tick below it still
-    /// only narrows, and every other filter stays ANDed. A tick in the explorer's kilde tree sets it. A hand-over from the
-    /// kildeutforsker, «Vis bare variabler fra denne datakilden/datasamlingen» and a datasamling's «Vis variablene» clear
-    /// it, until the reader ticks the tree again. Sent only when two or more of the four levels are ticked, the only case the API combines; not counted in
+    /// only narrows, and every other filter stays ANDed. A tick in the explorer's kilde tree sets it, and so does the
+    /// kildeutforsker's hand-over of a selection holding marked datasamlinger. «Vis bare variabler fra denne
+    /// datakilden/datasamlingen» and a datasamling's «Vis variablene» clear it, until the reader ticks the tree again. Sent only when two or more of the four levels are ticked, the only case the API combines; not counted in
     /// <see cref="ActiveCount"/>, since it narrows nothing on its own.
     /// </remarks>
     public bool OrTreeTicks { get; init; }
@@ -343,7 +343,7 @@ public sealed record VariableFilter
     /// being hundreds of values rather than thousands, so it only ever truncates input that was
     /// never a selection a reader could make — which "drop what you cannot read" already allows.
     /// </remarks>
-    private const int MaxValuesPerFacet = 100;
+    internal const int MaxValuesPerFacet = 100;
 
     /// <summary>Mirrors the API's <c>MaxVariabelgruppeScopes</c>.</summary>
     public const int MaxVariabelgruppeScopes = 50;

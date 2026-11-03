@@ -667,9 +667,8 @@ internal sealed record Texts(
     // marked anywhere, and the row's number is a part of the bar's. (Fhi.Metadata-75yov)
     Func<int, string> MarkedDatasamlingCount,
     Func<int, string> SelectedDatasamlingCount,
-    // What a mixed selection cannot reach. The API ANDs kildeIds with datasamlingIds, so a
-    // selection holding marks travels as datasamlinger alone — and a variable in none of them is
-    // then out of reach however its kilde was chosen. (Fhi.Metadata-75yov)
+    // What a mixed selection cannot reach on the obsolete union path, where marks travel as
+    // datasamlinger alone and a variable in none of them is out of reach. (Fhi.Metadata-75yov)
     string MixedSelectionNote,
     // (names) — the ticked kilder that hold no datasamling and so add nothing to that selection.
     Func<string, string> KilderWithoutDatasamlinger,
