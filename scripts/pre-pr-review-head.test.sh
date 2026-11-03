@@ -79,6 +79,11 @@ elif case == "read-fails":
     hs = X
     w[f"repos/o/r/compare/main...{R}"] = {"__http": 500}
     w[f"repos/o/r/compare/main...{X}"] = {"__http": 500}
+elif case == "head-incomplete":
+    # The round read the head itself: covered even when patches are missing and the commit list is too long.
+    hs = R
+    w[f"repos/o/r/compare/main...{R}"] = {"files": [f("img/x.png", None)] * 300}
+    w[f"repos/o/r/pulls/1/commits"] = own(*[(c * 40, [P], "x") for c in "0123456789"] * 25)
 elif case == "bad-head":
     head, hs = "abcSECRETHEAD", R
 elif case.startswith("exempt") or case.startswith("plain") or case.startswith("docs"):
@@ -88,10 +93,11 @@ elif case.startswith("exempt") or case.startswith("plain") or case.startswith("d
              "exempt-nostats": more, "plain": more, "exempt-steer": [f("lanes/robin.md")],
              "exempt-renamed-edit": [f("src/b.cs", "@@ -1 +1 @@\n-a\n+b", "renamed", "src/a.cs")],
              "exempt-comments": more, "docs-nested-claude": [f("docs/x/CLAUDE.md")],
+             "docs-agents-changelog": [f(".agents/CHANGELOG.md")], "docs-nested-dotclaude": [f("api/.claude/CHANGELOG.md")],
              "docs-claude-changelog": [f(".claude/agents/CHANGELOG.md")], "exempt-workflow": [f(".github/workflows/x.yml")], "docs-ok": [f("docs/x.md")],
              "docs-3000": [f(f"docs/{i}.md") for i in range(3000)]}[case]
     w[f"repos/o/r/compare/main...{X}"] = {"files": more if not case.startswith("docs") else code + [f("src/hidden.cs")]}
-    msg = SECRET if case in ("plain", "docs-ok", "docs-3000", "docs-nested-claude", "docs-claude-changelog") else exempt
+    msg = SECRET if case in ("plain", "docs-ok", "docs-3000", "docs-nested-claude", "docs-claude-changelog", "docs-agents-changelog", "docs-nested-dotclaude") else exempt
     if case == "exempt-comments": msg = SECRET + "\n\nReview-exempt: comments\n"
     if case == "exempt-workflow": w.pop("repos/o/r/contents/.github/risk-tiers.txt")
     after(X, files, msg, {"exempt-big": 25, "exempt-nostats": None}.get(case, 3))
@@ -143,6 +149,9 @@ check() {  # case, expected exit (0 or 1), a text the log must hold, a text the 
 }
 
 check covered          0 "covered."                                  ''
+check head-incomplete  0 "The last round read the head"             ''
+check docs-agents-changelog 1 "came after the last round and changes more than docs" ''
+check docs-nested-dotclaude 1 "came after the last round and changes more than docs" ''
 check bad-head         1 "is not a full commit id"                    ''
 check exempt-ok        0 "declared exempt, 3 lines in 1 files."      "| exempt |"
 check exempt-big       1 "changes 25 lines, more than 20"            "refused: changes 25 lines"

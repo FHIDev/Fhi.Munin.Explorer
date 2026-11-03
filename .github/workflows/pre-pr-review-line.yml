@@ -230,10 +230,13 @@ jobs:
             echo "::error::The last round's head is not a full commit id (40 lowercase hex characters, as git rev-parse HEAD gives it); GitHub may not find a rebased-away commit by a shorter one."
             exit 1
           fi
+          if [ "$head" = "$HEAD_SHA" ]; then
+            echo "The last round read the head (${head:0:12}): covered."; exit 0
+          fi
           # Docs: markdown under docs/, anything under changelog.d/, a CHANGELOG anywhere. The team's rule and review
           # docs, READMEs and AGENTS, CLAUDE, SKILL or REVIEW files can tell agents what to run: instructions, not docs.
           export DOCS='^(docs/.*\.md|changelog\.d/.*)$|(^|/)CHANGELOG[^/]*\.md$'
-          export INSTR='^docs/(team/|review-)|(^|/)(README|AGENTS|CLAUDE|SKILL|REVIEW)\.md$|^\.claude/|^\.github/(instructions/|copilot-instructions\.md$|workflows/)'
+          export INSTR='^docs/(team/|review-)|(^|/)(README|AGENTS|CLAUDE|SKILL|REVIEW)\.md$|(^|/)\.(claude|agents|claude-plugin)/|^\.github/(instructions/|copilot-instructions\.md$|workflows/)'
           nondocs() { awk 'BEGIN { d = ENVIRON["DOCS"]; i = ENVIRON["INSTR"] } NF && ($0 !~ d || $0 ~ i) { print }' <<< "$1"; }
           # The pull request's own change against the base branch, one line per file: name, old name, status and the
           # patch with its @@ line numbers dropped (base64). "incomplete" when GitHub cuts the list or omits the
@@ -280,7 +283,7 @@ jobs:
           # instructions (AGENT, and the "steer agents" group of risk-tiers.txt) and on a path risk-tiers.txt makes
           # high. The rules come from the base branch, else the default branch, at the first marker.
           EXEMPT_MAX=20
-          AGENT='(^|/)(AGENTS|CLAUDE|SKILL|REVIEW|README)\.md$|^\.claude/|^\.github/(instructions/|copilot-instructions\.md$|workflows/)|^docs/(team/|review-)'
+          AGENT='(^|/)(AGENTS|CLAUDE|SKILL|REVIEW|README)\.md$|(^|/)\.(claude|agents|claude-plugin)/|^\.github/(instructions/|copilot-instructions\.md$|workflows/)|^docs/(team/|review-)'
           summary=${GITHUB_STEP_SUMMARY:-/dev/null}; rows=0
           srow() { [ "$rows" -gt 0 ] || printf '%s\n\n%s\n%s\n' '### Review-exempt commits after the last round' \
               '| Commit | Lines | Result |' '|---|---|---|' >> "$summary"
