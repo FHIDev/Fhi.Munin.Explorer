@@ -378,7 +378,9 @@ under REVIEW.md's count, before the per-section lines. A miss is **Important**.
   by `@key="_arrival"`. Write a table in the review with one row per source and one column per state change the diff
   makes (filter, load, open, scroll, dispose), and say in each cell what happens when the source settles before, during
   and after that change. Always fill one cell for list-item identity (`<tr @key="kilde.Id">`): which list item the
-  reader's open item stays attached to under a filter and a reload; a remount by `_arrival` resets everything instead.
+  reader's open item stays attached to under a filter and a reload. A remount by `_arrival` drops what lives only in the
+  component (focus, loaded rows, calls in flight) and restores what the address names: `expanded=<id>` reopens its rows
+  through `ExpandedKildeIds`.
   With more than three sources, make a second pass over the diff that looks for async-state races only. Section 11a has
   the address-bar cases.
 - **Contract JSON and language maps (edge inputs).** For each read of a contract member that is a JSON object or a
