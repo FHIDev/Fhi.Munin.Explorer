@@ -5,7 +5,7 @@ namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
 /// The host's bearer token rides on every call to ApiBaseUrl, so a plain-http address off the machine is refused at
-/// startup (Fhi.Metadata-ayqlp.6, R2-L9).
+/// startup (Fhi.Metadata-ayqlp.12, R2-L9).
 /// </summary>
 public class ApiBaseUrlSchemeTest
 {

@@ -4,7 +4,7 @@ namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
 /// A page path that starts with // must not turn the share, variable and export links into links to another host
-/// (Fhi.Metadata-ayqlp.6, R2-L2).
+/// (Fhi.Metadata-ayqlp.12, R2-L2).
 /// </summary>
 public class UrlMirrorPathTest
 {
