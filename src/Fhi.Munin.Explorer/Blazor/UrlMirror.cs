@@ -70,7 +70,7 @@ internal sealed class UrlMirror
     /// <summary>Records the address this mirror was built from as already shown, so MirrorAsync skips writing it back.</summary>
     /// <remarks>
     /// For a remount after Back or Forward, whose late write would overwrite an entry a quick Forward reached
-    /// (Fhi.Metadata-l9l2n.124). Matched as spelled: an address the mirror would spell otherwise is still written.
+    /// (Fhi.Metadata-l9l2n.124). Matched on the folded spelling; an address the mirror spells otherwise is still written.
     /// </remarks>
     public void Arrived() => _mirrored = _arrived;
 
@@ -80,6 +80,9 @@ internal sealed class UrlMirror
     // A path starting // makes every link and address-bar write built from it point at another host.
     // Uri has already turned a /\ into //, so slashes are all there is to fold.
     private static string LocalPath(Uri address) => "/" + address.AbsolutePath.TrimStart('/');
+
+    /// <summary>The address's path and query as a link on this host, for a view a host mounts without a mirror.</summary>
+    internal static string LocalPathAndQuery(Uri address) => LocalPath(address) + address.Query;
 
     /// <summary>The owned part of the incoming query, for the component's own parser to read.</summary>
     public string Owned =>

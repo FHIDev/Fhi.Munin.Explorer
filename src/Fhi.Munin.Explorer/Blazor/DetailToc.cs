@@ -175,7 +175,7 @@ public sealed class DetailToc : ComponentBase, IDisposable
         // Rooted-absolute, the shape UrlMirror.Address writes, so the fallback and the cascade agree.
         // It carries the host's path base whatever the document's <base href> says, because a rooted
         // href resolves against that base's ORIGIN and never against its path.
-        var page = PageAddress is { Length: > 0 } given ? given : new Uri(Navigation.Uri).PathAndQuery;
+        var page = PageAddress is { Length: > 0 } given ? given : UrlMirror.LocalPathAndQuery(new Uri(Navigation.Uri));
 
         var seq = 20;
 

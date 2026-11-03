@@ -85,6 +85,17 @@ public class DetailTocTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Render_WhenTheCircuitsPathStartsWithTwoSlashes_ThenTheHrefsStayOnThisHost()
+    {
+        // A host mounting the nav with no mirror above it: // would make every entry a link to another host (Fhi.Metadata-ayqlp.12).
+        Arrive("http://localhost//evil.example/side?kilde=abc");
+
+        var cut = RenderToc(Three);
+
+        Assert.Equal("/evil.example/side?kilde=abc#munin-explorer-metadata", cut.FindAll("a")[0].GetAttribute("href"));
+    }
+
+    [Fact]
     public void Render_WhenTheCircuitsAddressCarriesAFragment_ThenItIsNotCarriedIntoTheHrefs()
     {
         // A reader who arrived on a deep link, or pressed an entry in a host that told Blazor
