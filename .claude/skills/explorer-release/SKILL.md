@@ -103,7 +103,8 @@ version.
 
 **If the run summary says it could not open the PR**, the App step failed (the release
 itself still went out). Open it by hand with the `gh pr create` command the summary prints,
-and say in the body that the next release is blocked until it merges.
+and say in the body that the next release is blocked until it merges. If the body ends with a
+session's footer, add `Pre-PR review: skipped, generated changelog` on a line of its own.
 
 ## Verify, then report
 

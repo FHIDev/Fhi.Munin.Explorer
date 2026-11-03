@@ -168,9 +168,9 @@ Every session does, on every PR; the Forge has a review step of its own and is n
   lists under its «steer agents» header) and nothing on a high-risk path, says `Review-exempt: nit` or
   `Review-exempt: comments` on a line below its subject instead (`git commit -m "<subject>" -m "Review-exempt: nit"`).
   Any other later commit that changes more than docs (markdown under `docs/`, anything under `changelog.d/`, a
-  CHANGELOG file; not those instruction files) gets a round. The registration example below has no numbers of its
+  CHANGELOG file; not those instruction files) gets a round, a CI fix too. The registration example below has no numbers of its
   own: `tokens` is each reviewer's `subagent_tokens`, and `findings` lists each real finding (DevInfra's munin-lane
-  skill).
+  skill, which also says when two reviewers run and are registered as `opus` and `sonnet`).
 - The PR body carries one line, on a line of its own, in one of four forms:
 
 ```

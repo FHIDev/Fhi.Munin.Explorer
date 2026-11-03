@@ -36,6 +36,7 @@ medium .forge/warden-rules.yaml
 medium test/*/*.csproj
 medium .github/pull_request_template.md
 medium scripts/warden-checklist.py
+medium .github/comment-budget-allowlist.txt
 
 # Docs, notes and tests
 low    **/*.md
