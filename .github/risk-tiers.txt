@@ -18,6 +18,7 @@ high   scripts/release-changelog.sh
 high   scripts/flatten-release-notes.sh
 high   scripts/push-packages.sh
 high   scripts/assert-package-contents.sh
+high   scripts/pre-pr-review-head.test.sh
 high   scripts/assemble-changelog.ps1
 high   .github/dependabot.yml
 high   nuget.config

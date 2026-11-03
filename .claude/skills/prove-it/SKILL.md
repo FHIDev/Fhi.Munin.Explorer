@@ -160,8 +160,17 @@ Every session does, on every PR; the Forge has a review step of its own and is n
 
 - Brief it with what the change is for and what to try to break. Fix what it finds, or say in the PR why a
   finding stands.
-- It is the review of the diff the PR is opened with: if the fixes changed the code in more than a trivial way,
-  run it again.
+- It is the review of the diff the PR is opened with, and each round names the commit it read (below). A commit
+  that answers an Important finding gets a new round over it. A commit that only fixes nits or code comments, in at
+  most 20 lines, with no renamed file and no file without a patch (a binary, a mode change), nothing in agent
+  instructions (a README, AGENTS, CLAUDE, SKILL or REVIEW file, `.claude/`, `.agents/`, `.github/instructions/`,
+  `.github/copilot-instructions.md`, a workflow, `docs/team/`, `docs/review-*`, and what `.github/risk-tiers.txt`
+  lists under its «steer agents» header) and nothing on a high-risk path, says `Review-exempt: nit` or
+  `Review-exempt: comments` on a line below its subject instead (`git commit -m "<subject>" -m "Review-exempt: nit"`).
+  Any other later commit that changes more than docs (markdown under `docs/`, anything under `changelog.d/`, a
+  CHANGELOG file; not those instruction files) gets a round. The registration example below has no numbers of its
+  own: `tokens` is each reviewer's `subagent_tokens`, and `findings` lists each real finding (DevInfra's munin-lane
+  skill).
 - The PR body carries one line, on a line of its own, in one of four forms:
 
 ```
@@ -174,6 +183,15 @@ Pre-PR review: skipped, <reason>
 Write the form that is true, with the real count and a real reason: the words in angle brackets are not text to
 keep. "Skipped" is for a change with nothing in it to review: a version pin, a generated file, a typo in prose.
 "Small" is not a reason; small PRs skip Copilot here, not this. A PR without the line reads as "did not run".
+
+Right under that line, unless the review was skipped, one hidden comment registers each round, its JSON on one line:
+`<!-- review-registration {"v":2,"rounds":[{"round":1,"head":"<the 40-character sha the reviewers read>","opus":{"tokens":null,"noise":0},"sonnet":{"tokens":null,"noise":0},"findings":[]}],"copilotReReview":null} -->`. Each round's `head` is the full id from `git rev-parse HEAD` when the reviewers start, pushed so
+GitHub knows it. From pull requests opened on 10 November 2026, `pre-pr-review-line.yml` holds the PR's head to the
+last round's `head` with the rule above. A merge of main with no change of its own passes too, unless main changed
+lines next to the PR's own or already holds part of its change, a file in the change has no patch, or the change
+has 300 files or more. After a round, merge
+main instead of rebasing, and never amend or squash. The full block format is in DevInfra's
+munin-lane skill.
 
 ## Output format
 

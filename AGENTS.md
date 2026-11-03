@@ -50,7 +50,8 @@ python3 scripts/comment-budget.py               # comment blocks this branch add
 **Pre-PR review.** The `pre-pr-reviewer` agent on `git diff origin/main...HEAD`, which answers the warden checklist
 (`python3 scripts/warden-checklist.py`; each rule ✓, ✗ with `file:line`, or n/a), and one line in the PR body in one of four forms: `Pre-PR review: ran, no findings`, `ran, N findings,
 fixed`, `ran, N findings, M fixed, K left: <why>` or `skipped, <reason>` (only for a change with nothing to review;
-`prove-it` section 8). The body also carries `Testing:`, `Risk: low|medium|high – <why>` (the tier the `risk:`
+`prove-it` section 8), with a `review-registration` comment under it whose rounds each name the commit they read
+(`head`; from 10 November 2026 the line check holds the PR's head to the last one). The body also carries `Testing:`, `Risk: low|medium|high – <why>` (the tier the `risk:`
 label gives) and `How to revert:`, each on its own line; the review-line check fails a PR where one is missing or
 empty, or the tier differs from the label.
 

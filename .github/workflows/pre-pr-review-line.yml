@@ -165,7 +165,7 @@ jobs:
           fi
           label=$(gh api "repos/$REPO/issues/$PR/labels" --jq '[.[].name | select(startswith("risk:"))] | first // ""')
           if [ -n "$label" ] && [ "${label#risk:}" != "$tier" ]; then
-            echo "::error::The Risk line says $tier, the label says ${label#risk:}. The label comes from the changed paths (docs/review-risk-tiers.md); write its tier and why."
+            echo "::error::The Risk line says $tier, the label says ${label#risk:}. The label comes from the changed paths (docs/review-risk-tiers.md in Fhi.Munin.DevInfra); write its tier and why."
             exit 1
           fi
       - name: The last review round read the head, or only docs and declared nits came after it
