@@ -364,6 +364,39 @@ code, and ask for a test where none reaches it:
 
 Each miss is **Important**.
 
+## 11b. The cases behind what Copilot found after a pre-PR round read the code
+
+These are the cases behind findings Copilot made in Munin after a pre-PR round had already read the code
+(DevInfra-0f5.8, FHIDev/Munin#7012). The defect kinds in brackets are those of `docs/review-warden.md` in
+FHIDev/Fhi.Munin.DevInfra; earlier rounds applied the kinds but did not work through these cases. Explorer writes only
+through the Munin API and sends no version token, so Munin's server-write checks live in Munin; the rest apply here. Do
+each one that applies to the diff, and give every finding the cell or shape it comes from; the async-source table goes
+under REVIEW.md's count, before the per-section lines. A miss is **Important**.
+
+- **Component state fed by more than one async source (async state).** List the sources the touched state depends on: an
+  API call, a parameter change (`OnParametersSetAsync`), a `LocationChanged` navigation, a JS interop answer, a remount
+  by `@key="_arrival"`. Write a table in the review with one row per source and one column per state change the diff
+  makes (filter, load, open, scroll, dispose), and say in each cell what happens when the source settles before, during
+  and after that change. Always fill one cell for list-item identity (`<tr @key="kilde.Id">`): which list item the
+  reader's open item stays attached to under a filter and a reload. A remount by `_arrival` drops what lives only in the
+  component (focus, loaded rows, calls in flight) and restores what the address names: `expanded=<id>` reopens its rows
+  through `ExpandedKildeIds`.
+  With more than three sources, make a second pass over the diff that looks for async-state races only. Section 11a has
+  the address-bar cases.
+- **Contract JSON and language maps (edge inputs).** For each read of a contract member that is a JSON object or a
+  language-keyed map (titles, translations), check each shape with a test or a stated reason: an empty string in the
+  language shown first; that language missing; two keys that differ only in case (`nb` and `NB`), or two tags for one
+  slot (`no` and `nb`); the same key twice; a value of the wrong JSON type. Say what the reader sees, by the member's
+  read path: a typed member fails its whole call on a non-string value (a detail view shows its failure sentence, the
+  vocabulary call falls back to bare codes); most raw readers in `CatalogueProperties` skip the value, and option labels
+  print it through `ToString()`.
+- **New log lines (unsafe output).** The logs belong to the host that embeds the package. Check each new or changed line
+  against AGENTS.md («A swallowed exception is written down before it is swallowed»: what a log must not carry, and the
+  kilde, variable and list ids and page numbers it may).
+- **Claims in design notes and docs (text that claims too much).** Section 1 applies; in addition, check each claim
+  about a library, a host or a service against its primary source at the version the repo pins. Quote the sentence or
+  line your verdict rests on and the version you read it at; a claim you could not check is a finding, not a pass.
+
 ## 12. Scope
 
 ```bash
