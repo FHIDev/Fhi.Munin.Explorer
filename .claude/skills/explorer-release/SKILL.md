@@ -123,16 +123,22 @@ separate repo with its own ADO work item — but it is part of the job, not an o
 extra, and the release is only half done without it. Robin, 2026-09-23.
 
 **The repo is `Fhi.Helsedata`** — the Optimizely host, NOT `Fhi.Helsedata.Stiler` and
-NOT the RCL. Both pins live in one file:
+NOT the RCL. Both of our pins live in one file:
 
 ```
 Fhi.Helsedata/Fhi.Helsedata.Optimizely/Fhi.Helsedata.Optimizely.csproj
-  :70  Fhi.Helsedata.Stiler
-  :84  Fhi.Munin.Explorer
+  Fhi.Helsedata.Stiler
+  Fhi.Munin.Explorer
 ```
 
 Line numbers drift — **locate by package id**. Both sit in the `!= 'true'` ItemGroups;
 the `== 'true'` `ProjectReference` branches are local-dev and must not be touched.
+
+**Leave `Fhi.Helsedata.Backend.Legacy.Business.csproj` alone, even when it drifts.** It pins
+Stiler too, and a comment there says «bump begge samtidig», but that pin is the Søknader team's
+(every change to it is theirs); ours never touch it. Bumping it at 2.17.0 (PR 40624) was a
+mistake, reverted in the same PR. A grep for `Fhi.Helsedata.Stiler` that finds a pin outside
+Optimizely names someone else's: ask whose it is before touching it.
 
 **BUMP BOTH IN ONE COMMIT, AND STILER FIRST IF YOU EVER SPLIT THEM.** The ordering is
 load-bearing and has bitten: Explorer `vdnm4` deleted a name tooltip on the assumption
