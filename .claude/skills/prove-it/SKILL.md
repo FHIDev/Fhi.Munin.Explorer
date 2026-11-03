@@ -163,7 +163,7 @@ Every session does, on every PR; the Forge has a review step of its own and is n
 - It is the review of the diff the PR is opened with, and each round names the commit it read (below). A commit
   that answers an Important finding gets a new round over it. A commit that only fixes nits or code comments, in at
   most 20 lines, with no renamed file and no file without a patch (a binary, a mode change), nothing in agent
-  instructions (a README, AGENTS, CLAUDE, SKILL or REVIEW file, `.claude/`, `.agents/`, `.github/instructions/`,
+  instructions (a README, AGENTS, CLAUDE, SKILL or REVIEW file, `.claude/`, `.github/instructions/`,
   `.github/copilot-instructions.md`, a workflow, `docs/team/`, `docs/review-*`, and what `.github/risk-tiers.txt`
   lists under its «steer agents» header) and nothing on a high-risk path, says `Review-exempt: nit` or
   `Review-exempt: comments` on a line below its subject instead (`git commit -m "<subject>" -m "Review-exempt: nit"`).
