@@ -385,7 +385,7 @@ public partial class VariableSearch
     private FacetGroup KildeTypeGroup(FilterOptions facets) =>
         new("kildetype", T.FacetKildeType, OpenByDefault: false, [.. facets.KildeTyper.Select(KildeTypeValue)]);
 
-    /// <summary>The kilde tree with each value told how many values beneath it are chosen.</summary>
+    /// <summary>A facet tree with each value told how many values beneath it are chosen.</summary>
     /// <remarks>An unchosen value with a choice beneath it draws half-ticked and says the count in words. (cjezd)</remarks>
     private static IReadOnlyList<FacetValue> WithChosenBelow(IReadOnlyList<FacetValue> values) =>
         [.. values.Select(value =>
@@ -800,10 +800,10 @@ public partial class VariableSearch
         return new(FacetName(HierarchyLevel.Variabelgruppe),
             T.FieldVariableGroup,
             OpenByDefault: false,
-            Tree(grupper.Select(g => Node(g.Id, g.ParentId, CatalogueName(g.Name, g.NameNo, null), g.Count)),
+            WithChosenBelow(Tree(grupper.Select(g => Node(g.Id, g.ParentId, CatalogueName(g.Name, g.NameNo, null), g.Count)),
                  $"{FacetName(HierarchyLevel.Variabelgruppe)}:",
                  IsGruppeChosen,
-                 id => containers.Contains(id) ? null : ToggleGruppe(id), Counted),
+                 id => containers.Contains(id) ? null : ToggleGruppe(id), Counted)),
             T.NoVariabelgrupper,
             Chosen: ChosenVariabelgrupper(facets));
     }
@@ -904,11 +904,11 @@ public partial class VariableSearch
         new("filter",
             T.FacetFilter,
             OpenByDefault: false,
-            Tree(facets.Filters
+            WithChosenBelow(Tree(facets.Filters
                      .Select(f => Node(f.Id, f.ParentId, CatalogueName(f.Name, f.NameNo, null), f.Count)),
                  "filter:",
                  IsSavedFilterChosen,
-                 ToggleSavedFilter, Counted));
+                 ToggleSavedFilter, Counted)));
 
     private bool IsSavedFilterChosen(Guid id) => Pending.FilterIds.Contains(id);
 
@@ -1635,7 +1635,7 @@ public partial class VariableSearch
 
     private bool _chosenBranchesOpened;
 
-    /// <summary>Open the branches standing between the top of the Kilde facet and what the address chose.</summary>
+    /// <summary>Open the branches standing between the top of each facet tree (Kilde, Variabelgruppe, Filter) and what the address chose.</summary>
     /// <remarks>
     /// Arriving from the Kildeutforsker with a kilde chosen left it under a shut kildetype heading, out of sight
     /// (#6756). Once per mount (VariableExplorer remounts on each arrival), so a branch the reader shuts stays shut.
@@ -1648,7 +1648,12 @@ public partial class VariableSearch
         }
 
         _chosenBranchesOpened = true;
-        OpenChosenBranches(KildeGroup(facets).Values, []);
+        // Every hierarchical facet the same way, so a filter or a variabelgruppe chosen on a shared link is in
+        // sight as a kilde is (Fhi.Metadata-l9l2n.159); every other branch stays shut.
+        HashSet<string> walked = [];
+        OpenChosenBranches(KildeGroup(facets).Values, walked);
+        OpenChosenBranches(VariabelgruppeGroup(facets).Values, walked);
+        OpenChosenBranches(SavedFilterGroup(facets).Values, walked);
     }
 
     private void OpenChosenBranches(IReadOnlyList<FacetValue> values, HashSet<string> walked)

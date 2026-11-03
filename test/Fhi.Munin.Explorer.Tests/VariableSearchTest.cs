@@ -4891,6 +4891,70 @@ public class VariableSearchTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.DoesNotContain(DrawnValues(cut), v => v.StartsWith("Dødsårsaksregisteret", StringComparison.Ordinal)));
     }
 
+    // A parent filter with its sub-filters as a level of their own, shut at rest as the other facet trees; a filter or a
+    // variabelgruppe chosen on the address opens the branch above it, as a kilde does. (Fhi.Metadata-l9l2n.159)
+    private static readonly Guid FilterParent = new("dddddddd-0000-0000-0000-000000000159");
+    private static readonly Guid FilterChild = new("dddddddd-0000-0000-0000-000000000160");
+
+    private static FilterOptions WithFilterTree() => Facets() with
+    {
+        Filters =
+        [
+            new() { Id = FilterParent, Name = "NPR_TJENESTEOMRADE", Count = 9 },
+            new() { Id = FilterChild, Name = "Somatikk", ParentId = FilterParent, Count = 4 },
+        ],
+        Variabelgrupper =
+        [
+            new() { Id = Bakgrunn, Name = "Bakgrunn", Count = 7 },
+            new() { Id = Levekaar, Name = "Levekår", ParentId = Bakgrunn, Count = 4 },
+        ],
+    };
+
+    [Fact]
+    public void Render_WhenTheFilterAndVariabelgruppeTreesHaveParents_ThenTheParentsStartShut()
+    {
+        var cut = RenderWith(new FilteringClient(OnePage(), WithFilterTree()));
+
+        cut.WaitForAssertion(() => Assert.Contains(DrawnValues(cut), v => v.StartsWith("NPR_TJENESTEOMRADE", StringComparison.Ordinal)));
+        Assert.DoesNotContain(DrawnValues(cut), v => v.StartsWith("Somatikk", StringComparison.Ordinal));
+        Assert.Contains(DrawnValues(cut), v => v.StartsWith("Bakgrunn", StringComparison.Ordinal));
+        Assert.DoesNotContain(DrawnValues(cut), v => v.StartsWith("Levekår", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Arrival_WhenASubFilterIsChosen_ThenItsBranchIsOpen()
+    {
+        var cut = RenderWith(new FilteringClient(OnePage(), WithFilterTree()),
+            b => b.Add(c => c.Filter, new VariableFilter { FilterIds = [FilterChild] }));
+
+        cut.WaitForAssertion(() => Assert.Contains(DrawnValues(cut), v => v.StartsWith("Somatikk", StringComparison.Ordinal)));
+        Assert.DoesNotContain(DrawnValues(cut), v => v.StartsWith("Levekår", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Arrival_WhenTheReaderShutsTheOpenedFilterBranch_ThenTheParentSaysAValueBeneathIsChosen()
+    {
+        var cut = RenderWith(new FilteringClient(OnePage(), WithFilterTree()),
+            b => b.Add(c => c.Filter, new VariableFilter { FilterIds = [FilterChild] }));
+        cut.WaitForAssertion(() => Assert.Contains(DrawnValues(cut), v => v.StartsWith("Somatikk", StringComparison.Ordinal)));
+
+        cut.FindAll(".munin-explorer-filters button[aria-expanded=true]")
+            .Single(b => b.GetAttribute("aria-controls")!.Contains(FilterParent.ToString(), StringComparison.Ordinal)).Click();
+
+        cut.WaitForAssertion(() => Assert.DoesNotContain(DrawnValues(cut), v => v.StartsWith("Somatikk", StringComparison.Ordinal)));
+        Assert.Contains(DrawnValues(cut), v => v.StartsWith("NPR_TJENESTEOMRADE", StringComparison.Ordinal) && v.Contains("(1 valgt under)", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Arrival_WhenAVariabelgruppeUnderAParentIsChosen_ThenItsBranchIsOpen()
+    {
+        var cut = RenderWith(new FilteringClient(OnePage(), WithFilterTree()),
+            b => b.Add(c => c.Filter, new VariableFilter { VariabelgruppeIds = [Levekaar] }));
+
+        cut.WaitForAssertion(() => Assert.Contains(DrawnValues(cut), v => v.StartsWith("Levekår", StringComparison.Ordinal)));
+        Assert.DoesNotContain(DrawnValues(cut), v => v.StartsWith("Somatikk", StringComparison.Ordinal));
+    }
+
     /// <summary>The facet values drawn right now, without opening anything first.</summary>
     private static IReadOnlyList<string> DrawnValues(IRenderedComponent<VariableSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-filters li > label").Select(l => l.TextContent.Trim())];
