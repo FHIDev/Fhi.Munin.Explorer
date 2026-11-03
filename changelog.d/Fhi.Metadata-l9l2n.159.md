@@ -1,0 +1,2 @@
+category: Changed
+- **A filter or variabelgruppe chosen on the address now opens its branch in the facet tree.** The Filter and Variabelgruppe trees behave as the Kilde tree already did: parents start shut, a branch with a chosen value beneath it opens once when the explorer mounts (a shared link, a reload), and a shut parent says how many values beneath it are chosen («(1 valgt under)»). Nothing for hosts to do.
