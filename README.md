@@ -1300,6 +1300,10 @@ services.AddSingleton<IMuninExplorerTokenProvider, MyTokenProvider>();
 services.AddMuninExplorer(o => o.ApiBaseUrl = "https://explorer.munin.skytest.fhi.no");
 ```
 
+`ApiBaseUrl` must be an absolute https URL, because the host's token is sent on every call; plain http is
+accepted only for a loopback host such as `localhost`, `127.0.0.1` or `::1`, and anything else stops the host at
+startup.
+
 Leave the provider out entirely and calls are anonymous, which is all public metadata browsing
 needs — and all the browsing components ever do; `VariableListView` is the one that does not,
 because the lists it reads and writes are the signed-in user's own. The variable-list methods

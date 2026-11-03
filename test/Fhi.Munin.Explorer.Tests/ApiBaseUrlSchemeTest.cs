@@ -34,8 +34,8 @@ public class ApiBaseUrlSchemeTest
     [InlineData("http://[::1]:5199")]
     public void Registration_WhenTheBaseUrlIsHttpsOrLoopbackHttp_ThenItIsAccepted(string baseUrl)
     {
-        var services = new ServiceCollection().AddMuninExplorer(o => o.ApiBaseUrl = baseUrl);
+        var thrown = Record.Exception(() => new ServiceCollection().AddMuninExplorer(o => o.ApiBaseUrl = baseUrl));
 
-        Assert.NotNull(services);
+        Assert.Null(thrown);
     }
 }
