@@ -95,7 +95,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <see cref="ExploreVariablesRequested"/> gets in front of them, with
 /// <c>munin-explorer-kilde__datasamlinger--selectable</c> and
 /// <c>munin-explorer-kilde__datasamling-select</c> for the matching column an expanded row's
-/// datasamling table gets once <see cref="ExploreDatasamlingerRequested"/> is wired too (a
+/// datasamling table gets once <see cref="ExploreSelectionRequested"/> is wired too (a
 /// modifier and not a cell class alone, because Stiler sizes that table's columns by position),
 /// <c>munin-explorer-kilder__sort</c> for the button inside each of the four sortable column
 /// headings, and <c>munin-explorer-filters__toggle</c> and <c>munin-explorer-filters__facets</c>

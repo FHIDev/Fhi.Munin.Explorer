@@ -567,6 +567,7 @@ else
             <button class="hd-button-square button-square--primary"
                     type="button"
                     aria-busy="@(UnionPending ? "true" : null)"
+                    aria-disabled="@(HandoverTooLarge ? "true" : null)"
                     @onclick="() => ExploreVariablesAsync(visible)">@ExploreLabel</button>
 
             @if (TickedCount > 0 || TotalMarkCount > 0)

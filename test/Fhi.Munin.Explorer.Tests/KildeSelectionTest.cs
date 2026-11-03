@@ -1188,15 +1188,8 @@ public class KildeSelectionTest : ExplorerTestContext
     }
 
     // ---------------------------------------------------------------------------------
-    // Marking datasamlinger inside an expanded row, and the union they travel in
-    // (Fhi.Metadata-75yov, innmeldt sak #6098).
-    //
-    // What has no visible symptom here is the same thing as above, one level in: WHICH ids leave.
-    // A selection holding a mark travels as datasamlingIds ALONE — every ticked kilde expanded to
-    // all of its own — because Munin ANDs the two filters, so a handover carrying both would
-    // silently drop every variable pinned into another kilde's datasamling. Both payloads render
-    // identically, and the one that is wrong is wrong only in the argument the host is handed.
-    // ---------------------------------------------------------------------------------
+    // Marks in an expanded row (75yov, sak #6098), and WHICH ids leave: RenderMarkable pins the
+    // obsolete union of datasamlinger, RenderSelection the ticks as kilder ORed with the marks (9huq2.13).
 
     private static readonly Guid KildeOne = new("11111111-1111-1111-1111-111111111111");
     private static readonly Guid KildeTwo = new("22222222-2222-2222-2222-222222222222");
@@ -1324,7 +1317,7 @@ public class KildeSelectionTest : ExplorerTestContext
             .Describing(DetailOne(), DetailTwo());
 
     /// <summary>
-    /// Render with BOTH handovers wired, which is the only state a datasamling can be marked in.
+    /// Render with the kilde handover and the obsolete datasamling one wired, which is the union path.
     /// </summary>
     /// <remarks>
     /// Two lists rather than one: which of the two a press lands in is the whole of decision 4, and
@@ -1345,8 +1338,10 @@ public class KildeSelectionTest : ExplorerTestContext
         {
             b.Add(c => c.ExploreVariablesRequested,
                 EventCallback.Factory.Create<IReadOnlyList<Guid>>(this, kilder.Add));
+#pragma warning disable CS0618 // the obsolete handover is what this helper exists to pin
             b.Add(c => c.ExploreDatasamlingerRequested,
                 EventCallback.Factory.Create<IReadOnlyList<Guid>>(this, datasamlinger.Add));
+#pragma warning restore CS0618
 
             parameters?.Invoke(b);
         });
@@ -1964,8 +1959,8 @@ public class KildeSelectionTest : ExplorerTestContext
         {
             b.Add(c => c.ExploreVariablesRequested,
                 EventCallback.Factory.Create<IReadOnlyList<Guid>>(this, _ => { }));
-            b.Add(c => c.ExploreDatasamlingerRequested,
-                EventCallback.Factory.Create<IReadOnlyList<Guid>>(this, _ => { }));
+            b.Add(c => c.ExploreSelectionRequested,
+                EventCallback.Factory.Create<VariableFilter>(this, _ => { }));
         });
 
         Expand(plain, "Als registeret");
@@ -1978,6 +1973,186 @@ public class KildeSelectionTest : ExplorerTestContext
             "munin-explorer-kilde__datasamlinger--selectable",
         ],
         Invented(marked).Except(Invented(plain), StringComparer.Ordinal).Order(StringComparer.Ordinal));
+    }
+
+    // ---------------------------------------------------------------------------------
+    // ExploreSelectionRequested: the ticks as kilder beside only the marks (Fhi.Metadata-9huq2.13).
+
+    private (IRenderedComponent<KildeSearch> Cut,
+             List<IReadOnlyList<Guid>> Kilder,
+             List<VariableFilter> Selections) RenderSelection(
+        IMuninExplorerClient client,
+        Action<ComponentParameterCollectionBuilder<KildeSearch>>? parameters = null)
+    {
+        Services.AddSingleton(client);
+
+        List<IReadOnlyList<Guid>> kilder = [];
+        List<VariableFilter> selections = [];
+
+        var cut = Render<KildeSearch>(b =>
+        {
+            b.Add(c => c.ExploreVariablesRequested,
+                EventCallback.Factory.Create<IReadOnlyList<Guid>>(this, kilder.Add));
+            b.Add(c => c.ExploreSelectionRequested,
+                EventCallback.Factory.Create<VariableFilter>(this, selections.Add));
+
+            parameters?.Invoke(b);
+        });
+
+        return (cut, kilder, selections);
+    }
+
+    /// <summary>The three kilder of <see cref="ThreeKilder"/>, then <paramref name="extra"/> more that each hold five.</summary>
+    private static (DrawerClient Client, IReadOnlyList<Guid> Ids) ManyKilder(int extra)
+    {
+        KildeSummary[] rows =
+        [
+            Row(KildeOne, "Als registeret", datasamlinger: 3),
+            Row(KildeTwo, "Dødsårsaksregisteret", datasamlinger: 2),
+            Row(KildeThree, "Reseptregisteret", datasamlinger: 0),
+            .. Enumerable.Range(0, extra).Select(i => Row(Guid.NewGuid(), $"Register {i:D3}", datasamlinger: 5)),
+        ];
+
+        return (new DrawerClient(rows).Describing(DetailOne(), DetailTwo()), [.. rows.Select(row => row.Id)]);
+    }
+
+    [Fact]
+    public void Selection_WhenNothingIsMarked_ThenOnlyTheKildeHandoverIsRaised()
+    {
+        var (cut, kilder, selections) = RenderSelection(ThreeKilder());
+
+        TickRow(cut, "Als registeret");
+        ExploreButton(cut).Click();
+
+        Assert.Equal([KildeOne], Assert.Single(kilder));
+        Assert.Empty(selections);
+    }
+
+    [Fact]
+    public void Selection_WhenOnlyMarksAreHeld_ThenTheFilterCarriesThemAndNoKilde()
+    {
+        var (cut, kilder, selections) = RenderSelection(ThreeKilder());
+
+        Expand(cut, "Als registeret");
+        Expand(cut, "Dødsårsaksregisteret");
+        Mark(cut, KildeOne, "Inklusjon");
+        Mark(cut, KildeTwo, "Dødsfall");
+        ExploreButton(cut).Click();
+
+        var filter = Assert.Single(selections);
+        Assert.Equal([CollectionOneA, CollectionTwoA], filter.DatasamlingIds);
+        Assert.Empty(filter.KildeIds);
+        Assert.DoesNotContain("treeTicks", filter.ToQueryString(), StringComparison.Ordinal);
+        Assert.Empty(kilder);
+    }
+
+    [Fact]
+    public void Selection_WhenAKildeIsTickedAndAnotherKildesDatasamlingIsMarked_ThenBothTravelOred()
+    {
+        // The case the union was built for: without treeTicks=or the API would AND the two lists
+        // and answer with nothing, and with the union the ticked kilde cost a fetch of its own.
+        var client = ThreeKilder();
+        var (cut, kilder, selections) = RenderSelection(client);
+
+        Expand(cut, "Dødsårsaksregisteret");
+        Mark(cut, KildeTwo, "Dødsfall");
+        TickRow(cut, "Als registeret");
+        ExploreButton(cut).Click();
+
+        var filter = Assert.Single(selections);
+        Assert.Equal([KildeOne], filter.KildeIds);
+        Assert.Equal([CollectionTwoA], filter.DatasamlingIds);
+        Assert.True(filter.OrTreeTicks);
+        Assert.Contains("treeTicks=or", filter.ToQueryString(), StringComparison.Ordinal);
+        Assert.Equal([KildeTwo], client.Fetched);
+        Assert.Empty(kilder);
+        Assert.Empty(cut.FindAll(".munin-explorer-selection + p.caption"));
+    }
+
+    [Fact]
+    public void Selection_WhenManyKilderAreTickedAndOneDatasamlingIsMarked_ThenOnlyThatDatasamlingTravels()
+    {
+        // The bead's own case: with the union, 120 ticked kilder of five datasamlinger each sent
+        // over 600 ids. Now they travel as themselves, and only the mark as a datasamling.
+        var (client, ids) = ManyKilder(extra: 120);
+        var (cut, _, selections) = RenderSelection(client, b => b.Add(c => c.TickedKildeIds, ids));
+
+        Expand(cut, "Als registeret");
+        Mark(cut, KildeOne, "Inklusjon");
+        ExploreButton(cut).Click();
+
+        var filter = Assert.Single(selections);
+        Assert.Equal(ids.Order(), filter.KildeIds.Order());
+        Assert.Equal([CollectionOneA], filter.DatasamlingIds);
+        Assert.Equal([KildeOne], client.Fetched);
+        Assert.True(filter.ToQueryString().Length <= KildeSearch.MaxHandoverQueryLength);
+    }
+
+    [Theory]
+    [InlineData(154, true)]
+    [InlineData(155, false)]
+    public void Selection_WhenTheQueryWouldOutgrowTheAddress_ThenThePressIsRefusedAndSaidSo(int ticked, bool travels)
+    {
+        // 154 ticked kilder and a mark fit and 155 do not, so Munin's 160-id cap (400 above it)
+        // is never reached, and neither is the 8 KB address helsedata answers 414 above.
+        var (client, ids) = ManyKilder(extra: ticked - 3);
+        var (cut, _, selections) = RenderSelection(client, b => b.Add(c => c.TickedKildeIds, ids));
+
+        Expand(cut, "Als registeret");
+        Mark(cut, KildeOne, "Inklusjon");
+        ExploreButton(cut).Click();
+
+        Assert.Equal(travels ? 1 : 0, selections.Count);
+        Assert.Equal(travels ? null : "true", ExploreButton(cut).GetAttribute("aria-disabled"));
+        Assert.Equal(!travels, BarLine(cut).EndsWith(
+            "Utvalget er for stort til å utforske samlet. Fjern noen kilder eller datasamlinger.",
+            StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Selection_WhenItHasBeenTooLargeAndKilderAreUnticked_ThenThePressTravelsAgain()
+    {
+        var (client, ids) = ManyKilder(extra: 157);
+        var (cut, _, selections) = RenderSelection(client, b => b.Add(c => c.TickedKildeIds, ids));
+
+        Expand(cut, "Als registeret");
+        Mark(cut, KildeOne, "Inklusjon");
+        Assert.Equal("true", ExploreButton(cut).GetAttribute("aria-disabled"));
+
+        for (var i = 0; i < 10; i++)
+        {
+            TickRow(cut, $"Register {i:D3}", ticked: false);
+        }
+
+        ExploreButton(cut).Click();
+
+        Assert.Null(ExploreButton(cut).GetAttribute("aria-disabled"));
+        Assert.Equal(150, Assert.Single(selections).KildeIds.Count);
+    }
+
+    [Fact]
+    public void Union_WhenTheObsoleteHandoverWouldOutgrowTheAddress_ThenThePressIsRefusedThereToo()
+    {
+        // 140 datasamlinger of one ticked kilde: under the 160 cap, over the address.
+        var big = new KildeDetail
+        {
+            Id = KildeOne,
+            PreferredTerm = "Als registeret",
+            Datasamlinger = [.. Enumerable.Range(0, 140).Select(i => Collection(Guid.NewGuid(), $"Serie {i:D3}"))],
+        };
+        var client = new DrawerClient(
+                Row(KildeOne, "Als registeret", datasamlinger: 140),
+                Row(KildeTwo, "Dødsårsaksregisteret", datasamlinger: 2))
+            .Describing(big, DetailTwo());
+        var (cut, _, datasamlinger) = RenderMarkable(client);
+
+        Expand(cut, "Dødsårsaksregisteret");
+        Mark(cut, KildeTwo, "Dødsfall");
+        TickRow(cut, "Als registeret");
+        ExploreButton(cut).Click();
+
+        Assert.Empty(datasamlinger);
+        Assert.Equal("true", ExploreButton(cut).GetAttribute("aria-disabled"));
     }
 
     /// <summary>Every name under this package's own prefix that one render wrote.</summary>
