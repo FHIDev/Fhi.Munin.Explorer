@@ -13,6 +13,7 @@ public class ApiBaseUrlSchemeTest
     [InlineData("http://explorer.munin.skytest.fhi.no")]
     [InlineData("http://10.0.0.5:8080")]
     [InlineData("ftp://explorer.munin.skytest.fhi.no")]
+    [InlineData("ftp://localhost:5199")]
     [InlineData("explorer.munin.skytest.fhi.no")]
     [InlineData("/api")]
     public void Registration_WhenTheBaseUrlIsNotHttpsOffTheMachine_ThenStartupFails(string baseUrl)

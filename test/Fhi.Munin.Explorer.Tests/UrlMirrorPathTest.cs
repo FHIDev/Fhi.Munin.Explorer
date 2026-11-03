@@ -35,6 +35,16 @@ public class UrlMirrorPathTest
         Assert.Equal("/evil.example/side?kilde=a", mirror.Address("kilde=a"));
     }
 
+    /// <summary>Why the fold trims slashes only: if Uri ever kept a backslash, the fold would need it too.</summary>
+    [Theory]
+    [InlineData("https://host.example/\\evil.example", "//evil.example")]
+    [InlineData("https://host.example//\\evil.example", "///evil.example")]
+    [InlineData("https://host.example/a\\b", "/a/b")]
+    public void Uri_WhenThePathHasABackslash_ThenAbsolutePathHasASlashInstead(string address, string absolutePath)
+    {
+        Assert.Equal(absolutePath, new Uri(address).AbsolutePath);
+    }
+
     [Fact]
     public void Address_WhenThePathIsOrdinary_ThenItIsUnchanged()
     {

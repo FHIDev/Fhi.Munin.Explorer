@@ -42,7 +42,8 @@ internal sealed class UrlMirror
     {
         _js = js;
         // A path starting // makes every link and address-bar write built from it point at another host.
-        _path = "/" + address.AbsolutePath.TrimStart('/', '\\');
+        // Uri has already turned a /\ into //, so slashes are all there is to fold.
+        _path = "/" + address.AbsolutePath.TrimStart('/');
 
         // Kept with its '#', and null for "#" alone: an empty fragment names no section, and writing
         // one back would put a bare hash in the address bar for nothing.
