@@ -84,6 +84,13 @@ elif case == "head-incomplete":
     hs = R
     w[f"repos/o/r/compare/main...{R}"] = {"files": [f("img/x.png", None)] * 300}
     w[f"repos/o/r/pulls/1/commits"] = own(*[(c * 40, [P], "x") for c in "0123456789"] * 25)
+elif case == "confirm-round":
+    # A confirming round: sonnet only, "confirm": true, its head is the PR's head.
+    hs = X
+    w["confirm"] = True
+    w[f"repos/o/r/compare/main...{X}"] = {"files": more}
+    w[f"repos/o/r/pulls/1/commits"] = own((R, [P], "x"), (X, [R], SECRET))
+    head = X
 elif case == "bad-head":
     head, hs = "abcSECRETHEAD", R
 elif case.startswith("exempt") or case.startswith("plain") or case.startswith("docs"):
@@ -135,7 +142,11 @@ check() {  # case, expected exit (0 or 1), a text the log must hold, a text the 
   local c=$1 want=$2 text=$3 sum=$4 rc=0 head hs body
   python3 "$WORK/world.py" "$c" "$WORK/$c.json"
   head=$(jq -r .head "$WORK/$c.json"); hs=$(jq -r .hs "$WORK/$c.json")
-  body=$(printf 'Pre-PR review: ran, no findings\n<!-- review-registration {"v":2,"rounds":[{"round":1,"head":"%s"}]} -->\n\xf0\x9f\xa4\x96 Generated with [Claude Code](https://claude.com/claude-code)\n' "$head")
+  if [ "$(jq -r '.confirm // false' "$WORK/$c.json")" = true ]; then
+    body=$(printf 'Pre-PR review: ran, no findings\n<!-- review-registration {"v":2,"rounds":[{"round":1,"head":"%s","opus":{"tokens":1,"noise":0},"sonnet":{"tokens":1,"noise":0},"findings":[]},{"round":2,"head":"%s","confirm":true,"sonnet":{"tokens":1,"noise":0},"findings":[]}]} -->\n\xf0\x9f\xa4\x96 Generated with [Claude Code](https://claude.com/claude-code)\n' "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" "$head")
+  else
+    body=$(printf 'Pre-PR review: ran, no findings\n<!-- review-registration {"v":2,"rounds":[{"round":1,"head":"%s"}]} -->\n\xf0\x9f\xa4\x96 Generated with [Claude Code](https://claude.com/claude-code)\n' "$head")
+  fi
   : > "$WORK/$c.sum"
   PATH="$WORK/bin:$PATH" FAKE_WORLD="$WORK/$c.json" BODY="$body" REPO=o/r PR=1 BASE_REF=main HEAD_SHA="$hs" \
     CREATED=2026-11-11T00:00:00Z HEAD_ROUNDS_FROM=2026-11-10T00:00:00Z GITHUB_STEP_SUMMARY="$WORK/$c.sum" \
@@ -158,6 +169,7 @@ check docs-plugin-changelog 1 "came after the last round and changes more than d
 check exempt-nested-agent 1 "changes agent instructions (api/.claude/x.md)" "refused: changes agent instructions"
 check exempt-dotagents 1 "changes agent instructions (.agents/skills/x.md)" "refused: changes agent instructions"
 check docs-dotlike     0 "docs only."                                 ''
+check confirm-round    0 "The last round read the head"             ''
 check bad-head         1 "is not a full commit id"                    ''
 check exempt-ok        0 "declared exempt, 3 lines in 1 files."      "| exempt |"
 check exempt-big       1 "changes 25 lines, more than 20"            "refused: changes 25 lines"
