@@ -203,7 +203,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
         var address = new Uri(location);
 
-        if (!string.Equals(address.AbsolutePath, _mirror.Path, StringComparison.Ordinal))
+        if (!_mirror.IsSamePage(address))
         {
             return;
         }

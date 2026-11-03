@@ -98,7 +98,7 @@ public static class ServiceCollectionExtensions
         {
             throw new InvalidOperationException(
                 $"{nameof(MuninExplorerOptions)}.{nameof(MuninExplorerOptions.ApiBaseUrl)} must be an absolute https URL, " +
-                "e.g. https://explorer.munin.skytest.fhi.no; http is accepted only for localhost.");
+                "e.g. https://explorer.munin.skytest.fhi.no; http is accepted only for a loopback host (localhost, 127.0.0.1, ::1).");
         }
 
         // So the components have somewhere to write the exceptions they swallow. Idempotent and

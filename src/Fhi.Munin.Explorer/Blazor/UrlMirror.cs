@@ -41,14 +41,12 @@ internal sealed class UrlMirror
     public UrlMirror(Uri address, IJSRuntime js, Func<string, bool> owns)
     {
         _js = js;
-        // A path starting // makes every link and address-bar write built from it point at another host.
-        // Uri has already turned a /\ into //, so slashes are all there is to fold.
-        _path = "/" + address.AbsolutePath.TrimStart('/');
+        _path = LocalPath(address);
 
         // Kept with its '#', and null for "#" alone: an empty fragment names no section, and writing
         // one back would put a bare hash in the address bar for nothing.
         _fragment = address.Fragment is { Length: > 1 } fragment ? fragment : null;
-        _arrived = address.PathAndQuery + _fragment;
+        _arrived = _path + address.Query + _fragment;
 
         var carried = new StringBuilder();
 
@@ -76,8 +74,12 @@ internal sealed class UrlMirror
     /// </remarks>
     public void Arrived() => _mirrored = _arrived;
 
-    /// <summary>The address's own path, so a caller can tell this page from another one.</summary>
-    public string Path => _path;
+    /// <summary>Whether <paramref name="address"/> is this page, so a caller can tell it from another one.</summary>
+    public bool IsSamePage(Uri address) => string.Equals(LocalPath(address), _path, StringComparison.Ordinal);
+
+    // A path starting // makes every link and address-bar write built from it point at another host.
+    // Uri has already turned a /\ into //, so slashes are all there is to fold.
+    private static string LocalPath(Uri address) => "/" + address.AbsolutePath.TrimStart('/');
 
     /// <summary>The owned part of the incoming query, for the component's own parser to read.</summary>
     public string Owned =>

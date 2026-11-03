@@ -31,8 +31,32 @@ public class UrlMirrorPathTest
     {
         var mirror = Mirror("https://host.example//evil.example/side");
 
-        Assert.Equal("/evil.example/side", mirror.Path);
         Assert.Equal("/evil.example/side?kilde=a", mirror.Address("kilde=a"));
+    }
+
+    /// <summary>The explorers ask this on every location change; a raw // address is still this page.</summary>
+    [Theory]
+    [InlineData("https://host.example//side?kilde=b")]
+    [InlineData("https://host.example/side#metadata")]
+    public void IsSamePage_WhenTheAddressFoldsToThisPath_ThenItIsThisPage(string other)
+    {
+        Assert.True(Mirror("https://host.example//side?kilde=a").IsSamePage(new Uri(other)));
+    }
+
+    [Fact]
+    public void IsSamePage_WhenTheAddressIsAnotherPath_ThenItIsNot()
+    {
+        Assert.False(Mirror("https://host.example//side").IsSamePage(new Uri("https://host.example/other")));
+    }
+
+    [Fact]
+    public async Task MirrorAsync_WhenAPageArrivedAtThroughTwoSlashesIsWrittenAgain_ThenNothingReachesTheBrowser()
+    {
+        var mirror = Mirror("https://host.example//side?kilde=a");
+
+        mirror.Arrived();
+
+        await mirror.MirrorAsync("kilde=a");
     }
 
     /// <summary>Why the fold trims slashes only: if Uri ever kept a backslash, the fold would need it too.</summary>

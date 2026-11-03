@@ -1,0 +1,2 @@
+category: Notes for hosts
+- **Set `ApiBaseUrl` to an absolute https URL before upgrading.** `MuninExplorer:ApiBaseUrl` (or `MuninExplorerOptions.ApiBaseUrl`) must start with `https://`, for example `https://explorer.munin.skytest.fhi.no`; anything else stops the host at startup. Plain `http://` still works for a loopback host (`localhost`, `127.0.0.1`, `::1`), such as a local stub. (Fhi.Metadata-ayqlp.12)
