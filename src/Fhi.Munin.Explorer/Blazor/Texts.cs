@@ -676,6 +676,8 @@ internal sealed record Texts(
     string RetrySelectionDatasamlinger,
     // Beside a marked selection too large for the address it would travel in (Fhi.Metadata-9huq2.13).
     string SelectionTooLarge,
+    // The same, when nothing is ticked and the rows a search or facet leaves are what would travel.
+    string FilteredTooLarge,
     // Kelda's filter panel. Its heading is FiltersTitle, and two of its four facet headings are
     // strings this record already holds: the kildetype facet is headed with ColumnKildetype and
     // the databehandler facet with FieldDataProcessor, because each facet is a filter over the
@@ -1640,6 +1642,7 @@ internal sealed record Texts(
             "Kunne ikke hente datasamlingene for alle kildene som er valgt.",
         RetrySelectionDatasamlinger: "Prøv å hente datasamlingene på nytt",
         SelectionTooLarge: "Utvalget er for stort til å utforske samlet. Fjern noen kilder eller datasamlinger.",
+        FilteredTooLarge: "Søket gir for mange kilder til å utforske samlet. Snevr inn søket eller filtrene.",
         FacetCategory: "Kategori",
         FacetDataCategory: "Datakategori (EHDS)",
         FacetDateFrom: "Fra og med",
@@ -2209,6 +2212,7 @@ internal sealed record Texts(
             "Could not load the data collections for every source you have selected.",
         RetrySelectionDatasamlinger: "Try loading the data collections again",
         SelectionTooLarge: "This selection is too large to explore at once. Remove some sources or data collections.",
+        FilteredTooLarge: "Too many sources match to explore at once. Narrow the search or the filters.",
         FacetCategory: "Category",
         FacetDataCategory: "Data category (EHDS)",
         FacetDateFrom: "From",

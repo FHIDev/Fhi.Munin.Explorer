@@ -162,6 +162,7 @@ else
        a new list on every one of them. Nothing changes between them, so this is shape rather than
        correctness, as the variable explorer's `@if (HierarchyCrumbs is { Count: > 0 } crumbs)` is. *@
     var visible = Visible;
+    var refusal = Selectable ? HandoverRefusal(visible) : null;
     var summary = Summary(visible);
     var searchText = SearchText;
 
@@ -567,7 +568,7 @@ else
             <button class="hd-button-square button-square--primary"
                     type="button"
                     aria-busy="@(UnionPending ? "true" : null)"
-                    aria-disabled="@(HandoverTooLarge(visible) ? "true" : null)"
+                    aria-disabled="@(refusal is null ? null : "true")"
                     @onclick="() => ExploreVariablesAsync(visible)">@ExploreLabel</button>
 
             @if (TickedCount > 0 || TotalMarkCount > 0)
@@ -578,7 +579,7 @@ else
             }
 
             <p class="caption margin--none" role="status" aria-live="polite" aria-atomic="true">
-                @SelectionLine(visible)
+                @SelectionLine(refusal)
             </p>
         </div>
 

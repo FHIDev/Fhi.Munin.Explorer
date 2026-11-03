@@ -106,7 +106,7 @@ public sealed partial class KildeSearch
     [Parameter] public EventCallback<IReadOnlyList<Guid>> ExploreDatasamlingerRequested { get; set; }
 
     /// <summary>
-    /// The longest query a marked selection may hand over, in characters.
+    /// The longest query a selection may hand over, in characters, with or without marks.
     /// </summary>
     /// <remarks>
     /// helsedata's test site refuses an address over 8 KB with 414, and this leaves 1 KB of that for
@@ -374,7 +374,7 @@ public sealed partial class KildeSearch
     /// has both has chosen two different kinds of thing. Either half alone reads as the one
     /// sentence it was before the other existed.
     /// </remarks>
-    private string? SelectionLine(IReadOnlyList<KildeSummary> visible)
+    private string? SelectionLine(string? refusal)
     {
         var kilder = TickedCount > 0 ? T.SelectedKildeCount(TickedCount) : null;
         var marks = TotalMarkCount > 0 ? T.SelectedDatasamlingCount(TotalMarkCount) : null;
@@ -388,7 +388,7 @@ public sealed partial class KildeSearch
         };
 
         // In the live line rather than a note beside it, so the refusal is heard as it arrives.
-        return HandoverTooLarge(visible) ? (line is null ? T.SelectionTooLarge : line + " " + T.SelectionTooLarge) : line;
+        return refusal is null ? line : line is null ? refusal : line + " " + refusal;
     }
 
     /// <summary>The ticked kilder whose datasamlinger the union needs and has to fetch.</summary>
@@ -578,9 +578,22 @@ public sealed partial class KildeSearch
     private VariableFilter MarkedHandoverFilter() =>
         UsesUnion ? new VariableFilter { DatasamlingIds = DatasamlingHandover() } : SelectionFilter();
 
-    /// <summary>Whether a marked selection is too large for the address it would travel in.</summary>
-    private bool HandoverTooLarge(IReadOnlyList<KildeSummary> visible) =>
-        TooLarge(_marked.Count > 0 ? MarkedHandoverFilter() : new VariableFilter { KildeIds = Handover(visible) });
+    /// <summary>The sentence a refused handover is said with, or null while the press would travel.</summary>
+    private string? HandoverRefusal(IReadOnlyList<KildeSummary> visible)
+    {
+        if (_marked.Count > 0)
+        {
+            return TooLarge(MarkedHandoverFilter()) ? T.SelectionTooLarge : null;
+        }
+
+        if (!TooLarge(new VariableFilter { KildeIds = Handover(visible) }))
+        {
+            return null;
+        }
+
+        // With nothing ticked the rows on screen travel, so the way out is a narrower search, not fewer ticks.
+        return _ticked.Count > 0 ? T.SelectionTooLarge : T.FilteredTooLarge;
+    }
 
     // Past VariableFilter's own cap the variable explorer would open on fewer ids than were sent, and say nothing.
     private static bool TooLarge(VariableFilter filter) =>
@@ -595,7 +608,7 @@ public sealed partial class KildeSearch
     /// </remarks>
     private Task ExploreVariablesAsync(IReadOnlyList<KildeSummary> visible)
     {
-        if (HandoverTooLarge(visible))
+        if (HandoverRefusal(visible) is not null)
         {
             return Task.CompletedTask;
         }

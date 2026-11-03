@@ -2219,6 +2219,28 @@ public class KildeSelectionTest : ExplorerTestContext
     }
 
     [Theory]
+    [InlineData(100, true)]
+    [InlineData(101, false)]
+    public void Handover_WhenASearchLeavesMoreRowsThanTheAddressReadsBack_ThenThePressAsksForANarrowerSearch(int matching, bool travels)
+    {
+        // Nothing is ticked, so the sentence cannot ask the reader to remove what they never chose.
+        KildeSummary[] rows =
+        [
+            Row(KildeOne, "Als registeret", datasamlinger: 3),
+            .. Enumerable.Range(0, matching).Select(i => Row(Guid.NewGuid(), $"Kohort {i:D3}", datasamlinger: 1)),
+        ];
+        var (cut, kilder, _) = RenderSelection(new DrawerClient(rows));
+
+        cut.Find(".searchbox__freetext").Change("Kohort");
+        ExploreButton(cut).Click();
+
+        Assert.Equal(travels ? [matching] : [], kilder.Select(ids => ids.Count));
+        Assert.Equal(travels ? null : "true", ExploreButton(cut).GetAttribute("aria-disabled"));
+        Assert.Equal(travels ? "" : "Søket gir for mange kilder til å utforske samlet. Snevr inn søket eller filtrene.",
+                     BarLine(cut));
+    }
+
+    [Theory]
     [InlineData(99, true)]
     [InlineData(100, false)]
     public void Union_WhenTheObsoleteHandoverHoldsMoreThanAHundredIds_ThenThePressIsRefusedThereToo(int owned, bool travels)
