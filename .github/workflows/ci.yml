@@ -212,6 +212,16 @@ jobs:
   # exists, and a re-run of a tag - which the release instructions tell people to do after a failed
   # push - must not write a second section for the version or eat the fragments queued for the next
   # one. Not in the ruleset's required list, and it does not need to be: "ci summary" needs it.
+  # The review-round head step of pre-pr-review-line.yml against a fake gh, one case per rule (DevInfra-0f5.8).
+  pre-pr-review-head:
+    name: pre-PR review head step
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: The head step passes and refuses what it should
+        run: bash scripts/pre-pr-review-head.test.sh
+
   changelog-assembly:
     name: changelog assembles
     runs-on: ubuntu-latest
