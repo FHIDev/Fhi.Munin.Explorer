@@ -411,7 +411,7 @@ jobs:
               continue
             fi
             bad="$bad ${sha:0:12}"
-            echo "::error::Commit ${sha:0:12} came after the last round and changes more than docs: run a round over it, or, if it only answers nits or changes comments in at most $EXEMPT_MAX lines, with a patch for each file, outside agent instructions and high-risk paths, give it a 'Review-exempt: nit' or 'Review-exempt: comments' line."
+            echo "::error::Commit ${sha:0:12} came after the last round and changes more than docs: run a round over it (a short confirming round of one reviewer, unless it answers an Important finding), or, if it changes no code (comments or whitespace) in at most $EXEMPT_MAX lines, with a patch for each file, outside agent instructions and high-risk paths, give it a 'Review-exempt: comments' line."
           done <<< "$own"
           [ -z "$bad" ] || exit 1
           echo "Every commit after the last round is covered."

@@ -163,8 +163,8 @@ Every session does, on every PR; the Forge has a review step of its own and is n
 - It is the review of the diff the PR is opened with, and each round names the commit it read (below). A commit
   that answers an Important finding gets a new full round. Any other later commit that changes code, a nit, CI or
   Copilot fix included, gets a short confirming round: one reviewer reads only `git diff <previous head>..HEAD`, and
-  it is registered as the next round with its own `head` and only that model's entry; it does not count towards a
-  round limit, and an Important finding in it leads to a full round. A commit that changes no code (code comments
+  it is registered as the next round with its own `head` and only that model's entry; it is not counted against a
+  limit an owner sets on review rounds, and an Important finding in it leads to a full round. A commit that changes no code (code comments
   or whitespace only), in at most 20 lines, with no renamed file and no file without a patch (a binary, a mode
   change), nothing in agent instructions (a README, AGENTS, CLAUDE, SKILL or REVIEW file, `.claude/`, `.agents/` or `.claude-plugin/` at any depth, `.github/instructions/`,
   `.github/copilot-instructions.md`, a workflow, `docs/team/`, `docs/review-*`, and what `.github/risk-tiers.txt`
