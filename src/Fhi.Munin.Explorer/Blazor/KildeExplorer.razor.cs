@@ -552,7 +552,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     {
         var address = new Uri(e.Location);
 
-        if (!string.Equals(address.AbsolutePath, _mirror.Path, StringComparison.Ordinal))
+        if (!_mirror.IsSamePage(address))
         {
             return;
         }

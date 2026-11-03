@@ -18,6 +18,10 @@ public sealed class MuninExplorerOptions
     /// on the FHI network and fails silently once deployed elsewhere. One value serves the variable and
     /// the source explorer alike. <c>runa</c> and <c>kelda</c> name the UIs and may become internal.
     /// </para>
+    /// <para>
+    /// Must be an absolute <c>https</c> URL, since the host's token is sent on every call; plain <c>http</c> is
+    /// accepted only for a loopback host such as a local stub. Anything else fails <c>AddMuninExplorer</c> at startup.
+    /// </para>
     /// </summary>
     public string? ApiBaseUrl { get; set; }
 
@@ -86,6 +90,15 @@ public static class ServiceCollectionExtensions
                 "the base URL of the Munin API, e.g. https://explorer.munin.skytest.fhi.no. Keep the explorer " +
                 "prefix: the same name without one is internal to FHI's network, so a host " +
                 "outside it reaches nothing and the reader is told only that variables could not be fetched.");
+        }
+
+        // The host's bearer token rides on every call, so it must not cross the network in clear text.
+        if (!Uri.TryCreate(options.ApiBaseUrl, UriKind.Absolute, out var apiBase)
+            || !(apiBase.Scheme == Uri.UriSchemeHttps || (apiBase.Scheme == Uri.UriSchemeHttp && apiBase.IsLoopback)))
+        {
+            throw new InvalidOperationException(
+                $"{nameof(MuninExplorerOptions)}.{nameof(MuninExplorerOptions.ApiBaseUrl)} must be an absolute https URL, " +
+                "e.g. https://explorer.munin.skytest.fhi.no; http is accepted only for a loopback host (localhost, 127.0.0.1, ::1).");
         }
 
         // So the components have somewhere to write the exceptions they swallow. Idempotent and

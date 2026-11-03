@@ -158,6 +158,29 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
         Assert.Equal(before, Writes());
     }
 
+    /// <summary>A page reached through // still follows Back: the explorer compares the folded path (Fhi.Metadata-ayqlp.12).</summary>
+    [Fact]
+    public void Moved_WhenBackLandsAKildeReaderOnTheListThroughTwoSlashes_ThenTheListShows()
+    {
+        var cut = RenderKilder($"http://localhost//kilder?kilde={Als}");
+        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}", Mirrored()));
+
+        Navigation.NavigateTo("http://localhost//kilder");
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".munin-explorer-kilder tbody th button")));
+    }
+
+    [Fact]
+    public void Moved_WhenBackLandsAVariableReaderOnTheListThroughTwoSlashes_ThenNoRowIsOpen()
+    {
+        var cut = RenderVariables($"http://localhost//variabler?variabelId={Speech}");
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("button.munin-explorer-dataitem-main__name[aria-expanded=\"true\"]")));
+
+        Navigation.NavigateTo("http://localhost//variabler");
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("button.munin-explorer-dataitem-main__name[aria-expanded=\"true\"]")));
+    }
+
     private IRenderedComponent<KildeExplorer> RenderKilder(string url)
     {
         Arrive(url, new TwoKilderClient());

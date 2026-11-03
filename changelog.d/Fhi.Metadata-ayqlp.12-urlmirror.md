@@ -1,0 +1,2 @@
+category: Security
+- **Links stay on the host when the page path starts with `//`.** The share, variable and export links, the address the explorer writes into the address bar, and the contents and jump links of a kilde or variable view mounted on its own now fold a leading `//` (or `/\`) in the page path to a single `/`, so they can no longer be read as a link to another host. Back and Forward keep working on such a page. (Fhi.Metadata-ayqlp.12)

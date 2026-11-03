@@ -190,7 +190,7 @@ public sealed partial class KildeView : ComponentBase, IDisposable
 
     /// <summary>The page's own path and query before the <c>#</c>, as <see cref="DetailToc"/> builds it and for its reason.</summary>
     private string JumpHref(string id) =>
-        $"{(PageAddress is { Length: > 0 } given ? given : new Uri(Navigation.Uri).PathAndQuery)}#{id}";
+        $"{(PageAddress is { Length: > 0 } given ? given : UrlMirror.LocalPathAndQuery(new Uri(Navigation.Uri)))}#{id}";
 
     private string? JumpToDataCollections =>
         DataCollections.Count > 0 ? T.JumpToDataCollections(DataCollections.Count) : null;

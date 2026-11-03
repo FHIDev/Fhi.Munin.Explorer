@@ -233,6 +233,18 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Jumps_WhenAStandaloneViewsPathStartsWithTwoSlashes_ThenTheLinksStayOnThisHost()
+    {
+        // No wrapper cascades an address, so the jump builds its own from the circuit (Fhi.Metadata-ayqlp.12).
+        Services.GetRequiredService<NavigationManager>().NavigateTo("http://localhost//evil.example/side?kilde=one");
+
+        var cut = Render(Kilde());
+
+        Assert.Equal("/evil.example/side?kilde=one#" + DetailSectionIds.DataCollections,
+                     cut.Find(".munin-explorer-kilde__jumps a").GetAttribute("href"));
+    }
+
+    [Fact]
     public void Jumps_WhenTheHostGivesNoVariablesAddress_ThenThereIsNoVariablesLink()
     {
         // Runa, or a bare mount: no section on the page lists the variables, so the count would promise a list.
