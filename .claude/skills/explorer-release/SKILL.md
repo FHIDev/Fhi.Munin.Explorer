@@ -134,10 +134,11 @@ Fhi.Helsedata/Fhi.Helsedata.Optimizely/Fhi.Helsedata.Optimizely.csproj
 Line numbers drift — **locate by package id**. Both sit in the `!= 'true'` ItemGroups;
 the `== 'true'` `ProjectReference` branches are local-dev and must not be touched.
 
-**Leave `Fhi.Helsedata.Backend.Legacy.Business.csproj` alone.** It pins Stiler too, and a
-comment there says «bump begge samtidig», but that pin is the Søknader team's (every change
-to it is theirs); ours never touch it. Bumping it at 2.17.0 (PR 40624) was a mistake, reverted
-in the same PR.
+**Leave `Fhi.Helsedata.Backend.Legacy.Business.csproj` alone, even when it drifts.** It pins
+Stiler too, and a comment there says «bump begge samtidig», but that pin is the Søknader team's
+(every change to it is theirs); ours never touch it. Bumping it at 2.17.0 (PR 40624) was a
+mistake, reverted in the same PR. A grep for `Fhi.Helsedata.Stiler` that finds a pin outside
+Optimizely names someone else's: ask whose it is before touching it.
 
 **BUMP BOTH IN ONE COMMIT, AND STILER FIRST IF YOU EVER SPLIT THEM.** The ordering is
 load-bearing and has bitten: Explorer `vdnm4` deleted a name tooltip on the assumption
