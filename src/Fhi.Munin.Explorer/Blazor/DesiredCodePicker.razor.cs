@@ -10,10 +10,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// «Ønskede data» from a variable's code lists: one tab per list, a small list ticked whole, a large one searched and
 /// browsed as a tree, with a node chosen with everything under it and, in a health code system, a range.
 /// </summary>
-/// <remarks>
-/// The choices are a draft until <see cref="Save"/> answers: a refusal leaves them on screen to fix. Design note:
-/// Fhi.Metadata-emsc0.3.1 (Inge, 2026-11-04).
-/// </remarks>
+/// <remarks>The choices are a draft until <see cref="Save"/> answers: a refusal leaves them on screen to fix.</remarks>
 public sealed partial class DesiredCodePicker : ComponentBase
 {
     /// <summary>The most choices the API stores for one item.</summary>
@@ -29,7 +26,11 @@ public sealed partial class DesiredCodePicker : ComponentBase
     private readonly Dictionary<KodeverkKey, ListState> _lists = [];
     private int _tab;
     private string? _status;
-    private bool _statusIsError;
+    private string? _alert;
+    private readonly Dictionary<int, ElementReference> _tabButtons = [];
+    private ElementReference _counter;
+    private bool _focusTab;
+    private bool _focusCounter;
     private bool _saving;
     private string _rangeFrom = "";
     private string _rangeTo = "";
@@ -64,7 +65,12 @@ public sealed partial class DesiredCodePicker : ComponentBase
 
     private TimeProvider Clock => ServiceProvider.GetService<TimeProvider>() ?? TimeProvider.System;
 
-    internal IReadOnlyList<KodeverkLink> Tabs => [.. Links.Where(link => link.HasCodeValues)];
+    // One tab per code list: a payload can name one twice, and a tab keyed twice would end the circuit.
+    internal IReadOnlyList<KodeverkLink> Tabs =>
+        [.. Links.Where(link => link.HasCodeValues).DistinctBy(KodeverkKey.Of)];
+
+    // The catalogue's names are Norwegian; marked so an English page reads them in Norwegian (WCAG 3.1.2).
+    private string? CatalogueLang => ReaderLanguage.IsEnglish(Language) ? "no" : null;
 
     private KodeverkLink? Current => Tabs.Count == 0 ? null : Tabs[Math.Clamp(_tab, 0, Tabs.Count - 1)];
 
@@ -87,6 +93,8 @@ public sealed partial class DesiredCodePicker : ComponentBase
     private sealed class ListState
     {
         public bool Loading { get; set; }
+        public bool Paging { get; set; }
+        public int SearchRun { get; set; }
         public bool Failed { get; set; }
         public IReadOnlyList<KodeverkCode>? All { get; set; }
         public string Query { get; set; } = "";
@@ -147,13 +155,14 @@ public sealed partial class DesiredCodePicker : ComponentBase
         var page = await Client.GetKodeverkCodeChildrenAsync(
             VariableId, link.KodeverkType, link.KodeverkReference, node == Top ? null : node, skip, PageSize);
         var list = state.Children.TryGetValue(node, out var known) && skip > 0 ? known : state.Children[node] = [];
-        list.AddRange(page?.Codes ?? []);
+        list.AddRange((page?.Codes ?? []).Where(hit => list.All(seen => seen.Value != hit.Value)));
         state.ChildTotals[node] = page?.Total ?? list.Count;
     }
 
     private async Task SelectTabAsync(int index)
     {
         _tab = index;
+        _alert = null;
         if (Current is { } link)
         {
             await OpenAsync(link);
@@ -174,31 +183,44 @@ public sealed partial class DesiredCodePicker : ComponentBase
         };
         if (next >= 0 && count > 0)
         {
+            _focusTab = true;
             await SelectTabAsync(next);
         }
     }
 
-    private async Task SearchAsync(KodeverkLink link, int skip = 0)
+    // A new search takes the field's words; «Vis flere» pages the search already shown. Only the newest answer lands.
+    private async Task SearchAsync(KodeverkLink link, bool more = false)
     {
         var state = StateOf(link);
-        var query = state.Query.Trim();
-        if (query.Length == 0)
+        var query = more ? state.Searched ?? "" : state.Query.Trim();
+        if (query.Length == 0 || (more && state.Paging))
         {
-            state.Searched = null;
-            state.Hits.Clear();
+            if (!more)
+            {
+                state.Searched = null;
+                state.Hits.Clear();
+            }
+
             return;
         }
 
-        state.Loading = true;
+        var run = more ? state.SearchRun : ++state.SearchRun;
+        var skip = more ? state.Hits.Count : 0;
+        state.Paging = more;
         try
         {
             var page = await Client.SearchKodeverkCodesAsync(VariableId, link.KodeverkType, link.KodeverkReference, query, skip, PageSize);
-            if (skip == 0)
+            if (run != state.SearchRun)
+            {
+                return;
+            }
+
+            if (!more)
             {
                 state.Hits.Clear();
             }
 
-            state.Hits.AddRange(page?.Codes ?? []);
+            state.Hits.AddRange((page?.Codes ?? []).Where(hit => state.Hits.All(seen => seen.Value != hit.Value)));
             state.HitTotal = page?.Total ?? state.Hits.Count;
             state.Searched = query;
             state.Failed = false;
@@ -211,9 +233,12 @@ public sealed partial class DesiredCodePicker : ComponentBase
         }
         finally
         {
-            state.Loading = false;
+            state.Paging = false;
         }
     }
+
+    private Task MoreHitsAsync(MouseEventArgs press, KodeverkLink link) =>
+        RowPress.WasSelectionStandingStill(press) ? Task.CompletedTask : SearchAsync(link, more: true);
 
     private async Task SearchKeyAsync(KeyboardEventArgs e, KodeverkLink link)
     {
@@ -253,9 +278,15 @@ public sealed partial class DesiredCodePicker : ComponentBase
         }
     }
 
-    private async Task MoreChildrenAsync(KodeverkLink link, string node)
+    private async Task MoreChildrenAsync(MouseEventArgs press, KodeverkLink link, string node)
     {
         var state = StateOf(link);
+        if (RowPress.WasSelectionStandingStill(press) || state.Paging)
+        {
+            return;
+        }
+
+        state.Paging = true;
         try
         {
             await LoadChildrenAsync(link, state, node, state.Children.GetValueOrDefault(node)?.Count ?? 0);
@@ -264,6 +295,10 @@ public sealed partial class DesiredCodePicker : ComponentBase
         {
             Log?.LogWarning(ex, "more codes under {Node} could not be read", node);
             Announce(T.PickerLoadError, error: true);
+        }
+        finally
+        {
+            state.Paging = false;
         }
     }
 
@@ -366,7 +401,7 @@ public sealed partial class DesiredCodePicker : ComponentBase
         try
         {
             // Asked first: a range the list does not have is refused here, not at «Lagre».
-            if (await Client.CountKodeverkCodesAsync(VariableId, value) is not { } count)
+            if (await Client.CountKodeverkCodesAsync(VariableId, value) is not { } count || Full)
             {
                 Announce(T.PickerRangeUnknown, error: true);
                 return;
@@ -383,7 +418,12 @@ public sealed partial class DesiredCodePicker : ComponentBase
         }
     }
 
-    private void Remove(Choice choice) => _choices.Remove(choice);
+    // The removed item took its button with it, so focus goes to the count, which says what is left.
+    private void Remove(Choice choice)
+    {
+        _choices.Remove(choice);
+        _focusCounter = true;
+    }
 
     /// <summary>A choice as words: the code and its term, «med alt under», or a range.</summary>
     internal static string Describe(Texts t, DesiredCodeChoice value, string? name, string? toName) => value.Kind switch
@@ -397,14 +437,38 @@ public sealed partial class DesiredCodePicker : ComponentBase
 
     // ------------------------------------------------------------------------------------------------- saving
 
+    // Two regions, both present from the first render: a polite one for counts, an alert for what went wrong.
     private void Announce(string? text, bool error)
     {
-        _status = text;
-        _statusIsError = error;
+        _status = error ? null : text;
+        _alert = error ? text : null;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (_focusTab && _tabButtons.TryGetValue(Math.Clamp(_tab, 0, Math.Max(0, Tabs.Count - 1)), out var tab))
+            {
+                _focusTab = false;
+                await tab.FocusAsync();
+            }
+
+            if (_focusCounter)
+            {
+                _focusCounter = false;
+                await _counter.FocusAsync();
+            }
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or Microsoft.JSInterop.JSException or TaskCanceledException)
+        {
+            Log?.LogDebug(ex, "focus could not move inside the code picker");
+        }
     }
 
     private async Task SaveAsync()
     {
+        // aria-disabled rather than disabled while saving: disabling the focused button drops focus to <body>.
         if (_saving)
         {
             return;
@@ -418,8 +482,11 @@ public sealed partial class DesiredCodePicker : ComponentBase
             switch (result)
             {
                 case { Outcome: DesiredDataOutcome.Saved }:
-                    Announce(T.PickerSaved, error: false);
+                    // The picker closes, so the caller, which stays, says it was saved.
                     await Closed.InvokeAsync();
+                    break;
+                case { Outcome: DesiredDataOutcome.Refused, MaxLength: { } maxLength }:
+                    Announce(T.DesiredDataTooLong(maxLength), error: true);
                     break;
                 case { Outcome: DesiredDataOutcome.Refused, InvalidIndex: { } index } when index >= 0 && index < _choices.Count:
                     var bad = _choices[index];
@@ -441,7 +508,13 @@ public sealed partial class DesiredCodePicker : ComponentBase
             Log?.LogWarning(ex, "the rate limiter refused the code choices of variable {VariableId}", VariableId);
             Announce(T.RateLimitError, error: true);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException and not MuninExplorerUnauthorizedException)
+        catch (MuninExplorerUnauthorizedException ex)
+        {
+            // Caught like every other write here: uncaught, it would leave the handler and end the circuit.
+            Log?.LogWarning(ex, "the code choices of variable {VariableId} were refused: not signed in", VariableId);
+            Announce(T.SignInRequiredError, error: true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Log?.LogWarning(ex, "the code choices of variable {VariableId} could not be saved", VariableId);
             Announce(T.DesiredDataError, error: true);

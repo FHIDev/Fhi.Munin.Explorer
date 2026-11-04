@@ -318,7 +318,7 @@ reflow() {
 
 echo
 echo "==> measuring the reflow width WCAG 1.4.10 names"
-reflow "" "/::explorer-tabs" "/::explorer-list-tab" "/::list-row-panel" "/::list-row-notes" \
+reflow "" "/::explorer-tabs" "/::explorer-list-tab" "/::list-row-panel" "/::list-row-notes" "/::list-row-picker" \
   "/::list-actions-menu" "/::list-actions-and-columns" "/::list-download-and-columns" "/::search-download-open"
 # The closed column picker hangs 2px off the left edge; Fhi.Metadata-abmom records why that stays.
 reflow "the component stays inside the box the host gave it" \

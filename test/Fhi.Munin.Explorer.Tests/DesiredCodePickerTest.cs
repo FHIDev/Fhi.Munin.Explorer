@@ -91,6 +91,10 @@ public class DesiredCodePickerTest : ExplorerTestContext
             .Add(c => c.Closed, () => closed?.Invoke()));
     }
 
+    // What a reader sees, with the markup's own whitespace folded: the terms sit in their own lang spans.
+    private static string Text(IRenderedComponent<DesiredCodePicker> cut) =>
+        System.Text.RegularExpressions.Regex.Replace(cut.Find("[role=group]").TextContent, @"\s+", " ");
+
     private static void Press(IRenderedComponent<DesiredCodePicker> cut, string text) =>
         cut.FindAll("button").Single(b => b.TextContent.Trim() == text).Click();
 
@@ -99,7 +103,7 @@ public class DesiredCodePickerTest : ExplorerTestContext
             .QuerySelector("input[type=checkbox]")!.Change(true);
 
     [Fact]
-    public void ASmallList_WhenTwoCodesAreTickedAndSaved_ThenBothAreSentAsCodesAndThePickerCloses()
+    public void Save_WhenTwoCodesOfASmallListAreTicked_ThenBothAreSentAsCodesAndThePickerCloses()
     {
         var saves = new Saves();
         var closed = false;
@@ -117,12 +121,12 @@ public class DesiredCodePickerTest : ExplorerTestContext
     }
 
     [Fact]
-    public void AnExpiredCode_WhenTheListIsShown_ThenItIsMarkedWithItsYearAndCanStillBeChosen()
+    public void Render_WhenACodeHasExpired_ThenItIsMarkedWithItsYearAndCanStillBeChosen()
     {
         var saves = new Saves();
         var cut = Picker(saves, [Sivilstand]);
 
-        Assert.Contains("Ukjent (utgått 2019)", cut.Markup);
+        Assert.Contains("Ukjent (utgått 2019)", Text(cut));
         Tick(cut, "Ukjent");
         Press(cut, "Lagre");
 
@@ -131,7 +135,7 @@ public class DesiredCodePickerTest : ExplorerTestContext
     }
 
     [Fact]
-    public void ALargeList_WhenSearchedAndANodeIsChosenWithEverythingUnderIt_ThenItsCountIsShownAndItIsSentAsANode()
+    public void Search_WhenANodeIsChosenWithEverythingUnderIt_ThenItsCountIsShownAndItIsSentAsANode()
     {
         var saves = new Saves();
         var cut = Picker(saves, [Icd10]);
@@ -141,7 +145,7 @@ public class DesiredCodePickerTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Contains("2 treff", cut.Markup));
 
         Tick(cut, "E11 med alt under");
-        cut.WaitForAssertion(() => Assert.Contains("E11 med alt under (10 koder)", cut.Markup));
+        cut.WaitForAssertion(() => Assert.Contains("E11 med alt under (10 koder)", Text(cut)));
         Press(cut, "Lagre");
 
         var sent = Assert.Single(Assert.Single(saves.Calls));
@@ -149,7 +153,7 @@ public class DesiredCodePickerTest : ExplorerTestContext
     }
 
     [Fact]
-    public void ALargeList_WhenBrowsedAsATree_ThenANodeOpensItsChildrenAndOneOfThemCanBeChosen()
+    public void Tree_WhenANodeIsOpened_ThenItsChildrenShowAndOneCanBeChosen()
     {
         var saves = new Saves();
         var cut = Picker(saves, [Icd10]);
@@ -167,7 +171,7 @@ public class DesiredCodePickerTest : ExplorerTestContext
     }
 
     [Fact]
-    public void ACodeAndTheSameCodeWithEverythingUnderIt_WhenBothAreTicked_ThenOnlyTheLastStands()
+    public void Toggle_WhenACodeAndTheSameCodeWithEverythingUnderItAreTicked_ThenOnlyTheLastStands()
     {
         var saves = new Saves();
         var cut = Picker(saves, [Icd10]);
@@ -184,7 +188,7 @@ public class DesiredCodePickerTest : ExplorerTestContext
     }
 
     [Fact]
-    public void ARange_WhenTheListHasIt_ThenItIsAddedWithItsCount_AndOneItLacksIsRefusedOnTheSpot()
+    public void AddRange_WhenTheListHasIt_ThenItIsAddedWithItsCountAndOneItLacksIsRefusedOnTheSpot()
     {
         var saves = new Saves();
         var cut = Picker(saves, [Icd10]);
@@ -196,7 +200,7 @@ public class DesiredCodePickerTest : ExplorerTestContext
 
         cut.Find($"input[id$='-to']").Input("E14");
         Press(cut, "Legg til intervall");
-        cut.WaitForAssertion(() => Assert.Contains("E10–E14 (50 koder)", cut.Markup));
+        cut.WaitForAssertion(() => Assert.Contains("E10–E14 (50 koder)", Text(cut)));
         Press(cut, "Lagre");
 
         var sent = Assert.Single(Assert.Single(saves.Calls));
@@ -204,7 +208,7 @@ public class DesiredCodePickerTest : ExplorerTestContext
     }
 
     [Fact]
-    public void TheTwoHundredthChoice_WhenMade_ThenItIsTheLastOneAllowed()
+    public void Toggle_WhenTheTwoHundredthChoiceIsMade_ThenItIsTheLastOneAllowed()
     {
         var saves = new Saves();
         var chosen = Enumerable.Range(0, 199)
@@ -221,7 +225,7 @@ public class DesiredCodePickerTest : ExplorerTestContext
     }
 
     [Fact]
-    public void ARefusedChoice_WhenSaved_ThenTheReaderIsToldWhichOneAndThePickerStaysOpen()
+    public void Save_WhenAChoiceIsRefused_ThenTheReaderIsToldWhichOneAndThePickerStaysOpen()
     {
         var saves = new Saves { Answer = new DesiredDataResult(DesiredDataOutcome.Refused, InvalidIndex: 1) };
         var closed = false;
@@ -236,7 +240,7 @@ public class DesiredCodePickerTest : ExplorerTestContext
     }
 
     [Fact]
-    public void AnUnreadableList_WhenSaved_ThenTheReaderIsToldNothingWasStored()
+    public void Save_WhenTheListCannotBeRead_ThenTheReaderIsToldNothingWasStored()
     {
         var saves = new Saves { Answer = new DesiredDataResult(DesiredDataOutcome.ListUnavailable) };
         var cut = Picker(saves, [Sivilstand]);
@@ -248,7 +252,7 @@ public class DesiredCodePickerTest : ExplorerTestContext
     }
 
     [Fact]
-    public void TwoCodeLists_WhenShown_ThenEachHasATab_AndTheArrowKeyMovesToTheNext()
+    public void Tabs_WhenTwoCodeListsAreShown_ThenEachHasATabAndTheArrowKeySelectsAndFocusesTheNext()
     {
         var cut = Picker(new Saves(), [Sivilstand, Icd10]);
 
@@ -260,19 +264,89 @@ public class DesiredCodePickerTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Equal("true", cut.FindAll("[role=tab]")[1].GetAttribute("aria-selected")));
         Assert.NotNull(cut.Find("input[type=search]"));
+        JSInterop.VerifyFocusAsyncInvoke();
     }
 
     [Fact]
-    public void StoredChoices_WhenThePickerOpens_ThenTheyAreTheDraftAndCanBeRemoved()
+    public void Render_WhenChoicesAreStored_ThenTheyAreTheDraftAndCanBeRemoved()
     {
         var saves = new Saves();
         var chosen = new[] { new DesiredCodeView { KodeverkType = "HelsefagligKodeverk", KodeverkReference = "ICD-10", Kind = "node", Code = "E10", Count = 10 } };
         var cut = Picker(saves, [Icd10], chosen);
 
-        Assert.Contains("E10 med alt under (10 koder)", cut.Markup);
+        Assert.Contains("E10 med alt under (10 koder)", Text(cut));
         Press(cut, "Fjern E10 med alt under");
         Press(cut, "Lagre");
 
         Assert.Empty(Assert.Single(saves.Calls));
+    }
+
+    [Fact]
+    public void Tabs_WhenOneCodeListIsNamedTwice_ThenItHasOneTabAndNoTablist()
+    {
+        var cut = Picker(new Saves(), [Sivilstand, Sivilstand]);
+
+        Assert.Empty(cut.FindAll("[role=tablist]"));
+        Assert.Contains("Ugift", Text(cut));
+    }
+
+    [Fact]
+    public void Save_WhenTheSignInIsRefused_ThenTheReaderIsToldToSignInAndThePickerStays()
+    {
+        var saves = new SignInRefused();
+        var closed = false;
+        Services.AddSingleton<IMuninExplorerClient>(new CodesClient());
+        var cut = Render<DesiredCodePicker>(b => b
+            .Add(c => c.VariableId, Variable)
+            .Add(c => c.Links, [Sivilstand])
+            .Add(c => c.Save, saves.SaveAsync)
+            .Add(c => c.Closed, () => closed = true));
+
+        Press(cut, "Lagre");
+
+        cut.WaitForAssertion(() => Assert.False(string.IsNullOrWhiteSpace(cut.Find("[role=alert]").TextContent)));
+        Assert.False(closed);
+    }
+
+    private sealed class SignInRefused
+    {
+        public Task<DesiredDataResult> SaveAsync(IReadOnlyList<DesiredCodeView> views) =>
+            throw new MuninExplorerUnauthorizedException();
+    }
+
+    [Fact]
+    public void MoreHits_WhenTheFieldWasChangedSinceTheSearch_ThenThePageIsOfTheSearchShown()
+    {
+        var client = new PagedClient();
+        Services.AddSingleton<IMuninExplorerClient>(client);
+        var cut = Render<DesiredCodePicker>(b => b
+            .Add(c => c.VariableId, Variable)
+            .Add(c => c.Links, [Icd10])
+            .Add(c => c.Save, new Saves().SaveAsync));
+
+        cut.Find("input[type=search]").Input("diabetes");
+        Press(cut, "Søk");
+        cut.WaitForAssertion(() => Assert.Contains("120 treff", Text(cut)));
+        cut.Find("input[type=search]").Input("astma");
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Vis flere").Click(new MouseEventArgs { Detail = 1 });
+
+        cut.WaitForAssertion(() => Assert.Equal(["diabetes:0", "diabetes:50"], client.Asked));
+    }
+
+    private sealed class PagedClient : EmptyMuninExplorerClient
+    {
+        public List<string> Asked { get; } = [];
+
+        public override Task<KodeverkCodePage?> SearchKodeverkCodesAsync(
+            Guid variableId, string kodeverkType, string kodeverkReference, string query, int skip = 0, int take = 50,
+            CancellationToken cancellationToken = default)
+        {
+            Asked.Add($"{query}:{skip}");
+            return Task.FromResult<KodeverkCodePage?>(new KodeverkCodePage
+            {
+                Total = 120,
+                Codes = [.. Enumerable.Range(skip, 50).Select(i => new KodeverkCodeHit { Value = $"{query}{i}", Name = query })],
+            });
+        }
     }
 }

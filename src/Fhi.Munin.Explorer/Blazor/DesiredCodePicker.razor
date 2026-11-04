@@ -14,8 +14,8 @@
                 <div @key="KodeverkKey.Of(Tabs[index])" class="@(selected ? "munin-explorer-meta__tab munin-explorer-meta__tab--active" : "munin-explorer-meta__tab")">
                     <button class="hd-button-reset" type="button" role="tab" id="@Id($"tab-{index}")"
                             aria-selected="@(selected ? "true" : "false")" aria-controls="@Id("panel")"
-                            tabindex="@(selected ? 0 : -1)"
-                            @onclick="() => SelectTabAsync(index)">@TabName(Tabs[index])</button>
+                            tabindex="@(selected ? 0 : -1)" @ref="_tabButtons[index]"
+                            @onclick="() => SelectTabAsync(index)"><span lang="@CatalogueLang">@TabName(Tabs[index])</span></button>
                 </div>
             }
         </div>
@@ -35,7 +35,7 @@
             }
             else if (state.All is { } all)
             {
-                <ul class="munin-explorer-data-list" aria-label="@TabName(link)">
+                <ul class="munin-explorer-data-list">
                     @foreach (var entry in all)
                     {
                         <li @key="entry.Value">
@@ -43,7 +43,7 @@
                                 <input type="checkbox" checked="@IsChosen(link, DesiredCodeKinds.Code, entry.Value)"
                                        disabled="@(Full && !IsChosen(link, DesiredCodeKinds.Code, entry.Value))"
                                        @onchange="() => ToggleAsync(link, DesiredCodeKinds.Code, entry.Value, entry.Name, entry.ValidTo)" />
-                                @entry.Value @entry.Name@ExpiredMark(entry.ValidTo)
+                                @entry.Value <span lang="@CatalogueLang">@entry.Name</span>@ExpiredMark(entry.ValidTo)
                             </label>
                         </li>
                     }
@@ -70,7 +70,7 @@
                     </ul>
                     @if (state.Hits.Count < state.HitTotal)
                     {
-                        <button class="hd-button-square button-square--ghost" type="button" @onclick="() => SearchAsync(link, state.Hits.Count)">@T.PickerMore</button>
+                        <button class="hd-button-square button-square--ghost" type="button" @onclick="e => MoreHitsAsync(e, link)">@T.PickerMore</button>
                     }
                 }
 
@@ -85,7 +85,7 @@
                         <input id="@Id("from")" type="text" autocomplete="off" size="8" value="@_rangeFrom" @oninput="e => _rangeFrom = e.Value?.ToString() ?? string.Empty" />
                         <label for="@Id("to")">@T.PickerRangeTo</label>
                         <input id="@Id("to")" type="text" autocomplete="off" size="8" value="@_rangeTo" @oninput="e => _rangeTo = e.Value?.ToString() ?? string.Empty" />
-                        <button class="hd-button-square button-square--secondary" type="button" disabled="@Full" @onclick="() => AddRangeAsync(link)">@T.PickerRangeAdd</button>
+                        <button class="hd-button-square button-square--secondary" type="button" aria-disabled="@(Full ? "true" : "false")" @onclick="() => AddRangeAsync(link)">@T.PickerRangeAdd</button>
                     </fieldset>
                 }
             }
@@ -100,24 +100,25 @@
             {
                 var words = Describe(T, choice.Value, choice.Name, choice.ToName);
                 <li @key="choice.Value">
-                    @words@(choice.Expired ? $" ({T.PickerExpired(null)})" : "")@(choice.Count is { } n && choice.Value.Kind != DesiredCodeKinds.Code ? $" ({T.PickerCodeCount(n)})" : "")
+                    @ChoiceWords(choice)@(choice.Expired ? $" ({T.PickerExpired(null)})" : "")@(choice.Count is { } n && choice.Value.Kind != DesiredCodeKinds.Code ? $" ({T.PickerCodeCount(n)})" : "")
                     <button class="hd-button-square button-square--ghost" type="button" @onclick="() => Remove(choice)">@T.PickerRemove(words)</button>
                 </li>
             }
         </ul>
     }
 
-    <p class="caption">@T.PickerChoiceCount(_choices.Count, MaxChoices)@(TotalCodes is { } total ? $" · {T.PickerCodeCount(total)}" : "")</p>
+    <p class="caption" tabindex="-1" @ref="_counter">@T.PickerChoiceCount(_choices.Count, MaxChoices)@(TotalCodes is { } total ? $" · {T.PickerCodeCount(total)}" : "")</p>
     @if (Full)
     {
         <p class="caption">@T.PickerFull(MaxChoices)</p>
     }
 
-    @* One region, present from the first render, so a late answer (search, save) is a change NVDA reads. *@
-    <p class="caption" id="@Id("status")" role="@(_statusIsError ? "alert" : "status")" aria-live="@(_statusIsError ? "assertive" : "polite")">@_status</p>
+    @* Present from the first render, so a late answer (a search, a refusal) is a change a screen reader reads. *@
+    <p class="caption" role="status" aria-live="polite" aria-atomic="true">@_status</p>
+    <p class="caption" role="alert" aria-atomic="true">@_alert</p>
 
     <div class="munin-explorer-page__actions">
-        <button class="hd-button-square button-square--primary" type="button" disabled="@_saving" @onclick="SaveAsync">@T.PickerSave</button>
+        <button class="hd-button-square button-square--primary" type="button" aria-disabled="@(_saving ? "true" : "false")" @onclick="SaveAsync">@T.PickerSave</button>
         <button class="hd-button-square button-square--ghost" type="button" @onclick="CancelAsync">@T.PickerCancel</button>
     </div>
 </div>
@@ -125,6 +126,11 @@
 @code {
     private static string TabName(KodeverkLink link) =>
         string.IsNullOrWhiteSpace(link.DisplayName) ? link.KodeverkReference : link.DisplayName;
+
+    // The code, then its catalogue term marked Norwegian; a node or a range in the package's own words.
+    private RenderFragment ChoiceWords(Choice choice) => choice.Value.Kind == DesiredCodeKinds.Code && !string.IsNullOrWhiteSpace(choice.Name)
+        ? @<span>@choice.Value.Code <span lang="@CatalogueLang">@choice.Name</span></span>
+        : @<span>@Describe(T, choice.Value, choice.Name, choice.ToName)</span>;
 
     private string ExpiredMark(DateTimeOffset? validTo) =>
         ExpiredYear(validTo) is { } year ? $" ({T.PickerExpired(year)})" : "";
@@ -135,7 +141,7 @@
             <input type="checkbox" checked="@IsChosen(link, DesiredCodeKinds.Code, hit.Value)"
                    disabled="@(Full && !IsChosen(link, DesiredCodeKinds.Code, hit.Value) && !IsChosen(link, DesiredCodeKinds.Node, hit.Value))"
                    @onchange="() => ToggleAsync(link, DesiredCodeKinds.Code, hit.Value, hit.Name, hit.ValidTo)" />
-            @hit.Value @hit.Name@ExpiredMark(hit.ValidTo)
+            @hit.Value <span lang="@CatalogueLang">@hit.Name</span>@ExpiredMark(hit.ValidTo)
         </label>
         @if (hit.HasChildren)
         {
@@ -168,7 +174,7 @@
         }
         @if ((state.Children.GetValueOrDefault(node)?.Count ?? 0) < state.ChildTotals.GetValueOrDefault(node))
         {
-            <li><button class="hd-button-square button-square--ghost" type="button" @onclick="() => MoreChildrenAsync(link, node)">@T.PickerMore</button></li>
+            <li><button class="hd-button-square button-square--ghost" type="button" @onclick="e => MoreChildrenAsync(e, link, node)">@T.PickerMore</button></li>
         }
     </ul>;
 }

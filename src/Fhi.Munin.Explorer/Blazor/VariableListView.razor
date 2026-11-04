@@ -936,6 +936,7 @@ else if (State?.IsAuthenticated == true)
             <button class="hd-button-square button-square--secondary" type="button"
                     aria-expanded="@(IsPicking(item) ? "true" : "false")" aria-controls="@RowPickerId(item)"
                     @ref="_pickerButton" @onclick="e => TogglePicker(e, item)">@T.PickerOpen</button>
+            <p class="caption" role="status" aria-live="polite" aria-atomic="true">@CodesSavedText(item)</p>
             <div id="@RowPickerId(item)">
                 @if (IsPicking(item))
                 {

@@ -82,7 +82,7 @@ public class VariableListCodePickerTest : ExplorerTestContext
         cut.FindAll("button[aria-controls$='-picker']").SingleOrDefault();
 
     [Fact]
-    public void AnOpenedRow_WhenTheVariableHasACodeList_ThenThePickerOpensAndSavesTheCodesWithTheRowsFreeText()
+    public void Picker_WhenTheRowsVariableHasACodeList_ThenItOpensSavesTheCodesWithTheFreeTextAndTheRowSaysSo()
     {
         var client = new ListClient(Item(), Sivilstand);
         var cut = OpenedRow(client);
@@ -101,10 +101,11 @@ public class VariableListCodePickerTest : ExplorerTestContext
         Assert.Equal((ItemId, "bare siste registrerte"), (write.ItemId, write.FreeText));
         Assert.Equal(new DesiredCodeChoice("Kildekodeverk", "2336", DesiredCodeKinds.Code, "1"), Assert.Single(write.Choices));
         cut.WaitForAssertion(() => Assert.Equal("false", OpenButton(cut)!.GetAttribute("aria-expanded")));
+        Assert.Contains(cut.FindAll("[role=status]"), status => status.TextContent.Trim() == "Lagret: 1 av 200 valg");
     }
 
     [Fact]
-    public void AnOpenedRow_WhenTheVariableHasNoCodeListWithValues_ThenThereIsNoPicker()
+    public void Picker_WhenTheVariableHasNoCodeListWithValues_ThenThereIsNone()
     {
         var cut = OpenedRow(new ListClient(Item(), Sivilstand with { HasCodeValues = false }));
 
@@ -112,7 +113,7 @@ public class VariableListCodePickerTest : ExplorerTestContext
     }
 
     [Fact]
-    public void AStandingGesture_WhenItLandsOnTheOpenButton_ThenThePickerStaysShut()
+    public void TogglePicker_WhenAStandingGestureLandsOnTheButton_ThenThePickerStaysShut()
     {
         var cut = OpenedRow(new ListClient(Item(), Sivilstand));
 

@@ -12,6 +12,7 @@ public sealed partial class VariableListView
     // What a save stored, until the next list read brings the API's own description of it.
     private readonly Dictionary<VariableDatasamlingKey, IReadOnlyList<DesiredCodeView>> _savedCodes = [];
     private VariableDatasamlingKey? _picking;
+    private VariableDatasamlingKey? _codesSaved;
     private ElementReference _pickerButton;
     private bool _focusPickerButton;
 
@@ -20,6 +21,12 @@ public sealed partial class VariableListView
         item.ItemId is not null && detail.KodeverkLinks.Any(link => link.HasCodeValues);
 
     private bool IsPicking(VariableListItem item) => _picking == VariableDatasamlingKey.Of(item);
+
+    // Said by the row, not the picker: the picker closes on a save, so its own region would never be read.
+    private string? CodesSavedText(VariableListItem item) =>
+        _codesSaved == VariableDatasamlingKey.Of(item)
+            ? $"{T.PickerSaved}: {T.PickerChoiceCount(CodesOf(item).Count, DesiredCodePicker.MaxChoices)}"
+            : null;
 
     private IReadOnlyList<DesiredCodeView> CodesOf(VariableListItem item) =>
         _savedCodes.TryGetValue(VariableDatasamlingKey.Of(item), out var saved) ? saved : item.DesiredDataCodes;
@@ -31,6 +38,7 @@ public sealed partial class VariableListView
         if (!RowPress.WasSelectionStandingStill(press))
         {
             _picking = IsPicking(item) ? null : VariableDatasamlingKey.Of(item);
+            _codesSaved = null;
         }
     }
 
@@ -56,6 +64,7 @@ public sealed partial class VariableListView
         if (result.Outcome == DesiredDataOutcome.Saved)
         {
             _savedCodes[VariableDatasamlingKey.Of(item)] = views;
+            _codesSaved = VariableDatasamlingKey.Of(item);
             Log?.LogDebug("code choices saved for item {ItemId} in list {ListId}", itemId, list);
         }
 

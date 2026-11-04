@@ -1039,6 +1039,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         _desiredData.Clear();
         _savedCodes.Clear();
+        _picking = null;
+        _codesSaved = null;
 
         if (_page is null)
         {
