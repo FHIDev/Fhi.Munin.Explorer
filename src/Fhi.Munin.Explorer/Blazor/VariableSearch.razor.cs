@@ -1063,7 +1063,7 @@ public sealed partial class VariableSearch : ComponentBase
         builder.OpenElement(950, "div");
         builder.AddAttribute(951, "class", "screenreader-only");
         builder.AddAttribute(952, "role", "columnheader");
-        builder.AddContent(953, T.TabDetails);
+        builder.AddContent(953, T.ColumnPanel);
         builder.CloseElement();
 
         builder.CloseElement();

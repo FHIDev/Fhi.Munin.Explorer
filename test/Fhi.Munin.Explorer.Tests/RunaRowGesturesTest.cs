@@ -431,6 +431,6 @@ public class RunaRowGesturesTest : ExplorerTestContext
         var cells = Rows(cut)[0].QuerySelectorAll("[role=cell], [role=rowheader]");
         Assert.Equal(headers.Count, cells.Length);
         Assert.NotNull(cells[^1].QuerySelector("[role=region]"));
-        Assert.Equal("Detaljer", headers[^1].TextContent.Trim());
+        Assert.Equal("Åpen variabel", headers[^1].TextContent.Trim());
     }
 }

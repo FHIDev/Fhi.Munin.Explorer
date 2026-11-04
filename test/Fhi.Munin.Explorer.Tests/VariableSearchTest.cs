@@ -1351,7 +1351,7 @@ public class VariableSearchTest : ExplorerTestContext
         // chevron column: the chevron is inside the name button (Fhi.Metadata-35w0p.78). Then the
         // open panel's own column, spoken only, so NVDA names it (Fhi.Metadata-mhqx0.19).
         Assert.Equal(7, cut.FindAll("[role='columnheader']").Count);
-        Assert.Equal("Detaljer", cut.FindAll("[role='columnheader']")[^1].TextContent.Trim());
+        Assert.Equal("Åpen variabel", cut.FindAll("[role='columnheader']")[^1].TextContent.Trim());
 
         var row = cut.Find("li.munin-explorer-data-list__item");
 
@@ -2581,6 +2581,23 @@ public class VariableSearchTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Contains("1 variabel funnet", cut.Find("p[role='status']").TextContent));
         clock.Advance(TimeSpan.FromSeconds(1));
         Assert.DoesNotContain("Henter variabler", cut.Find("p[role='status']").TextContent);
+    }
+
+    [Fact]
+    public async Task Search_WhenThePageIsLeftWhileItRuns_ThenTheLateAnswerThrowsNothing()
+    {
+        // Dispose cancels and disposes the slow-load source; the fetch's finally must not cancel it again (Opus on mhqx0.18).
+        var client = new SlowClient();
+        var cut = RenderWith(client);
+
+        await cut.InvokeAsync(() => cut.Instance.DisposeAsync().AsTask());
+        await cut.InvokeAsync(() => client.Answer(OnePage(Variable("1. Tale", "KODE"))));
+        // The answer resumes the fetch on the renderer after this; two empty turns of its queue let it finish.
+        await cut.InvokeAsync(() => { });
+        await cut.InvokeAsync(() => { });
+
+        // A throw in the fetch's finally reaches the renderer as an unhandled exception, not this await.
+        Assert.False(Renderer.UnhandledException.IsCompleted);
     }
 
     [Fact]

@@ -672,7 +672,11 @@ public partial class VariableSearch
         {
             _loading = false;
             _rowsLoading = false;
-            slow.Cancel();
+            // Dispose() has cancelled and disposed the current one already, and Cancel on a disposed source throws.
+            if (!_disposed)
+            {
+                slow.Cancel();
+            }
             if (ReferenceEquals(_slowRowsLoad, slow))
             {
                 _slowRowsLoad = null;

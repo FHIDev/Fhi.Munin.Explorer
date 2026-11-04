@@ -86,6 +86,8 @@ internal sealed record Texts(
     string TabData,
     // The drawer's second tab, «Detaljer» as ADO 121586 names it.
     string TabDetails,
+    // The results table's last column, spoken only: the open row's panel sits in it (Fhi.Metadata-mhqx0.19).
+    string ColumnPanel,
     // The newest SisteOppdaterteAarssett across the variable's statistics rows.
     string FieldLatestYearSet,
 
@@ -1213,6 +1215,7 @@ internal sealed record Texts(
         DatasamlingCountCrumb: count => count == 1 ? "1 datasamling" : $"{count} datasamlinger",
         TabData: "Data",
         TabDetails: "Detaljer",
+        ColumnPanel: "Åpen variabel",
         FieldLatestYearSet: "Siste \u00e5rssett",
         TabSearchResults: "Søkeresultat",
         TabVariableList: "Variabelliste",
@@ -1789,6 +1792,7 @@ internal sealed record Texts(
         DatasamlingCountCrumb: count => count == 1 ? "1 data collection" : $"{count} data collections",
         TabData: "Data",
         TabDetails: "Details",
+        ColumnPanel: "Open variable",
         FieldLatestYearSet: "Latest year set",
         TabSearchResults: "Search results",
         TabVariableList: "Variable list",
