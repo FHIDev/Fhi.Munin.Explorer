@@ -130,6 +130,9 @@ else if (State?.IsAuthenticated == true)
                 </div>
             }
 
+            @* Always in the DOM once the list shows, so the sentence is announced when it arrives. *@
+            <div role="status" class="screenreader-only">@_removedSaid</div>
+
             @if (_renaming && _shownList is not null)
             {
                 <div>
@@ -374,6 +377,7 @@ else if (State?.IsAuthenticated == true)
                                         <button class="hd-button-square button-square--ghost-blue"
                                                 type="button"
                                                 id="@RemoveButtonId(item)"
+                                                @ref="_removeButtons[VariableDatasamlingKey.Of(item)]"
                                                 aria-labelledby="@RemoveLabelledBy(item)"
                                                 @onclick="() => RemoveAsync(item)">@T.RemoveFromThisList</button>
                                     </td>

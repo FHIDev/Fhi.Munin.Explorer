@@ -1346,6 +1346,25 @@ public sealed partial class VariableSearch : ComponentBase
             _ => i,
         };
 
-        _resultsTab = ResultTabs[next];
+        if (next != i)
+        {
+            _resultsTab = ResultTabs[next];
+            _focusResultTab = true;
+        }
+    }
+
+    // APG automatic activation: the key moves focus with the selection (WCAG 2.1.1, Fhi.Metadata-mhqx0.11).
+    private readonly ElementReference[] _resultTabButtons = new ElementReference[ResultTabs.Length];
+    private bool _focusResultTab;
+
+    private async Task FocusResultTabAsync()
+    {
+        if (!_focusResultTab)
+        {
+            return;
+        }
+
+        _focusResultTab = false;
+        await _resultTabButtons[Array.IndexOf(ResultTabs, _resultsTab)].FocusAsync();
     }
 }

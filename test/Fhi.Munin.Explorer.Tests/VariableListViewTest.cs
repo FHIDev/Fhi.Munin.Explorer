@@ -3739,6 +3739,21 @@ public partial class VariableListViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public async Task View_WhenFjernRemovesARow_ThenFocusIsMovedOnceAndTheRemovalIsSaid()
+    {
+        // The pressed button leaves with its row, so without a move focus falls to <body> (Fhi.Metadata-mhqx0.15).
+        // Where it lands is the browser's to show (state-assertions.mjs); here: once per removal, and said.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"), Item("Kjønn", "V_BDR.KJONN"), Item("Bosted", "V_BDR.BOSTED")));
+        int Focused() => JSInterop.Invocations.Count(i => i.Identifier.EndsWith(".focus", StringComparison.Ordinal));
+        var before = Focused();
+
+        await cut.InvokeAsync(() => cut.FindAll("tbody tr td:last-child button")[1].Click());
+
+        cut.WaitForAssertion(() => Assert.Equal(before + 1, Focused()));
+        Assert.Contains("er fjernet fra listen", cut.Find(".screenreader-only[role=status]").TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task View_WhenAnotherRowIsRemovedAfterARefusal_ThenTheRefusedTextSurvivesTheReload()
     {
         // The reader-facing path the test above cannot reach: pressing "Fjern" runs through the

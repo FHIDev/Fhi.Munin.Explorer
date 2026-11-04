@@ -474,6 +474,41 @@ public class VariableExplorerTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Tabs_WhenArrowKeysMoveTheSelection_ThenFocusFollowsItToEachTab()
+    {
+        // aria-selected moved before the fix too; the defect was focus left on the old tab (Fhi.Metadata-mhqx0.11).
+        // Each move focuses the newly selected tab: two tabs, two references, and back to the first.
+        var cut = RenderExplorer(new ExplorerClient());
+        var tablist = cut.Find("[role=tablist]");
+
+        tablist.KeyDown("ArrowRight");
+        Assert.Equal("true", Tab(cut, "Variabelliste").GetAttribute("aria-selected"));
+        cut.Find("[role=tablist]").KeyDown("ArrowLeft");
+        Assert.Equal("true", Tab(cut, "Søkeresultat").GetAttribute("aria-selected"));
+        cut.Find("[role=tablist]").KeyDown("End");
+
+        var focused = FocusedReferences();
+        Assert.Equal(3, focused.Count);
+        Assert.NotEqual(focused[0], focused[1]);
+        Assert.Equal(focused[0], focused[2]);
+    }
+
+    [Fact]
+    public void Tabs_WhenAKeyDoesNotMoveTheSelection_ThenFocusIsNotMoved()
+    {
+        var cut = RenderExplorer(new ExplorerClient());
+
+        cut.Find("[role=tablist]").KeyDown("Home");
+
+        Assert.Empty(FocusedReferences());
+    }
+
+    private List<string?> FocusedReferences() =>
+        [.. JSInterop.Invocations
+            .Where(i => i.Identifier.EndsWith(".focus", StringComparison.Ordinal))
+            .Select(i => ((Microsoft.AspNetCore.Components.ElementReference)i.Arguments[0]!).Id)];
+
+    [Fact]
     public void Tabs_WhenTwoExplorersAreOnOnePage_ThenNeitherPanelIsLabelledByTheOthersTab()
     {
         // A host may mount this twice. Ids shared between the two mounts would leave both panels

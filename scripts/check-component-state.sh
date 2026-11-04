@@ -112,6 +112,8 @@ TARGETS=(
   "/utforsker::variable-whole"
   "/utforsker::variable-datasamling"
   "/utforsker::explorer-tabs"
+  "/utforsker::explorer-list-tab"
+  "/::variable-detail"
   "/utforsker::utforsker-list"
   "/kildeutforsker::kildeutforsker-list"
 )

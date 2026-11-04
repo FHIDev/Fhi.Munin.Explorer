@@ -82,7 +82,8 @@ internal sealed class VariablePanelTabs : ComponentBase
             builder.AddAttribute(13, "aria-controls", TabPanelId);
             builder.AddAttribute(14, "tabindex", selected ? 0 : -1);
             builder.AddAttribute(15, "onclick", EventCallback.Factory.Create(this, () => SelectAsync(tab)));
-            builder.AddContent(16, TabLabel(tab));
+            builder.AddElementReferenceCapture(16, button => _tabButtons[tab] = button);
+            builder.AddContent(17, TabLabel(tab));
             builder.CloseElement();
 
             builder.CloseElement();
@@ -232,7 +233,26 @@ internal sealed class VariablePanelTabs : ComponentBase
             _ => i,
         };
 
-        return next == i ? Task.CompletedTask : SelectAsync(Tabs[next]);
+        if (next == i)
+        {
+            return Task.CompletedTask;
+        }
+
+        _focusTab = true;
+        return SelectAsync(Tabs[next]);
+    }
+
+    // APG automatic activation: the key moves focus with the selection (WCAG 2.1.1, Fhi.Metadata-mhqx0.11).
+    private readonly Dictionary<PanelTab, ElementReference> _tabButtons = [];
+    private bool _focusTab;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusTab && _tabButtons.TryGetValue(Tab, out var button))
+        {
+            _focusTab = false;
+            await button.FocusAsync();
+        }
     }
 
     // The detail carries the datatype vocabulary in both languages, so the facets are only a fallback.
