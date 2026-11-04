@@ -620,6 +620,12 @@ public sealed partial class VariableSearch : ComponentBase
     // The rows read alone. _loading also covers the facets read that follows, which is what holds every press
     // back; the line over the rows reads this one, so it reports them as soon as they land.
     private bool _rowsLoading;
+
+    // Set once a rows read has run SlowRowsLoad: a fast answer then reaches the live region as one change, which NVDA
+    // reads, where «Henter …» and the count 200 ms apart lost the count (Fhi.Metadata-mhqx0.18).
+    private bool _announceLoading;
+    private CancellationTokenSource? _slowRowsLoad;
+    private static readonly TimeSpan SlowRowsLoad = TimeSpan.FromMilliseconds(500);
     private string? _error;
     private Page<VariableSummary>? _result;
 
@@ -1051,6 +1057,14 @@ public sealed partial class VariableSearch : ComponentBase
         {
             HeaderCell(builder, 900, "save", T.ColumnActions, null);
         }
+
+        // The open row's panel is the row's last cell, so it needs a column too, or NVDA reads «kolonne 7» and no name.
+        // Spoken only: Stiler's own screenreader-only, the rule helsedata already ships (Fhi.Metadata-mhqx0.19).
+        builder.OpenElement(950, "div");
+        builder.AddAttribute(951, "class", "screenreader-only");
+        builder.AddAttribute(952, "role", "columnheader");
+        builder.AddContent(953, T.TabDetails);
+        builder.CloseElement();
 
         builder.CloseElement();
         builder.CloseElement();

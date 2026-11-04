@@ -296,9 +296,9 @@ public class RunaRowGesturesTest : ExplorerTestContext
 
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem__expand-cell"));
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem__expand-toggle"));
-        Assert.DoesNotContain(
-            cut.FindAll(".munin-explorer-dataitem-header [role=columnheader]"),
-            h => h.ClassList.Contains("screenreader-only"));
+        // No chevron column's header any more; the one spoken-only header is the open panel's, last (Fhi.Metadata-mhqx0.19).
+        var headers = cut.FindAll(".munin-explorer-dataitem-header [role=columnheader]");
+        Assert.Equal(headers[^1], Assert.Single(headers, h => h.ClassList.Contains("screenreader-only")));
 
         Press(Names(cut)[0]);
 
@@ -416,5 +416,21 @@ public class RunaRowGesturesTest : ExplorerTestContext
         ],
             rules);
         Assert.DoesNotContain(rules, rule => rule.Contains("outline", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OpenRow_WhateverTheSignIn_ThenItHasOneCellPerColumnHeaderAndThePanelIsTheLast(bool signedIn)
+    {
+        // NVDA read «Abort utført, kolonne 7» entering the panel: seven cells under six headers (Fhi.Metadata-mhqx0.19).
+        var cut = Render(signedIn: signedIn);
+        Press(Names(cut)[0]);
+
+        var headers = cut.FindAll(".munin-explorer-dataitem-header [role=columnheader]");
+        var cells = Rows(cut)[0].QuerySelectorAll("[role=cell], [role=rowheader]");
+        Assert.Equal(headers.Count, cells.Length);
+        Assert.NotNull(cells[^1].QuerySelector("[role=region]"));
+        Assert.Equal("Detaljer", headers[^1].TextContent.Trim());
     }
 }

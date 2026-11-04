@@ -587,6 +587,7 @@ public partial class VariableSearch
         var pinAtFetch = _pinnedRow;
         _loading = true;
         _rowsLoading = true;
+        var slow = StartSlowRowsLoad();
         _requestedSearch = DisplayText.Trimmed(search);
         _error = null;
         _retryRowsEnabled = false;
@@ -671,7 +672,45 @@ public partial class VariableSearch
         {
             _loading = false;
             _rowsLoading = false;
+            slow.Cancel();
+            if (ReferenceEquals(_slowRowsLoad, slow))
+            {
+                _slowRowsLoad = null;
+                _announceLoading = false;
+            }
+            slow.Dispose();
         }
+    }
+
+    private CancellationTokenSource StartSlowRowsLoad()
+    {
+        _slowRowsLoad?.Cancel();
+        _announceLoading = false;
+        var slow = _slowRowsLoad = new CancellationTokenSource();
+        _ = AnnounceSlowRowsLoadAsync(slow.Token);
+        return slow;
+    }
+
+    private async Task AnnounceSlowRowsLoadAsync(CancellationToken token)
+    {
+        // Off the renderer's context: a cancelled wait (every fast read) must not post anything back to it.
+        try
+        {
+            await Task.Delay(SlowRowsLoad, Clock, token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        await InvokeAsync(() =>
+        {
+            if (!_disposed && _rowsLoading && !token.IsCancellationRequested)
+            {
+                _announceLoading = true;
+                StateHasChanged();
+            }
+        });
     }
 
     /// <summary>The row request that failed, so the retry button can send that one again.</summary>

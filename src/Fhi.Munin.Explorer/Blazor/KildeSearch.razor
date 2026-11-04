@@ -91,7 +91,7 @@
         @if (_selectedDatasamlingId is not null && KildeHref is { } kildeHref)
         {
             <a class="hd-button-square button-square--ghost-blue margin-bottom munin-explorer-kilder__back"
-               href="@kildeHref">@T.BackToKilde</a>
+               href="@kildeHref"><span aria-hidden="true">← </span>@T.BackToKilde</a>
         }
         else
         {
@@ -99,7 +99,7 @@
                way back. A host showing both can hide this by its class (Fhi.Metadata-e4afs). *@
             <button class="hd-button-square button-square--ghost-blue margin-bottom munin-explorer-kilder__back"
                     type="button"
-                    @onclick="CloseAsync">@T.BackToKilder</button>
+                    @onclick="CloseAsync"><span aria-hidden="true">← </span>@T.BackToKilder</button>
         }
 
         @* The trail ahead of the kilde, from the list's name for it: a host that hides the back

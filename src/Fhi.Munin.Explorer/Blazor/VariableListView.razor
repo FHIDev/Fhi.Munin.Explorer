@@ -247,7 +247,7 @@ else if (State?.IsAuthenticated == true)
                      aria-busy="@Expanded(_sourceLoading)">
                     <button class="hd-button-square button-square--ghost-blue margin-right margin-bottom"
                             type="button"
-                            @onclick="CloseSource">@T.BackToVariables</button>
+                            @onclick="CloseSource"><span aria-hidden="true">← </span>@T.BackToVariables</button>
 
                     @if (_kilde is null && _datasamling is null)
                     {

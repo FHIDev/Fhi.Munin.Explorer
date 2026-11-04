@@ -1348,8 +1348,10 @@ public class VariableSearchTest : ExplorerTestContext
         // One header row of column headers, and one data row per result.
         Assert.Equal("row", cut.Find(".munin-explorer-dataitem-header").GetAttribute("role"));
         // Navn and the five optional columns that start on — Kode and Status start off. No
-        // chevron column: the chevron is inside the name button (Fhi.Metadata-35w0p.78).
-        Assert.Equal(6, cut.FindAll("[role='columnheader']").Count);
+        // chevron column: the chevron is inside the name button (Fhi.Metadata-35w0p.78). Then the
+        // open panel's own column, spoken only, so NVDA names it (Fhi.Metadata-mhqx0.19).
+        Assert.Equal(7, cut.FindAll("[role='columnheader']").Count);
+        Assert.Equal("Detaljer", cut.FindAll("[role='columnheader']")[^1].TextContent.Trim());
 
         var row = cut.Find("li.munin-explorer-data-list__item");
 
@@ -2561,7 +2563,44 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(new SlowClient());
 
         Assert.False(cut.Find("button[type=submit]").HasAttribute("disabled"));
-        Assert.Contains("Henter variabler", cut.Find("p[role='status']").TextContent);
+    }
+
+    [Fact]
+    public async Task Search_WhenTheAnswerIsFast_ThenTheStatusSaysNothingUntilTheCountWhichIsOneChange()
+    {
+        // NVDA dropped the count when «Henter variabler …» came 200 ms before it (Fhi.Metadata-mhqx0.18).
+        var clock = new ManualClock();
+        Services.AddSingleton<TimeProvider>(clock);
+        var client = new SlowClient();
+        var cut = RenderWith(client);
+
+        clock.Advance(TimeSpan.FromMilliseconds(400));
+        Assert.Equal("", cut.Find("p[role='status']").TextContent.Trim());
+
+        await cut.InvokeAsync(() => client.Answer(OnePage(Variable("1. Tale", "KODE"))));
+        cut.WaitForAssertion(() => Assert.Contains("1 variabel funnet", cut.Find("p[role='status']").TextContent));
+        clock.Advance(TimeSpan.FromSeconds(1));
+        Assert.DoesNotContain("Henter variabler", cut.Find("p[role='status']").TextContent);
+    }
+
+    [Fact]
+    public async Task Search_WhenTheAnswerIsSlow_ThenTheStatusSaysItIsLoadingAndThenTheCount()
+    {
+        var clock = new ManualClock();
+        Services.AddSingleton<TimeProvider>(clock);
+        var client = new SlowClient();
+        var cut = RenderWith(client);
+
+        clock.Advance(TimeSpan.FromMilliseconds(500));
+        cut.WaitForAssertion(() => Assert.Contains("Henter variabler", cut.Find("p[role='status']").TextContent));
+
+        await cut.InvokeAsync(() => client.Answer(OnePage(Variable("1. Tale", "KODE"))));
+        cut.WaitForAssertion(() =>
+        {
+            var status = cut.Find("p[role='status']").TextContent;
+            Assert.Contains("1 variabel funnet", status);
+            Assert.DoesNotContain("Henter variabler", status);
+        });
     }
 
     [Fact]
