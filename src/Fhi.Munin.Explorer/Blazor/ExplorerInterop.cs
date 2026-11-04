@@ -298,6 +298,24 @@ internal sealed class ExplorerInterop : IAsyncDisposable
         }
     }
 
+    /// <summary>The page's title for an item view; null gives the host page its own title back.</summary>
+    internal async Task SetTitleAsync(string? text)
+    {
+        if (_module is not { } module)
+        {
+            return;
+        }
+
+        try
+        {
+            await Tolerated(() => module.InvokeVoidAsync("setTitle", text)).ConfigureAwait(false);
+        }
+        catch (JSException)
+        {
+            // The title stays as it was; nothing else depends on it.
+        }
+    }
+
     /// <summary>Keeps <paramref name="value"/> under <paramref name="key"/> in this browser; null forgets it.</summary>
     internal async Task WritePreferenceAsync(string key, string? value)
     {

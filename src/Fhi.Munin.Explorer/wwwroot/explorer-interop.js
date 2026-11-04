@@ -739,6 +739,16 @@ function closeSheetFrom(target, toggle) {
 
 // A reader's own setting, kept in this browser only (Fhi.Metadata-amp8c). Storage can be off, full or
 // private, so a failure reads as "no setting" and a write that fails is dropped.
+// The host page's own title, kept from the first time a view names itself, so the list view gets it back.
+let hostTitle = null;
+
+export function setTitle(text) {
+  if (hostTitle === null) {
+    hostTitle = document.title;
+  }
+  document.title = text ?? hostTitle;
+}
+
 export function readPreference(key) {
   try {
     return localStorage.getItem(key);

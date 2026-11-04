@@ -1552,6 +1552,14 @@ Four things are worth knowing before mounting one.
   ships no default and translates nothing: pass the text in the page's own language, and change it
   without waiting for a release. Leave it null or blank and no element is drawn at all, because
   Stiler gives the lede a grid row of its own only when the element is there.
+- **Each item view can name itself in the page title, if you give the pattern.** `TitleTemplate` —
+  declared on the same four components — is a string with `{0}` where the item's name goes, e.g.
+  `"{0} – Kildeutforsker – helsedata.no"`. On an open kilde, datasamling or whole variable the
+  component sets `document.title` to it, also when the reader moves to another item in the same tab;
+  back on the list the page's own title returns. Leave it null and the title is never touched; a
+  template without `{0}`, or an item with no name, gives the page's own title rather than a half one
+  (WCAG 2.4.2). A string rather than a callback: an `EventCallback` from a statically rendered host
+  page arrives empty (see `KildeExplorer`).
 
 Owning the address bar — or the page furniture — yourself is still supported: `VariableSearch`,
 `VariableListView`, `VariableListFilters` and `KildeSearch` stay public underneath, so a host that

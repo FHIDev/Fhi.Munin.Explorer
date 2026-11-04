@@ -438,6 +438,14 @@ public partial class VariableSearch
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         await MoveFocusAsync();
+        if (!_disposed && _title.Wanted(TitleTemplate) && ServiceProvider.GetService<IJSRuntime>() is { } titleJs)
+        {
+            var titled = _interop ??= new ExplorerInterop(titleJs);
+            if (await titled.TryLoadAsync())
+            {
+                await _title.ApplyAsync(titled, TitleTemplate, TitleName);
+            }
+        }
         await ApplyQueuedFilterAsync();
         if (_focusSaveAll)
         {
