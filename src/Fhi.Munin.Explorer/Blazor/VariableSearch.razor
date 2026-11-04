@@ -656,11 +656,10 @@ else
        Above `munin-explorer-results` rather than inside it, which is where the kildeutforsker emits
        the same name and what Stiler's rule for the picker inside it is written against.
 
-       One message at a time: loading, the summary, or "no matches". Loading is announced once the read
-       has taken half a second, which is the price of telling a screen-reader user that pressing Søk did
-       anything at all when the API is slow; a faster answer is announced on its own (Fhi.Metadata-mhqx0.18).
-       aria-atomic makes the whole new sentence read rather than only the words that changed — "12" on
-       its own is not information.
+       One message at a time: loading, the summary, or "no matches". Loading is announced after 500 ms, which
+       is the price of telling a screen-reader user that pressing Søk did anything at all when the
+       API is slow (Fhi.Metadata-mhqx0.18). aria-atomic makes the whole new sentence read rather than only the words that
+       changed — "12" on its own is not information.
 
        `caption` is Stiler's muted secondary-text style. It carries the empty state as well: a
        full-page emptystate block would be out of proportion inside a component that is one section
