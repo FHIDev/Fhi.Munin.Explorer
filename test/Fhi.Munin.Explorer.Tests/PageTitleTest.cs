@@ -36,6 +36,39 @@ public class PageTitleTest : ExplorerTestContext
     }
 
     [Fact]
+    public async Task ApplyAsync_InAFreshKeeperOnTheList_GivesTheHostItsTitleBackOnce()
+    {
+        // Back remounts the search on the list with a fresh keeper, after the old one set an item's title.
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        module.SetupVoid("setTitle", _ => true).SetVoidResult();
+        var interop = new ExplorerInterop(JSInterop.JSRuntime);
+        Assert.True(await interop.TryLoadAsync());
+        var remounted = new TitleKeeper();
+
+        Assert.True(remounted.Wanted("{0} – Kildeutforsker"));
+        await remounted.ApplyAsync(interop, "{0} – Kildeutforsker", null);
+        await remounted.ApplyAsync(interop, "{0} – Kildeutforsker", null);
+
+        Assert.Equal([null], module.Invocations["setTitle"].Select(call => call.Arguments[0] as string));
+    }
+
+    [Fact]
+    public async Task ApplyAsync_WhileTheNextItemLoads_LeavesTheTitleAsItIs()
+    {
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        module.SetupVoid("setTitle", _ => true).SetVoidResult();
+        var interop = new ExplorerInterop(JSInterop.JSRuntime);
+        Assert.True(await interop.TryLoadAsync());
+        var title = new TitleKeeper();
+
+        await title.ApplyAsync(interop, "{0} – Kildeutforsker", "NPR");
+        await title.ApplyAsync(interop, "{0} – Kildeutforsker", null, loading: true);
+        await title.ApplyAsync(interop, "{0} – Kildeutforsker", "ALS");
+
+        Assert.Equal(["NPR – Kildeutforsker", "ALS – Kildeutforsker"], module.Invocations["setTitle"].Select(call => call.Arguments[0] as string));
+    }
+
+    [Fact]
     public async Task ApplyAsync_WithoutATemplate_NeverTouchesTheTitle()
     {
         var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
