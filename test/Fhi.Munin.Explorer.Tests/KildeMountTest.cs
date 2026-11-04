@@ -165,6 +165,20 @@ public class KildeMountTest : ExplorerTestContext
     }
 
     [Fact]
+    public void KildeSearch_WhenMountedAloneAndAKildeIsOpenedFromTheList_ThenThePageTitleNamesIt()
+    {
+        // Copilot on #717: alone, the component moves its own selection; SelectedKildeId is only a seed.
+        var module = JSInterop.SetupModule(Fhi.Munin.Explorer.Blazor.ExplorerInterop.ModulePath);
+        module.SetupVoid("setTitle", _ => true).SetVoidResult();
+        var cut = MountByName("KildeSearch", "http://localhost/kilder", titleTemplate: "{0} – Kildeutforsker");
+
+        cut.WaitForElement(".munin-explorer-kilder tbody th button");
+        OpenTheKilde(cut);
+
+        cut.WaitForAssertion(() => Assert.Contains(module.Invocations["setTitle"], call => Equals(call.Arguments[0], "Als registeret – Kildeutforsker")));
+    }
+
+    [Fact]
     public void KildeExplorer_WhenNoTitleTemplateIsGiven_ThenThePageTitleIsLeftToTheHost()
     {
         var module = JSInterop.SetupModule(Fhi.Munin.Explorer.Blazor.ExplorerInterop.ModulePath);

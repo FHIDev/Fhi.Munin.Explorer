@@ -106,7 +106,7 @@ public sealed partial class KildeSearch : IAsyncDisposable
             var titled = _interop ??= new ExplorerInterop(titleJs);
             if (await titled.TryLoadAsync())
             {
-                await _title.ApplyAsync(titled, TitleTemplate, TitleName, SelectedKildeId is { } open && _kilde?.Id != open);
+                await _title.ApplyAsync(titled, TitleTemplate, TitleName, _detailLoading);
             }
         }
 

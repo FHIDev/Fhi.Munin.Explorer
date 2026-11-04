@@ -148,10 +148,11 @@ public sealed partial class KildeSearch : ComponentBase
 
     private readonly TitleKeeper _title = new();
 
-    // The open datasamling's name, else the open kilde's; none on the list.
+    // The open datasamling's name, else the open kilde's; none on the list. The component's own selection, which a
+    // standalone mount moves without its parameters (they are seeds).
     private string? TitleName =>
-        SelectedDatasamlingId is { } d && _datasamling?.Id == d ? T.NamedFor(_datasamling.PreferredTerm, _datasamling.PreferredTermEn, _datasamling.Code, Reader).Text
-        : SelectedKildeId is { } k && _kilde?.Id == k ? T.NamedFor(_kilde.PreferredTerm, _kilde.PreferredTermEn, _kilde.Code, Reader).Text
+        _selectedDatasamlingId is { } d && _datasamling?.Id == d ? T.NamedFor(_datasamling.PreferredTerm, _datasamling.PreferredTermEn, _datasamling.Code, Reader).Text
+        : _selectedId is { } k && _kilde?.Id == k ? T.NamedFor(_kilde.PreferredTerm, _kilde.PreferredTermEn, _kilde.Code, Reader).Text
         : null;
 
     /// <summary>
