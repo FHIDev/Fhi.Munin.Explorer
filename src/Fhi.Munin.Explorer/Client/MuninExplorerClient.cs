@@ -203,12 +203,61 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         // text — a reference carrying a slash would otherwise be read as two path segments and
         // answer 404 for a link the catalogue does publish. Escaping is not enough on its own for
         // a dot segment, which no escaping survives; see EscapePathSegment.
-        var url = $"api/explorer/variables/{variableId}"
-                  + $"/kodeverk/{EscapePathSegment(kodeverkType, nameof(kodeverkType))}"
-                  + $"/{EscapePathSegment(kodeverkReference, nameof(kodeverkReference))}/codes";
-
-        return GetOrNullAsync<KodeverkCodes>(url, cancellationToken);
+        return GetOrNullAsync<KodeverkCodes>(CodesRoute(variableId, kodeverkType, kodeverkReference), cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public Task<KodeverkCodePage?> SearchKodeverkCodesAsync(
+        Guid variableId,
+        string kodeverkType,
+        string kodeverkReference,
+        string query,
+        int skip = 0,
+        int take = 50,
+        CancellationToken cancellationToken = default) =>
+        GetOrNullAsync<KodeverkCodePage>(
+            $"{CodesRoute(variableId, kodeverkType, kodeverkReference)}/search?q={Uri.EscapeDataString(query ?? "")}&skip={skip}&take={take}",
+            cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<KodeverkCodePage?> GetKodeverkCodeChildrenAsync(
+        Guid variableId,
+        string kodeverkType,
+        string kodeverkReference,
+        string? node,
+        int skip = 0,
+        int take = 50,
+        CancellationToken cancellationToken = default)
+    {
+        var at = string.IsNullOrEmpty(node) ? "" : $"node={Uri.EscapeDataString(node)}&";
+        return GetOrNullAsync<KodeverkCodePage>(
+            $"{CodesRoute(variableId, kodeverkType, kodeverkReference)}/children?{at}skip={skip}&take={take}",
+            cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<int?> CountKodeverkCodesAsync(
+        Guid variableId,
+        DesiredCodeChoice choice,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(choice);
+        var which = choice.Kind switch
+        {
+            DesiredCodeKinds.Node => $"node={Uri.EscapeDataString(choice.Code)}",
+            DesiredCodeKinds.Range => $"fra={Uri.EscapeDataString(choice.Code)}&til={Uri.EscapeDataString(choice.To ?? "")}",
+            _ => $"kode={Uri.EscapeDataString(choice.Code)}",
+        };
+        var count = await GetOrNullAsync<KodeverkCodeCount>(
+            $"{CodesRoute(variableId, choice.KodeverkType, choice.KodeverkReference)}/count?{which}",
+            cancellationToken);
+        return count?.Count;
+    }
+
+    private static string CodesRoute(Guid variableId, string kodeverkType, string kodeverkReference) =>
+        $"api/explorer/variables/{variableId}"
+        + $"/kodeverk/{EscapePathSegment(kodeverkType, nameof(kodeverkType))}"
+        + $"/{EscapePathSegment(kodeverkReference, nameof(kodeverkReference))}/codes";
 
     // ------------------------------------------------------------------ the user's own variable lists
 
@@ -343,21 +392,32 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         CancellationToken cancellationToken = default) =>
         WriteDesiredDataAsync($"{MyList(id)}/items/{itemId}/desired-data", freeText, cancellationToken);
 
+    /// <inheritdoc/>
+    public Task<DesiredDataResult> SetMyListItemDesiredCodesAsync(
+        Guid id,
+        Guid itemId,
+        string? freeText,
+        IReadOnlyList<DesiredCodeChoice> choices,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(choices);
+        return WriteDesiredDataAsync($"{MyList(id)}/items/{itemId}/desired-data", freeText, cancellationToken, choices);
+    }
+
     private async Task<DesiredDataResult> WriteDesiredDataAsync(
         string route,
         string? freeText,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlyList<DesiredCodeChoice>? choices = null)
     {
         // Trimmed here because the API trims before it measures, so a caller told "612 of 500" got
         // the number the API used rather than one counting whitespace it was about to drop.
         var text = freeText?.Trim();
         var clearing = string.IsNullOrEmpty(text);
 
-        // Both null when clearing: there is no annotation left for a type to describe, and the API
-        // reads an absent type and a blank text as the same request. Sending the type when there IS
-        // text is what pins the shape being written, the day the API stores a second one. Null
-        // rather than the empty string the trim produced, so "", "   " and null are one request.
-        var body = new DesiredDataBody(clearing ? null : FreeTextType, clearing ? null : text);
+        // Type and text both null when clearing, so "", "   " and null are one request; the type goes with any text or
+        // choice, pinning the shape written. Null choices (a text-only write) leave the stored ones as they are.
+        var body = new DesiredDataBody(clearing && choices is not { Count: > 0 } ? null : FreeTextType, clearing ? null : text, choices);
 
         using var response = await SendAsync(HttpMethod.Put, route, body, cancellationToken);
 
@@ -374,7 +434,14 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
             // no number is written down here to drift from the API's.
             var refusal = await ReadRefusalAsync(response, cancellationToken);
 
-            return new DesiredDataResult(DesiredDataOutcome.Refused, refusal?.MaxLength, refusal?.Received);
+            return new DesiredDataResult(
+                DesiredDataOutcome.Refused, refusal?.MaxLength, refusal?.Received, refusal?.MaxSelections, refusal?.Index);
+        }
+
+        // 503 with codes: the code list could not be read to check them, so nothing was stored.
+        if (response.StatusCode == HttpStatusCode.ServiceUnavailable && choices is not null)
+        {
+            return new DesiredDataResult(DesiredDataOutcome.ListUnavailable);
         }
 
         // Same as the writes above: this endpoint is authenticated, so a 401/403 is thrown as its
@@ -497,7 +564,9 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     /// </remarks>
     private sealed record DesiredDataBody(
         [property: JsonPropertyName("type")] string? Type,
-        [property: JsonPropertyName("freeText")] string? FreeText);
+        [property: JsonPropertyName("freeText")] string? FreeText,
+        [property: JsonPropertyName("selections"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        IReadOnlyList<DesiredCodeChoice>? Selections = null);
 
     /// <summary>The notes body; a null text is what the API reads as a clear.</summary>
     private sealed record NotesBody([property: JsonPropertyName("text")] string? Text);
@@ -517,7 +586,9 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     /// </remarks>
     private sealed record DesiredDataRefusal(
         [property: JsonPropertyName("maxLength")] int? MaxLength,
-        [property: JsonPropertyName("received")] int? Received);
+        [property: JsonPropertyName("received")] int? Received,
+        [property: JsonPropertyName("maxSelections")] int? MaxSelections = null,
+        [property: JsonPropertyName("index")] int? Index = null);
 
     /// <summary>Unpacks a refusal, answering null when the body is not one.</summary>
     /// <remarks>

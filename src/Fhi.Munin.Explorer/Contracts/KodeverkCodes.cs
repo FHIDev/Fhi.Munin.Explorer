@@ -43,3 +43,45 @@ public sealed record KodeverkCode
     /// <summary>When it stopped applying; null while it still does.</summary>
     [JsonPropertyName("gyldigTil")] public DateTimeOffset? ValidTo { get; init; }
 }
+
+/// <summary>
+/// One page of a variable's code list from the search or the tree:
+/// <c>GET …/codes/search?q=</c> and <c>GET …/codes/children?node=</c>.
+/// </summary>
+public sealed record KodeverkCodePage
+{
+    [JsonPropertyName("kodeverkType")] public string KodeverkType { get; init; } = "";
+
+    [JsonPropertyName("kodeverkReference")] public string KodeverkReference { get; init; } = "";
+
+    /// <summary>How many codes match in all, across every page.</summary>
+    [JsonPropertyName("totalt")] public int Total { get; init; }
+
+    [JsonPropertyName("skip")] public int Skip { get; init; }
+
+    [JsonPropertyName("take")] public int Take { get; init; }
+
+    [JsonPropertyName("koder")] public IReadOnlyList<KodeverkCodeHit> Codes { get; init; } = [];
+}
+
+/// <summary>A code in a search or tree page, with whether codes sit under it.</summary>
+public sealed record KodeverkCodeHit
+{
+    [JsonPropertyName("verdi")] public string Value { get; init; } = "";
+
+    [JsonPropertyName("navn")] public string Name { get; init; } = "";
+
+    [JsonPropertyName("gyldigFra")] public DateTimeOffset? ValidFrom { get; init; }
+
+    /// <summary>When it stopped applying; null while it still does. A code with an end date can still be chosen.</summary>
+    [JsonPropertyName("gyldigTil")] public DateTimeOffset? ValidTo { get; init; }
+
+    /// <summary>True when the code is a node in the tree: «med alt under» and the children call apply to it.</summary>
+    [JsonPropertyName("harUnderkoder")] public bool HasChildren { get; init; }
+}
+
+/// <summary>The answer of <c>GET …/codes/count</c>: how many codes one choice covers.</summary>
+public sealed record KodeverkCodeCount
+{
+    [JsonPropertyName("antall")] public int Count { get; init; }
+}

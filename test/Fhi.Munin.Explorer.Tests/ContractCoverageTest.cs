@@ -350,6 +350,31 @@ public class ContractCoverageTest
         Covers<Page<VariableListItem>>("my-list-variables.json");
 
     [Fact]
+    public void KodeverkCodePage_WhenReadFromTheDocumentedResponse_ThenEveryFieldIsCovered()
+    {
+        // Inline: the API's ExplorerKodeverkCodePageDto and ExplorerKodeverkCodeCountDto (Munin #7095).
+        Assert.NotNull(JsonSerializer.Deserialize<KodeverkCodePage>(
+            """
+            {"kodeverkType":"HelsefagligKodeverk","kodeverkReference":"ICD-10","totalt":1,"skip":0,"take":50,
+             "koder":[{"verdi":"C34","navn":"Lunge","gyldigFra":null,"gyldigTil":null,"harUnderkoder":true}]}
+            """, Strict));
+        Assert.Equal(3, JsonSerializer.Deserialize<KodeverkCodeCount>("""{"antall":3}""", Strict)!.Count);
+    }
+
+    [Fact]
+    public void DesiredDataCodes_WhenReadFromTheDocumentedResponse_ThenEveryFieldIsCovered()
+    {
+        // Inline: the API's DesiredCodeView on a list item (Munin #7097).
+        var item = JsonSerializer.Deserialize<VariableListItem>(
+            """
+            {"variabelId":"bc8a6515-af36-44d0-aa10-b498813327b4","desiredDataCodes":[
+              {"kodeverkType":"HelsefagligKodeverk","kodeverkReference":"ICD-10","kind":"range","kode":"C30","til":"C39",
+               "navn":"Nese","tilNavn":"Annet","utgatt":true,"antall":40}]}
+            """, Strict);
+        Assert.True(Assert.Single(item!.DesiredDataCodes).Expired);
+    }
+
+    [Fact]
     public void KodeverkCodes_WhenReadFromARealResponse_ThenEveryFieldIsCovered() =>
         // The endpoint answers with an envelope, not with the bare array of codes it is easy to
         // assume from reading one — kodeverkType and kodeverkReference come back alongside them.

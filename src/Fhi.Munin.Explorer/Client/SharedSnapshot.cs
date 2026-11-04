@@ -67,7 +67,48 @@ internal static class SharedSnapshot
         DataTo = Date(element, "dataTo"),
         VersionStatus = Text(element, "versjonStatus"),
         DatasamlingId = Id(element, "datasamlingId"),
+        DesiredDataCodes = Codes(element),
     };
+
+    // A client-built share keeps whatever codes the client posted, unchecked (Fhi.Metadata-emsc0.3.7): read as text,
+    // capped at the API's 200 choices, and a choice without a code is dropped rather than shown blank.
+    private static IReadOnlyList<DesiredCodeView> Codes(JsonElement element)
+    {
+        if (!element.TryGetProperty("desiredDataCodes", out var array) || array.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        var codes = new List<DesiredCodeView>();
+        foreach (var code in array.EnumerateArray())
+        {
+            if (codes.Count == MaxCodes)
+            {
+                break;
+            }
+
+            if (code.ValueKind == JsonValueKind.Object && Text(code, "kode") is { Length: > 0 } value)
+            {
+                codes.Add(new DesiredCodeView
+                {
+                    KodeverkType = Text(code, "kodeverkType") ?? "",
+                    KodeverkReference = Text(code, "kodeverkReference") ?? "",
+                    Kind = Text(code, "kind") ?? "",
+                    Code = value,
+                    To = Text(code, "til"),
+                    Name = Text(code, "navn"),
+                    ToName = Text(code, "tilNavn"),
+                    Expired = code.TryGetProperty("utgatt", out var expired) && expired.ValueKind == JsonValueKind.True,
+                    Count = code.TryGetProperty("antall", out var count) && count.ValueKind == JsonValueKind.Number
+                        && count.TryGetInt32(out var n) && n >= 0 ? n : null,
+                });
+            }
+        }
+
+        return codes;
+    }
+
+    private const int MaxCodes = 200;
 
     // A number is kept as written: Runa's dataType is a string today, and a code sent bare is
     // still the same code.
