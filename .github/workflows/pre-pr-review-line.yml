@@ -1,6 +1,7 @@
 # Shows red when a session's PR lacks its "Pre-PR review:" line (DevInfra-9w1.40). The line and its four forms are
 # in the pull request template. Applies only to PRs whose description has one of the sessions' footer lines; any other PR passes untouched.
-# It proves the line is there, not that the review ran. Not a required check: making it one is a ruleset change.
+# It proves the line is there, not that the review ran; its last step checks that the last registered review round
+# covers the head. Not a required check: making it one is a ruleset change.
 name: Pre-PR review line
 
 on:
@@ -10,8 +11,10 @@ on:
     types: [opened, edited, reopened, synchronize, labeled, unlabeled]
 
 # actions/pull-requests read: the Risk line is compared with the risk: label once the labeller's run is done.
+# contents read: the last step reads commits and compares them with the head.
 permissions:
   actions: read
+  contents: read
   pull-requests: read
 
 concurrency:
@@ -22,7 +25,7 @@ jobs:
   line:
     name: Pre-PR review line
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 8
     steps:
       - name: The description says what the pre-PR review found
         env:
@@ -85,7 +88,7 @@ jobs:
               exit 1
             fi
           elif [[ ! $lines =~ $other ]]; then
-            echo "::error::'$lines' is not one of the four forms: 'ran, no findings' | 'ran, N findings, fixed' | 'ran, N findings, X fixed, Y left: why' | 'skipped, reason'."
+            echo "::error::The Pre-PR review line is not one of the four forms: 'ran, no findings' | 'ran, N findings, fixed' | 'ran, N findings, X fixed, Y left: why' | 'skipped, reason'."
             exit 1
           fi
           if [ -n "$found" ]; then
@@ -100,10 +103,10 @@ jobs:
             fi
           fi
           if [[ $lines =~ \<(N|X|Y|why|reason)\> ]]; then
-            echo "::error::The line still holds a placeholder from the template: '$lines'."
+            echo "::error::The Pre-PR review line still holds a placeholder from the template."
             exit 1
           fi
-          echo "$lines"
+          echo "Pre-PR review line: present, in one of the four forms."
 
           # Testing, Risk and How to revert (DevInfra-0f5.2): one line each, filled in, the Risk tier as the label says.
           if [[ "$CREATED" < "$NEW_LINES_FROM" ]]; then
@@ -125,15 +128,15 @@ jobs:
             value=$(printf '%s' "${got#"${key}:"}" | sed -E 's/^[[:space:]]+//')
             placeholder='^<.*>$|<why>|<low\|medium\|high>|<what ran|<revert this PR'
             if [ "${#value}" -lt 3 ] || [[ $value =~ $placeholder ]]; then
-              echo "::error::'${got}' is not filled in."
+              echo "::error::The '${key}:' line is not filled in."
               exit 1
             fi
-            echo "$got"
+            echo "${key}: present."
           done
           risk=$(printf '%s\n' "$body" | grep -E '^Risk:')
           tiered='^Risk: (low|medium|high) (–|—|-) .+$'
           if [[ ! $risk =~ $tiered ]]; then
-            echo "::error::'$risk' does not start with a tier: 'Risk: low|medium|high – why'."
+            echo "::error::The Risk line does not start with a tier: 'Risk: low|medium|high – why'."
             exit 1
           fi
           tier=${BASH_REMATCH[1]}
@@ -165,3 +168,250 @@ jobs:
             echo "::error::The Risk line says $tier, the label says ${label#risk:}. The label comes from the changed paths (docs/review-risk-tiers.md in Fhi.Munin.DevInfra); write its tier and why."
             exit 1
           fi
+      - name: The last review round read the head, or only docs and declared nits came after it
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          CREATED: ${{ github.event.pull_request.created_at }}
+          # Required of pull requests opened from this moment, so none already open turns red (DevInfra-0f5.8).
+          HEAD_ROUNDS_FROM: "2026-11-10T00:00:00Z"
+        run: |
+          set -o pipefail
+          body=$(printf '%s' "$BODY" | tr -d '\r' | sed -E 's/[[:space:]]+$//')
+          if ! grep -Eq '^🤖 Generated with (AI|\[Claude Code\]\(https://claude\.com/claude-code\))$' <<< "$body"; then
+            echo "Not a session's PR: nothing to check."; exit 0
+          fi
+          if grep -Eq '^Pre-PR review: skipped, ' <<< "$body"; then
+            echo "The review was skipped: no round to compare."; exit 0
+          fi
+          if [[ "$CREATED" < "$HEAD_ROUNDS_FROM" ]]; then
+            echo "Opened before $HEAD_ROUNDS_FROM: the rounds need no head."; exit 0
+          fi
+          # gh api with the HTTP status kept apart: 404 and 422 mean GitHub does not know the commit or cannot
+          # compare it, anything else is a read that failed and says so.
+          api() {
+            local out err
+            err=$(mktemp)
+            if out=$(gh api "$@" 2>"$err"); then rm -f "$err"; printf '%s' "$out"; return 0; fi
+            if grep -Eq 'HTTP (404|422)' "$err"; then rm -f "$err"; return 4; fi
+            echo "::error::Reading GitHub failed ($1): $(head -c 300 "$err" | tr '\n' ' '). Re-run this check." >&2
+            rm -f "$err"; return 1
+          }
+          must() { local rc=0 out; out=$("$@") || rc=$?; [ "$rc" -eq 0 ] && { printf '%s' "$out"; return 0; }
+            [ "$rc" -eq 4 ] && echo "::error::GitHub does not know or cannot compare a commit this check needs ($2). Re-run this check; if it stays red, run a round over the head." >&2
+            return 1; }
+          # The same line deploydash reads: the first whose start, after spaces, is the comment; JSON up to '-->'.
+          line=$(sed -nE 's/^[[:space:]]*<!--[[:space:]]*review-registration[[:space:]]+//p' <<< "$body")
+          line=${line%%$'\n'*}
+          if [ -z "$line" ]; then
+            hint=''
+            if grep -q 'review-registration' <<< "$body"; then hint=" The text is there, but not at the start of a line: no list or quote marker in front of it."; fi
+            echo "::error::The description has no '<!-- review-registration {…} -->' line. Add it under the review line, with a \"head\" in each round (the munin-lane skill).$hint"
+            exit 1
+          fi
+          if [[ $line != *'-->'* ]]; then
+            echo "::error::The review-registration comment is not closed with '-->' on the same line."
+            exit 1
+          fi
+          reg=${line%%-->*}
+          if ! jq -es 'length == 1' <<< "$reg" >/dev/null 2>&1; then
+            echo "::error::The review-registration block does not parse as one JSON value."
+            exit 1
+          fi
+          if ! head=$(jq -er '.rounds[-1].head | strings' <<< "$reg" 2>/dev/null); then
+            echo "::error::The last round in the review-registration block has no \"head\": the commit it read, as git rev-parse HEAD gives it."
+            exit 1
+          fi
+          if [[ ! $head =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::The last round's head is not a full commit id (40 lowercase hex characters, as git rev-parse HEAD gives it); GitHub may not find a rebased-away commit by a shorter one."
+            exit 1
+          fi
+          if [ "$head" = "$HEAD_SHA" ]; then
+            echo "The last round read the head (${head:0:12}): covered."; exit 0
+          fi
+          # Docs: markdown under docs/, anything under changelog.d/, a CHANGELOG. INSTR wins: the team's rule docs, those
+          # instruction file names, and the agent folders at any depth can tell agents what to run.
+          export DOCS='^(docs/.*\.md|changelog\.d/.*)$|(^|/)CHANGELOG[^/]*\.md$'
+          export INSTR='^docs/(team/|review-)|(^|/)(README|AGENTS|CLAUDE|SKILL|REVIEW)\.md$|(^|/)\.(claude|agents|claude-plugin)/|^\.github/(instructions/|copilot-instructions\.md$|workflows/)'
+          nondocs() { awk 'BEGIN { d = ENVIRON["DOCS"]; i = ENVIRON["INSTR"] } NF && ($0 !~ d || $0 ~ i) { print }' <<< "$1"; }
+          # The pull request's own change against the base branch, one line per file: name, old name, status and the
+          # patch with its @@ line numbers dropped (base64). "incomplete" when GitHub cuts the list or omits the
+          # patch of a file that is not docs (a binary, a rename or mode change with no patch, a very large diff).
+          change() {
+            api "repos/$REPO/compare/$BASE_REF...$1" --jq '
+              (if (.files | length) >= 300 then ["incomplete"] else [] end)
+              + [.files[] | if .patch == null and ((.filename | test(env.DOCS)) and (.filename | test(env.INSTR) | not) | not)
+                  then "incomplete" else
+                  [.filename, (.previous_filename // ""), .status,
+                   ((.patch // "") | gsub("(?m)^@@ [^@]* @@"; "@@") | @base64)] | join("\t") end] | .[]' | LC_ALL=C sort
+          }
+          rc=0; want=$(change "$head") || rc=$?
+          if [ "$rc" -eq 4 ]; then
+            echo "::error::The last round read ${head:0:12}, which GitHub does not know or cannot compare with $BASE_REF (a diff too large to generate gives the same answer). Run a round over the head, or register a round that read a pushed commit; if the diff is too large, ask your coordinator."
+            exit 1
+          fi
+          [ "$rc" -eq 0 ] || exit 1
+          got=$(must change "$HEAD_SHA")
+          complete=yes
+          case $'\n'"$want"$'\n'"$got"$'\n' in *$'\n'incomplete$'\n'*) complete=no ;; esac
+          if [ "$complete" = yes ] && [ "$want" = "$got" ]; then
+            echo "The pull request's change is the one the last round read (${head:0:12}): covered."
+            exit 0
+          fi
+          differ=$({ diff <(printf '%s\n' "$want") <(printf '%s\n' "$got") || true; } | sed -nE 's/^[<>] //p' | cut -f1,2 | tr '\t' '\n' | sed '/^$/d' | sort -u)
+          if [ "$complete" = yes ] && [ -n "$differ" ] && [ -z "$(nondocs "$differ")" ]; then
+            echo "Since the last round (${head:0:12}) only docs changed:"; echo "  ${differ//$'\n'/$'\n'  }"
+            exit 0
+          fi
+          # change() without the docs files, a file counting as docs only when its old name is too. The patch keeps
+          # its context, so a conflict resolution or a line moved in the merge shows, and so does main changing
+          # lines next to the pull request's hunks (that merge needs a round as well).
+          mchange() {
+            api "repos/$REPO/compare/$BASE_REF...$1" --jq '
+              def docs: test(env.DOCS) and (test(env.INSTR) | not);
+              (if (.files | length) >= 300 then ["incomplete"] else [] end)
+              + [.files[] | select((.filename | docs) and ((.previous_filename // .filename) | docs) | not)
+                  | if .patch == null then "incomplete" else
+                  [.filename, (.previous_filename // ""), .status,
+                   (.patch | gsub("(?m)^@@ [^@]* @@"; "@@") | @base64)] | join("\t") end] | .[]' | LC_ALL=C sort
+          }
+          # Review-exempt is refused past EXEMPT_MAX changed lines, on a renamed file or one with no patch, on agent
+          # instructions (AGENT, and the "steer agents" group of risk-tiers.txt) and on a path risk-tiers.txt makes
+          # high. The rules come from the base branch, else the default branch, at the first marker.
+          EXEMPT_MAX=20
+          AGENT='(^|/)(AGENTS|CLAUDE|SKILL|REVIEW|README)\.md$|(^|/)\.(claude|agents|claude-plugin)/|^\.github/(instructions/|copilot-instructions\.md$|workflows/)|^docs/(team/|review-)'
+          summary=${GITHUB_STEP_SUMMARY:-/dev/null}; rows=0
+          srow() { [ "$rows" -gt 0 ] || printf '%s\n\n%s\n%s\n' '### Review-exempt commits after the last round' \
+              '| Commit | Lines | Result |' '|---|---|---|' >> "$summary"
+            rows=$((rows + 1)); printf '| <code>%s</code> | %s | %s |\n' "${1:0:12}" "$2" "${3//|/\\|}" >> "$summary"; }
+          rules_read=no
+          read_rules() {
+            local rc=0 rules=''
+            rules=$(api "repos/$REPO/contents/.github/risk-tiers.txt?ref=$BASE_REF" -H 'Accept: application/vnd.github.raw') || rc=$?
+            if [ "$rc" -eq 4 ]; then
+              rc=0; rules=$(api "repos/$REPO/contents/.github/risk-tiers.txt" -H 'Accept: application/vnd.github.raw') || rc=$?
+              if [ "$rc" -eq 4 ]; then rules=''; echo "  (no .github/risk-tiers.txt: no path is high or steers agents by its rules)"
+              elif [ "$rc" -ne 0 ]; then return 1; fi
+            elif [ "$rc" -ne 0 ]; then return 1; fi
+            export RULES="$rules"; rules_read=yes
+          }
+          # Prints "high<TAB>path" or "agent<TAB>path" for each refused path.
+          refused_paths() {
+            python3 -c '
+          import os, re, sys
+          def rx(g):
+              out, i = [], 0
+              while i < len(g):
+                  if g.startswith("**/", i): out.append("(?:.*/)?"); i += 3
+                  elif g.startswith("**", i): out.append(".*"); i += 2
+                  elif g[i] == "*": out.append("[^/]*"); i += 1
+                  elif g[i] == "?": out.append("[^/]"); i += 1
+                  else: out.append(re.escape(g[i])); i += 1
+              return re.compile("^" + "".join(out) + "$")
+          high, agent, steer = [], [], False
+          for raw in os.environ["RULES"].splitlines():
+              if raw.lstrip().startswith("#"):
+                  steer = "steer agents" in raw.lower(); continue
+              p = raw.split("#", 1)[0].split()
+              if len(p) != 2: steer = False; continue
+              if p[0] == "high": high.append(rx(p[1]))
+              if steer: agent.append(rx(p[1]))
+          always = {".github/risk-tiers.txt", ".github/risk-tiers.examples"}
+          for f in sys.stdin.read().split("\n"):
+              if not f: continue
+              if f in always or any(r.match(f) for r in high): print("high\t" + f)
+              elif any(r.match(f) for r in agent): print("agent\t" + f)
+          ' <<< "$1"
+          }
+          # Otherwise the head must descend from the round's commit, and each of the pull request's own later commits
+          # must be a merge of the base with no change of its own, empty, docs only, or carry the line within limits.
+          cmp=$(must api "repos/$REPO/compare/$head...$HEAD_SHA" --jq '.status')
+          if [ "$cmp" != ahead ] && [ "$cmp" != identical ]; then
+            echo "::error::The change differs from what the last round read (${head:0:12}) and the head does not descend from it (an amend, a squash, or a rebase after which the change is not the same). Run a round over the head; after a round, merge main instead of rebasing."
+            exit 1
+          fi
+          own=$(must api "repos/$REPO/pulls/$PR/commits?per_page=100" --paginate --jq '.[] | [.sha, ([.parents[].sha] | join(" ")), (.commit.message | @base64)] | @tsv')
+          if [ "$(awk 'NF { n++ } END { print n + 0 }' <<< "$own")" -ge 250 ]; then
+            echo "::error::GitHub lists at most 250 commits of a pull request; this one has that many, so the commits after the last round cannot all be read. Run a round over the head."
+            exit 1
+          fi
+          # The round must have read one of this pull request's own commits, and the list must reach the head.
+          if ! awk -F'\t' -v h="$head" '$1 == h { f = 1 } END { exit !f }' <<< "$own"; then
+            echo "::error::The last round read ${head:0:12}, which is not a commit of this pull request, and the change differs from what it read. Run a round over the head."
+            exit 1
+          fi
+          if ! awk -F'\t' -v h="$HEAD_SHA" '$1 == h { f = 1 } END { exit !f }' <<< "$own"; then
+            echo "::error::GitHub's list of this pull request's commits does not reach its head yet. Re-run this check."
+            exit 1
+          fi
+          bad=''
+          while IFS=$'\t' read -r sha parents msg64; do
+            [ -n "$sha" ] || continue
+            [ "$sha" != "$head" ] || continue
+            st=$(must api "repos/$REPO/compare/$head...$sha" --jq '.status')
+            # Not after the round: a side branch's commit. The merge that brought it in is checked below.
+            if [ "$st" = diverged ]; then echo "  ${sha:0:12} not after the round, reached through a merge"; continue; fi
+            [ "$st" = ahead ] || continue
+            # Commit messages stay out of the log and the annotations: the id is enough, and a message can carry a secret.
+            msg=$(base64 -d <<< "$msg64" | tr -d '\r')
+            read -r -a ps <<< "$parents"
+            if [ "${#ps[@]}" -gt 1 ]; then
+              # A merge passes when every parent but the first is already on the base branch (a merge of main),
+              # and it changes nothing of the pull request's own outside docs.
+              why=''
+              for p in "${ps[@]:1}"; do
+                pst=$(must api "repos/$REPO/compare/$BASE_REF...$p" --jq '.status')
+                if [ "$pst" != behind ] && [ "$pst" != identical ]; then why="it brings in ${p:0:12}, which is not on $BASE_REF"; break; fi
+              done
+              if [ -z "$why" ]; then
+                mine=$(must mchange "$sha"); first=$(must mchange "${ps[0]}")
+                case $'\n'"$mine"$'\n'"$first"$'\n' in *$'\n'incomplete$'\n'*) why="GitHub gave no complete patch to compare" ;; esac
+                if [ -z "$why" ] && [ "$mine" != "$first" ]; then why="it changes the pull request's own lines outside docs (a conflict resolved, or an edit in the merge)"; fi
+              fi
+              if [ -z "$why" ]; then echo "  ${sha:0:12} merge of $BASE_REF, no change of its own."; continue; fi
+              bad="$bad ${sha:0:12}"
+              echo "::error::Merge ${sha:0:12} came after the last round and $why: run a round over the head."
+              continue
+            fi
+            rest=${msg#*$'\n'}; [ "$rest" != "$msg" ] || rest=''
+            # One line per file: name, old name, status, "nopatch" when GitHub gives no patch. The endpoint lists at
+            # most 3000 files, so a list that long may hide a code file and is never docs only.
+            fl=$(must api "repos/$REPO/commits/$sha" --paginate --jq '.files[] | [.filename, (.previous_filename // ""), .status, (if .patch == null then "nopatch" else "" end)] | @tsv')
+            files=$(awk -F'\t' '{ print $1; if ($2 != "") print $2 }' <<< "$fl" | sed '/^$/d')
+            n=$(awk 'NF { n++ } END { print n + 0 }' <<< "$fl")
+            cut=no; [ "$n" -lt 3000 ] || cut=yes
+            if [ -z "$files" ]; then echo "  ${sha:0:12} no change."; continue; fi
+            if [ "$cut" = no ] && [ -z "$(nondocs "$files")" ]; then echo "  ${sha:0:12} docs only."; continue; fi
+            if grep -Eq '^Review-exempt: (nit|comments)[[:space:]]*$' <<< "$rest"; then
+              lines=$(must api "repos/$REPO/commits/$sha" --jq '.stats.additions + .stats.deletions')
+              nopatch=$(awk -F'\t' '$3 == "renamed" || $4 == "nopatch" { print $1 }' <<< "$fl")
+              [ "$rules_read" = yes ] || read_rules
+              refused=$(refused_paths "$files")
+              highs=$(awk -F'\t' '$1 == "high" { print $2 }' <<< "$refused")
+              agent=$( { grep -E "$AGENT" <<< "$files" || true; awk -F'\t' '$1 == "agent" { print $2 }' <<< "$refused"; } | sed '/^$/d')
+              if [ "$cut" = yes ]; then why="changes $n files or more, more than GitHub lists"
+              elif [[ ! $lines =~ ^[0-9]+$ ]]; then why="has no line count GitHub could give"
+              elif [ "$lines" -gt "$EXEMPT_MAX" ]; then why="changes $lines lines, more than $EXEMPT_MAX"
+              elif [ -n "$nopatch" ]; then why="renames a file or changes one with no patch to read (${nopatch%%$'\n'*})"
+              elif [ -n "$agent" ]; then why="changes agent instructions (${agent%%$'\n'*})"
+              elif [ -n "$highs" ]; then why="touches a high-risk path (${highs%%$'\n'*})"
+              else why=''; fi
+              if [ -z "$why" ]; then
+                echo "  ${sha:0:12} declared exempt, $lines lines in $n files."
+                srow "$sha" "$lines" exempt
+                continue
+              fi
+              srow "$sha" "$lines" "refused: $why"
+              bad="$bad ${sha:0:12}"
+              echo "::error::Commit ${sha:0:12} says Review-exempt, but it $why: run a round over it."
+              continue
+            fi
+            bad="$bad ${sha:0:12}"
+            echo "::error::Commit ${sha:0:12} came after the last round and changes more than docs: run a round over it (a short confirming round of one reviewer, unless it answers an Important finding), or, if it changes no code (comments or whitespace) in at most $EXEMPT_MAX lines, with a patch for each file, outside agent instructions and high-risk paths, give it a 'Review-exempt: comments' line."
+          done <<< "$own"
+          [ -z "$bad" ] || exit 1
+          echo "Every commit after the last round is covered."

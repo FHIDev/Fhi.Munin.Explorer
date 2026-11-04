@@ -23,3 +23,7 @@ medium .github/instructions/code-review.instructions.md
 low    scripts/test-scan-shard.mjs
 low    scripts/test_comment_budget.py
 medium .github/copilot-instructions.md
+high   scripts/pre-pr-review-head.test.sh
+medium .github/pull_request_template.md
+medium scripts/warden-checklist.py
+medium .github/comment-budget-allowlist.txt

@@ -732,6 +732,16 @@ jobs:
       # pushing, which is what it was written for. Do not restore this step without moving the
       # nightly one out first, or the same 421-second scan runs in both places.
 
+  # The review-round head step of pre-pr-review-line.yml against a fake gh, one case per rule (DevInfra-0f5.8).
+  pre-pr-review-head:
+    name: pre-PR review head step
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: The head step passes and refuses what it should
+        run: bash scripts/pre-pr-review-head.test.sh
+
   # A step reads steps.<id>.outcome, which is job-local, so the summary inside "build + test"
   # could only ever report itself and the four guards were never in the comment. A job added to
   # this workflow must be added to needs: below and to the table, or it stays invisible here.
@@ -749,7 +759,7 @@ jobs:
     # the half that remains. Renaming the id would have been the tidier edit and a worse one: this
     # `needs:` list and the table below are the two places that would then have to agree, and the
     # required check in the ruleset is `ci summary`, not this job, so the id is invisible to it.
-    needs: [build, format, changelog, changelog-assembly, comment-budget, sample-css, host-notes, class-names, fragment-host-notes, portability-guard, consumer, windows-rebuild, accessibility, component-state, hostile-layout]
+    needs: [build, format, changelog, changelog-assembly, comment-budget, sample-css, host-notes, class-names, fragment-host-notes, portability-guard, consumer, windows-rebuild, accessibility, component-state, hostile-layout, pre-pr-review-head]
     # It exists to report failed and skipped jobs, so it must not be skipped by one.
     if: always()
     runs-on: ubuntu-latest
@@ -797,6 +807,7 @@ jobs:
           accessibility|${{ needs.accessibility.result }}
           state after a refused press|${{ needs['component-state'].result }}
           declarations match helsedata's stylesheet|${{ needs['hostile-layout'].result }}
+          pre-PR review head step|${{ needs['pre-pr-review-head'].result }}
           EOF
 
           FILE=ci-summary.md

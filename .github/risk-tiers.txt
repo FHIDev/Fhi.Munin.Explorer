@@ -18,6 +18,7 @@ high   scripts/release-changelog.sh
 high   scripts/flatten-release-notes.sh
 high   scripts/push-packages.sh
 high   scripts/assert-package-contents.sh
+high   scripts/pre-pr-review-head.test.sh
 high   scripts/assemble-changelog.ps1
 high   .github/dependabot.yml
 high   nuget.config
@@ -31,8 +32,11 @@ medium .claude/**
 medium BannedSymbols.txt
 medium .github/instructions/**
 medium .github/copilot-instructions.md
-medium .forge/warden-rules.yaml
+medium .forge/warden-rules*.yaml
 medium test/*/*.csproj
+medium .github/pull_request_template.md
+medium scripts/warden-checklist.py
+medium .github/comment-budget-allowlist.txt
 
 # Docs, notes and tests
 low    **/*.md
