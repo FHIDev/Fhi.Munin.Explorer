@@ -29,6 +29,66 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 2.18.0 — 2026-11-04
+
+### Added
+
+- **`KildeSearch.ExploreSelectionRequested` hands over a marked selection as one `VariableFilter`.**
+  It carries the ticked kilder, the marked datasamlinger and `OrTreeTicks`; pass
+  `filter.ToQueryString()` to the variable explorer. A host that mounts `KildeSearch` itself and
+  wires it gets the behaviour `KildeExplorer` now has. `KildeSearch.MaxHandoverQueryLength` (7168)
+  is the longest query any selection may hand over, marked or not. (Fhi.Metadata-9huq2.13)
+- **`TitleTemplate` names each item view in the page title.** Declared on `KildeSearch`, `VariableSearch`, `KildeExplorer` and `VariableExplorer`: a string with `{0}` for the item's name, e.g. `"{0} – Kildeutforsker – helsedata.no"`. On an open kilde, datasamling or whole variable the component sets `document.title`, also after moving between items in the same tab, and gives the page its own title back on the list. Null (the default) leaves the title alone, and a template without `{0}` or an item without a name never yields a half title (WCAG 2.4.2). (Fhi.Metadata-mhqx0.14)
+
+### Fixed
+
+- **A marked selection in the kildeutforsker no longer fails once many kilder are ticked.** With any
+  datasamling marked, `KildeExplorer` used to expand every ticked kilde into all its datasamlinger,
+  which on helsedata's test site meant 174 ids and a 414 for the ten largest kilder. It now hands
+  over the ticked kilder as `kildeIds`, only the marked datasamlinger as `datasamlingIds`, and
+  `treeTicks=or`. Munin then ORs the two, and a ticked kilde holding a mark narrows to its marked
+  datasamlinger. A ticked kilde with no mark in it now brings its variables outside any
+  datasamling too, so the note saying they were left out is gone, and the list no longer fetches
+  each ticked kilde's datasamlinger before the button can be pressed. A selection too large to
+  travel (more than 100 kilder or more than 100 marks, or more than
+  `KildeSearch.MaxHandoverQueryLength` characters of query) is refused, and the selection line says
+  so. The same 100-kilde limit now applies with nothing marked: the variable explorer reads back at
+  most 100 kilder, and used to drop the rest without saying so. (Fhi.Metadata-9huq2.13)
+- **Arrow keys, Home and End in a tab list move focus to the tab they select.** In «Søkeresultat»/«Variabelliste» and in the variable panel's «Data»/«Detaljer», the key moved the selection but left focus on the old tab, which a screen reader then announced as «not selected» (WCAG 2.1.1, 4.1.2). (Fhi.Metadata-mhqx0.11)
+- **«Fjern» on a saved-list row leaves focus in the list and says what it removed.** Focus went to the page body when the pressed button left with its row. It now goes to the next row's «Fjern», or the previous row's when the last row went, or the list menu when nothing is left on the page, and a polite status says «… er fjernet fra listen» (WCAG 2.4.3, 4.1.3). (Fhi.Metadata-mhqx0.15)
+- **`TitleTemplate` names the instrument view too.** With `TitleTemplate` set, an open instrument (`?instrumentId=`) puts its name in the page title, as an open kilde, datasamling or whole variable already did, also when it is opened in the same tab; leaving it gives the page its own title back (WCAG 2.4.2). (Fhi.Metadata-mhqx0.17)
+- **A screen reader hears the result count after a fast search.** The status line under the search no longer says «Henter variabler …» at once: for the first half second it is empty, on screen too, so the count is one change NVDA reads, where before it was dropped about 200 ms after the loading words. A search that takes longer than half a second still shows «Henter variabler …». A screen reader hears the count and «Henter variabler …» from two hidden lines of their own, not from the visible one, so the count always arrives in a line that has said nothing yet and is read after a slow search too (WCAG 4.1.3). (Fhi.Metadata-mhqx0.18)
+- **An open variable's panel has a column header.** The results table names its last column «Åpen variabel» («Open variable»), spoken only, so a screen reader entering an open row's panel names it instead of reading «kolonne 7» (WCAG 1.3.1). The saved list's table already had it right. (Fhi.Metadata-mhqx0.19)
+- **Screen readers no longer read the arrow on the back buttons.** «← Tilbake til variabler», «← Tilbake til kildeutforsker» and «← Tilbake til datakilden» keep their arrow on screen, but it is hidden from screen readers, so NVDA says only the words, not «pil mot venstre». (Fhi.Metadata-mhqx0.20)
+
+### Security
+
+- **BREAKING for hosts: `ApiBaseUrl` must be https.** `AddMuninExplorer` now fails at startup unless `MuninExplorerOptions.ApiBaseUrl` is an absolute https URL, because the host's bearer token is sent on every call. Plain http is still accepted for a loopback host, such as `localhost`, `127.0.0.1` or `::1` for local stubs. (Fhi.Metadata-ayqlp.12)
+- **Links stay on the host when the page path starts with `//`.** The share, variable and export links, the address the explorer writes into the address bar, and the contents and jump links of a kilde or variable view mounted on its own now fold a leading `//` (or `/\`) in the page path to a single `/`, so they can no longer be read as a link to another host. Back and Forward keep working on such a page. (Fhi.Metadata-ayqlp.12)
+
+### Deprecated
+
+- **`KildeSearch.ExploreDatasamlingerRequested` is obsolete and will be removed in 3.0.0.** Wire
+  `ExploreSelectionRequested` instead. A host still wiring only the old one keeps the old behaviour:
+  every ticked kilde is fetched and expanded to all its datasamlinger, rather than the old callback
+  silently losing the ticked kilder. The press is now refused when that list holds more than 100
+  ids. Setting the parameter in markup gives warning
+  CS0618, which fails the build under `TreatWarningsAsErrors`. (Fhi.Metadata-9huq2.13)
+
+### Notes for hosts
+
+- **A host that mounts `KildeSearch` itself must wire `ExploreSelectionRequested` to keep marked datasamlinger.**
+  Pass the filter on to the variable explorer as its query string, for example
+  `ExploreSelectionRequested="@(filter => Navigation.NavigateTo($"{variablesPath}?{filter.ToQueryString()}"))"`,
+  next to the `ExploreVariablesRequested` you already wire, and from an interactive parent: a callback created in a
+  statically rendered parent arrives empty. Without it, and without the obsolete `ExploreDatasamlingerRequested`, no
+  datasamling can be marked. Keep `ExploreDatasamlingerRequested` only until the new one is wired; setting both is
+  allowed, and the new one wins. A host that mounts `KildeExplorer` with `VariableExplorerPath` set needs to do
+  nothing. (Fhi.Metadata-9huq2.13)
+- **Set `ApiBaseUrl` to an absolute https URL before upgrading.** `MuninExplorer:ApiBaseUrl` (or `MuninExplorerOptions.ApiBaseUrl`) must be an absolute https URL, for example `https://explorer.munin.skytest.fhi.no`; anything else stops the host at startup. Plain `http://` still works for a loopback host, such as `localhost`, `127.0.0.1` or `::1` for a local stub. (Fhi.Metadata-ayqlp.12)
+- **Versioning exception: this host action ships in a minor release.** Under the 1.0 contract, a change a host must act on is a new major version. The https requirement for `ApiBaseUrl` is released as a minor anyway, on the owner's decision (2026-11-03), because it stops the host's token from being sent in clear text. This note records the exception; the policy itself is unchanged. (Fhi.Metadata-ayqlp.12)
+- **Set `TitleTemplate` on each explorer mount to give item views their own page title.** helsedata: `TitleTemplate="{0} – Kildeutforsker – helsedata.no"` on the Kildeutforsker mount and `"{0} – Variabelutforsker – helsedata.no"` on the Variabelutforsker mount, in the page's own language. Without it nothing changes. (Fhi.Metadata-mhqx0.14)
+
 ## 2.17.0 — 2026-11-03
 
 ### Changed
