@@ -94,6 +94,7 @@ public sealed partial class DesiredCodePicker : ComponentBase
     {
         public bool Loading { get; set; }
         public bool Paging { get; set; }
+        public bool SearchBusy { get; set; }
         public int SearchRun { get; set; }
         public bool Failed { get; set; }
         public IReadOnlyList<KodeverkCode>? All { get; set; }
@@ -193,7 +194,7 @@ public sealed partial class DesiredCodePicker : ComponentBase
     {
         var state = StateOf(link);
         var query = more ? state.Searched ?? "" : state.Query.Trim();
-        if (query.Length == 0 || (more && state.Paging))
+        if (query.Length == 0 || (more && state.SearchBusy))
         {
             if (!more)
             {
@@ -206,7 +207,7 @@ public sealed partial class DesiredCodePicker : ComponentBase
 
         var run = more ? state.SearchRun : ++state.SearchRun;
         var skip = more ? state.Hits.Count : 0;
-        state.Paging = more;
+        state.SearchBusy = true;
         try
         {
             var page = await Client.SearchKodeverkCodesAsync(VariableId, link.KodeverkType, link.KodeverkReference, query, skip, PageSize);
@@ -233,7 +234,11 @@ public sealed partial class DesiredCodePicker : ComponentBase
         }
         finally
         {
-            state.Paging = false;
+            // Only the newest search frees «Vis flere»: an older one finishing must not open it under a newer one.
+            if (run == state.SearchRun)
+            {
+                state.SearchBusy = false;
+            }
         }
     }
 
@@ -401,13 +406,20 @@ public sealed partial class DesiredCodePicker : ComponentBase
         try
         {
             // Asked first: a range the list does not have is refused here, not at «Lagre».
-            if (await Client.CountKodeverkCodesAsync(VariableId, value) is not { } count || Full)
+            var count = await Client.CountKodeverkCodesAsync(VariableId, value);
+            if (Full)
+            {
+                Announce(T.PickerFull(MaxChoices), error: true);
+                return;
+            }
+
+            if (count is null)
             {
                 Announce(T.PickerRangeUnknown, error: true);
                 return;
             }
 
-            _choices.Add(new Choice(value, null, null, false, count));
+            _choices.Add(new Choice(value, null, null, false, count.Value));
             _rangeFrom = _rangeTo = "";
             Announce(null, error: false);
         }
