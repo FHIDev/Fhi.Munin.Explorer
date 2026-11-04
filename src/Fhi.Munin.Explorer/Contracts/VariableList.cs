@@ -157,6 +157,67 @@ public sealed record VariableListItem
     /// ("datasamling ikke valgt"). Empty for every other item, and from an older API.
     /// </summary>
     [JsonPropertyName("candidateDatasamlinger")] public IReadOnlyList<DatasamlingCandidate> CandidateDatasamlinger { get; init; } = [];
+
+    /// <summary>
+    /// The codes the reader chose from the variable's code lists, as the API describes them. Empty when none are chosen,
+    /// and from an older API. In a shared list built by a client these are whatever that client posted, never checked:
+    /// show them as text only.
+    /// </summary>
+    [JsonPropertyName("desiredDataCodes")] public IReadOnlyList<DesiredCodeView> DesiredDataCodes { get; init; } = [];
+}
+
+/// <summary>The kinds of code choice, as the API spells them.</summary>
+public static class DesiredCodeKinds
+{
+    /// <summary>One code.</summary>
+    public const string Code = "kode";
+
+    /// <summary>A node with everything under it.</summary>
+    public const string Node = "node";
+
+    /// <summary>A range from <see cref="DesiredCodeChoice.Code"/> to <see cref="DesiredCodeChoice.To"/>; health code systems only.</summary>
+    public const string Range = "range";
+}
+
+/// <summary>One choice to store: a code, a node or a range, from one of the variable's code lists.</summary>
+/// <param name="KodeverkType">The link's <see cref="KodeverkLink.KodeverkType"/>.</param>
+/// <param name="KodeverkReference">The link's <see cref="KodeverkLink.KodeverkReference"/>.</param>
+/// <param name="Kind">One of <see cref="DesiredCodeKinds"/>.</param>
+/// <param name="Code">The code, the node, or a range's first code.</param>
+/// <param name="To">A range's last code; null for the other kinds.</param>
+public sealed record DesiredCodeChoice(
+    [property: JsonPropertyName("kodeverkType")] string KodeverkType,
+    [property: JsonPropertyName("kodeverkReference")] string KodeverkReference,
+    [property: JsonPropertyName("kind")] string Kind,
+    [property: JsonPropertyName("kode")] string Code,
+    [property: JsonPropertyName("til")] string? To = null);
+
+/// <summary>A stored choice as the API describes it: its term(s), whether a code in it has expired, how many codes it covers.</summary>
+public sealed record DesiredCodeView
+{
+    [JsonPropertyName("kodeverkType")] public string KodeverkType { get; init; } = "";
+
+    [JsonPropertyName("kodeverkReference")] public string KodeverkReference { get; init; } = "";
+
+    /// <summary>One of <see cref="DesiredCodeKinds"/>; a value this package does not know is shown as a code.</summary>
+    [JsonPropertyName("kind")] public string Kind { get; init; } = "";
+
+    [JsonPropertyName("kode")] public string Code { get; init; } = "";
+
+    [JsonPropertyName("til")] public string? To { get; init; }
+
+    /// <summary>The code's term; null when the code list could not be read when the list was.</summary>
+    [JsonPropertyName("navn")] public string? Name { get; init; }
+
+    [JsonPropertyName("tilNavn")] public string? ToName { get; init; }
+
+    [JsonPropertyName("utgatt")] public bool Expired { get; init; }
+
+    /// <summary>How many codes the choice covers; null when it could not be counted.</summary>
+    [JsonPropertyName("antall")] public int? Count { get; init; }
+
+    /// <summary>The same choice, to send back when the reader keeps it.</summary>
+    public DesiredCodeChoice ToChoice() => new(KodeverkType, KodeverkReference, Kind, Code, To);
 }
 
 /// <summary>A datasamling an item whose datasamling is not chosen can be resolved to.</summary>
@@ -182,14 +243,21 @@ public enum DesiredDataOutcome
     NotFound,
 
     /// <summary>
-    /// The API refused the text itself. <see cref="DesiredDataResult.MaxLength"/> carries the
-    /// ceiling when the refusal named one, which is the only refusal this client can provoke.
+    /// The API refused the text or a chosen code. <see cref="DesiredDataResult.MaxLength"/>,
+    /// <see cref="DesiredDataResult.MaxSelections"/> or <see cref="DesiredDataResult.InvalidIndex"/> says which.
     /// </summary>
-    Refused
+    Refused,
+
+    /// <summary>
+    /// The API could not read the variable's code list to check the chosen codes, so it stored nothing. Try again later;
+    /// only a write with codes can answer this.
+    /// </summary>
+    ListUnavailable
 }
 
 /// <summary>
-/// The answer to <see cref="IMuninExplorerClient.SetMyListDesiredDataAsync"/>.
+/// The answer to the "Ønskede data" writes: <see cref="IMuninExplorerClient.SetMyListDesiredDataAsync"/>, its item
+/// form, and <see cref="IMuninExplorerClient.SetMyListItemDesiredCodesAsync"/>.
 /// </summary>
 /// <remarks>
 /// A result rather than a <c>bool</c> plus a throw, which is what the other list writes use, and
@@ -208,10 +276,24 @@ public enum DesiredDataOutcome
 /// <param name="MaxLength">
 /// The longest text the API accepts, as the refusal named it. Null unless
 /// <paramref name="Outcome"/> is <see cref="DesiredDataOutcome.Refused"/>, and null then too when
-/// the refusal named no ceiling — which means it was refused for some other reason.
+/// the refusal named no ceiling — then <paramref name="MaxSelections"/> or <paramref name="InvalidIndex"/> may say why.
 /// </param>
-/// <param name="Received">How long the API measured the text as. Null on the same terms.</param>
+/// <param name="Received">How long the API measured the text as, or how many choices it counted. Null on the same terms.</param>
+/// <param name="MaxSelections">The most choices the API stores per item, when it refused a write for having more.</param>
+/// <param name="InvalidIndex">The 0-based position of the choice the API refused (not in the code list, or malformed).</param>
 public sealed record DesiredDataResult(
     DesiredDataOutcome Outcome,
     int? MaxLength = null,
-    int? Received = null);
+    int? Received = null,
+    int? MaxSelections = null,
+    int? InvalidIndex = null)
+{
+    // The shape before the code choices, kept so a host built against it still binds and still deconstructs.
+    public DesiredDataResult(DesiredDataOutcome outcome, int? maxLength, int? received)
+        : this(outcome, maxLength, received, null, null)
+    {
+    }
+
+    public void Deconstruct(out DesiredDataOutcome outcome, out int? maxLength, out int? received) =>
+        (outcome, maxLength, received) = (Outcome, MaxLength, Received);
+}

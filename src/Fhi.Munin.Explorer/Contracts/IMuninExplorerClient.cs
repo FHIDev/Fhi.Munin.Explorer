@@ -304,6 +304,59 @@ public interface IMuninExplorerClient
         string kodeverkReference,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Searches a variable's code list by code or term, one page at a time: the search-first picker for a list too large
+    /// to tick (ICD-10, NKPK, ATC). Null when the variable or the link is unknown.
+    /// </summary>
+    /// <remarks>
+    /// <paramref name="query"/> needs a letter or a digit and at most 100 characters; the API refuses others, which arrives as an
+    /// <see cref="HttpRequestException"/>. The path rule of <see cref="GetKodeverkCodesAsync"/> applies to the type and
+    /// the reference. <c>take</c> is 1 to 100. The default refuses, so an implementation written before this member
+    /// still builds.
+    /// </remarks>
+    Task<KodeverkCodePage?> SearchKodeverkCodesAsync(
+        Guid variableId,
+        string kodeverkType,
+        string kodeverkReference,
+        string query,
+        int skip = 0,
+        int take = 50,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"This {nameof(IMuninExplorerClient)} does not implement {nameof(SearchKodeverkCodesAsync)}. " +
+            "Consume MuninExplorerClient, or implement the member.");
+
+    /// <summary>
+    /// The codes directly under <paramref name="node"/> in a variable's code tree, or the top level when it is null.
+    /// Null when the variable or the link is unknown; <c>take</c> is 1 to 100. The default refuses, as
+    /// <see cref="SearchKodeverkCodesAsync"/>'s does.
+    /// </summary>
+    Task<KodeverkCodePage?> GetKodeverkCodeChildrenAsync(
+        Guid variableId,
+        string kodeverkType,
+        string kodeverkReference,
+        string? node,
+        int skip = 0,
+        int take = 50,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"This {nameof(IMuninExplorerClient)} does not implement {nameof(GetKodeverkCodeChildrenAsync)}. " +
+            "Consume MuninExplorerClient, or implement the member.");
+
+    /// <summary>
+    /// How many codes one choice covers: 1 for a code, otherwise the codes in a node with everything under it, or in a
+    /// range. Null when the
+    /// variable, the link or the code is unknown. The choice's own type and reference are the link asked. The default
+    /// refuses, as <see cref="SearchKodeverkCodesAsync"/>'s does.
+    /// </summary>
+    Task<int?> CountKodeverkCodesAsync(
+        Guid variableId,
+        DesiredCodeChoice choice,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"This {nameof(IMuninExplorerClient)} does not implement {nameof(CountKodeverkCodesAsync)}. " +
+            "Consume MuninExplorerClient, or implement the member.");
+
     // ------------------------------------------------------------------ the user's own variable lists
     //
     // Everything above is anonymous and read-only. Everything below is not: the whole of
@@ -489,7 +542,8 @@ public interface IMuninExplorerClient
     /// into a field that keeps refusing without saying so.
     /// <para>
     /// Clearing and writing are the same call: null, empty, or nothing but whitespace removes the
-    /// annotation, which is what the API does with a blank body. The text is trimmed on the way
+    /// text, which is what the API does with a blank body. Chosen codes stay: clear them with
+    /// <see cref="SetMyListItemDesiredCodesAsync"/>. The text is trimmed on the way
     /// out because the API trims it on the way in, so the caller is told about the length the API
     /// will actually measure.
     /// </para>
@@ -504,7 +558,7 @@ public interface IMuninExplorerClient
     /// <param name="id">The list the variable is in.</param>
     /// <param name="variableId">The variable to annotate. Spelled <c>variabelId</c> in the route.</param>
     /// <param name="freeText">
-    /// What the reader wants from this variable. Null, empty or whitespace clears the annotation.
+    /// What the reader wants from this variable. Null, empty or whitespace clears the text; chosen codes stay.
     /// </param>
     /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
     Task<DesiredDataResult> SetMyListDesiredDataAsync(
@@ -524,7 +578,7 @@ public interface IMuninExplorerClient
     /// <remarks>The default refuses, for the reason <see cref="SetMyListDesiredDataAsync"/>'s does.</remarks>
     /// <param name="id">The list the item is in.</param>
     /// <param name="itemId">The item.</param>
-    /// <param name="freeText">Null, empty or whitespace clears the annotation.</param>
+    /// <param name="freeText">Null, empty or whitespace clears the text; chosen codes stay.</param>
     /// <param name="cancellationToken">Cancelled when the caller goes away.</param>
     Task<DesiredDataResult> SetMyListItemDesiredDataAsync(
         Guid id,
@@ -533,6 +587,27 @@ public interface IMuninExplorerClient
         CancellationToken cancellationToken = default) =>
         throw new NotSupportedException(
             $"This {nameof(IMuninExplorerClient)} does not implement {nameof(SetMyListItemDesiredDataAsync)}. " +
+            "Consume MuninExplorerClient, or implement the member.");
+
+    /// <summary>
+    /// <see cref="SetMyListItemDesiredDataAsync"/> with the chosen codes: the free text and every choice the item keeps,
+    /// replacing the stored ones. An empty <paramref name="choices"/> clears them.
+    /// </summary>
+    /// <remarks>
+    /// The API checks every choice against the variable's code list: one it cannot find is
+    /// <see cref="DesiredDataOutcome.Refused"/> with <see cref="DesiredDataResult.InvalidIndex"/>, more than it stores is
+    /// Refused with <see cref="DesiredDataResult.MaxSelections"/>, and a list it cannot read now is
+    /// <see cref="DesiredDataOutcome.ListUnavailable"/>. Nothing is stored then. The default refuses, for the reason
+    /// <see cref="SetMyListDesiredDataAsync"/>'s does.
+    /// </remarks>
+    Task<DesiredDataResult> SetMyListItemDesiredCodesAsync(
+        Guid id,
+        Guid itemId,
+        string? freeText,
+        IReadOnlyList<DesiredCodeChoice> choices,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"This {nameof(IMuninExplorerClient)} does not implement {nameof(SetMyListItemDesiredCodesAsync)}. " +
             "Consume MuninExplorerClient, or implement the member.");
 
     /// <summary><see cref="SetMyListNotesAsync"/> for one item, by <see cref="VariableListItem.ItemId"/>.</summary>
