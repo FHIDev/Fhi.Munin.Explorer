@@ -453,6 +453,55 @@ public class InstrumentTest : ExplorerTestContext
     }
 
     [Fact]
+    public void InstrumentPage_WithATitleTemplate_ThenThePageTitleNamesTheInstrumentAndLeavingGivesTheHostsBack()
+    {
+        // WCAG 2.4.2 (Fhi.Metadata-mhqx0.17): the instrument's address gets its own title, as a kilde's and a variable's do.
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        module.SetupVoid("setTitle", _ => true).SetVoidResult();
+        Services.AddSingleton<IMuninExplorerClient>(new InstrumentClient(instrument: Instrument()));
+
+        var cut = Render<VariableSearch>(b => b
+            .Add(c => c.SelectedInstrumentId, Sf36)
+            .Add(c => c.TitleTemplate, "{0} – Variabelutforsker"));
+
+        cut.WaitForAssertion(() => Assert.Equal("Kortversjon 36 – Variabelutforsker", module.Invocations["setTitle"].LastOrDefault().Arguments?[0]));
+        cut.Find(".munin-explorer-drilldown button").Click();
+
+        cut.WaitForAssertion(() => Assert.Null(module.Invocations["setTitle"][^1].Arguments[0]));
+        Assert.Equal(["Kortversjon 36 – Variabelutforsker", null], module.Invocations["setTitle"].Select(call => call.Arguments[0] as string));
+    }
+
+    [Fact]
+    public void InstrumentPage_WithATitleTemplateInEnglish_ThenThePageTitleUsesTheEnglishName()
+    {
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        module.SetupVoid("setTitle", _ => true).SetVoidResult();
+        Services.AddSingleton<IMuninExplorerClient>(new InstrumentClient(instrument: Instrument(englishName: "Short Form 36")));
+
+        var cut = Render<VariableSearch>(b => b
+            .Add(c => c.Language, "en")
+            .Add(c => c.SelectedInstrumentId, Sf36)
+            .Add(c => c.TitleTemplate, "{0} – Variable explorer"));
+
+        cut.WaitForAssertion(() => Assert.Equal("Short Form 36 – Variable explorer", module.Invocations["setTitle"].LastOrDefault().Arguments?[0]));
+    }
+
+    [Fact]
+    public void InstrumentPage_WithATitleTemplateWhenTheInstrumentCannotBeFetched_ThenThePageKeepsTheHostsTitle()
+    {
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        module.SetupVoid("setTitle", _ => true).SetVoidResult();
+        Services.AddSingleton<IMuninExplorerClient>(new InstrumentClient(instrument: Instrument()) { Refusal = new HttpRequestException("down") });
+
+        var cut = Render<VariableSearch>(b => b
+            .Add(c => c.SelectedInstrumentId, Sf36)
+            .Add(c => c.TitleTemplate, "{0} – Variabelutforsker"));
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(module.Invocations["setTitle"]));
+        Assert.All(module.Invocations["setTitle"], call => Assert.Null(call.Arguments[0]));
+    }
+
+    [Fact]
     public void InstrumentPage_WhenTheAddressAlsoNamesAVariable_ThenTheWayOutStillLandsWhereItSaysItDoes()
     {
         // The ordinary way in: a variable's Instrument link keeps variabelId beside instrumentId.
