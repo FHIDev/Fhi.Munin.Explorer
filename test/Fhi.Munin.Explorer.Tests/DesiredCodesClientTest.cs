@@ -192,6 +192,34 @@ public class DesiredCodesClientTest
     }
 
     [Fact]
+    public async Task ShareListAsync_WhenAReadShareIsSharedAgain_ThenItsCodesGoWithItAndNoFreeText()
+    {
+        var read = await Client(StubHttpHandler.Ok($$"""
+            {"name":"Lunge","items":[{"variabelId":"{{Variable}}","desiredDataCodes":[
+              {"kodeverkType":"HelsefagligKodeverk","kodeverkReference":"ICD-10","kind":"node","kode":"C34","navn":"Lunge","utgatt":false,"antall":12}]}]}
+            """)).GetSharedListAsync("ab12cd34ef");
+        var handler = StubHttpHandler.Answering(HttpStatusCode.Created, """{"code":"ZZ99ZZ99ZZ"}""");
+        var item = read!.Items[0] with { DesiredDataFreeText = "privat", Notes = "privat" };
+
+        await Client(handler).ShareListAsync("Lunge", [item]);
+
+        var shared = await Client(StubHttpHandler.Ok(handler.LastBody!)).GetSharedListAsync("ab12cd34ef");
+        var code = Assert.Single(Assert.Single(shared!.Items).DesiredDataCodes);
+        Assert.Equal(("node", "C34", "Lunge", 12), (code.Kind, code.Code, code.Name, code.Count));
+        Assert.DoesNotContain("privat", handler.LastBody);
+    }
+
+    [Fact]
+    public async Task ShareListAsync_WhenAnItemHasNoCodes_ThenTheBodyCarriesNoCodesField()
+    {
+        var handler = StubHttpHandler.Answering(HttpStatusCode.Created, """{"code":"ZZ99ZZ99ZZ"}""");
+
+        await Client(handler).ShareListAsync("x", [new VariableListItem { VariableId = Variable }]);
+
+        Assert.DoesNotContain("desiredDataCodes", handler.LastBody);
+    }
+
+    [Fact]
     public async Task GetSharedListAsync_WhenAClientPostedMoreThan200Codes_ThenOnly200AreKept()
     {
         var many = string.Join(",", Enumerable.Range(0, 250).Select(i => $$"""{"kind":"kode","kode":"K{{i}}"}"""));

@@ -1275,7 +1275,8 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
 
     /// <summary>
     /// One shared item under Runa's field names, and nothing private: a code is readable by anyone
-    /// holding it, so the desired-data annotation stays behind, as Runa's stripPrivateAnnotations does.
+    /// holding it, so the free text and notes stay behind, as Runa's stripPrivateAnnotations does. The
+    /// chosen codes go with it (Fhi.Metadata-emsc0.3.5), left out when there are none.
     /// </summary>
     private sealed record SharedItemBody(
         [property: JsonPropertyName("variabelId")] Guid VariableId,
@@ -1290,11 +1291,14 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         [property: JsonPropertyName("dataFrom")] DateTimeOffset? DataFrom,
         [property: JsonPropertyName("dataTo")] DateTimeOffset? DataTo,
         [property: JsonPropertyName("versjonStatus")] string? VersionStatus,
-        [property: JsonPropertyName("datasamlingId")] Guid? DatasamlingId)
+        [property: JsonPropertyName("datasamlingId")] Guid? DatasamlingId,
+        [property: JsonPropertyName("desiredDataCodes"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        IReadOnlyList<DesiredCodeView>? DesiredDataCodes = null)
     {
         public static SharedItemBody From(VariableListItem item) => new(
             item.VariableId, item.VariableCode, item.VariableName, item.KildeId, item.KildeName,
             item.KildeShortName, item.DatasamlingName, item.VariabelgruppeName, item.DataType,
-            item.DataFrom, item.DataTo, item.VersionStatus, item.DatasamlingId);
+            item.DataFrom, item.DataTo, item.VersionStatus, item.DatasamlingId,
+            item.DesiredDataCodes.Count > 0 ? item.DesiredDataCodes : null);
     }
 }
