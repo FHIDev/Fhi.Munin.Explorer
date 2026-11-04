@@ -2611,13 +2611,32 @@ public class VariableSearchTest : ExplorerTestContext
         clock.Advance(TimeSpan.FromMilliseconds(500));
         cut.WaitForAssertion(() => Assert.Contains("Henter variabler", cut.Find("p[role='status']").TextContent));
 
+        // The answer 190 ms later: the rows show, but «Henter …» stands its second, so NVDA is not cut off (Copilot on #719).
+        clock.Advance(TimeSpan.FromMilliseconds(190));
         await cut.InvokeAsync(() => client.Answer(OnePage(Variable("1. Tale", "KODE"))));
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("ul.munin-explorer-data-list > li")));
+        Assert.Contains("Henter variabler", cut.Find("p[role='status']").TextContent);
+
+        clock.Advance(TimeSpan.FromMilliseconds(810));
         cut.WaitForAssertion(() =>
         {
             var status = cut.Find("p[role='status']").TextContent;
             Assert.Contains("1 variabel funnet", status);
             Assert.DoesNotContain("Henter variabler", status);
         });
+    }
+
+    [Fact]
+    public async Task Search_WhenThePageIsLeftTwiceWhileItRuns_ThenNeitherDisposeThrows()
+    {
+        // Copilot on #719: the first Dispose cleared nothing, so the second cancelled a disposed source.
+        var client = new SlowClient();
+        var cut = RenderWith(client);
+
+        await cut.InvokeAsync(() => cut.Instance.DisposeAsync().AsTask());
+        var second = await Record.ExceptionAsync(() => cut.InvokeAsync(() => cut.Instance.DisposeAsync().AsTask()));
+
+        Assert.Null(second);
     }
 
     [Fact]

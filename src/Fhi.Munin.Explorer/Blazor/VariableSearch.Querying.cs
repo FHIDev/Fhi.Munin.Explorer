@@ -670,6 +670,7 @@ public partial class VariableSearch
         }
         finally
         {
+            await HoldAnnouncedLoadingAsync(slow);
             _loading = false;
             _rowsLoading = false;
             // Dispose() has cancelled and disposed the current one already, and Cancel on a disposed source throws.
@@ -681,8 +682,33 @@ public partial class VariableSearch
             {
                 _slowRowsLoad = null;
                 _announceLoading = false;
+                _loadingAnnouncedAt = null;
             }
             slow.Dispose();
+        }
+    }
+
+    private async Task HoldAnnouncedLoadingAsync(CancellationTokenSource slow)
+    {
+        if (_disposed || !_announceLoading || !ReferenceEquals(_slowRowsLoad, slow) || _loadingAnnouncedAt is not { } said)
+        {
+            return;
+        }
+
+        var left = LoadingDwell - (Clock.GetUtcNow() - said);
+        if (left <= TimeSpan.Zero)
+        {
+            return;
+        }
+
+        StateHasChanged();
+        try
+        {
+            await Task.Delay(left, Clock, slow.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer read or Dispose ended the wait; the finally goes on as it would have.
         }
     }
 
@@ -712,6 +738,7 @@ public partial class VariableSearch
             if (!_disposed && _rowsLoading && !token.IsCancellationRequested)
             {
                 _announceLoading = true;
+                _loadingAnnouncedAt = Clock.GetUtcNow();
                 StateHasChanged();
             }
         });

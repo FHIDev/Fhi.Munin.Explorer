@@ -7,6 +7,15 @@ internal sealed class ManualClock : TimeProvider
     private readonly List<(TimeSpan Due, TimerCallback Callback, object? State)> _timers = [];
     private readonly Lock _gate = new();
     private TimeSpan _now;
+    private static readonly DateTimeOffset Start = new(2026, 11, 4, 12, 0, 0, TimeSpan.Zero);
+
+    public override DateTimeOffset GetUtcNow()
+    {
+        lock (_gate)
+        {
+            return Start + _now;
+        }
+    }
 
     public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
     {
