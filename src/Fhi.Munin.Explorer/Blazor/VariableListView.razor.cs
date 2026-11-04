@@ -1289,6 +1289,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         _shownList = id;
+        _removedSaid = null;
         _shownListMoves++;
         _pageNumber = 1;
         ForgetListControls();
@@ -1572,6 +1573,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private readonly Dictionary<VariableDatasamlingKey, ElementReference> _removeButtons = [];
     private bool _focusAfterRemove;
     private (int Forms, int Moves) _atRemove;
+
+    // The list and page a removal was pressed on: a list or page change meanwhile makes its focus and sentence stale.
+    private (Guid? List, int Page) _removeContext;
     private VariableDatasamlingKey? _removeFocusRow;
     private string? _removedSaid;
 
@@ -1587,8 +1591,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         _focusAfterRemove = false;
 
-        // Not while the reader has moved on (a form opened or a fold moved during the call), as TakeFocusTarget.
-        if ((OpenForms() & ~_atRemove.Forms) != 0 || _readerMoves != _atRemove.Moves)
+        // Not while the reader has moved on (a form, a fold, another list or page during the call), as TakeFocusTarget.
+        if ((OpenForms() & ~_atRemove.Forms) != 0 || _readerMoves != _atRemove.Moves || _removeContext != (_shownList, _pageNumber))
         {
             return null;
         }
@@ -1609,6 +1613,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             : null;
         var name = RowName(item);
         _atRemove = (OpenForms(), _readerMoves);
+        var context = (_shownList, _pageNumber);
 
         if (State is null || _shownList is null)
         {
@@ -1637,12 +1642,22 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
                 ForgetNotesFor(list, key);
                 _removeButtons.Remove(key);
-                _removeFocusRow = neighbour;
-                _focusAfterRemove = true;
-                _removedSaid = T.RemovedFromList(name);
-                _removedCount++;
+                if (context == (_shownList, _pageNumber))
+                {
+                    _removeContext = context;
+                    _removeFocusRow = neighbour;
+                    _focusAfterRemove = true;
+                    _removedSaid = T.RemovedFromList(name);
+                    _removedCount++;
+                }
 
                 await RetreatFromEmptyPageAsync();
+
+                // The removal's own step back a page is not the reader moving on.
+                if (_focusAfterRemove && _removeContext == context)
+                {
+                    _removeContext = (_shownList, _pageNumber);
+                }
             }
             else
             {

@@ -506,6 +506,9 @@ public partial class VariableListViewTest : ExplorerTestContext
         /// <remarks>Settable, not init: a test turns it off to show the view still answers after.</remarks>
         public Exception? RemoveThrows { get; set; }
 
+        /// <summary>Set, and a removal waits for it: the reader can move on while the call is out.</summary>
+        public TaskCompletionSource? HoldRemove { get; set; }
+
         /// <summary>Set when the API declines the removal: it returns false rather than throwing.</summary>
         /// <remarks>Settable for the reason <see cref="RemoveThrows"/> is.</remarks>
         public bool RemoveIsDeclined { get; set; }
@@ -525,8 +528,20 @@ public partial class VariableListViewTest : ExplorerTestContext
                 return Task.FromResult(false);
             }
 
+            if (HoldRemove is { } hold)
+            {
+                return Held(hold.Task);
+            }
+
             _items.RemoveAll(i => variableIds.Contains(i.VariableId));
             return Task.FromResult(true);
+
+            async Task<bool> Held(Task until)
+            {
+                await until;
+                _items.RemoveAll(i => variableIds.Contains(i.VariableId));
+                return true;
+            }
         }
 
         public int AddCalls { get; private set; }
@@ -3751,6 +3766,33 @@ public partial class VariableListViewTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Equal(before + 1, Focused()));
         Assert.Contains("er fjernet fra listen", cut.Find(".screenreader-only[role=status]").TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task View_WhenTheReaderTurnsThePageWhileARemovalIsOut_ThenItTakesNoFocusAndSaysNothingThere()
+    {
+        // Copilot on #716: a page or list change does not move _readerMoves, so the late removal must check its own context.
+        var many = Enumerable.Range(1, 30).Select(i => Item($"Variabel {i}", $"V_{i}")).ToArray();
+        var client = new ListClient(many) { PageSize = 25, HoldRemove = new TaskCompletionSource() };
+        var cut = RenderView(client);
+        int Focused() => JSInterop.Invocations.Count(i => i.Identifier.EndsWith(".focus", StringComparison.Ordinal));
+
+        var removing = cut.InvokeAsync(() => cut.FindAll("tbody tr td:last-child button")[1].Click());
+        await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-pagination-content button")[^1].Click());
+        var before = Focused();
+        var reads = client.VariablesCalls;
+        client.HoldRemove.SetResult();
+        await removing;
+
+        // The removal's own re-read, then the handler's tail and its render, before anything is read.
+        cut.WaitForState(() => client.VariablesCalls > reads);
+        for (var i = 0; i < 3; i++)
+        {
+            await cut.InvokeAsync(() => { });
+        }
+
+        Assert.Equal(before, Focused());
+        Assert.DoesNotContain("er fjernet fra listen", cut.Find(".screenreader-only[role=status]").TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
