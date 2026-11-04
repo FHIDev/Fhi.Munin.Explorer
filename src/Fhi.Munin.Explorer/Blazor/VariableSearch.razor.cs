@@ -3,6 +3,7 @@ using Fhi.Munin.Explorer.Display;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -1364,6 +1365,32 @@ public sealed partial class VariableSearch : ComponentBase
             _ => i,
         };
 
-        _resultsTab = ResultTabs[next];
+        if (next != i)
+        {
+            _resultsTab = ResultTabs[next];
+            _focusResultTab = true;
+        }
+    }
+
+    // APG automatic activation: the key moves focus with the selection (WCAG 2.1.1, Fhi.Metadata-mhqx0.11).
+    private readonly ElementReference[] _resultTabButtons = new ElementReference[ResultTabs.Length];
+    private bool _focusResultTab;
+
+    private async Task FocusResultTabAsync()
+    {
+        if (!_focusResultTab)
+        {
+            return;
+        }
+
+        _focusResultTab = false;
+        try
+        {
+            await _resultTabButtons[Array.IndexOf(ResultTabs, _resultsTab)].FocusAsync();
+        }
+        catch (JSException)
+        {
+            // A focus nicety must not take the circuit down with it.
+        }
     }
 }
