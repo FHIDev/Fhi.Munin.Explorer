@@ -2610,6 +2610,10 @@ public class VariableSearchTest : ExplorerTestContext
 
         clock.Advance(TimeSpan.FromMilliseconds(500));
         cut.WaitForAssertion(() => Assert.Contains("Henter variabler", cut.Find("p[role='status']").TextContent));
+        // Seen in the caption, spoken by its own region, so the count later enters a caption that says nothing yet
+        // (NVDA on the rig dropped it when it replaced «Henter …» in one region, Fhi.Metadata-mhqx0.18).
+        Assert.Equal("", SpokenStatus(cut.Find("p.caption[role='status']")));
+        Assert.Equal("Henter variabler …", cut.Find("p.screenreader-only[role='status']").TextContent.Trim());
 
         // The answer 190 ms later: the rows show, but «Henter …» stands its second, so NVDA is not cut off (Copilot on #719).
         clock.Advance(TimeSpan.FromMilliseconds(190));
@@ -2624,6 +2628,19 @@ public class VariableSearchTest : ExplorerTestContext
             Assert.Contains("1 variabel funnet", status);
             Assert.DoesNotContain("Henter variabler", status);
         });
+        Assert.Contains("1 variabel funnet", SpokenStatus(cut.Find("p.caption[role='status']")));
+        Assert.Equal("", cut.Find("p.screenreader-only[role='status']").TextContent.Trim());
+    }
+
+    // What a screen reader gets from a live region: its text without the aria-hidden parts.
+    private static string SpokenStatus(AngleSharp.Dom.IElement region)
+    {
+        var copy = (AngleSharp.Dom.IElement)region.Clone();
+        foreach (var hidden in copy.QuerySelectorAll("[aria-hidden=true]").ToList())
+        {
+            hidden.Remove();
+        }
+        return copy.TextContent.Trim();
     }
 
     [Fact]
@@ -10563,17 +10580,21 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void ResultsToolbar_WhenTheCountSharesTheRow_ThenItIsStillTheOnePoliteRegionAndItStillNamesTheSort()
+    public void ResultsToolbar_WhenTheCountSharesTheRow_ThenOnePoliteRegionSaysItAndItStillNamesTheSort()
     {
         // THE TRAP THIS MOVE COULD HAVE SPRUNG: carry the count into the new row without its
         // aria-live and screen-reader users stop being told the result count changed when a facet
-        // is ticked, with nothing visibly wrong. Exactly one region, because a visible count beside
-        // a region repeating the same sentence is announced twice.
+        // is ticked, with nothing visibly wrong. One region says the count, because a visible count
+        // beside a region repeating the same sentence is announced twice.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        var count = cut.Find(".munin-explorer-results__toolbar > p[role='status']");
+        var count = cut.Find(".munin-explorer-results__toolbar > p.caption[role='status']");
 
-        Assert.Single(cut.FindAll("[role='status']"));
+        // One region says the count. The other, spoken only, says «Henter …» during a slow read and is empty
+        // otherwise, so the count still enters an empty region (Fhi.Metadata-mhqx0.18): never the same sentence twice.
+        var regions = cut.FindAll("[role='status']");
+        Assert.Equal(2, regions.Count);
+        Assert.Equal("", Assert.Single(regions, r => r.ClassList.Contains("screenreader-only")).TextContent.Trim());
         Assert.Equal("polite", count.GetAttribute("aria-live"));
         Assert.Equal("true", count.GetAttribute("aria-atomic"));
         Assert.Contains("1 variabel funnet", count.TextContent);

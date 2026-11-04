@@ -648,7 +648,7 @@ else
        where a reader is standing when they find out twenty was not enough.
 
        The row is drawn on exactly the condition the results container is, which no search, filter,
-       sort or page turn changes — so the count inside it, this component's one polite live region,
+       sort or page turn changes — so the count inside it, the polite live region that says the count,
        is in the DOM before its text arrives. A region inserted and filled in the same DOM update is
        announced unreliably. Nothing else in the row says the count: a visible number beside a
        region reading the same sentence is two announcements rather than a row.
@@ -669,10 +669,11 @@ else
         <p class="caption" role="status" aria-live="polite" aria-atomic="true">
             @if (_rowsLoading)
             {
-                @* Nothing until the read is slow, so a fast answer is one change the reader hears. *@
+                @* Seen here, spoken by the region below: NVDA dropped the count when it replaced «Henter …» in this
+                   one, so the count always arrives here into a region that says nothing yet (Fhi.Metadata-mhqx0.18). *@
                 @if (_announceLoading)
                 {
-                    @T.Loading
+                    <span aria-hidden="true">@T.Loading</span>
                 }
             }
             else if (_result is { Items.Count: > 0 })
@@ -690,6 +691,7 @@ else
                 <span aria-hidden="true">@(" " + T.FiltersUpdating)</span>
             }
         </p>
+        <p class="screenreader-only" role="status" aria-live="polite" aria-atomic="true">@(_rowsLoading && _announceLoading ? T.Loading : "")</p>
 
         @* A shared link shows only the row it names; this is the way back to every match. *@
         @if (_pinnedRow is not null && _result is { Items.Count: > 0 } && !_rowsLoading)
