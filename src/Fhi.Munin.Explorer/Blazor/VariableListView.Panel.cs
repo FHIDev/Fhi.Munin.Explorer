@@ -197,7 +197,7 @@ public sealed partial class VariableListView
         builder.AddComponentParameter(6, nameof(VariablePanelTabs.SectionLevel), RowPanelSectionLevel);
         builder.AddComponentParameter(7, nameof(VariablePanelTabs.Language), Language);
         builder.AddComponentParameter(8, nameof(VariablePanelTabs.ShowDescription), false);
-        builder.AddComponentParameter(9, nameof(VariablePanelTabs.DataTop), RowDesiredDataField(item));
+        builder.AddComponentParameter(9, nameof(VariablePanelTabs.DataTop), RowDesiredDataField(item, detail));
         builder.AddComponentParameter(10, nameof(VariablePanelTabs.Notes), RowNotesField(item));
         builder.CloseComponent();
     };

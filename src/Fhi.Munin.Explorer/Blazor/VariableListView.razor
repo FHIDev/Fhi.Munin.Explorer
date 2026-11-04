@@ -920,7 +920,7 @@ else if (State?.IsAuthenticated == true)
     </div>;
 
     // The same value as the row's column: one draft, one save, one refusal for both fields.
-    private RenderFragment RowDesiredDataField(VariableListItem item) => @<div class="margin-bottom">
+    private RenderFragment RowDesiredDataField(VariableListItem item, VariableDetail detail) => @<div class="margin-bottom">
         <div><label class="form-element__label" for="@RowDesiredDataId(item)">@T.FieldDesiredData</label></div>
         <p class="caption" id="@RowDesiredDataHintId(item)">@T.DesiredDataHint</p>
         <textarea id="@RowDesiredDataId(item)"
@@ -930,6 +930,24 @@ else if (State?.IsAuthenticated == true)
                   aria-invalid="@DesiredDataInvalid(item)"
                   aria-describedby="@RowDesiredDataDescribedBy(item)"
                   @onchange="e => SaveDesiredDataAsync(item, e.Value?.ToString())"></textarea>
+        @if (CanPickCodes(item, detail))
+        {
+            @* A disclosure, kept while open, so focus has somewhere to stay and to come back to. *@
+            <button class="hd-button-square button-square--secondary" type="button"
+                    aria-expanded="@(IsPicking(item) ? "true" : "false")" aria-controls="@RowPickerId(item)"
+                    @ref="_pickerButton" @onclick="e => TogglePicker(e, item)">@T.PickerOpen</button>
+            <div id="@RowPickerId(item)">
+                @if (IsPicking(item))
+                {
+                    <DesiredCodePicker VariableId="@item.VariableId"
+                                       Links="@detail.KodeverkLinks"
+                                       Chosen="@CodesOf(item)"
+                                       Save="@(views => SaveCodesAsync(item, views))"
+                                       Closed="@(() => ClosePicker(item))"
+                                       Language="@Language" />
+                }
+            </div>
+        }
     </div>;
 
     // Saved when the field is left, like Ønskede data: no keystroke costs a round trip on the host's circuit.
