@@ -800,7 +800,7 @@ public class SaveToListTest : ExplorerTestContext
 
     /// <summary>The header row's cell names, in order.</summary>
     private static IReadOnlyList<string> HeaderNames(IRenderedComponent<VariableSearch> cut) =>
-        [.. cut.FindAll(".munin-explorer-dataitem-header [role=columnheader]").Select(h => h.TextContent.Trim())];
+        [.. cut.FindAll(".munin-explorer-dataitem-header [role=columnheader]:not(.screenreader-only)").Select(h => h.TextContent.Trim())];
 
     /// <summary>The picker's column names, in the order it lists them.</summary>
     private static IReadOnlyList<string> PickerNames(IRenderedComponent<VariableSearch> cut) =>

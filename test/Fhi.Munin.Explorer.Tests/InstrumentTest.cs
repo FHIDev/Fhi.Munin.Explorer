@@ -181,6 +181,17 @@ public class InstrumentTest : ExplorerTestContext
             .Add(c => c.InstrumentHref,
                  linked ? id => $"/variabler?utm_source=nyhetsbrev&instrumentId={id}" : null));
 
+    // What a screen reader names the control: its text without the aria-hidden arrow (Fhi.Metadata-mhqx0.20).
+    private static string Spoken(IElement element)
+    {
+        var copy = (IElement)element.Clone();
+        foreach (var hidden in copy.QuerySelectorAll("[aria-hidden=true]").ToList())
+        {
+            hidden.Remove();
+        }
+        return copy.TextContent.Trim();
+    }
+
     private static IReadOnlyList<IElement> InstrumentLinks<T>(IRenderedComponent<T> cut) where T : IComponent =>
         cut.FindAll("a[href*='instrumentId=']");
 
@@ -443,7 +454,10 @@ public class InstrumentTest : ExplorerTestContext
         // The words name the list because the list is what the press uncovers. InstrumentExit is
         // what keeps the two together, so a view opened over the whole variable would say so
         // instead of promising a page it does not go to.
-        Assert.Equal(Texts.For("no").BackToVariables, exit.TextContent.Trim());
+        Assert.Equal(Texts.For("no").BackToVariables, Spoken(exit));
+        // The arrow is seen, not spoken: NVDA read «pil mot venstre» first (Fhi.Metadata-mhqx0.20).
+        Assert.StartsWith("←", exit.TextContent.Trim(), StringComparison.Ordinal);
+        Assert.DoesNotContain("←", Spoken(exit), StringComparison.Ordinal);
 
         exit.Click();
 
@@ -515,7 +529,7 @@ public class InstrumentTest : ExplorerTestContext
 
         var exit = cut.Find(".munin-explorer-drilldown button");
 
-        Assert.Equal(Texts.For("no").BackToVariables, exit.TextContent.Trim());
+        Assert.Equal(Texts.For("no").BackToVariables, Spoken(exit));
 
         exit.Click();
 

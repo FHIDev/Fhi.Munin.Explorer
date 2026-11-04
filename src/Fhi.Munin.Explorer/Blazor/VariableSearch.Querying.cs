@@ -587,6 +587,7 @@ public partial class VariableSearch
         var pinAtFetch = _pinnedRow;
         _loading = true;
         _rowsLoading = true;
+        var slow = StartSlowRowsLoad();
         _requestedSearch = DisplayText.Trimmed(search);
         _error = null;
         _retryRowsEnabled = false;
@@ -669,9 +670,78 @@ public partial class VariableSearch
         }
         finally
         {
+            await HoldAnnouncedLoadingAsync(slow);
             _loading = false;
             _rowsLoading = false;
+            // Dispose() has cancelled and disposed the current one already, and Cancel on a disposed source throws.
+            if (!_disposed)
+            {
+                slow.Cancel();
+            }
+            if (ReferenceEquals(_slowRowsLoad, slow))
+            {
+                _slowRowsLoad = null;
+                _announceLoading = false;
+                _loadingAnnouncedAt = null;
+            }
+            slow.Dispose();
         }
+    }
+
+    private async Task HoldAnnouncedLoadingAsync(CancellationTokenSource slow)
+    {
+        if (_disposed || !_announceLoading || !ReferenceEquals(_slowRowsLoad, slow) || _loadingAnnouncedAt is not { } said)
+        {
+            return;
+        }
+
+        var left = LoadingDwell - (Clock.GetUtcNow() - said);
+        if (left <= TimeSpan.Zero)
+        {
+            return;
+        }
+
+        StateHasChanged();
+        try
+        {
+            await Task.Delay(left, Clock, slow.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer read or Dispose ended the wait; the finally goes on as it would have.
+        }
+    }
+
+    private CancellationTokenSource StartSlowRowsLoad()
+    {
+        _slowRowsLoad?.Cancel();
+        _announceLoading = false;
+        var slow = _slowRowsLoad = new CancellationTokenSource();
+        _ = AnnounceSlowRowsLoadAsync(slow.Token);
+        return slow;
+    }
+
+    private async Task AnnounceSlowRowsLoadAsync(CancellationToken token)
+    {
+        // Off the renderer's context: a cancelled wait (every fast read) must not post anything back to it.
+        try
+        {
+            await Task.Delay(SlowRowsLoad, Clock, token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        await InvokeAsync(() =>
+        {
+            if (!_disposed && _rowsLoading && !token.IsCancellationRequested)
+            {
+                _announceLoading = true;
+                _loadingAnnouncedAt = Clock.GetUtcNow();
+                StateHasChanged();
+            }
+        });
     }
 
     /// <summary>The row request that failed, so the retry button can send that one again.</summary>

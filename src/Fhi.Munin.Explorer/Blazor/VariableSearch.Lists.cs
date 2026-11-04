@@ -95,6 +95,10 @@ public partial class VariableSearch : IDisposable, IAsyncDisposable
     {
         _disposed = true;
         StopSavedNotices();
+        var slow = _slowRowsLoad;
+        _slowRowsLoad = null;
+        slow?.Cancel();
+        slow?.Dispose();
 
         if (_listState is not null)
         {

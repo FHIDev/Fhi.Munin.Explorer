@@ -1,0 +1,2 @@
+category: Fixed
+- **A screen reader hears the result count after a fast search.** The status line under the search no longer says «Henter variabler …» at once: for the first half second it is empty, on screen too, so the count is one change NVDA reads, where before it was dropped about 200 ms after the loading words. A search that takes longer than half a second still says «Henter variabler …» first (WCAG 4.1.3). (Fhi.Metadata-mhqx0.18)

@@ -669,9 +669,10 @@ public class SaveAllTest : ExplorerTestContext
         var rows = new[] { Variable("Vekt") };
         var cut = Render(new Client(rows, 1, [rows[0].Id]));
 
+        // A closed row has every column's cell but the open panel's (Fhi.Metadata-mhqx0.19).
         var headers = cut.FindAll("[role=columnheader]").Count;
         var cells = cut.Find("ul.munin-explorer-data-list > li").QuerySelectorAll("[role=cell], [role=rowheader]").Length;
 
-        Assert.Equal(headers, cells);
+        Assert.Equal(headers - 1, cells);
     }
 }
