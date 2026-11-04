@@ -143,6 +143,18 @@ public sealed partial class KildeSearch : ComponentBase
     /// <inheritdoc cref="VariableSearch.Lede"/>
     [Parameter] public string? Lede { get; set; }
 
+    /// <inheritdoc cref="VariableSearch.TitleTemplate"/>
+    [Parameter] public string? TitleTemplate { get; set; }
+
+    private readonly TitleKeeper _title = new();
+
+    // The open datasamling's name, else the open kilde's; none on the list. The component's own selection, which a
+    // standalone mount moves without its parameters (they are seeds).
+    private string? TitleName =>
+        _selectedDatasamlingId is { } d && _datasamling?.Id == d ? T.NamedFor(_datasamling.PreferredTerm, _datasamling.PreferredTermEn, _datasamling.Code, Reader).Text
+        : _selectedId is { } k && _kilde?.Id == k ? T.NamedFor(_kilde.PreferredTerm, _kilde.PreferredTermEn, _kilde.Code, Reader).Text
+        : null;
+
     /// <summary>
     /// The kilde whose view is open, or null when the list is showing. Set by the host, typically
     /// from its own URL.

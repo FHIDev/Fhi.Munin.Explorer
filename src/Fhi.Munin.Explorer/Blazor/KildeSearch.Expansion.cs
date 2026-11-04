@@ -101,6 +101,15 @@ public sealed partial class KildeSearch : IAsyncDisposable
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         await MoveFocusAsync();
+        if (!_disposed && _title.Wanted(TitleTemplate) && Services.GetService<IJSRuntime>() is { } titleJs)
+        {
+            var titled = _interop ??= new ExplorerInterop(titleJs);
+            if (await titled.TryLoadAsync())
+            {
+                await _title.ApplyAsync(titled, TitleTemplate, TitleName, _detailLoading);
+            }
+        }
+
         await ReadFilterFoldAsync();
 
         // The column picker's phone sheet, its «Lukk» and its outside press are the script's (Fhi.Metadata-mhqx0.8).

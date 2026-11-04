@@ -331,6 +331,24 @@ public sealed partial class VariableSearch : ComponentBase
     [Parameter] public string? Lede { get; set; }
 
     /// <summary>
+    /// The page title for an item view, with <c>{0}</c> where its name goes, e.g. <c>"{0} – Kildeutforsker – helsedata.no"</c>.
+    /// Null (the default) leaves the host's title alone; on the list view the host's own title comes back (WCAG 2.4.2).
+    /// </summary>
+    [Parameter] public string? TitleTemplate { get; set; }
+
+    private readonly TitleKeeper _title = new();
+
+    // The whole variable's name, as its heading draws it; none on the list or with only a row's panel open.
+    private string? TitleName
+    {
+        get
+        {
+            var row = _wholeVariable ? _result?.Items.FirstOrDefault(v => VariableDatasamlingKey.Of(v) == _selected) : null;
+            return row is null ? null : T.NamedFor(row.PreferredTerm, row.PreferredTermEn, row.Code, Reader).Text;
+        }
+    }
+
+    /// <summary>
     /// The facet selection to start from. Set by the host, typically from its own URL, the same way
     /// <see cref="Search"/> is.
     /// </summary>

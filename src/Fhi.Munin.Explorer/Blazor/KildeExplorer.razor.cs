@@ -184,6 +184,9 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// </remarks>
     [Parameter] public string? Lede { get; set; }
 
+    /// <inheritdoc cref="VariableSearch.TitleTemplate"/>
+    [Parameter] public string? TitleTemplate { get; set; }
+
     /// <inheritdoc cref="KildeSearch.HeadingLevel"/>
     /// <remarks>
     /// Declared here and forwarded, for the reason <see cref="ShowAccessAndPrices"/> is: a host whose page has no heading

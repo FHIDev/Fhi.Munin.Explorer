@@ -85,7 +85,7 @@ public class KildeMountTest : ExplorerTestContext
     /// NavigationManager is a resolve.
     /// </remarks>
     private IRenderedComponent<IComponent> MountByName(
-        string name, string url, string? variableExplorerPath = null)
+        string name, string url, string? variableExplorerPath = null, string? titleTemplate = null)
     {
         var component = Mount(name);
 
@@ -103,6 +103,11 @@ public class KildeMountTest : ExplorerTestContext
             if (variableExplorerPath is { } path)
             {
                 builder.AddComponentParameter(2, "VariableExplorerPath", path);
+            }
+
+            if (titleTemplate is { } template)
+            {
+                builder.AddComponentParameter(3, "TitleTemplate", template);
             }
 
             builder.CloseComponent();
@@ -145,6 +150,44 @@ public class KildeMountTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".munin-explorer-drilldown")));
         Assert.Contains("Als registeret", cut.Markup, StringComparison.Ordinal);
         cut.WaitForAssertion(() => Assert.Equal("/kilder?kilde=als", Mirrored()));
+    }
+
+    [Fact]
+    public void KildeExplorer_WhenAKildeIsOpenAndATitleTemplateIsGiven_ThenThePageTitleNamesTheKilde()
+    {
+        // WCAG 2.4.2 (Fhi.Metadata-mhqx0.14): each kilde's address gets its own title, not the host page's.
+        var module = JSInterop.SetupModule(Fhi.Munin.Explorer.Blazor.ExplorerInterop.ModulePath);
+        module.SetupVoid("setTitle", _ => true).SetVoidResult();
+
+        var cut = MountByName("KildeExplorer", "http://localhost/kilder?kilde=als", titleTemplate: "{0} – Kildeutforsker");
+
+        cut.WaitForAssertion(() => Assert.Contains(module.Invocations["setTitle"], call => Equals(call.Arguments[0], "Als registeret – Kildeutforsker")));
+    }
+
+    [Fact]
+    public void KildeSearch_WhenMountedAloneAndAKildeIsOpenedFromTheList_ThenThePageTitleNamesIt()
+    {
+        // Copilot on #717: alone, the component moves its own selection; SelectedKildeId is only a seed.
+        var module = JSInterop.SetupModule(Fhi.Munin.Explorer.Blazor.ExplorerInterop.ModulePath);
+        module.SetupVoid("setTitle", _ => true).SetVoidResult();
+        var cut = MountByName("KildeSearch", "http://localhost/kilder", titleTemplate: "{0} – Kildeutforsker");
+
+        cut.WaitForElement(".munin-explorer-kilder tbody th button");
+        OpenTheKilde(cut);
+
+        cut.WaitForAssertion(() => Assert.Contains(module.Invocations["setTitle"], call => Equals(call.Arguments[0], "Als registeret – Kildeutforsker")));
+    }
+
+    [Fact]
+    public void KildeExplorer_WhenNoTitleTemplateIsGiven_ThenThePageTitleIsLeftToTheHost()
+    {
+        var module = JSInterop.SetupModule(Fhi.Munin.Explorer.Blazor.ExplorerInterop.ModulePath);
+        module.SetupVoid("setTitle", _ => true).SetVoidResult();
+
+        var cut = MountByName("KildeExplorer", "http://localhost/kilder?kilde=als");
+
+        cut.WaitForAssertion(() => Assert.Equal("/kilder?kilde=als", Mirrored()));
+        Assert.Empty(module.Invocations["setTitle"]);
     }
 
     [Fact]

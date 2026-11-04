@@ -71,6 +71,9 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     /// </remarks>
     [Parameter] public string? Lede { get; set; }
 
+    /// <inheritdoc cref="VariableSearch.TitleTemplate"/>
+    [Parameter] public string? TitleTemplate { get; set; }
+
     /// <summary>
     /// Query keys this component must leave alone: not read when the page opens, not written when
     /// the reader changes something, and carried through the address bar exactly as they arrived.

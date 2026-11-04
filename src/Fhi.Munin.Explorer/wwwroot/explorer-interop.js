@@ -737,6 +737,17 @@ function closeSheetFrom(target, toggle) {
   toggle.click();
 }
 
+// The host page's own title, kept from the first time a view names itself, so the list view gets it back. Per path:
+// the module outlives a host's client-side move to another page, whose own title is the one to keep there.
+let hostTitle = null;
+
+export function setTitle(text) {
+  if (hostTitle === null || hostTitle.path !== location.pathname) {
+    hostTitle = { path: location.pathname, title: document.title };
+  }
+  document.title = text ?? hostTitle.title;
+}
+
 // A reader's own setting, kept in this browser only (Fhi.Metadata-amp8c). Storage can be off, full or
 // private, so a failure reads as "no setting" and a write that fails is dropped.
 export function readPreference(key) {
