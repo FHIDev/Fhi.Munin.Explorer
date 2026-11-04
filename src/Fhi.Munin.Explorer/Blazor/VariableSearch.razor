@@ -656,7 +656,7 @@ else
        Above `munin-explorer-results` rather than inside it, which is where the kildeutforsker emits
        the same name and what Stiler's rule for the picker inside it is written against.
 
-       One message at a time: loading, the summary, or "no matches". Loading is announced after 500 ms, which
+       One message at a time on screen: loading, the summary, or "no matches"; the regions after it speak (see there). Loading after 500 ms, which
        is the price of telling a screen-reader user that pressing Søk did anything at all when the
        API is slow (Fhi.Metadata-mhqx0.18). aria-atomic makes the whole new sentence read rather than only the words that
        changed — "12" on its own is not information.
@@ -666,14 +666,15 @@ else
        of somebody else's page, and repeating the sentence outside the live region would put it on
        screen twice. *@
     <div class="munin-explorer-results__toolbar">
-        <p class="caption" role="status" aria-live="polite" aria-atomic="true">
+        @* Seen, never spoken: the two regions after it speak. NVDA dropped the count whenever it followed «Henter …»
+           in a region that had just said it, so the count has a region of its own, empty while a read runs, and
+           «Henter …» another, emptied a second after the count lands, never in the same render (Fhi.Metadata-mhqx0.18). *@
+        <p class="caption" aria-hidden="true">
             @if (_rowsLoading)
             {
-                @* Seen here, spoken by the region below: NVDA dropped the count when it replaced «Henter …» in this
-                   one, so the count always arrives here into a region that says nothing yet (Fhi.Metadata-mhqx0.18). *@
                 @if (_announceLoading)
                 {
-                    <span aria-hidden="true">@T.Loading</span>
+                    @T.Loading
                 }
             }
             else if (_result is { Items.Count: > 0 })
@@ -691,7 +692,8 @@ else
                 <span aria-hidden="true">@(" " + T.FiltersUpdating)</span>
             }
         </p>
-        <p class="screenreader-only" role="status" aria-live="polite" aria-atomic="true">@(_rowsLoading && _announceLoading ? T.Loading : "")</p>
+        <p class="screenreader-only" role="status" aria-live="polite" aria-atomic="true">@SpokenCount</p>
+        <p class="screenreader-only" role="status" aria-live="polite" aria-atomic="true">@(_loadingSaid ? T.Loading : "")</p>
 
         @* A shared link shows only the row it names; this is the way back to every match. *@
         @if (_pinnedRow is not null && _result is { Items.Count: > 0 } && !_rowsLoading)

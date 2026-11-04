@@ -683,8 +683,37 @@ public partial class VariableSearch
                 _slowRowsLoad = null;
                 _announceLoading = false;
                 _loadingAnnouncedAt = null;
+                if (_loadingSaid && !_disposed)
+                {
+                    _ = ForgetLoadingSaidAsync();
+                }
             }
             slow.Dispose();
+        }
+    }
+
+    private async Task ForgetLoadingSaidAsync()
+    {
+        await Task.Delay(LoadingSaidAfter, Clock).ConfigureAwait(false);
+        if (_disposed)
+        {
+            return;
+        }
+        try
+        {
+            await InvokeAsync(() =>
+            {
+                // A read that began meanwhile and is slow again owns the region; otherwise it goes quiet.
+                if (!_disposed && !_announceLoading)
+                {
+                    _loadingSaid = false;
+                    StateHasChanged();
+                }
+            });
+        }
+        catch (ObjectDisposedException)
+        {
+            // The renderer went with the page; there is no region left to quiet.
         }
     }
 
@@ -738,6 +767,7 @@ public partial class VariableSearch
             if (!_disposed && _rowsLoading && !token.IsCancellationRequested)
             {
                 _announceLoading = true;
+                _loadingSaid = true;
                 _loadingAnnouncedAt = Clock.GetUtcNow();
                 StateHasChanged();
             }

@@ -399,7 +399,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.Equal(["Navn", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode"],
                      labels);
-        Assert.Contains("sortert på Standard", cut.Find("p.caption[role=status]").TextContent);
+        Assert.Contains("sortert på Standard", cut.Find(".munin-explorer-results__toolbar > p.caption").TextContent);
     }
 
     [Fact]
@@ -2576,11 +2576,13 @@ public class VariableSearchTest : ExplorerTestContext
 
         clock.Advance(TimeSpan.FromMilliseconds(400));
         Assert.Equal("", cut.Find("p[role='status']").TextContent.Trim());
+        Assert.Equal("", RowsStatus(cut).TextContent.Trim()); // empty on screen too
 
         await cut.InvokeAsync(() => client.Answer(OnePage(Variable("1. Tale", "KODE"))));
         cut.WaitForAssertion(() => Assert.Contains("1 variabel funnet", cut.Find("p[role='status']").TextContent));
         clock.Advance(TimeSpan.FromSeconds(1));
-        Assert.DoesNotContain("Henter variabler", cut.Find("p[role='status']").TextContent);
+        Assert.DoesNotContain("Henter variabler", RowsStatus(cut).TextContent);
+        Assert.Equal("", cut.FindAll(".munin-explorer-results__toolbar > p.screenreader-only[role=status]")[1].TextContent.Trim());
     }
 
     [Fact]
@@ -2601,35 +2603,40 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public async Task Search_WhenTheAnswerIsSlow_ThenTheStatusSaysItIsLoadingAndThenTheCount()
+    public async Task Search_WhenTheAnswerIsSlow_ThenTheCountIsSpokenFromARegionThatWasEmptyAndHenterIsNotClearedWithIt()
     {
+        // NVDA dropped the count whenever it followed «Henter …» in a region that had just said it, aria-hidden or not
+        // (Loki on the rig, Fhi.Metadata-mhqx0.18): the caption is seen only, the count and «Henter» have a region each.
         var clock = new ManualClock();
         Services.AddSingleton<TimeProvider>(clock);
         var client = new SlowClient();
         var cut = RenderWith(client);
+        AngleSharp.Dom.IElement Caption() => cut.Find(".munin-explorer-results__toolbar > p.caption");
+        string Count() => cut.FindAll(".munin-explorer-results__toolbar > p.screenreader-only[role=status]")[0].TextContent.Trim();
+        string Loading() => cut.FindAll(".munin-explorer-results__toolbar > p.screenreader-only[role=status]")[1].TextContent.Trim();
+
+        Assert.Equal("true", Caption().GetAttribute("aria-hidden"));
+        Assert.Null(Caption().GetAttribute("role"));
 
         clock.Advance(TimeSpan.FromMilliseconds(500));
-        cut.WaitForAssertion(() => Assert.Contains("Henter variabler", cut.Find("p[role='status']").TextContent));
-        // Seen in the caption, spoken by its own region, so the count later enters a caption that says nothing yet
-        // (NVDA on the rig dropped it when it replaced «Henter …» in one region, Fhi.Metadata-mhqx0.18).
-        Assert.Equal("", SpokenStatus(cut.Find("p.caption[role='status']")));
-        Assert.Equal("Henter variabler …", cut.Find("p.screenreader-only[role='status']").TextContent.Trim());
+        cut.WaitForAssertion(() => Assert.Contains("Henter variabler", Caption().TextContent));
+        Assert.Equal(("", "Henter variabler …"), (Count(), Loading()));
 
-        // The answer 190 ms later: the rows show, but «Henter …» stands its second, so NVDA is not cut off (Copilot on #719).
+        // The answer 190 ms later: the rows show at once; the count waits out «Henter»'s second.
         clock.Advance(TimeSpan.FromMilliseconds(190));
         await cut.InvokeAsync(() => client.Answer(OnePage(Variable("1. Tale", "KODE"))));
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("ul.munin-explorer-data-list > li")));
-        Assert.Contains("Henter variabler", cut.Find("p[role='status']").TextContent);
+        Assert.Equal("", Count());
 
         clock.Advance(TimeSpan.FromMilliseconds(810));
-        cut.WaitForAssertion(() =>
-        {
-            var status = cut.Find("p[role='status']").TextContent;
-            Assert.Contains("1 variabel funnet", status);
-            Assert.DoesNotContain("Henter variabler", status);
-        });
-        Assert.Contains("1 variabel funnet", SpokenStatus(cut.Find("p.caption[role='status']")));
-        Assert.Equal("", cut.Find("p.screenreader-only[role='status']").TextContent.Trim());
+        cut.WaitForAssertion(() => Assert.Contains("1 variabel funnet", Count()));
+        // Not in the render the count arrived in: «Henter» goes quiet a second later, on its own.
+        Assert.Equal("Henter variabler …", Loading());
+        Assert.Contains("1 variabel funnet", Caption().TextContent);
+
+        clock.Advance(TimeSpan.FromSeconds(1));
+        cut.WaitForAssertion(() => Assert.Equal("", Loading()));
+        Assert.Contains("1 variabel funnet", Count());
     }
 
     // What a screen reader gets from a live region: its text without the aria-hidden parts.
@@ -2701,7 +2708,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         cut.WaitForAssertion(() =>
         {
-            var status = cut.Find("p[role='status']").TextContent;
+            var status = RowsStatus(cut).TextContent;
             Assert.Contains("1 variabel funnet", status);
             Assert.DoesNotContain("Henter variabler", status);
         });
@@ -3821,7 +3828,7 @@ public class VariableSearchTest : ExplorerTestContext
     private static VariableSummary Typed(string name, string code) => Variable(name, code) with { DataType = "1" };
 
     private static IElement RowsStatus(IRenderedComponent<VariableSearch> cut) =>
-        cut.Find(".munin-explorer-results__toolbar p[role=status]");
+        cut.Find(".munin-explorer-results__toolbar > p.caption");
 
     [Fact]
     public void Status_WhenTheRowsHaveLandedAndTheFacetsHaveNot_ThenItReportsTheRows()
@@ -10588,13 +10595,14 @@ public class VariableSearchTest : ExplorerTestContext
         // beside a region repeating the same sentence is announced twice.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        var count = cut.Find(".munin-explorer-results__toolbar > p.caption[role='status']");
-
-        // One region says the count. The other, spoken only, says «Henter …» during a slow read and is empty
-        // otherwise, so the count still enters an empty region (Fhi.Metadata-mhqx0.18): never the same sentence twice.
-        var regions = cut.FindAll("[role='status']");
+        // The caption is seen only; one spoken region says the count and another «Henter …» during a slow read
+        // (Fhi.Metadata-mhqx0.18), so the same sentence is never said twice.
+        var regions = cut.FindAll(".munin-explorer-results__toolbar > [role='status']");
         Assert.Equal(2, regions.Count);
-        Assert.Equal("", Assert.Single(regions, r => r.ClassList.Contains("screenreader-only")).TextContent.Trim());
+        Assert.All(regions, r => Assert.Contains("screenreader-only", r.ClassList));
+        Assert.Equal("true", cut.Find(".munin-explorer-results__toolbar > p.caption").GetAttribute("aria-hidden"));
+        Assert.Equal("", regions[1].TextContent.Trim());
+        var count = regions[0];
         Assert.Equal("polite", count.GetAttribute("aria-live"));
         Assert.Equal("true", count.GetAttribute("aria-atomic"));
         Assert.Contains("1 variabel funnet", count.TextContent);

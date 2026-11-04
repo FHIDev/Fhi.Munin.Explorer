@@ -631,6 +631,15 @@ public sealed partial class VariableSearch : ComponentBase
     // back the gap NVDA dropped the count in (Copilot on #719). The rows show at once; only the status waits.
     private static readonly TimeSpan LoadingDwell = TimeSpan.FromSeconds(1);
     private DateTimeOffset? _loadingAnnouncedAt;
+
+    // «Henter …» as the loading region says it; it outlives the read by LoadingSaidAfter, so it never changes in the
+    // same render the count arrives in.
+    private bool _loadingSaid;
+    private static readonly TimeSpan LoadingSaidAfter = TimeSpan.FromSeconds(1);
+
+    // What the count region says: nothing while rows are read, then the caption's own sentence.
+    private string SpokenCount => _rowsLoading ? "" : _result is { Items.Count: > 0 } ? Summary
+        : _result is not null ? T.NoResults(_executedSearch, _filter.ActiveCount, !_filter.IncludeHistorical) : "";
     private string? _error;
     private Page<VariableSummary>? _result;
 
