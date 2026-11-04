@@ -2576,11 +2576,13 @@ public class VariableSearchTest : ExplorerTestContext
 
         clock.Advance(TimeSpan.FromMilliseconds(400));
         Assert.Equal("", cut.Find("p[role='status']").TextContent.Trim());
+        Assert.Equal("", RowsStatus(cut).TextContent.Trim()); // empty on screen too
 
         await cut.InvokeAsync(() => client.Answer(OnePage(Variable("1. Tale", "KODE"))));
         cut.WaitForAssertion(() => Assert.Contains("1 variabel funnet", cut.Find("p[role='status']").TextContent));
         clock.Advance(TimeSpan.FromSeconds(1));
-        Assert.DoesNotContain("Henter variabler", cut.Find("p[role='status']").TextContent);
+        Assert.DoesNotContain("Henter variabler", RowsStatus(cut).TextContent);
+        Assert.Equal("", cut.FindAll(".munin-explorer-results__toolbar > p.screenreader-only[role=status]")[1].TextContent.Trim());
     }
 
     [Fact]
@@ -2706,7 +2708,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         cut.WaitForAssertion(() =>
         {
-            var status = cut.Find("p[role='status']").TextContent;
+            var status = RowsStatus(cut).TextContent;
             Assert.Contains("1 variabel funnet", status);
             Assert.DoesNotContain("Henter variabler", status);
         });

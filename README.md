@@ -509,7 +509,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     `Fhi.Helsedata.Stiler` PR 39220's, merged after 0.1.42 was cut and carried by 0.1.68. The
     name says `results` and the element sits above `munin-explorer-results` rather than inside
     it, deliberately: the results container is
-    drawn only with rows on screen, and the count inside this row is the polite live region
+    drawn only with rows on screen, and the spoken copy of the count in this row is a polite live region
     that says it, which has to be in the DOM before its text arrives.
     The detail views add `munin-explorer-page__section`, worn by the `<section>` each of their
     blocks sits in — the kilde, datasamling, variable and instrument views alike. A handle, and
