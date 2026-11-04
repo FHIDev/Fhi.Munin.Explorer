@@ -444,7 +444,7 @@ public partial class VariableSearch
             var titled = _interop ??= new ExplorerInterop(titleJs);
             if (await titled.TryLoadAsync())
             {
-                await _title.ApplyAsync(titled, TitleTemplate, TitleName);
+                await _title.ApplyAsync(titled, TitleTemplate, TitleName, _instrumentLoading);
             }
         }
         await ApplyQueuedFilterAsync();

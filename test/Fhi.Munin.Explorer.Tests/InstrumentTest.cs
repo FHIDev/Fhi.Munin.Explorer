@@ -453,6 +453,25 @@ public class InstrumentTest : ExplorerTestContext
     }
 
     [Fact]
+    public void InstrumentPage_WithATitleTemplate_ThenThePageTitleNamesTheInstrumentAndLeavingGivesTheHostsBack()
+    {
+        // WCAG 2.4.2 (Fhi.Metadata-mhqx0.17): the instrument's address gets its own title, as a kilde's and a variable's do.
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        module.SetupVoid("setTitle", _ => true).SetVoidResult();
+        Services.AddSingleton<IMuninExplorerClient>(new InstrumentClient(instrument: Instrument()));
+
+        var cut = Render<VariableSearch>(b => b
+            .Add(c => c.SelectedInstrumentId, Sf36)
+            .Add(c => c.TitleTemplate, "{0} – Variabelutforsker"));
+
+        cut.WaitForAssertion(() => Assert.Equal("Kortversjon 36 – Variabelutforsker", module.Invocations["setTitle"].LastOrDefault().Arguments?[0]));
+        cut.Find(".munin-explorer-drilldown button").Click();
+
+        cut.WaitForAssertion(() => Assert.Null(module.Invocations["setTitle"][^1].Arguments[0]));
+        Assert.Equal(["Kortversjon 36 – Variabelutforsker", null], module.Invocations["setTitle"].Select(call => call.Arguments[0] as string));
+    }
+
+    [Fact]
     public void InstrumentPage_WhenTheAddressAlsoNamesAVariable_ThenTheWayOutStillLandsWhereItSaysItDoes()
     {
         // The ordinary way in: a variable's Instrument link keeps variabelId beside instrumentId.

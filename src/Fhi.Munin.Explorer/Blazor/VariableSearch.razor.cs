@@ -338,11 +338,16 @@ public sealed partial class VariableSearch : ComponentBase
 
     private readonly TitleKeeper _title = new();
 
-    // The whole variable's name, as its heading draws it; none on the list or with only a row's panel open.
+    // The instrument's name, else the whole variable's, as their headings draw them; none on the list or with only a
+    // row's panel open. The instrument comes first: its view covers the list and any open variable (Fhi.Metadata-mhqx0.17).
     private string? TitleName
     {
         get
         {
+            if (_instrumentId is { } i)
+            {
+                return _instrument?.Id == i ? InstrumentBlock.Name(_instrument, Reader).Text ?? _instrument.Code : null;
+            }
             var row = _wholeVariable ? _result?.Items.FirstOrDefault(v => VariableDatasamlingKey.Of(v) == _selected) : null;
             return row is null ? null : T.NamedFor(row.PreferredTerm, row.PreferredTermEn, row.Code, Reader).Text;
         }
