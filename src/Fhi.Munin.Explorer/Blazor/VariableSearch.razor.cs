@@ -340,6 +340,7 @@ public sealed partial class VariableSearch : ComponentBase
 
     // The instrument's name, else the whole variable's, as their headings draw them; none on the list or with only a
     // row's panel open. The instrument comes first: its view covers the list and any open variable (Fhi.Metadata-mhqx0.17).
+    // Not yet arrived, none: the keeper holds the title while it loads and gives the host's back if it fails.
     private string? TitleName
     {
         get
