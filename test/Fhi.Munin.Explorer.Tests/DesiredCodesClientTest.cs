@@ -151,6 +151,19 @@ public class DesiredCodesClientTest
     }
 
     [Fact]
+    public async Task SetMyListItemDesiredCodesAsync_WhenClearingMeets503_ThenItIsAFaultNotListUnavailable() =>
+        await Assert.ThrowsAsync<HttpRequestException>(() => Client(StubHttpHandler.Status(HttpStatusCode.ServiceUnavailable))
+            .SetMyListItemDesiredCodesAsync(ListId, ItemId, null, []));
+
+    [Fact]
+    public void DesiredDataResult_WhenBuiltAndDeconstructedTheOldWay_ThenTheThreeFieldShapeStillWorks()
+    {
+        var (outcome, max, received) = new DesiredDataResult(DesiredDataOutcome.Refused, 500, 612);
+
+        Assert.Equal((DesiredDataOutcome.Refused, 500, 612), (outcome, max, received));
+    }
+
+    [Fact]
     public async Task SetMyListItemDesiredDataAsync_WhenTheApiAnswers503WithoutCodes_ThenItIsAFaultAsBefore() =>
         await Assert.ThrowsAsync<HttpRequestException>(() => Client(StubHttpHandler.Status(HttpStatusCode.ServiceUnavailable))
             .SetMyListItemDesiredDataAsync(ListId, ItemId, "C76"));
@@ -190,7 +203,7 @@ public class DesiredCodesClientTest
     }
 
     [Fact]
-    public void DesiredCodeView_WhenKept_ThenItGoesBackAsTheSameChoice() =>
+    public void ToChoice_WhenKept_ThenItGoesBackAsTheSameChoice() =>
         Assert.Equal(
             new DesiredCodeChoice("HelsefagligKodeverk", "ICD-10", DesiredCodeKinds.Range, "C30", "C39"),
             new DesiredCodeView { KodeverkType = "HelsefagligKodeverk", KodeverkReference = "ICD-10", Kind = "range", Code = "C30", To = "C39", Name = "x", Count = 9 }.ToChoice());

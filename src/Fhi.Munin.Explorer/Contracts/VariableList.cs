@@ -172,7 +172,7 @@ public static class DesiredCodeKinds
     /// <summary>One code.</summary>
     public const string Code = "kode";
 
-    /// <summary>A node with everything under it («med alt under»).</summary>
+    /// <summary>A node with everything under it.</summary>
     public const string Node = "node";
 
     /// <summary>A range from <see cref="DesiredCodeChoice.Code"/> to <see cref="DesiredCodeChoice.To"/>; health code systems only.</summary>
@@ -243,8 +243,8 @@ public enum DesiredDataOutcome
     NotFound,
 
     /// <summary>
-    /// The API refused the text itself. <see cref="DesiredDataResult.MaxLength"/> carries the
-    /// ceiling when the refusal named one, which is the only refusal this client can provoke.
+    /// The API refused the text or a chosen code. <see cref="DesiredDataResult.MaxLength"/>,
+    /// <see cref="DesiredDataResult.MaxSelections"/> or <see cref="DesiredDataResult.InvalidIndex"/> says which.
     /// </summary>
     Refused,
 
@@ -256,7 +256,8 @@ public enum DesiredDataOutcome
 }
 
 /// <summary>
-/// The answer to <see cref="IMuninExplorerClient.SetMyListDesiredDataAsync"/>.
+/// The answer to the "Ønskede data" writes: <see cref="IMuninExplorerClient.SetMyListDesiredDataAsync"/>, its item
+/// form, and <see cref="IMuninExplorerClient.SetMyListItemDesiredCodesAsync"/>.
 /// </summary>
 /// <remarks>
 /// A result rather than a <c>bool</c> plus a throw, which is what the other list writes use, and
@@ -275,7 +276,7 @@ public enum DesiredDataOutcome
 /// <param name="MaxLength">
 /// The longest text the API accepts, as the refusal named it. Null unless
 /// <paramref name="Outcome"/> is <see cref="DesiredDataOutcome.Refused"/>, and null then too when
-/// the refusal named no ceiling — which means it was refused for some other reason.
+/// the refusal named no ceiling — then <paramref name="MaxSelections"/> or <paramref name="InvalidIndex"/> may say why.
 /// </param>
 /// <param name="Received">How long the API measured the text as, or how many choices it counted. Null on the same terms.</param>
 /// <param name="MaxSelections">The most choices the API stores per item, when it refused a write for having more.</param>
@@ -285,4 +286,14 @@ public sealed record DesiredDataResult(
     int? MaxLength = null,
     int? Received = null,
     int? MaxSelections = null,
-    int? InvalidIndex = null);
+    int? InvalidIndex = null)
+{
+    // The shape before the code choices, kept so a host built against it still binds and still deconstructs.
+    public DesiredDataResult(DesiredDataOutcome outcome, int? maxLength, int? received)
+        : this(outcome, maxLength, received, null, null)
+    {
+    }
+
+    public void Deconstruct(out DesiredDataOutcome outcome, out int? maxLength, out int? received) =>
+        (outcome, maxLength, received) = (Outcome, MaxLength, Received);
+}

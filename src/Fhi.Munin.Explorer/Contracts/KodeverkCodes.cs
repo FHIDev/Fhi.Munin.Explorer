@@ -76,7 +76,7 @@ public sealed record KodeverkCodeHit
     /// <summary>When it stopped applying; null while it still does. A code with an end date can still be chosen.</summary>
     [JsonPropertyName("gyldigTil")] public DateTimeOffset? ValidTo { get; init; }
 
-    /// <summary>True when the code is a node in the tree: «med alt under» and the children call apply to it.</summary>
+    /// <summary>True when the code is a node in the tree: choosing it with everything under it, and the children call, apply.</summary>
     [JsonPropertyName("harUnderkoder")] public bool HasChildren { get; init; }
 }
 

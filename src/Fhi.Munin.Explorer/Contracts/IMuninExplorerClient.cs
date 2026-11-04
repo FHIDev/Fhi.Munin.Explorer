@@ -309,7 +309,7 @@ public interface IMuninExplorerClient
     /// to tick (ICD-10, NKPK, ATC). Null when the variable or the link is unknown.
     /// </summary>
     /// <remarks>
-    /// <paramref name="query"/> needs a letter or a digit; the API refuses one without, which arrives as an
+    /// <paramref name="query"/> needs a letter or a digit and at most 100 characters; the API refuses others, which arrives as an
     /// <see cref="HttpRequestException"/>. The path rule of <see cref="GetKodeverkCodesAsync"/> applies to the type and
     /// the reference. <c>take</c> is 1 to 100. The default refuses, so an implementation written before this member
     /// still builds.
@@ -344,7 +344,8 @@ public interface IMuninExplorerClient
             "Consume MuninExplorerClient, or implement the member.");
 
     /// <summary>
-    /// How many codes one choice covers: 1 for a code, a node with everything under it, or a range. Null when the
+    /// How many codes one choice covers: 1 for a code, otherwise the codes in a node with everything under it, or in a
+    /// range. Null when the
     /// variable, the link or the code is unknown. The choice's own type and reference are the link asked. The default
     /// refuses, as <see cref="SearchKodeverkCodesAsync"/>'s does.
     /// </summary>
@@ -541,7 +542,8 @@ public interface IMuninExplorerClient
     /// into a field that keeps refusing without saying so.
     /// <para>
     /// Clearing and writing are the same call: null, empty, or nothing but whitespace removes the
-    /// annotation, which is what the API does with a blank body. The text is trimmed on the way
+    /// text, which is what the API does with a blank body. Chosen codes stay: clear them with
+    /// <see cref="SetMyListItemDesiredCodesAsync"/>. The text is trimmed on the way
     /// out because the API trims it on the way in, so the caller is told about the length the API
     /// will actually measure.
     /// </para>
@@ -556,7 +558,7 @@ public interface IMuninExplorerClient
     /// <param name="id">The list the variable is in.</param>
     /// <param name="variableId">The variable to annotate. Spelled <c>variabelId</c> in the route.</param>
     /// <param name="freeText">
-    /// What the reader wants from this variable. Null, empty or whitespace clears the annotation.
+    /// What the reader wants from this variable. Null, empty or whitespace clears the text; chosen codes stay.
     /// </param>
     /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
     Task<DesiredDataResult> SetMyListDesiredDataAsync(
@@ -576,7 +578,7 @@ public interface IMuninExplorerClient
     /// <remarks>The default refuses, for the reason <see cref="SetMyListDesiredDataAsync"/>'s does.</remarks>
     /// <param name="id">The list the item is in.</param>
     /// <param name="itemId">The item.</param>
-    /// <param name="freeText">Null, empty or whitespace clears the annotation.</param>
+    /// <param name="freeText">Null, empty or whitespace clears the text; chosen codes stay.</param>
     /// <param name="cancellationToken">Cancelled when the caller goes away.</param>
     Task<DesiredDataResult> SetMyListItemDesiredDataAsync(
         Guid id,

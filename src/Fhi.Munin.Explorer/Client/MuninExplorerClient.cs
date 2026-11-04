@@ -439,7 +439,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         }
 
         // 503 with codes: the code list could not be read to check them, so nothing was stored.
-        if (response.StatusCode == HttpStatusCode.ServiceUnavailable && choices is not null)
+        if (response.StatusCode == HttpStatusCode.ServiceUnavailable && choices is { Count: > 0 })
         {
             return new DesiredDataResult(DesiredDataOutcome.ListUnavailable);
         }
@@ -558,9 +558,8 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
 
     /// <summary>The "Ønskede data" body, spelled the way the API spells it.</summary>
     /// <remarks>
-    /// Private for the reason <see cref="NameBody"/> is. Both properties are written even when
-    /// null, which is what the API reads as a clear — a body that omitted them would bind to the
-    /// same thing, but only by accident of the two defaults agreeing.
+    /// Private like <see cref="NameBody"/>. A null type and text are written (a clear); null selections are left
+    /// out, which the API reads as «keep the stored choices».
     /// </remarks>
     private sealed record DesiredDataBody(
         [property: JsonPropertyName("type")] string? Type,
