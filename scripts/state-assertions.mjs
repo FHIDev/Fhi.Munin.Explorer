@@ -2930,7 +2930,7 @@ function keyboardFocusAssertions() {
           await page.waitForFunction(n => [...document.querySelectorAll('[role=tabpanel]:not([hidden]) td button')]
             .filter(b => b.textContent.trim() === 'Fjern').length === n - 1, before, { timeout: findTimeout });
           await page.waitForTimeout(PRESS_SETTLE_MS);
-          const said = await page.locator('.munin-explorer [role=status].screenreader-only').first().textContent();
+          const said = await page.locator('[role=tabpanel]:not([hidden]) [role=status].screenreader-only').first().textContent();
           return { row, now: await focused(page), said: (said || '').trim() };
         };
         const count = await removes(page).count();

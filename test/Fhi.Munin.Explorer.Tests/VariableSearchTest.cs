@@ -10580,12 +10580,12 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void ResultsToolbar_WhenTheCountSharesTheRow_ThenItIsStillTheOnePoliteRegionAndItStillNamesTheSort()
+    public void ResultsToolbar_WhenTheCountSharesTheRow_ThenOnePoliteRegionSaysItAndItStillNamesTheSort()
     {
         // THE TRAP THIS MOVE COULD HAVE SPRUNG: carry the count into the new row without its
         // aria-live and screen-reader users stop being told the result count changed when a facet
-        // is ticked, with nothing visibly wrong. Exactly one region, because a visible count beside
-        // a region repeating the same sentence is announced twice.
+        // is ticked, with nothing visibly wrong. One region says the count, because a visible count
+        // beside a region repeating the same sentence is announced twice.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
         var count = cut.Find(".munin-explorer-results__toolbar > p.caption[role='status']");
