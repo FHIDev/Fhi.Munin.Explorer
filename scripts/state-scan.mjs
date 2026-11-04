@@ -57,6 +57,21 @@ const stub = {
       throw new Error(`the stub would not drop what it is holding: ${response.status}`);
     }
   },
+  async resetLists() {
+    const response = await fetch(`${stubBase}/__stub/reset-lists`, { method: 'POST' });
+    if (!response.ok) {
+      throw new Error(`the stub would not reset its lists: ${response.status}`);
+    }
+  },
+  async addToList(variabelId) {
+    const [list] = await (await fetch(`${stubBase}/api/explorer/my/lists`)).json();
+    const response = await fetch(`${stubBase}/api/explorer/my/lists/${list.id}/variables`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ variabelIds: [variabelId] }),
+    });
+    if (!response.ok) {
+      throw new Error(`the stub would not add to its list: ${response.status}`);
+    }
+  },
   async holding() {
     const response = await fetch(`${stubBase}/__stub/hold-next`);
     if (!response.ok) {

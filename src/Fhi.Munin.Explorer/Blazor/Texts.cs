@@ -334,6 +334,8 @@ internal sealed record Texts(
     string CreatingList,
     string CancelNewList,
     string ListCreated,
+    // Said after «Fjern», since the focused button leaves with its row (WCAG 4.1.3, Fhi.Metadata-mhqx0.15).
+    Func<string, string> RemovedFromList,
     string ListRowsLoading,
     // The saved-list tab's own filter panel, where the search facets are hidden. Only the empty
     // case earns a string of its own: the panel's title and the Kilde heading are FiltersTitle and
@@ -1397,6 +1399,7 @@ internal sealed record Texts(
         CreatingList: "Oppretter …",
         CancelNewList: "Avbryt",
         ListCreated: "Listen er opprettet.",
+        RemovedFromList: name => $"{name} er fjernet fra listen.",
         ListRowsLoading: "Henter variablene i listen …",
         NoKilderInList: "Ingen kilder i listen ennå.",
         NoVariablesForTheseKilder: "Ingen variabler fra de valgte kildene.",
@@ -1972,6 +1975,7 @@ internal sealed record Texts(
         CreatingList: "Creating …",
         CancelNewList: "Cancel",
         ListCreated: "The list has been created.",
+        RemovedFromList: name => $"{name} has been removed from the list.",
         ListRowsLoading: "Loading the variables in the list …",
         NoKilderInList: "No sources in the list yet.",
         NoVariablesForTheseKilder: "No variables from the selected sources.",

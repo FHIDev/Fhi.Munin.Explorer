@@ -340,6 +340,32 @@ public class ListRowPanelTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Panel_WhenArrowKeysMoveTheSelection_ThenFocusFollowsItToEachTab()
+    {
+        // aria-selected moved before the fix too; the defect was focus left on «Data» (Fhi.Metadata-mhqx0.11).
+        var cut = RenderView(new PanelClient(DatabaseVersion));
+        NameButton(cut, "Databaseversjon").Click();
+        cut.WaitForElement("[role=tablist]");
+        var before = Focused().Count;
+
+        cut.Find("[role=tablist]").KeyDown("ArrowRight");
+        cut.WaitForAssertion(() => Assert.Equal("true", cut.FindAll("[role=tab]")[1].GetAttribute("aria-selected")));
+        cut.Find("[role=tablist]").KeyDown("ArrowRight");
+        cut.WaitForAssertion(() => Assert.Equal("true", cut.FindAll("[role=tab]")[2].GetAttribute("aria-selected")));
+        cut.Find("[role=tablist]").KeyDown("ArrowLeft");
+        cut.WaitForAssertion(() => Assert.Equal(before + 3, Focused().Count));
+
+        var moves = Focused().Skip(before).ToList();
+        Assert.NotEqual(moves[0], moves[1]);
+        Assert.Equal(moves[0], moves[2]);
+    }
+
+    private List<string?> Focused() =>
+        [.. JSInterop.Invocations
+            .Where(i => i.Identifier.EndsWith(".focus", StringComparison.Ordinal))
+            .Select(i => ((Microsoft.AspNetCore.Components.ElementReference)i.Arguments[0]!).Id)];
+
+    [Fact]
     public void Panel_WhenOpened_ThenItHasTheExplorersTwoTabsAndNotesAndTheSecondDoesNotRepeatTheDescription()
     {
         var cut = RenderView(new PanelClient(DatabaseVersion));

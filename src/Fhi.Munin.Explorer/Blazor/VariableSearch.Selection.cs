@@ -438,6 +438,7 @@ public partial class VariableSearch
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         await MoveFocusAsync();
+        await FocusResultTabAsync();
         await ApplyQueuedFilterAsync();
         if (_focusSaveAll)
         {

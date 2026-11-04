@@ -598,10 +598,13 @@ else
              role="tablist"
              aria-label="@T.Title"
              @onkeydown="ResultTabKey">
-            @foreach (var tab in ResultTabs)
+            @for (var index = 0; index < ResultTabs.Length; index++)
             {
+                var tab = ResultTabs[index];
+                var slot = index;
                 <div class="@ResultTabClass(tab)" @key="tab">
                     <button class="hd-button-reset"
+                            @ref="_resultTabButtons[slot]"
                             type="button"
                             role="tab"
                             id="@ResultTabId(tab)"

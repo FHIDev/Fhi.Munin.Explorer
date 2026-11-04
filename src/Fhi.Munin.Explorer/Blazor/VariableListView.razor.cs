@@ -655,8 +655,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         var fromMenu = TakeMenuFocusTarget();
         var fromWrite = TakeFocusTarget();
         var fromCreateForm = TakeCreateFormFocusTarget();
+        var fromRemove = TakeRemoveFocusTarget();
 
-        if ((fromCreateForm ?? fromSource ?? fromMenu ?? fromWrite) is { } target)
+        if ((fromCreateForm ?? fromSource ?? fromMenu ?? fromWrite ?? fromRemove) is { } target)
         {
             try
             {
@@ -1288,6 +1289,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         _shownList = id;
+        _removedSaid = null;
         _shownListMoves++;
         _pageNumber = 1;
         ForgetListControls();
@@ -1566,10 +1568,52 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         await ShowActiveListAsync();
     }
 
+    // «Fjern» leaves with its row: focus goes to the next row's (else the previous one's), or to the list's menu when
+    // none is left, and the removal is said (WCAG 2.4.3 and 4.1.3, Fhi.Metadata-mhqx0.15).
+    private readonly Dictionary<VariableDatasamlingKey, ElementReference> _removeButtons = [];
+    private bool _focusAfterRemove;
+    private (int Forms, int Moves) _atRemove;
+
+    // The list and page a removal was pressed on: a list or page change meanwhile makes its focus and sentence stale.
+    private (Guid? List, int Page) _removeContext;
+    private VariableDatasamlingKey? _removeFocusRow;
+    private string? _removedSaid;
+
+    // A new element per removal, so a second one under the same name is announced again.
+    private int _removedCount;
+
+    private ElementReference? TakeRemoveFocusTarget()
+    {
+        if (!_focusAfterRemove)
+        {
+            return null;
+        }
+
+        _focusAfterRemove = false;
+
+        // Not while the reader has moved on (a form, a fold, another list or page during the call), as TakeFocusTarget.
+        if ((OpenForms() & ~_atRemove.Forms) != 0 || _readerMoves != _atRemove.Moves || _removeContext != (_shownList, _pageNumber))
+        {
+            return null;
+        }
+
+        var shown = _page?.Items.Any(i => VariableDatasamlingKey.Of(i) == _removeFocusRow) == true;
+        return shown && _removeFocusRow is { } row && _removeButtons.TryGetValue(row, out var button) ? button : _menuToggle;
+    }
+
     private async Task RemoveAsync(VariableListItem item)
     {
         var variableId = item.VariableId;
         var key = VariableDatasamlingKey.Of(item);
+        var rows = _page?.Items.ToList() ?? [];
+        var at = rows.FindIndex(i => VariableDatasamlingKey.Of(i) == key);
+        VariableDatasamlingKey? neighbour = at < 0 ? null
+            : at + 1 < rows.Count ? VariableDatasamlingKey.Of(rows[at + 1])
+            : at > 0 ? VariableDatasamlingKey.Of(rows[at - 1])
+            : null;
+        var name = RowName(item);
+        _atRemove = (OpenForms(), _readerMoves);
+        var context = (_shownList, _pageNumber);
 
         if (State is null || _shownList is null)
         {
@@ -1597,8 +1641,23 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 }
 
                 ForgetNotesFor(list, key);
+                _removeButtons.Remove(key);
+                if (context == (_shownList, _pageNumber))
+                {
+                    _removeContext = context;
+                    _removeFocusRow = neighbour;
+                    _focusAfterRemove = true;
+                    _removedSaid = T.RemovedFromList(name);
+                    _removedCount++;
+                }
 
                 await RetreatFromEmptyPageAsync();
+
+                // The removal's own step back a page is not the reader moving on.
+                if (_focusAfterRemove && _removeContext == context)
+                {
+                    _removeContext = (_shownList, _pageNumber);
+                }
             }
             else
             {

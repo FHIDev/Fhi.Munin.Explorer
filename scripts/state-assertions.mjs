@@ -68,6 +68,7 @@
 // Deterministic tree coverage and its controls live together, independently of capture contents.
 import { treeAssertions } from './tree-assertions.mjs';
 import { jumpPast, jumpToTop, scrollPast, scrollToTop } from './reader-scroll.mjs';
+import { states } from './axe-states.mjs';
 
 /** The contents nav of a detail view, in the column beside it. */
 const TOC = '.munin-explorer-page__toc';
@@ -2836,4 +2837,128 @@ export const assertions = [
     },
   },
   ...chevronAssertions,
+  ...keyboardFocusAssertions(),
 ];
+
+// WCAG 2.1.1 and 2.4.3 (Fhi.Metadata-mhqx0.11, mhqx0.15): where a key press leaves focus. bUnit records a FocusAsync
+// call but has no document.activeElement; this reads it after a real key. Each control disables focus().
+function focused(page) {
+  return page.evaluate(() => {
+    const el = document.activeElement;
+    const ids = (el?.getAttribute('aria-labelledby') || '').split(' ');
+    return { id: el?.id || '', role: el?.getAttribute('role') || '', selected: el?.getAttribute('aria-selected') || '',
+      text: (el?.textContent || '').trim(), row: ids[1] || '' };
+  });
+}
+
+async function noFocusMoves(page) {
+  await page.addInitScript(() => { HTMLElement.prototype.focus = function () {}; });
+  await page.evaluate(() => { HTMLElement.prototype.focus = function () {}; });
+}
+
+async function tabKeysFollow(page, tablist, steps) {
+  await tablist.locator('[role=tab][aria-selected="true"]').first().focus();
+  for (const [key, want] of steps) {
+    await page.keyboard.press(key);
+    await page.waitForTimeout(PRESS_SETTLE_MS);
+    const now = await focused(page);
+    if (now.role !== 'tab' || now.text !== want || now.selected !== 'true') {
+      return `${key}: focus is on «${now.text || now.id || 'body'}» (role ${now.role || 'none'}, selected ${now.selected || '-'}), not the selected tab «${want}»`;
+    }
+  }
+  return null;
+}
+
+function keyboardFocusAssertions() {
+  const LIST = '[role=tabpanel]:not([hidden]) .munin-explorer-data-list';
+  const removes = page => page.locator('[role=tabpanel]:not([hidden]) td button', { hasText: 'Fjern' });
+  return [
+    {
+      name: 'arrow keys, Home and End on «Søkeresultat»/«Variabelliste» move focus with the selection',
+      kind: 'invariant',
+      states: ['explorer-tabs'],
+      async stage(page) {
+        const tablist = page.locator('.munin-explorer-meta__tabs[role=tablist]').first();
+        await tablist.waitFor({ state: 'visible', timeout: findTimeout });
+        return {};
+      },
+      async measure(page) {
+        return tabKeysFollow(page, page.locator('.munin-explorer-meta__tabs[role=tablist]').first(),
+          [['ArrowRight', 'Variabelliste'], ['ArrowLeft', 'Søkeresultat'], ['End', 'Variabelliste'], ['Home', 'Søkeresultat']]);
+      },
+      async control(page) {
+        await noFocusMoves(page);
+      },
+    },
+    {
+      name: 'arrow keys on the detail panel\'s «Data»/«Detaljer» move focus with the selection',
+      kind: 'invariant',
+      states: ['variable-detail'],
+      async stage(page) {
+        const tablist = page.locator('.munin-explorer-detail [role=tablist]').first();
+        await tablist.waitFor({ state: 'visible', timeout: findTimeout });
+        return {};
+      },
+      async measure(page) {
+        return tabKeysFollow(page, page.locator('.munin-explorer-detail [role=tablist]').first(),
+          [['ArrowRight', 'Detaljer'], ['ArrowLeft', 'Data']]);
+      },
+      async control(page) {
+        await noFocusMoves(page);
+      },
+    },
+    {
+      name: '«Fjern» leaves focus on the next row, the previous one, then the list menu, and says so',
+      kind: 'invariant',
+      states: ['explorer-list-tab'],
+      async stage(page, stub) {
+        // Three rows, so a middle, a last and a last-one-left are each pressed once.
+        await stub.resetLists();
+        await stub.addToList('5d2a9c1e-4b7f-4e8a-9c3d-1f6b8e2a7c40');
+        await page.reload({ waitUntil: 'networkidle' });
+        await states['explorer-list-tab'](page);
+        await page.waitForFunction(n => document.querySelectorAll('[role=tabpanel]:not([hidden]) td button').length >= n, 3, { timeout: findTimeout });
+        return { stub };
+      },
+      async measure(page) {
+        const press = async index => {
+          const before = await removes(page).count();
+          const button = removes(page).nth(index);
+          const row = await focusedRowOf(page, button);
+          await button.focus();
+          await page.keyboard.press('Enter');
+          await page.waitForFunction(n => [...document.querySelectorAll('[role=tabpanel]:not([hidden]) td button')]
+            .filter(b => b.textContent.trim() === 'Fjern').length === n - 1, before, { timeout: findTimeout });
+          await page.waitForTimeout(PRESS_SETTLE_MS);
+          const said = await page.locator('.munin-explorer [role=status].screenreader-only').first().textContent();
+          return { row, now: await focused(page), said: (said || '').trim() };
+        };
+        const count = await removes(page).count();
+        if (count < 3) return `the list has ${count} rows, not the 3 this needs`;
+        const names = [];
+        for (let i = 0; i < count; i++) names.push(await focusedRowOf(page, removes(page).nth(i)));
+        const middle = await press(1);
+        if (middle.now.text !== 'Fjern' || middle.now.row !== names[2]) return `after the middle row, focus is on «${middle.now.text || 'body'}» (${middle.now.row}), not «Fjern» on ${names[2]}`;
+        if (!middle.said.includes('fjernet fra listen')) return `the removal was not said (status: «${middle.said}»)`;
+        const last = await press(1);
+        if (last.now.text !== 'Fjern' || last.now.row !== names[0]) return `after the last row, focus is on «${last.now.text || 'body'}» (${last.now.row}), not «Fjern» on ${names[0]}`;
+        const only = await press(0);
+        if (!only.now.id.startsWith('munin-explorer-list-menu-toggle-')) return `after the last one left, focus is on «${only.now.text || only.now.id || 'body'}», not the list menu`;
+        return null;
+      },
+      async control(page, { stub }) {
+        await stub.resetLists();
+        await stub.addToList('5d2a9c1e-4b7f-4e8a-9c3d-1f6b8e2a7c40');
+        await noFocusMoves(page);
+        await page.reload({ waitUntil: 'networkidle' });
+        await states['explorer-list-tab'](page);
+        await page.waitForFunction(n => document.querySelectorAll('[role=tabpanel]:not([hidden]) td button').length >= n, 3, { timeout: findTimeout });
+      },
+    },
+  ];
+}
+
+async function focusedRowOf(page, button) {
+  // The row's name cell by id, not its text: the stub's added row copies the first row's name.
+  return button.evaluate(el => (el.getAttribute('aria-labelledby') || '').split(' ')[1] || '');
+}

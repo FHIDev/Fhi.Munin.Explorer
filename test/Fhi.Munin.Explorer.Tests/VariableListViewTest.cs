@@ -506,6 +506,9 @@ public partial class VariableListViewTest : ExplorerTestContext
         /// <remarks>Settable, not init: a test turns it off to show the view still answers after.</remarks>
         public Exception? RemoveThrows { get; set; }
 
+        /// <summary>Set, and a removal waits for it: the reader can move on while the call is out.</summary>
+        public TaskCompletionSource? HoldRemove { get; set; }
+
         /// <summary>Set when the API declines the removal: it returns false rather than throwing.</summary>
         /// <remarks>Settable for the reason <see cref="RemoveThrows"/> is.</remarks>
         public bool RemoveIsDeclined { get; set; }
@@ -525,8 +528,20 @@ public partial class VariableListViewTest : ExplorerTestContext
                 return Task.FromResult(false);
             }
 
+            if (HoldRemove is { } hold)
+            {
+                return Held(hold.Task);
+            }
+
             _items.RemoveAll(i => variableIds.Contains(i.VariableId));
             return Task.FromResult(true);
+
+            async Task<bool> Held(Task until)
+            {
+                await until;
+                _items.RemoveAll(i => variableIds.Contains(i.VariableId));
+                return true;
+            }
         }
 
         public int AddCalls { get; private set; }
@@ -2548,7 +2563,7 @@ public partial class VariableListViewTest : ExplorerTestContext
         cut.FindAll("tbody tr td:last-child button")[0].Click();
 
         Assert.Equal(1, client.RemoveCalls);
-        Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
+        Assert.DoesNotContain(cut.FindAll("tbody tr"), row => row.TextContent.Contains("Alder ved diagnose", StringComparison.Ordinal));
 
         // The converse of the declined removal below. Without it, a handler that reported every
         // removal as failed would still pass this test on the row alone.
@@ -2593,7 +2608,7 @@ public partial class VariableListViewTest : ExplorerTestContext
         // The name moved on its own — the picker reads it off the holder — so the rows are the
         // whole of what is asserted here. Empty, there is no table at all to be named.
         Assert.Contains("Kreft og svulster", cut.Markup);
-        Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
+        Assert.DoesNotContain(cut.FindAll("tbody tr"), row => row.TextContent.Contains("Alder ved diagnose", StringComparison.Ordinal));
         Assert.Contains("Denne listen er tom.", cut.Markup);
     }
 
@@ -2806,7 +2821,7 @@ public partial class VariableListViewTest : ExplorerTestContext
         var state = Services.GetRequiredService<VariableListState>();
         await cut.InvokeAsync(() => state.RemoveVariablesAsync(ListId, [item.VariableId]));
 
-        Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
+        Assert.DoesNotContain(cut.FindAll("tbody tr"), row => row.TextContent.Contains("Alder ved diagnose", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -3321,7 +3336,7 @@ public partial class VariableListViewTest : ExplorerTestContext
         await cut.InvokeAsync(() => cut.FindAll("tbody tr td:last-child button")[0].Click());
 
         Assert.Equal(2, client.RemoveCalls);
-        Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
+        Assert.DoesNotContain(cut.FindAll("tbody tr"), row => row.TextContent.Contains("Alder ved diagnose", StringComparison.Ordinal));
         Assert.DoesNotContain("Kunne ikke endre listen", cut.Markup);
     }
 
@@ -3395,7 +3410,7 @@ public partial class VariableListViewTest : ExplorerTestContext
         await PressAsync(cut, "Lagre navnet");
 
         Assert.Contains("Hjertet mitt", cut.Markup);
-        Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
+        Assert.DoesNotContain(cut.FindAll("tbody tr"), row => row.TextContent.Contains("Alder ved diagnose", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -3739,6 +3754,48 @@ public partial class VariableListViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public async Task View_WhenARowIsRemoved_ThenFocusIsMovedOnceAndTheRemovalIsSaid()
+    {
+        // The pressed button leaves with its row, so without a move focus falls to <body> (Fhi.Metadata-mhqx0.15).
+        // Where it lands is the browser's to show (state-assertions.mjs); here: once per removal, and said.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"), Item("Kjønn", "V_BDR.KJONN"), Item("Bosted", "V_BDR.BOSTED")));
+        int Focused() => JSInterop.Invocations.Count(i => i.Identifier.EndsWith(".focus", StringComparison.Ordinal));
+        var before = Focused();
+
+        await cut.InvokeAsync(() => cut.FindAll("tbody tr td:last-child button")[1].Click());
+
+        cut.WaitForAssertion(() => Assert.Equal(before + 1, Focused()));
+        Assert.Contains("er fjernet fra listen", cut.Find(".screenreader-only[role=status]").TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task View_WhenTheReaderTurnsThePageWhileARemovalIsOut_ThenItTakesNoFocusAndSaysNothingThere()
+    {
+        // Copilot on #716: a page or list change does not move _readerMoves, so the late removal must check its own context.
+        var many = Enumerable.Range(1, 30).Select(i => Item($"Variabel {i}", $"V_{i}")).ToArray();
+        var client = new ListClient(many) { PageSize = 25, HoldRemove = new TaskCompletionSource() };
+        var cut = RenderView(client);
+        int Focused() => JSInterop.Invocations.Count(i => i.Identifier.EndsWith(".focus", StringComparison.Ordinal));
+
+        var removing = cut.InvokeAsync(() => cut.FindAll("tbody tr td:last-child button")[1].Click());
+        await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-pagination-content button")[^1].Click());
+        var before = Focused();
+        var reads = client.VariablesCalls;
+        client.HoldRemove.SetResult();
+        await removing;
+
+        // The removal's own re-read, then the handler's tail and its render, before anything is read.
+        cut.WaitForState(() => client.VariablesCalls > reads);
+        for (var i = 0; i < 3; i++)
+        {
+            await cut.InvokeAsync(() => { });
+        }
+
+        Assert.Equal(before, Focused());
+        Assert.DoesNotContain("er fjernet fra listen", cut.Find(".screenreader-only[role=status]").TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task View_WhenAnotherRowIsRemovedAfterARefusal_ThenTheRefusedTextSurvivesTheReload()
     {
         // The reader-facing path the test above cannot reach: pressing "Fjern" runs through the
@@ -3983,7 +4040,7 @@ public partial class VariableListViewTest : ExplorerTestContext
 
         Assert.Contains("Kunne ikke hente listen", cut.Markup);
         Assert.Empty(DesiredDataFields(cut));
-        Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
+        Assert.DoesNotContain(cut.FindAll("tbody tr"), row => row.TextContent.Contains("Alder ved diagnose", StringComparison.Ordinal));
     }
 
     [Fact]

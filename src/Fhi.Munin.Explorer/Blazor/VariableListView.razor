@@ -374,6 +374,7 @@ else if (State?.IsAuthenticated == true)
                                         <button class="hd-button-square button-square--ghost-blue"
                                                 type="button"
                                                 id="@RemoveButtonId(item)"
+                                                @ref="_removeButtons[VariableDatasamlingKey.Of(item)]"
                                                 aria-labelledby="@RemoveLabelledBy(item)"
                                                 @onclick="() => RemoveAsync(item)">@T.RemoveFromThisList</button>
                                     </td>
@@ -426,6 +427,14 @@ else if (State?.IsAuthenticated == true)
                     </div>
                 }
             }
+
+            @* Last, after the page's own status lines; always in the DOM, so the sentence is announced when it arrives. *@
+            <div role="status" class="screenreader-only">
+                @if (_removedSaid is not null)
+                {
+                    <p @key="_removedCount">@_removedSaid</p>
+                }
+            </div>
         </ChildContent>
     </DetailPage>
 }

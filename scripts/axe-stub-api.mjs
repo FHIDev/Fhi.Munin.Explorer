@@ -439,6 +439,13 @@ function handle(request, response) {
     return;
   }
 
+  // The saved list back as captured, for a staging that removes rows (state-assertions.mjs, Fhi.Metadata-mhqx0.15).
+  if (url.pathname === '/__stub/reset-lists' && request.method === 'POST') {
+    added.clear(); removedKeys.clear(); removedVariables.clear();
+    response.writeHead(204).end();
+    return;
+  }
+
   const holding = held.findIndex(one => one.path === url.pathname);
   if (holding < 0) {
     serve(url, request, response);
