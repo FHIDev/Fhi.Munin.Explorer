@@ -2847,7 +2847,7 @@ function focused(page) {
     const el = document.activeElement;
     const ids = (el?.getAttribute('aria-labelledby') || '').split(' ');
     return { id: el?.id || '', role: el?.getAttribute('role') || '', selected: el?.getAttribute('aria-selected') || '',
-      text: (el?.textContent || '').trim(), row: ids[1] ? (document.getElementById(ids[1])?.textContent || '').trim() : '' };
+      text: (el?.textContent || '').trim(), row: ids[1] || '' };
   });
 }
 
@@ -2959,5 +2959,6 @@ function keyboardFocusAssertions() {
 }
 
 async function focusedRowOf(page, button) {
-  return button.evaluate(el => { const id = (el.getAttribute('aria-labelledby') || '').split(' ')[1]; return id ? (document.getElementById(id)?.textContent || '').trim() : ''; });
+  // The row's name cell by id, not its text: the stub's added row copies the first row's name.
+  return button.evaluate(el => (el.getAttribute('aria-labelledby') || '').split(' ')[1] || '');
 }

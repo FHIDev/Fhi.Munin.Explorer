@@ -2,6 +2,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -251,7 +252,14 @@ internal sealed class VariablePanelTabs : ComponentBase
         if (_focusTab && _tabButtons.TryGetValue(Tab, out var button))
         {
             _focusTab = false;
-            await button.FocusAsync();
+            try
+            {
+                await button.FocusAsync();
+            }
+            catch (JSException)
+            {
+                // A focus nicety must not take the circuit down with it.
+            }
         }
     }
 

@@ -1571,8 +1571,12 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     // none is left, and the removal is said (WCAG 2.4.3 and 4.1.3, Fhi.Metadata-mhqx0.15).
     private readonly Dictionary<VariableDatasamlingKey, ElementReference> _removeButtons = [];
     private bool _focusAfterRemove;
+    private (int Forms, int Moves) _atRemove;
     private VariableDatasamlingKey? _removeFocusRow;
     private string? _removedSaid;
+
+    // A new element per removal, so a second one under the same name is announced again.
+    private int _removedCount;
 
     private ElementReference? TakeRemoveFocusTarget()
     {
@@ -1582,6 +1586,13 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         _focusAfterRemove = false;
+
+        // Not while the reader has moved on (a form opened or a fold moved during the call), as TakeFocusTarget.
+        if ((OpenForms() & ~_atRemove.Forms) != 0 || _readerMoves != _atRemove.Moves)
+        {
+            return null;
+        }
+
         var shown = _page?.Items.Any(i => VariableDatasamlingKey.Of(i) == _removeFocusRow) == true;
         return shown && _removeFocusRow is { } row && _removeButtons.TryGetValue(row, out var button) ? button : _menuToggle;
     }
@@ -1597,6 +1608,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             : at > 0 ? VariableDatasamlingKey.Of(rows[at - 1])
             : null;
         var name = RowName(item);
+        _atRemove = (OpenForms(), _readerMoves);
 
         if (State is null || _shownList is null)
         {
@@ -1628,6 +1640,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 _removeFocusRow = neighbour;
                 _focusAfterRemove = true;
                 _removedSaid = T.RemovedFromList(name);
+                _removedCount++;
 
                 await RetreatFromEmptyPageAsync();
             }

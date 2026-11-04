@@ -2548,7 +2548,7 @@ public partial class VariableListViewTest : ExplorerTestContext
         cut.FindAll("tbody tr td:last-child button")[0].Click();
 
         Assert.Equal(1, client.RemoveCalls);
-        Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
+        Assert.DoesNotContain(cut.FindAll("tbody tr"), row => row.TextContent.Contains("Alder ved diagnose", StringComparison.Ordinal));
 
         // The converse of the declined removal below. Without it, a handler that reported every
         // removal as failed would still pass this test on the row alone.
@@ -2593,7 +2593,7 @@ public partial class VariableListViewTest : ExplorerTestContext
         // The name moved on its own — the picker reads it off the holder — so the rows are the
         // whole of what is asserted here. Empty, there is no table at all to be named.
         Assert.Contains("Kreft og svulster", cut.Markup);
-        Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
+        Assert.DoesNotContain(cut.FindAll("tbody tr"), row => row.TextContent.Contains("Alder ved diagnose", StringComparison.Ordinal));
         Assert.Contains("Denne listen er tom.", cut.Markup);
     }
 
@@ -2806,7 +2806,7 @@ public partial class VariableListViewTest : ExplorerTestContext
         var state = Services.GetRequiredService<VariableListState>();
         await cut.InvokeAsync(() => state.RemoveVariablesAsync(ListId, [item.VariableId]));
 
-        Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
+        Assert.DoesNotContain(cut.FindAll("tbody tr"), row => row.TextContent.Contains("Alder ved diagnose", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -3321,7 +3321,7 @@ public partial class VariableListViewTest : ExplorerTestContext
         await cut.InvokeAsync(() => cut.FindAll("tbody tr td:last-child button")[0].Click());
 
         Assert.Equal(2, client.RemoveCalls);
-        Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
+        Assert.DoesNotContain(cut.FindAll("tbody tr"), row => row.TextContent.Contains("Alder ved diagnose", StringComparison.Ordinal));
         Assert.DoesNotContain("Kunne ikke endre listen", cut.Markup);
     }
 
@@ -3395,7 +3395,7 @@ public partial class VariableListViewTest : ExplorerTestContext
         await PressAsync(cut, "Lagre navnet");
 
         Assert.Contains("Hjertet mitt", cut.Markup);
-        Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
+        Assert.DoesNotContain(cut.FindAll("tbody tr"), row => row.TextContent.Contains("Alder ved diagnose", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -3739,7 +3739,7 @@ public partial class VariableListViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public async Task View_WhenFjernRemovesARow_ThenFocusIsMovedOnceAndTheRemovalIsSaid()
+    public async Task View_WhenARowIsRemoved_ThenFocusIsMovedOnceAndTheRemovalIsSaid()
     {
         // The pressed button leaves with its row, so without a move focus falls to <body> (Fhi.Metadata-mhqx0.15).
         // Where it lands is the browser's to show (state-assertions.mjs); here: once per removal, and said.
@@ -3998,7 +3998,7 @@ public partial class VariableListViewTest : ExplorerTestContext
 
         Assert.Contains("Kunne ikke hente listen", cut.Markup);
         Assert.Empty(DesiredDataFields(cut));
-        Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
+        Assert.DoesNotContain(cut.FindAll("tbody tr"), row => row.TextContent.Contains("Alder ved diagnose", StringComparison.Ordinal));
     }
 
     [Fact]

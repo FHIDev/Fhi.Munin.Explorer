@@ -130,9 +130,6 @@ else if (State?.IsAuthenticated == true)
                 </div>
             }
 
-            @* Always in the DOM once the list shows, so the sentence is announced when it arrives. *@
-            <div role="status" class="screenreader-only">@_removedSaid</div>
-
             @if (_renaming && _shownList is not null)
             {
                 <div>
@@ -430,6 +427,14 @@ else if (State?.IsAuthenticated == true)
                     </div>
                 }
             }
+
+            @* Last, after the page's own status lines; always in the DOM, so the sentence is announced when it arrives. *@
+            <div role="status" class="screenreader-only">
+                @if (_removedSaid is not null)
+                {
+                    <p @key="_removedCount">@_removedSaid</p>
+                }
+            </div>
         </ChildContent>
     </DetailPage>
 }

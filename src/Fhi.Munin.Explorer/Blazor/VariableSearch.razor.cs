@@ -3,6 +3,7 @@ using Fhi.Munin.Explorer.Display;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -1365,6 +1366,13 @@ public sealed partial class VariableSearch : ComponentBase
         }
 
         _focusResultTab = false;
-        await _resultTabButtons[Array.IndexOf(ResultTabs, _resultsTab)].FocusAsync();
+        try
+        {
+            await _resultTabButtons[Array.IndexOf(ResultTabs, _resultsTab)].FocusAsync();
+        }
+        catch (JSException)
+        {
+            // A focus nicety must not take the circuit down with it.
+        }
     }
 }
