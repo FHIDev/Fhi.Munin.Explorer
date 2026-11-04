@@ -83,6 +83,7 @@ TARGETS=(
   "/::explorer-list-tab"
   "/::list-row-panel"
   "/::list-row-notes"
+  "/::list-row-picker"
   "/::list-actions-menu"
   "/::list-actions-and-columns"
   "/::list-download-and-columns"

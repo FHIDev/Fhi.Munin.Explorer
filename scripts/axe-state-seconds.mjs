@@ -31,6 +31,7 @@ export const stateSeconds = {
   'kilder-expanded': 8,
   'kilde-hierarchy-error': 8,
   'list-row-notes': 8,
+  'list-row-picker': 8,
   'variable-kilde-hierarchy': 8,
   'variable-kilde-hierarchy-icons-off': 8,
   'variables-facets': 8,

@@ -954,4 +954,17 @@ export const states = {
     await panel.getByRole('textbox', { name: 'Egne notater', exact: true })
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
+
+  // The opened row's code picker on «Ønskede data», one code ticked so the chosen list shows (Fhi.Metadata-emsc0.3.7).
+  'list-row-picker': async page => {
+    await states['list-row-panel'](page);
+
+    const panel = page.locator('[role=tabpanel]:not([hidden]) .munin-explorer-detail').first();
+    await panel.getByRole('button', { name: 'Velg fra kodelisten', exact: true }).click();
+    const picker = panel.getByRole('group', { name: 'Ønskede verdier', exact: true });
+    const first = picker.getByRole('checkbox').first();
+    await first.waitFor({ state: 'visible', timeout: findTimeout });
+    await first.check();
+    await picker.getByRole('button', { name: /^Fjern / }).first().waitFor({ state: 'visible', timeout: findTimeout });
+  },
 };
