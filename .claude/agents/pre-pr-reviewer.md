@@ -457,6 +457,11 @@ reversal — reviewers read the bead to decide what the change is supposed to co
 4. Qualify the issue reference with the repository.
 ```
 
+Tag every finding Important, Nit or Pre-existing, as `REVIEW.md` defines them. List Pre-existing findings (in code
+this branch does not change) last, under `### Pre-existing (not this branch's)`: they ask for no fix here and no new
+round. When the brief lists an earlier round's findings, do not report them again; name one only when its fix did not
+work.
+
 Be thorough but fast, and quote file and line for every `✗`. Where a check does not apply to this
 diff, mark it `–` rather than `✓` — a check that did not run is not a check that passed, which is
 the same mistake §10 is about.

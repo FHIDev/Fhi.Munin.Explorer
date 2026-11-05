@@ -27,7 +27,14 @@ Everything else (naming, wording, structure, a smaller way to write it) is a **N
   without a place; "consider" with no concrete failure is not a finding.
 - **Nit cap.** At most 5 Nits per review; more collapse into "(plus N similar)". After the first review of a pull
   request, report only Important findings.
-- **Summary first.** The report starts with a count: "3 findings: 1 Important, 2 Nits", or "No findings".
+- **Pre-existing.** A finding in code the pull request does not change, and whose behaviour the change does not alter, is
+  **Pre-existing**, not Important or Nit, however serious. It asks for no fix in this pull request and no new review
+  round; the author files a follow-up bead when it is worth one. A problem the change makes reachable, worse or newly
+  wrong is not pre-existing. Pre-existing findings do not count against the nit cap.
+- **No repeats.** A later round is given the earlier rounds' findings and does not report them again. It names an
+  earlier finding only when its fix did not work, and says so.
+- **Summary first.** The report starts with a count: "3 findings: 1 Important, 2 Nits", "4 findings: 1 Important,
+  2 Nits, 1 Pre-existing", or "No findings".
 - **Risk tier.** A `risk:high` pull request (DevInfra `docs/review-risk-tiers.md`) gets every Important item above
   that touches its paths checked explicitly, ✓ or ✗ with `file:line`.
 
