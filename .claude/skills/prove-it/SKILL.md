@@ -207,7 +207,9 @@ A «fixed» or «passes» report names the clean head commit the tests ran on (`
 the pull request's head SHA: `Tests: 42 passed on 3f2a91c`. A fix of an Important finding, or of a defect on a
 risk:high path, also gets a held-out test: a fresh subagent, given only the defect, writes it in a new file in its own
 worktree at the pre-fix commit; it fails there on the defect and passes on the head (DevInfra `docs/team/working-together.md` §4,
-DevInfra-og3.48). The report looks like this:
+DevInfra-og3.48). A risk:high fix
+with no Important finding may show a mutation run instead: a test the PR adds fails with the fix's non-test lines
+reverted (`Held-out test: mutation – <test> fails with <fix sha> reverted, passes on <head sha>`, §4 step 7). The report looks like this:
 
 ```
 ✓ Build + test: passes, 0 warnings, 214 tests on 3f2a91c

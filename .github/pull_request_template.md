@@ -29,6 +29,7 @@
      "Testing: what ran and its result, or what could not be run, on the commit it ran on (… on <sha>)"
      "Held-out test: <file> – fails on <pre-fix sha>, passes on <head sha>", or "Held-out test: none – why", only for a fix of an Important
       finding or of a defect on a risk:high path (DevInfra-og3.48, working-together §4)
+      A risk:high fix with no Important finding may give "Held-out test: mutation – <test> fails with <fix sha> reverted, passes on <head sha>" instead (§4 step 7)
      "Risk: low|medium|high – why" (the tier the risk: label gives; the check fails when they differ)
      "How to revert: revert this PR, or the steps when a revert alone does not undo it" -->
 
