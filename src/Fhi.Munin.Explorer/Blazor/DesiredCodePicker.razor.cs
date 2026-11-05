@@ -1,4 +1,5 @@
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Logging;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
@@ -61,7 +62,10 @@ public sealed partial class DesiredCodePicker : ComponentBase
 
     private Texts T => Texts.For(Language);
 
-    private ILogger? Log => ServiceProvider.GetService<ILoggerFactory>()?.CreateLogger<DesiredCodePicker>();
+    private ILogger? _log;
+
+    // The package's guarded logger: a host's failing provider must not turn a handled failure into a dead circuit.
+    private ILogger? Log => _log ??= ExplorerLog.For<DesiredCodePicker>(ServiceProvider);
 
     private TimeProvider Clock => ServiceProvider.GetService<TimeProvider>() ?? TimeProvider.System;
 
@@ -140,7 +144,7 @@ public sealed partial class DesiredCodePicker : ComponentBase
                 await LoadChildrenAsync(link, state, Top, skip: 0);
             }
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex)
         {
             Log?.LogWarning(ex, "the code list {Type}/{Reference} of variable {VariableId} could not be read", link.KodeverkType, link.KodeverkReference, VariableId);
             state.Failed = true;
@@ -198,6 +202,9 @@ public sealed partial class DesiredCodePicker : ComponentBase
         {
             if (!more)
             {
+                // A cleared search also retires any answer still out, so it cannot bring the old hits back.
+                state.SearchRun++;
+                state.SearchBusy = false;
                 state.Searched = null;
                 state.Hits.Clear();
             }
@@ -227,7 +234,7 @@ public sealed partial class DesiredCodePicker : ComponentBase
             state.Failed = false;
             Announce(T.PickerHits(state.HitTotal), error: false);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex)
         {
             Log?.LogWarning(ex, "a code search in {Type}/{Reference} failed", link.KodeverkType, link.KodeverkReference);
             Announce(T.PickerLoadError, error: true);
@@ -274,7 +281,7 @@ public sealed partial class DesiredCodePicker : ComponentBase
             {
                 await LoadChildrenAsync(link, state, node, skip: 0);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
                 Log?.LogWarning(ex, "the codes under {Node} could not be read", node);
                 state.Expanded.Remove(node);
@@ -296,7 +303,7 @@ public sealed partial class DesiredCodePicker : ComponentBase
         {
             await LoadChildrenAsync(link, state, node, state.Children.GetValueOrDefault(node)?.Count ?? 0);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex)
         {
             Log?.LogWarning(ex, "more codes under {Node} could not be read", node);
             Announce(T.PickerLoadError, error: true);
@@ -341,6 +348,12 @@ public sealed partial class DesiredCodePicker : ComponentBase
     // A code and the same code with everything under it are one choice or the other, never both.
     private async Task ToggleAsync(KodeverkLink link, string kind, string code, string name, DateTimeOffset? validTo)
     {
+        // The draft holds still while it is being saved, so what the answer is about is what is on screen.
+        if (_saving)
+        {
+            return;
+        }
+
         if (Find(link, kind, code) is { } chosen)
         {
             _choices.Remove(chosen);
@@ -381,7 +394,7 @@ public sealed partial class DesiredCodePicker : ComponentBase
                 _choices[at] = choice with { Count = count };
             }
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex)
         {
             // The count is a help, not a condition: the choice stands without it.
             Log?.LogWarning(ex, "the count of {Code} could not be read", choice.Value.Code);
@@ -392,7 +405,7 @@ public sealed partial class DesiredCodePicker : ComponentBase
     {
         var from = _rangeFrom.Trim();
         var to = _rangeTo.Trim();
-        if (from.Length == 0 || to.Length == 0 || Full)
+        if (from.Length == 0 || to.Length == 0 || Full || _saving)
         {
             return;
         }
@@ -407,6 +420,13 @@ public sealed partial class DesiredCodePicker : ComponentBase
         {
             // Asked first: a range the list does not have is refused here, not at «Lagre».
             var count = await Client.CountKodeverkCodesAsync(VariableId, value);
+
+            // Checked again after the wait: a second press, or a save, may have come in meanwhile.
+            if (_saving || _choices.Any(c => c.Value == value))
+            {
+                return;
+            }
+
             if (Full)
             {
                 Announce(T.PickerFull(MaxChoices), error: true);
@@ -423,9 +443,9 @@ public sealed partial class DesiredCodePicker : ComponentBase
             _rangeFrom = _rangeTo = "";
             Announce(null, error: false);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex)
         {
-            Log?.LogWarning(ex, "the range {From}–{To} could not be counted", from, to);
+            Log?.LogWarning(ex, "a range in {Type}/{Reference} of variable {VariableId} could not be counted", link.KodeverkType, link.KodeverkReference, VariableId);
             Announce(T.PickerRangeUnknown, error: true);
         }
     }
@@ -433,6 +453,11 @@ public sealed partial class DesiredCodePicker : ComponentBase
     // The removed item took its button with it, so focus goes to the count, which says what is left.
     private void Remove(Choice choice)
     {
+        if (_saving)
+        {
+            return;
+        }
+
         _choices.Remove(choice);
         _focusCounter = true;
     }
@@ -490,7 +515,8 @@ public sealed partial class DesiredCodePicker : ComponentBase
         Announce(null, error: false);
         try
         {
-            var result = await Save([.. _choices.Select(c => c.ToView())]);
+            var submitted = _choices.ToList();
+            var result = await Save([.. submitted.Select(c => c.ToView())]);
             switch (result)
             {
                 case { Outcome: DesiredDataOutcome.Saved }:
@@ -500,8 +526,8 @@ public sealed partial class DesiredCodePicker : ComponentBase
                 case { Outcome: DesiredDataOutcome.Refused, MaxLength: { } maxLength }:
                     Announce(T.DesiredDataTooLong(maxLength), error: true);
                     break;
-                case { Outcome: DesiredDataOutcome.Refused, InvalidIndex: { } index } when index >= 0 && index < _choices.Count:
-                    var bad = _choices[index];
+                case { Outcome: DesiredDataOutcome.Refused, InvalidIndex: { } index } when index >= 0 && index < submitted.Count:
+                    var bad = submitted[index];
                     Announce(T.PickerInvalid(Describe(T, bad.Value, bad.Name, bad.ToName)), error: true);
                     break;
                 case { Outcome: DesiredDataOutcome.Refused, MaxSelections: { } max }:
@@ -526,7 +552,7 @@ public sealed partial class DesiredCodePicker : ComponentBase
             Log?.LogWarning(ex, "the code choices of variable {VariableId} were refused: not signed in", VariableId);
             Announce(T.SignInRequiredError, error: true);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex)
         {
             Log?.LogWarning(ex, "the code choices of variable {VariableId} could not be saved", VariableId);
             Announce(T.DesiredDataError, error: true);

@@ -940,11 +940,12 @@ else if (State?.IsAuthenticated == true)
             <div id="@RowPickerId(item)">
                 @if (IsPicking(item))
                 {
+                    var generation = _pickerGeneration;
                     <DesiredCodePicker VariableId="@item.VariableId"
                                        Links="@detail.KodeverkLinks"
                                        Chosen="@CodesOf(item)"
-                                       Save="@(views => SaveCodesAsync(item, views))"
-                                       Closed="@(() => ClosePicker(item))"
+                                       Save="@(views => SaveCodesAsync(item, views, generation))"
+                                       Closed="@(() => ClosePicker(item, generation))"
                                        Language="@Language" />
                 }
             </div>

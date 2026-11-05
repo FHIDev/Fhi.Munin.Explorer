@@ -349,4 +349,91 @@ public class DesiredCodePickerTest : ExplorerTestContext
             });
         }
     }
+
+    private sealed class PendingClient : EmptyMuninExplorerClient
+    {
+        public TaskCompletionSource<int?> Count { get; } = new();
+        public TaskCompletionSource<KodeverkCodePage?> Search { get; } = new();
+        public Exception? LoadFailure { get; init; }
+
+        public override Task<KodeverkCodePage?> GetKodeverkCodeChildrenAsync(
+            Guid variableId, string kodeverkType, string kodeverkReference, string? node, int skip = 0, int take = 50,
+            CancellationToken cancellationToken = default) =>
+            LoadFailure is { } failure ? Task.FromException<KodeverkCodePage?>(failure) : Task.FromResult<KodeverkCodePage?>(new KodeverkCodePage());
+
+        public override Task<int?> CountKodeverkCodesAsync(Guid variableId, DesiredCodeChoice choice, CancellationToken cancellationToken = default) =>
+            Count.Task;
+
+        public override Task<KodeverkCodePage?> SearchKodeverkCodesAsync(
+            Guid variableId, string kodeverkType, string kodeverkReference, string query, int skip = 0, int take = 50,
+            CancellationToken cancellationToken = default) => Search.Task;
+    }
+
+    private IRenderedComponent<DesiredCodePicker> PickerWith(EmptyMuninExplorerClient client, Saves saves, IReadOnlyList<KodeverkLink> links)
+    {
+        Services.AddSingleton<IMuninExplorerClient>(client);
+        return Render<DesiredCodePicker>(b => b.Add(c => c.VariableId, Variable).Add(c => c.Links, links).Add(c => c.Save, saves.SaveAsync));
+    }
+
+    [Fact]
+    public void AddRange_WhenPressedTwiceWhileTheCountIsOut_ThenTheRangeIsAddedOnce()
+    {
+        var client = new PendingClient();
+        var saves = new Saves();
+        var cut = PickerWith(client, saves, [Icd10]);
+        cut.Find("input[id$='-from']").Input("E10");
+        cut.Find("input[id$='-to']").Input("E14");
+
+        Press(cut, "Legg til intervall");
+        Press(cut, "Legg til intervall");
+        client.Count.SetResult(50);
+
+        cut.WaitForAssertion(() => Assert.Contains("E10–E14 (50 koder)", Text(cut)));
+        Press(cut, "Lagre");
+        Assert.Single(Assert.Single(saves.Calls));
+    }
+
+    [Fact]
+    public void Toggle_WhileASaveIsOut_ThenTheDraftHoldsAndARefusalNamesTheChoiceThatWasSent()
+    {
+        var pending = new TaskCompletionSource<DesiredDataResult>();
+        Services.AddSingleton<IMuninExplorerClient>(new CodesClient());
+        var cut = Render<DesiredCodePicker>(b => b
+            .Add(c => c.VariableId, Variable)
+            .Add(c => c.Links, [Sivilstand])
+            .Add(c => c.Save, _ => pending.Task));
+        Tick(cut, "Ugift");
+        Tick(cut, "Gift");
+        Press(cut, "Lagre");
+
+        cut.FindAll("button").First(b => b.TextContent.Trim().StartsWith("Fjern 1", StringComparison.Ordinal)).Click();
+        pending.SetResult(new DesiredDataResult(DesiredDataOutcome.Refused, InvalidIndex: 1));
+
+        cut.WaitForAssertion(() => Assert.Contains("2 Gift finnes ikke i kodelisten.", cut.Find("[role=alert]").TextContent));
+        Assert.Contains("2 av 200 valg", Text(cut));
+    }
+
+    [Fact]
+    public void Open_WhenTheCodeListTimesOut_ThenTheReaderIsToldItCouldNotBeFetched()
+    {
+        var cut = PickerWith(new PendingClient { LoadFailure = new TaskCanceledException("timeout") }, new Saves(), [Icd10]);
+
+        cut.WaitForAssertion(() => Assert.Contains("Kunne ikke hente kodelisten nå.", Text(cut)));
+    }
+
+    [Fact]
+    public void Search_WhenClearedWhileAnAnswerIsOut_ThenTheLateAnswerDoesNotComeBack()
+    {
+        var client = new PendingClient();
+        var cut = PickerWith(client, new Saves(), [Icd10]);
+        cut.Find("input[type=search]").Input("diabetes");
+        Press(cut, "Søk");
+        cut.Find("input[type=search]").Input("");
+        Press(cut, "Søk");
+
+        client.Search.SetResult(new KodeverkCodePage { Total = 1, Codes = [new KodeverkCodeHit { Value = "E10", Name = "Diabetes" }] });
+
+        cut.WaitForAssertion(() => Assert.DoesNotContain("1 treff", Text(cut)));
+        Assert.DoesNotContain("E10 Diabetes", Text(cut));
+    }
 }

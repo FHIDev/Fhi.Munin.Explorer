@@ -12,6 +12,8 @@ public sealed partial class VariableListView
     // What a save stored, until the next list read brings the API's own description of it.
     private readonly Dictionary<VariableDatasamlingKey, IReadOnlyList<DesiredCodeView>> _savedCodes = [];
     private VariableDatasamlingKey? _picking;
+    // Bumped on every open, close and list read, so an older picker's answer cannot touch a newer one.
+    private int _pickerGeneration;
     private VariableDatasamlingKey? _codesSaved;
     private ElementReference _pickerButton;
     private bool _focusPickerButton;
@@ -39,20 +41,21 @@ public sealed partial class VariableListView
         {
             _picking = IsPicking(item) ? null : VariableDatasamlingKey.Of(item);
             _codesSaved = null;
+            _pickerGeneration++;
         }
     }
 
     // Focus goes back to the button that opened it, which the closing render draws again.
-    private void ClosePicker(VariableListItem item)
+    private void ClosePicker(VariableListItem item, int generation)
     {
-        if (IsPicking(item))
+        if (IsPicking(item) && generation == _pickerGeneration)
         {
             _picking = null;
             _focusPickerButton = true;
         }
     }
 
-    private async Task<DesiredDataResult> SaveCodesAsync(VariableListItem item, IReadOnlyList<DesiredCodeView> views)
+    private async Task<DesiredDataResult> SaveCodesAsync(VariableListItem item, IReadOnlyList<DesiredCodeView> views, int generation)
     {
         if (_shownList is not { } list || item.ItemId is not { } itemId)
         {
@@ -61,7 +64,8 @@ public sealed partial class VariableListView
 
         var result = await Client.SetMyListItemDesiredCodesAsync(
             list, itemId, DesiredDataOf(item), [.. views.Select(view => view.ToChoice())]);
-        if (result.Outcome == DesiredDataOutcome.Saved)
+        // As the text write: the answer stands for the list it named, but the row's cache and message are this list's.
+        if (result.Outcome == DesiredDataOutcome.Saved && _shownList == list && generation == _pickerGeneration)
         {
             _savedCodes[VariableDatasamlingKey.Of(item)] = views;
             _codesSaved = VariableDatasamlingKey.Of(item);
