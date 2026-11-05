@@ -26,15 +26,20 @@ Everything else (naming, wording, structure, a smaller way to write it) is a **N
 - **Evidence.** Every finding names `file:line` and the input, width or state that makes it go wrong. No finding
   without a place; "consider" with no concrete failure is not a finding.
 - **Nit cap.** At most 5 Nits per review; more collapse into "(plus N similar)". After the first review of a pull
-  request, report only Important findings.
-- **Pre-existing.** A finding in code the pull request does not change, and whose behaviour the change does not alter, is
-  **Pre-existing**, not Important or Nit, however serious. It asks for no fix in this pull request and no new review
-  round; the author files a follow-up bead when it is worth one. A problem the change makes reachable, worse or newly
-  wrong is not pre-existing. Pre-existing findings do not count against the nit cap.
-- **No repeats.** A later round is given the earlier rounds' findings and does not report them again. It names an
-  earlier finding only when its fix did not work, and says so.
-- **Summary first.** The report starts with a count: "3 findings: 1 Important, 2 Nits", "4 findings: 1 Important,
-  2 Nits, 1 Pre-existing", or "No findings".
+  request, report only Important and new Pre-existing findings.
+- **Pre-existing.** A finding is **Pre-existing** when no line of the pull request's diff (`git diff
+  origin/main...HEAD`) touches the code it is about, and no changed line, removed guard, new or changed caller, or
+  changed input, default or config alters what that code does or how it is reached. Moved or renamed lines count as
+  changed. A confirming round judges against the whole pull request's diff, not only the commits it reads. The
+  reviewer gives the label, with the unchanged code's `file:line` and why nothing in the diff reaches it; the author
+  does not turn an Important finding into a Pre-existing one. A Pre-existing finding asks for no fix in this pull
+  request and starts no new round. It does not count against the nit cap, or in the review line's N or «left». The
+  pull request body lists each one: `Pre-existing: <file:line> – <bead id, or none: why>`. One that would be Important
+  under this file always gets a follow-up bead.
+- **No repeats.** A later round of the pre-PR review is given the earlier rounds' findings, the ones rejected as wrong
+  included, and does not report them again. It names an earlier finding only when its fix did not work, and says so.
+- **Summary first.** The report starts with a count: "3 findings: 1 Important, 2 Nits", "3 findings: 1 Important,
+  2 Nits (+1 Pre-existing)", or "No findings".
 - **Risk tier.** A `risk:high` pull request (DevInfra `docs/review-risk-tiers.md`) gets every Important item above
   that touches its paths checked explicitly, ✓ or ✗ with `file:line`.
 
