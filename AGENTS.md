@@ -56,7 +56,8 @@ python3 scripts/comment-budget.py               # comment blocks this branch add
 fixed`, `ran, N findings, M fixed, K left: <why>` or `skipped, <reason>` (only for a change with nothing to review;
 `prove-it` section 8), with a `review-registration` comment under it whose rounds each name the commit they read
 (`head`; from 10 November 2026 the line check holds the PR's head to the last one).
-The body also carries `Testing:`, `Risk: low|medium|high – <why>` (the tier the `risk:`
+The body also carries `Testing: … on <sha>` (the commit it ran on), `Held-out test: …` for a fix of an Important finding or of a defect on a risk:high path
+(DevInfra working-together §4), `Risk: low|medium|high – <why>` (the tier the `risk:`
 label gives) and `How to revert:`, each on its own line; the review-line check fails a PR where one is missing or
 empty, or the tier differs from the label.
 
