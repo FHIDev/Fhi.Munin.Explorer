@@ -154,6 +154,8 @@ bd preflight --check
 
 ## 8. The pre-PR review
 
+For a fix of an Important finding or of a defect on a risk:high path, add a held-out test first (DevInfra `docs/team/working-together.md` §4, «Held-out test»).
+
 Run the `pre-pr-reviewer` agent (`.claude/agents/pre-pr-reviewer.md`) on the committed branch before
 `gh pr create`: tell it to read `git diff origin/main...HEAD`, so that new files are in what it reviews.
 Every session does, on every PR; the Forge has a review step of its own and is not covered by this.
@@ -203,8 +205,8 @@ Report what ran, not what you believe, and on which commit.
 
 A «fixed» or «passes» report names the clean head commit the tests ran on (`git rev-parse --short HEAD`), or for CI
 the pull request's head SHA: `Tests: 42 passed on 3f2a91c`. A fix of an Important finding, or of a defect on a
-risk:high path, also gets a held-out test: a fresh subagent in its own worktree at the pre-fix commit, given only the
-defect, writes it; it fails there on the defect and passes on the head (DevInfra `docs/team/working-together.md` §4,
+risk:high path, also gets a held-out test: a fresh subagent, given only the defect, writes it in a new file in its own
+worktree at the pre-fix commit; it fails there on the defect and passes on the head (DevInfra `docs/team/working-together.md` §4,
 DevInfra-og3.48). The report looks like this:
 
 ```
