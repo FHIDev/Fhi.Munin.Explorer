@@ -173,7 +173,7 @@ public class DesiredCodesClientTest
     {
         var handler = StubHttpHandler.Ok($$"""
             {"name":"Lunge","items":[{"variabelId":"{{Variable}}","desiredDataCodes":[
-              {"kodeverkType":"HelsefagligKodeverk","kodeverkReference":"ICD-10","kind":"node","kode":"C34","navn":"<b>Lunge</b>","utgatt":false,"antall":12},
+              {"kodeverkType":"HelsefagligKodeverk","kodeverkReference":"ICD-10","kodeverkNavn":"ICD-10 (2024)","kind":"node","kode":"C34","navn":"<b>Lunge</b>","utgatt":false,"antall":12},
               {"kind":"range","kode":"C30","til":"C39","utgatt":"yes","antall":"many"},
               {"kind":"kode","kode":""},
               "C76",
@@ -186,6 +186,7 @@ public class DesiredCodesClientTest
         var codes = Assert.Single(shared!.Items).DesiredDataCodes;
         Assert.Equal(3, codes.Count);
         Assert.Equal("<b>Lunge</b>", codes[0].Name);
+        Assert.Equal("ICD-10 (2024)", codes[0].KodeverkName);
         Assert.Equal(12, codes[0].Count);
         Assert.Equal(("C30", "C39", false, (int?)null), (codes[1].Code, codes[1].To, codes[1].Expired, codes[1].Count));
         Assert.Equal("42", codes[2].Code);

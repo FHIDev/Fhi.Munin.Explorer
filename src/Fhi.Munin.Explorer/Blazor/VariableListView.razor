@@ -356,6 +356,8 @@ else if (State?.IsAuthenticated == true)
                                        the field, which a control still owes on its own (WCAG 4.1.2). *@
                                     <td class="munin-explorer-dataitem-main__desiredData" data-label="@T.FieldDesiredData">
                                         <span class="screenreader-only" id="@DesiredDataLabelId(item)">@T.FieldDesiredData</span>
+                                        @* One block, so the narrow layout's grid keeps it in the value column. *@
+                                        <div>
                                         @* One line to start, so the row stays low; Stiler lets it grow to four, then scroll. *@
                                         <textarea class="textarea__field"
                                                   rows="1"
@@ -364,8 +366,12 @@ else if (State?.IsAuthenticated == true)
                                                   aria-invalid="@DesiredDataInvalid(item)"
                                                   aria-describedby="@DesiredDataDescribedBy(item)"
                                                   @onchange="e => SaveDesiredDataAsync(item, e.Value?.ToString())"></textarea>
-                                        @* The chosen codes beside the free text, as text only (Fhi.Metadata-emsc0.3.7). *@
-                                        @DesiredCodeSummary.For(T, CodesOf(item), "no")
+                                        @* Only how many codes: the cell has no room; the opened row shows them (Fhi.Metadata-emsc0.3.7). *@
+                                        @if (CodesOf(item).Count is > 0 and var chosen)
+                                        {
+                                            <span class="caption">@T.CodeChoiceCount(chosen)</span>
+                                        }
+                                        </div>
                                     </td>
 
                                     @* "Fjern" on every button in the column, so the accessible name
@@ -538,11 +544,12 @@ else if (State?.IsAuthenticated == true)
                             <thead>
                                 <tr class="munin-explorer-data-list__item__row--header">
                                     <th scope="col" class="munin-explorer-dataitem-header__name">@T.ColumnVariable</th>
-                                    @OptionalHeaders()
+                                    @* Next to the name rather than last: the host narrows its last column («Valg» elsewhere). *@
                                     @if (SharedHasCodes)
                                     {
                                         <th scope="col">@T.CodeSummaryHeading</th>
                                     }
+                                    @OptionalHeaders()
                                 </tr>
                             </thead>
                             <tbody>
@@ -555,12 +562,21 @@ else if (State?.IsAuthenticated == true)
                                                   lang="@CatalogueLang(item.VariableName)">@RowName(item)</span>
                                             @CodeUnderName(item)
                                         </th>
-                                        @Cells(item)
                                         @if (SharedHasCodes)
                                         {
                                             @* A share's codes, never its free text; unchecked when a client built it, so text only. *@
-                                            <td data-label="@T.CodeSummaryHeading">@DesiredCodeSummary.For(T, item.DesiredDataCodes, "no")</td>
+                                            <td data-label="@T.CodeSummaryHeading">
+                                                @if (item.DesiredDataCodes.Count == 0)
+                                                {
+                                                    @T.NotSpecified
+                                                }
+                                                else
+                                                {
+                                                    <div>@DesiredCodeSummary.For(T, item.DesiredDataCodes, "no")</div>
+                                                }
+                                            </td>
                                         }
+                                        @Cells(item)
                                     </tr>
                                 }
                             </tbody>
@@ -943,6 +959,10 @@ else if (State?.IsAuthenticated == true)
                   @onchange="e => SaveDesiredDataAsync(item, e.Value?.ToString())"></textarea>
         @if (CanPickCodes(item, detail))
         {
+            @if (!IsPicking(item))
+            {
+                @DesiredCodeSummary.For(T, CodesOf(item), "no")
+            }
             @* A disclosure, kept while open, so focus has somewhere to stay and to come back to. *@
             <button class="hd-button-square button-square--secondary" type="button"
                     aria-expanded="@(IsPicking(item) ? "true" : "false")" aria-controls="@RowPickerId(item)"

@@ -19,24 +19,23 @@ internal static class DesiredCodeSummary
             ? code.KodeverkReference
             : t.KodeverkTypeLabel(code.KodeverkType);
 
-    /// <summary>The summary as a list, or nothing when there are no codes. Catalogue names carry <paramref name="lang"/>.</summary>
-    public static RenderFragment For(Texts t, IReadOnlyList<DesiredCodeView> codes, string? lang, string? id = null) => builder =>
+    /// <summary>
+    /// The summary, a line per code list, or nothing when there are no codes. Plain blocks, not a list: a host styles
+    /// no bare list here, and its bullets would crowd a table cell. Catalogue names carry <paramref name="lang"/>.
+    /// </summary>
+    public static RenderFragment For(Texts t, IReadOnlyList<DesiredCodeView> codes, string? lang) => builder =>
     {
         if (codes.Count == 0)
         {
             return;
         }
 
-        builder.OpenElement(0, "ul");
+        builder.OpenElement(0, "div");
         builder.AddAttribute(1, "class", "caption margin--none");
-        if (id is not null)
-        {
-            builder.AddAttribute(2, "id", id);
-        }
 
         foreach (var group in codes.GroupBy(c => (c.KodeverkType, c.KodeverkReference)))
         {
-            builder.OpenElement(3, "li");
+            builder.OpenElement(3, "div");
             builder.SetKey(group.Key);
             builder.OpenElement(4, "span");
             builder.AddAttribute(5, "lang", string.IsNullOrWhiteSpace(group.First().KodeverkName) ? null : lang);
@@ -64,7 +63,8 @@ internal static class DesiredCodeSummary
     private static void Part(RenderTreeBuilder builder, Texts t, DesiredCodeView code, string? lang)
     {
         builder.OpenRegion(20);
-        if (code.Kind == DesiredCodeKinds.Code && !string.IsNullOrWhiteSpace(code.Name))
+        // A code, or a kind this package does not know, shown as its code and its term marked Norwegian.
+        if (code.Kind is not (DesiredCodeKinds.Node or DesiredCodeKinds.Range) && !string.IsNullOrWhiteSpace(code.Name))
         {
             builder.AddContent(0, $"{code.Code} ");
             builder.OpenElement(1, "span");

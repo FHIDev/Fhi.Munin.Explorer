@@ -895,8 +895,9 @@ internal sealed record Texts(
     string PickerListUnavailable,
     Func<string, string> PickerInvalid,
     Func<int, string> PickerTooMany,
-    // The chosen codes as a summary: the share view's column, and the label under a row's free text.
-    string CodeSummaryHeading)
+    // The share view's column of chosen codes, and the count under a row's free text.
+    string CodeSummaryHeading,
+    Func<int, string> CodeChoiceCount)
 {
     /// <summary>
     /// The label for a sort order. Every one that names a field uses the same words the result
@@ -1823,7 +1824,8 @@ internal sealed record Texts(
         PickerListUnavailable: "Kodelisten kan ikke leses nå, så valgene er ikke lagret. Prøv igjen om litt.",
         PickerInvalid: choice => $"{choice} finnes ikke i kodelisten. Fjern det og lagre igjen.",
         PickerTooMany: max => $"Høyst {max} valg per variabel.",
-        CodeSummaryHeading: "Ønskede verdier");
+        CodeSummaryHeading: "Ønskede verdier",
+        CodeChoiceCount: count => count == 1 ? "1 kodevalg" : $"{count} kodevalg");
 
     private static readonly Texts En = new(
         Title: "Variable explorer",
@@ -2426,7 +2428,8 @@ internal sealed record Texts(
         PickerListUnavailable: "The code list cannot be read now, so the choices were not saved. Try again shortly.",
         PickerInvalid: choice => $"{choice} is not in the code list. Remove it and save again.",
         PickerTooMany: max => $"At most {max} choices per variable.",
-        CodeSummaryHeading: "Wanted values")
+        CodeSummaryHeading: "Wanted values",
+        CodeChoiceCount: count => count == 1 ? "1 code choice" : $"{count} code choices")
     {
         Reader = ReaderLanguage.English,
     };

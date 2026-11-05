@@ -10,7 +10,7 @@ public class DesiredCodeSummaryTest : ExplorerTestContext
     private static string Render(BunitContext context, IReadOnlyList<DesiredCodeView> codes, string language = "no")
     {
         var cut = context.Render(DesiredCodeSummary.For(Texts.For(language), codes, "no"));
-        return System.Text.RegularExpressions.Regex.Replace(cut.Markup.Length == 0 ? "" : cut.Find("ul").TextContent, @"\s+", " ").Trim();
+        return System.Text.RegularExpressions.Regex.Replace(cut.Markup.Length == 0 ? "" : cut.Find("div").TextContent, @"\s+", " ").Trim();
     }
 
     [Fact]
@@ -45,5 +45,20 @@ public class DesiredCodeSummaryTest : ExplorerTestContext
 
         Assert.Empty(cut.FindAll("img"));
         Assert.Contains("<img src=x", cut.Find("span[lang=no]").TextContent);
+    }
+
+    [Fact]
+    public void For_WhenTheListIsNamedByThePackage_ThenOnlyTheApisNameAndTheTermsAreMarkedNorwegian()
+    {
+        var cut = Render(DesiredCodeSummary.For(Texts.For("en"),
+        [
+            new DesiredCodeView { KodeverkType = "Kildekodeverk", KodeverkReference = "1", Kind = "kode", Code = "1", Name = "Ugift" },
+            new DesiredCodeView { KodeverkType = "HelsefagligKodeverk", KodeverkReference = "ICD-10", Kind = "node", Code = "E11", Count = 10 },
+            new DesiredCodeView { KodeverkType = "AdministrativtKodeverk", KodeverkReference = "2", KodeverkName = "Kommunenummer", Kind = "kode", Code = "0301", Name = "Oslo" },
+        ], "no"));
+
+        var marked = cut.FindAll("span[lang=no]").Select(s => s.TextContent).ToList();
+        Assert.Equal(["Ugift", "Kommunenummer", "Oslo"], marked);
+        Assert.Empty(cut.FindAll("ul, li"));
     }
 }

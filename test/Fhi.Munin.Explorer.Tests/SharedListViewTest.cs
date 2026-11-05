@@ -1018,6 +1018,7 @@ public class SharedListViewTest : ExplorerTestContext
         Assert.Contains("Sivilstand: 2 <b>Gift</b>", text);
         Assert.Empty(cell.QuerySelectorAll("b"));
         Assert.DoesNotContain("privat tekst", cut.Markup);
+        Assert.Equal("Ikke oppgitt", cut.FindAll("td[data-label='Ønskede verdier']")[1].TextContent.Trim());
     }
 
     [Fact]

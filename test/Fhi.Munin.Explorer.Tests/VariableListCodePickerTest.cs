@@ -146,15 +146,15 @@ public class VariableListCodePickerTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Row_WhenTheItemHasChosenCodes_ThenTheyAreSummarisedUnderItsFreeText()
+    public void Row_WhenTheItemHasChosenCodes_ThenItsCellCountsThemAndTheOpenedRowNamesThem()
     {
         var item = Item() with { DesiredDataCodes = [new DesiredCodeView { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", KodeverkName = "Sivilstand", Kind = "kode", Code = "2", Name = "Gift" }] };
-        Services.AddSingleton<IMuninExplorerClient>(new ListClient(item, Sivilstand));
-        Services.AddScoped<VariableListState>();
-        var cut = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true));
+        var cut = OpenedRow(new ListClient(item, Sivilstand));
 
-        var cell = cut.WaitForElement("td.munin-explorer-dataitem-main__desiredData");
-        Assert.NotNull(cell.QuerySelector("textarea"));
-        Assert.Contains("Sivilstand: 2 Gift", System.Text.RegularExpressions.Regex.Replace(cell.TextContent, @"\s+", " "));
+        var cell = cut.Find("td.munin-explorer-dataitem-main__desiredData");
+        Assert.Single(cell.Children, child => !child.ClassList.Contains("screenreader-only"));
+        Assert.Contains("1 kodevalg", cell.TextContent);
+        Assert.DoesNotContain("Gift", cell.TextContent);
+        Assert.Contains("Sivilstand: 2 Gift", System.Text.RegularExpressions.Regex.Replace(cut.Find("[id^='munin-explorer-list-panel-'][role=region]").TextContent, @"\s+", " "));
     }
 }
