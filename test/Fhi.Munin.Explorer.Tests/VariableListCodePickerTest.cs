@@ -146,14 +146,14 @@ public class VariableListCodePickerTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Row_WhenTheItemHasChosenCodes_ThenItsCellCountsThemAndTheOpenedRowNamesThem()
+    public void Row_WhenTheItemHasChosenCodes_ThenTheOpenedRowNamesThemAndTheCellKeepsOnlyItsTextarea()
     {
         var item = Item() with { DesiredDataCodes = [new DesiredCodeView { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", KodeverkName = "Sivilstand", Kind = "kode", Code = "2", Name = "Gift" }] };
         var cut = OpenedRow(new ListClient(item, Sivilstand));
 
+        // The textarea stays the cell's direct child: Stiler sizes it by «td > textarea».
         var cell = cut.Find("td.munin-explorer-dataitem-main__desiredData");
-        Assert.Single(cell.Children, child => !child.ClassList.Contains("screenreader-only"));
-        Assert.Contains("1 kodevalg", cell.TextContent);
+        Assert.NotNull(cell.QuerySelector(":scope > textarea"));
         Assert.DoesNotContain("Gift", cell.TextContent);
         Assert.Contains("Sivilstand: 2 Gift", System.Text.RegularExpressions.Regex.Replace(cut.Find("[id^='munin-explorer-list-panel-'][role=region]").TextContent, @"\s+", " "));
     }

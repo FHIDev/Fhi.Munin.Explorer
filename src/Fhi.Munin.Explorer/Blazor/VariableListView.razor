@@ -356,8 +356,6 @@ else if (State?.IsAuthenticated == true)
                                        the field, which a control still owes on its own (WCAG 4.1.2). *@
                                     <td class="munin-explorer-dataitem-main__desiredData" data-label="@T.FieldDesiredData">
                                         <span class="screenreader-only" id="@DesiredDataLabelId(item)">@T.FieldDesiredData</span>
-                                        @* One block, so the narrow layout's grid keeps it in the value column. *@
-                                        <div>
                                         @* One line to start, so the row stays low; Stiler lets it grow to four, then scroll. *@
                                         <textarea class="textarea__field"
                                                   rows="1"
@@ -366,12 +364,6 @@ else if (State?.IsAuthenticated == true)
                                                   aria-invalid="@DesiredDataInvalid(item)"
                                                   aria-describedby="@DesiredDataDescribedBy(item)"
                                                   @onchange="e => SaveDesiredDataAsync(item, e.Value?.ToString())"></textarea>
-                                        @* Only how many codes: the cell has no room; the opened row shows them (Fhi.Metadata-emsc0.3.7). *@
-                                        @if (CodesOf(item).Count is > 0 and var chosen)
-                                        {
-                                            <span class="caption">@T.CodeChoiceCount(chosen)</span>
-                                        }
-                                        </div>
                                     </td>
 
                                     @* "Fjern" on every button in the column, so the accessible name
