@@ -1,6 +1,6 @@
 # AGENTS.md: FHIDev/Fhi.Munin.Explorer
 
-<!-- team-doc:begin sha256=8c5fcf69e3f9adfbf42c85fdb23416208bf54a0a5b6b3544fabfbc57c7b29481 source=FHIDev/Fhi.Munin.DevInfra/docs/team/working-together.md -->
+<!-- team-doc:begin sha256=a06a64b76a851390690541e36d061a0e169b106595d5a162279823f5aa75ec81 source=FHIDev/Fhi.Munin.DevInfra/docs/team/working-together.md -->
 ## The team's rules, in short
 
 Full text: FHIDev/Fhi.Munin.DevInfra `docs/team/working-together.md`. This block is a synced copy; edit the
@@ -19,7 +19,11 @@ canonical doc, not this block.
 - **Decisions go to your owner through your coordinator**, with a recommendation, the way your owner's lanes file
   says. A question left only in a bead note has not been asked.
 - **Every PR body** has one `Pre-PR review:` line, `Testing:`, `Risk:` (matching the `risk:` label) and
-  `How to revert:` lines, and `Closes-Bead:` or `Bead:`. Run the pre-PR review before opening it.
+  `How to revert:` lines, and `Closes-Bead:` or `Bead:`. Run the pre-PR review before opening it, and register each
+  round with the commit it read (`head`). A fix after the last round gets a new round: a full one for an Important
+  finding, otherwise a short confirming round (Sonnet, effort medium) over the new commits, a Copilot fix included. On PRs
+  opened from 10 November 2026 the check requires a round over the head unless the later commit is docs only, a merge
+  of main with no change of its own, or a comment-only change marked `Review-exempt: comments` (the munin-lane skill).
 - **Open PRs without asking.** A PR merges when CI is green and its risk tier's review requirements are met
   (DevInfra `docs/review-risk-tiers.md`); who approves and who merges is each owner's own arrangement, in their
   lanes file. Never touch someone else's PR or branch.
