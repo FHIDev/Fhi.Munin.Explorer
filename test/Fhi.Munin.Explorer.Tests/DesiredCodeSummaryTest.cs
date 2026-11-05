@@ -61,4 +61,34 @@ public class DesiredCodeSummaryTest : ExplorerTestContext
         Assert.Equal(["Ugift", "Kommunenummer", "Oslo"], marked);
         Assert.Empty(cut.FindAll("ul, li"));
     }
+
+    [Fact]
+    public void For_WhenAHealthCodeSystemHasAName_ThenItIsStillLabelledByItsReference()
+    {
+        var cut = Render(DesiredCodeSummary.For(Texts.For("no"),
+            [new DesiredCodeView { KodeverkType = "HelsefagligKodeverk", KodeverkReference = "ICD-10", KodeverkName = "Den internasjonale sykdomsklassifikasjonen", Kind = "node", Code = "E11", Count = 10 }], "no"));
+
+        Assert.StartsWith("ICD-10:", cut.Find("div > div").TextContent.Trim());
+        Assert.DoesNotContain(cut.FindAll("span[lang=no]"), s => s.TextContent == "ICD-10");
+    }
+
+    [Fact]
+    public void For_WhenOnlyALaterChoiceCarriesTheName_ThenTheListIsNamedByIt()
+    {
+        var text = Render(this,
+        [
+            new DesiredCodeView { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", Kind = "kode", Code = "1", Name = "Ugift" },
+            new DesiredCodeView { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", KodeverkName = "Sivilstand", Kind = "kode", Code = "2", Name = "Gift" },
+        ]);
+
+        Assert.StartsWith("Sivilstand: 1 Ugift, 2 Gift", text);
+    }
+
+    [Fact]
+    public void For_WhenTheKindIsMissing_ThenTheListIsLabelledByItsReference()
+    {
+        var text = Render(this, [new DesiredCodeView { KodeverkType = "", KodeverkReference = "1569", Kind = "kode", Code = "9", Name = "Ukjent" }]);
+
+        Assert.StartsWith("1569: 9 Ukjent", text);
+    }
 }

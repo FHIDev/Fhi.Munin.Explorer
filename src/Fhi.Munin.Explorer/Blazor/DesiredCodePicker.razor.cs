@@ -451,10 +451,10 @@ public sealed partial class DesiredCodePicker : ComponentBase
         }
     }
 
-    // The removed item took its button with it, so focus goes to the count, which says what is left.
     // The list's name as the variable page gives it, so a saved choice keeps the label the summary shows.
     private static string? ListNameOf(KodeverkLink link) => string.IsNullOrWhiteSpace(link.DisplayName) ? null : link.DisplayName;
 
+    // The removed item took its button with it, so focus goes to the count, which says what is left.
     private void Remove(Choice choice)
     {
         if (_saving)

@@ -197,7 +197,7 @@ public class DesiredCodesClientTest
     {
         var read = await Client(StubHttpHandler.Ok($$"""
             {"name":"Lunge","items":[{"variabelId":"{{Variable}}","desiredDataCodes":[
-              {"kodeverkType":"HelsefagligKodeverk","kodeverkReference":"ICD-10","kind":"node","kode":"C34","navn":"Lunge","utgatt":false,"antall":12}]}]}
+              {"kodeverkType":"HelsefagligKodeverk","kodeverkReference":"ICD-10","kodeverkNavn":"ICD-10 navn","kind":"node","kode":"C34","navn":"Lunge","utgatt":false,"antall":12}]}]}
             """)).GetSharedListAsync("ab12cd34ef");
         var handler = StubHttpHandler.Answering(HttpStatusCode.Created, """{"code":"ZZ99ZZ99ZZ"}""");
         var item = read!.Items[0] with { DesiredDataFreeText = "privat", Notes = "privat" };
@@ -206,7 +206,7 @@ public class DesiredCodesClientTest
 
         var shared = await Client(StubHttpHandler.Ok(handler.LastBody!)).GetSharedListAsync("ab12cd34ef");
         var code = Assert.Single(Assert.Single(shared!.Items).DesiredDataCodes);
-        Assert.Equal(("node", "C34", "Lunge", 12), (code.Kind, code.Code, code.Name, code.Count));
+        Assert.Equal(("node", "C34", "Lunge", 12, "ICD-10 navn"), (code.Kind, code.Code, code.Name, code.Count, code.KodeverkName));
         Assert.DoesNotContain("privat", handler.LastBody);
     }
 

@@ -9,15 +9,28 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </summary>
 /// <remarks>
 /// Text only: in a shared list these are whatever a client posted, unchecked, so nothing here is markup. The code
-/// list is named by the API's name when it sends one, else by its kind, and a health code system by its reference.
+/// list is named by its reference when it is a health code system (ICD-10), else by the API's name, else by its kind.
 /// </remarks>
 internal static class DesiredCodeSummary
 {
-    public static string ListLabel(Texts t, DesiredCodeView code) =>
-        !string.IsNullOrWhiteSpace(code.KodeverkName) ? code.KodeverkName!
-        : string.Equals(code.KodeverkType, "HelsefagligKodeverk", StringComparison.OrdinalIgnoreCase) && code.KodeverkReference.Length > 0
-            ? code.KodeverkReference
-            : t.KodeverkTypeLabel(code.KodeverkType);
+    private static bool IsHealth(DesiredCodeView code) =>
+        string.Equals(code.KodeverkType, "HelsefagligKodeverk", StringComparison.OrdinalIgnoreCase) && code.KodeverkReference.Length > 0;
+
+    // The first name in the group that is not blank: after a save against an older Munin, only new choices carry one.
+    private static string? NameOf(IEnumerable<DesiredCodeView> group) =>
+        group.Select(c => c.KodeverkName).FirstOrDefault(n => !string.IsNullOrWhiteSpace(n));
+
+    public static string ListLabel(Texts t, DesiredCodeView code, string? name = null)
+    {
+        name ??= string.IsNullOrWhiteSpace(code.KodeverkName) ? null : code.KodeverkName;
+        if (IsHealth(code))
+        {
+            return code.KodeverkReference;
+        }
+
+        var label = name ?? t.KodeverkTypeLabel(code.KodeverkType);
+        return label.Length > 0 ? label : code.KodeverkReference;
+    }
 
     /// <summary>
     /// The summary, a line per code list, or nothing when there are no codes. Plain blocks, not a list: a host styles
@@ -38,8 +51,9 @@ internal static class DesiredCodeSummary
             builder.OpenElement(3, "div");
             builder.SetKey(group.Key);
             builder.OpenElement(4, "span");
-            builder.AddAttribute(5, "lang", string.IsNullOrWhiteSpace(group.First().KodeverkName) ? null : lang);
-            builder.AddContent(6, ListLabel(t, group.First()));
+            var name = NameOf(group);
+            builder.AddAttribute(5, "lang", name is null || IsHealth(group.First()) ? null : lang);
+            builder.AddContent(6, ListLabel(t, group.First(), name));
             builder.CloseElement();
             builder.AddContent(7, ": ");
             var first = true;

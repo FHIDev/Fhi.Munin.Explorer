@@ -2397,7 +2397,7 @@ internal sealed record Texts(
         DatasamlingColumnHint: "Datasamling is always shown, because it tells a variable's rows apart.",
         OpensInNewWindow: "(opens in a new window)",
         PickerOpen: "Choose from the code list",
-        PickerHeading: "Wanted values",
+        PickerHeading: "Desired values",
         PickerTabsLabel: "Code lists on the variable",
         PickerSearchLabel: "Search by code or name",
         PickerSearchHint: "For example «diabetes» or «E1»",
@@ -2426,7 +2426,7 @@ internal sealed record Texts(
         PickerListUnavailable: "The code list cannot be read now, so the choices were not saved. Try again shortly.",
         PickerInvalid: choice => $"{choice} is not in the code list. Remove it and save again.",
         PickerTooMany: max => $"At most {max} choices per variable.",
-        CodeSummaryHeading: "Wanted values")
+        CodeSummaryHeading: "Desired values")
     {
         Reader = ReaderLanguage.English,
     };
