@@ -364,6 +364,8 @@ else if (State?.IsAuthenticated == true)
                                                   aria-invalid="@DesiredDataInvalid(item)"
                                                   aria-describedby="@DesiredDataDescribedBy(item)"
                                                   @onchange="e => SaveDesiredDataAsync(item, e.Value?.ToString())"></textarea>
+                                        @* The chosen codes beside the free text, as text only (Fhi.Metadata-emsc0.3.7). *@
+                                        @DesiredCodeSummary.For(T, CodesOf(item), "no")
                                     </td>
 
                                     @* "Fjern" on every button in the column, so the accessible name
@@ -537,6 +539,10 @@ else if (State?.IsAuthenticated == true)
                                 <tr class="munin-explorer-data-list__item__row--header">
                                     <th scope="col" class="munin-explorer-dataitem-header__name">@T.ColumnVariable</th>
                                     @OptionalHeaders()
+                                    @if (SharedHasCodes)
+                                    {
+                                        <th scope="col">@T.CodeSummaryHeading</th>
+                                    }
                                 </tr>
                             </thead>
                             <tbody>
@@ -550,6 +556,11 @@ else if (State?.IsAuthenticated == true)
                                             @CodeUnderName(item)
                                         </th>
                                         @Cells(item)
+                                        @if (SharedHasCodes)
+                                        {
+                                            @* A share's codes, never its free text; unchecked when a client built it, so text only. *@
+                                            <td data-label="@T.CodeSummaryHeading">@DesiredCodeSummary.For(T, item.DesiredDataCodes, "no")</td>
+                                        }
                                     </tr>
                                 }
                             </tbody>

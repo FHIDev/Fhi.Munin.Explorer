@@ -144,4 +144,17 @@ public class VariableListCodePickerTest : ExplorerTestContext
         Assert.Equal("true", OpenButton(cut)!.GetAttribute("aria-expanded"));
         Assert.DoesNotContain(cut.FindAll("[role=status]"), status => status.TextContent.Contains("Lagret", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void Row_WhenTheItemHasChosenCodes_ThenTheyAreSummarisedUnderItsFreeText()
+    {
+        var item = Item() with { DesiredDataCodes = [new DesiredCodeView { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", KodeverkName = "Sivilstand", Kind = "kode", Code = "2", Name = "Gift" }] };
+        Services.AddSingleton<IMuninExplorerClient>(new ListClient(item, Sivilstand));
+        Services.AddScoped<VariableListState>();
+        var cut = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true));
+
+        var cell = cut.WaitForElement("td.munin-explorer-dataitem-main__desiredData");
+        Assert.NotNull(cell.QuerySelector("textarea"));
+        Assert.Contains("Sivilstand: 2 Gift", System.Text.RegularExpressions.Regex.Replace(cell.TextContent, @"\s+", " "));
+    }
 }

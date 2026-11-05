@@ -38,6 +38,9 @@ public sealed partial class VariableListView
     private string? _openCode;
 
     private SharedList? _sharedList;
+
+    // The column only when some item has codes: a share from before codes, or without any, looks as it did.
+    private bool SharedHasCodes => _sharedList?.Items.Any(item => item.DesiredDataCodes.Count > 0) == true;
     private int _sharedPageNumber = 1;
     private SharedListFailure _sharedListFailure;
     private string _failedCode = "";

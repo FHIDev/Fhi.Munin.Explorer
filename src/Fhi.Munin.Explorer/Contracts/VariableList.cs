@@ -199,6 +199,9 @@ public sealed record DesiredCodeView
 
     [JsonPropertyName("kodeverkReference")] public string KodeverkReference { get; init; } = "";
 
+    /// <summary>The code list's name, when the API sends it; null from an API that does not.</summary>
+    [JsonPropertyName("kodeverkNavn")] public string? KodeverkName { get; init; }
+
     /// <summary>One of <see cref="DesiredCodeKinds"/>; a value this package does not know is shown as a code.</summary>
     [JsonPropertyName("kind")] public string Kind { get; init; } = "";
 
