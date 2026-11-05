@@ -124,9 +124,9 @@ public class VariableListCodePickerTest : ExplorerTestContext
     }
 
     [Fact]
-    public void SaveCodes_WhenAnOlderPickersSaveLandsUnderANewerOne_ThenTheNewerOneStaysOpenAndNothingIsSaidSaved()
+    public async Task SaveCodes_WhenAnOlderPickersSaveLandsUnderANewerOne_ThenTheNewerOneStaysOpenAndNothingIsSaidSaved()
     {
-        var client = new ListClient(Item(), Sivilstand) { Pending = new TaskCompletionSource<DesiredDataResult>() };
+        var client = new ListClient(Item(), Sivilstand) { Pending = new TaskCompletionSource<DesiredDataResult>(TaskCreationOptions.RunContinuationsAsynchronously) };
         var cut = OpenedRow(client);
         OpenButton(cut)!.Click(new MouseEventArgs { Detail = 1 });
         cut.WaitForAssertion(() => Assert.Contains("Ugift", cut.Markup));
@@ -138,7 +138,10 @@ public class VariableListCodePickerTest : ExplorerTestContext
         OpenButton(cut)!.Click(new MouseEventArgs { Detail = 1 });
         client.Pending.SetResult(new DesiredDataResult(DesiredDataOutcome.Saved));
 
-        cut.WaitForAssertion(() => Assert.Equal("true", OpenButton(cut)!.GetAttribute("aria-expanded")));
+        // Settled first: the late answer and the render it causes have run before anything is asserted.
+        await Task.Delay(50);
+        await cut.InvokeAsync(() => { });
+        Assert.Equal("true", OpenButton(cut)!.GetAttribute("aria-expanded"));
         Assert.DoesNotContain(cut.FindAll("[role=status]"), status => status.TextContent.Contains("Lagret", StringComparison.Ordinal));
     }
 }
