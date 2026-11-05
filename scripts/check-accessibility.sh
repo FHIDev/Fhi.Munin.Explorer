@@ -109,6 +109,7 @@ TARGETS=(
   "/utforsker::explorer-list-tab"
   "/utforsker::list-row-panel"
   "/utforsker::list-row-notes"
+  "/utforsker::list-row-picker"
   "/utforsker::list-actions-menu"
   "/utforsker::list-actions-and-columns"
   "/utforsker::list-download-and-columns"
