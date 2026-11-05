@@ -26,7 +26,8 @@
 ## Testing, risk, revert
 
 <!-- For a PR opened by one of our sessions: three lines, each on a line of its own and filled in (DevInfra-0f5.2):
-     "Testing: what ran and its result, or what could not be run"
+     "Testing: what ran and its result, or what could not be run, and the head commit it ran on (… on 3f2a91c)"
+     "Held-out test: <file>, fails on <base sha>, passes on <head sha>" (a fix for an Important finding or on a risk:high path; DevInfra-og3.48)
      "Risk: low|medium|high – why" (the tier the risk: label gives; the check fails when they differ)
      "How to revert: revert this PR, or the steps when a revert alone does not undo it" -->
 

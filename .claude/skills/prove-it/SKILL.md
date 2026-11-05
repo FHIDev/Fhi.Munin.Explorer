@@ -199,10 +199,16 @@ munin-lane skill.
 
 ## Output format
 
-Report what ran, not what you believe:
+Report what ran, not what you believe, and on which commit:
+
+A «fixed» or «passes» report names the head commit the tests ran on (`git rev-parse --short HEAD`): `Tests: 42 passed
+on 3f2a91c`. A fix for an Important finding, or on a risk:high path, also gets a held-out test from a fresh subagent
+that saw only the defect, before the pre-PR review; it fails before the fix and passes on the head (DevInfra
+`docs/team/working-together.md` §4, DevInfra-og3.48).
+
 
 ```
-✓ Build + test: passes, 0 warnings, 214 tests
+✓ Build + test: passes, 0 warnings, 214 tests on 3f2a91c
 ✓ Format:       clean (12 CRLF diffs, same count as main — not mine)
 ✓ Package:      assert-package-contents.sh green
 ✓ Sample CSS:   assert-sample-css-in-step.sh green

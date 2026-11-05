@@ -1,0 +1,2 @@
+category: Changed
+- **«Fixed» names the commit, and an important fix gets a held-out test** - The Testing line in a pull request, and prove-it's report, name the head commit the tests ran on, so a stale build or a run on another commit shows. A fix for an Important finding, or on a risk:high path, gets a test from a fresh session that saw only the defect: it must fail before the fix and pass on the head, and the pull request names it. (DevInfra-og3.48)
