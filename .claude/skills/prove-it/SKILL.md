@@ -199,13 +199,13 @@ munin-lane skill.
 
 ## Output format
 
-Report what ran, not what you believe, and on which commit:
+Report what ran, not what you believe, and on which commit.
 
-A «fixed» or «passes» report names the head commit the tests ran on (`git rev-parse --short HEAD`): `Tests: 42 passed
-on 3f2a91c`. A fix for an Important finding, or on a risk:high path, also gets a held-out test from a fresh subagent
-that saw only the defect, before the pre-PR review; it fails before the fix and passes on the head (DevInfra
-`docs/team/working-together.md` §4, DevInfra-og3.48).
-
+A «fixed» or «passes» report names the clean head commit the tests ran on (`git rev-parse --short HEAD`), or for CI
+the pull request's head SHA: `Tests: 42 passed on 3f2a91c`. A fix of an Important finding, or of a defect on a
+risk:high path, also gets a held-out test: a fresh subagent in its own worktree at the pre-fix commit, given only the
+defect, writes it; it fails there on the defect and passes on the head (DevInfra `docs/team/working-together.md` §4,
+DevInfra-og3.48). The report looks like this:
 
 ```
 ✓ Build + test: passes, 0 warnings, 214 tests on 3f2a91c
