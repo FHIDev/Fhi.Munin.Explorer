@@ -457,7 +457,7 @@ reversal — reviewers read the bead to decide what the change is supposed to co
 4. Qualify the issue reference with the repository.
 ```
 
-Tag every finding Important, Nit or Pre-existing, as `REVIEW.md` defines them. List Pre-existing findings last, under
+Tag every finding Important or Nit, and mark it Pre-existing (a scope beside the severity) when `REVIEW.md` says so. List Pre-existing findings last, under
 `### Pre-existing (not this branch's)`, each with the unchanged code's `file:line` and why nothing in the diff reaches
 it. They ask for no fix here, start no new round, and do not count in the verdict's issues to fix. When the brief lists
 an earlier round's findings, do not report them again; name one only when its fix did not work.
