@@ -93,6 +93,7 @@ internal static class SharedSnapshot
                 {
                     KodeverkType = Text(code, "kodeverkType") ?? "",
                     KodeverkReference = Text(code, "kodeverkReference") ?? "",
+                    KodeverkName = Text(code, "kodeverkNavn"),
                     Kind = Text(code, "kind") ?? "",
                     Code = value,
                     To = Text(code, "til"),

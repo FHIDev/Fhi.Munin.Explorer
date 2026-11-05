@@ -437,4 +437,17 @@ public class DesiredCodePickerTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.DoesNotContain("1 treff", Text(cut)));
         Assert.DoesNotContain("E10 Diabetes", Text(cut));
     }
+
+    [Fact]
+    public void Save_WhenChoicesAreKeptOrAdded_ThenTheirCodeListKeepsItsName()
+    {
+        var saves = new Saves();
+        var stored = new DesiredCodeView { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", KodeverkName = "Sivilstand", Kind = "kode", Code = "1", Name = "Ugift" };
+        var cut = Picker(saves, [Sivilstand], [stored]);
+
+        Tick(cut, "Gift");
+        Press(cut, "Lagre");
+
+        Assert.All(Assert.Single(saves.Calls), view => Assert.Equal("Sivilstand", view.KodeverkName));
+    }
 }

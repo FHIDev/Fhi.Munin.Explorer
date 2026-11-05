@@ -144,4 +144,42 @@ public class VariableListCodePickerTest : ExplorerTestContext
         Assert.Equal("true", OpenButton(cut)!.GetAttribute("aria-expanded"));
         Assert.DoesNotContain(cut.FindAll("[role=status]"), status => status.TextContent.Contains("Lagret", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void Row_WhenTheItemHasChosenCodes_ThenTheOpenedRowNamesThemAndTheCellKeepsOnlyItsTextarea()
+    {
+        var item = Item() with { DesiredDataCodes = [new DesiredCodeView { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", KodeverkName = "Sivilstand", Kind = "kode", Code = "2", Name = "Gift" }] };
+        var cut = OpenedRow(new ListClient(item, Sivilstand));
+
+        // The textarea stays the cell's direct child: Stiler sizes it by «td > textarea».
+        var cell = cut.Find("td.munin-explorer-dataitem-main__desiredData");
+        Assert.NotNull(cell.QuerySelector(":scope > textarea"));
+        Assert.DoesNotContain("Gift", cell.TextContent);
+        Assert.Contains("Sivilstand: 2 Gift", System.Text.RegularExpressions.Regex.Replace(cut.Find("[id^='munin-explorer-list-panel-'][role=region]").TextContent, @"\s+", " "));
+    }
+
+    [Fact]
+    public void Row_WhenTheCodeListNoLongerHasValues_ThenTheStoredCodesStillShow()
+    {
+        var item = Item() with { DesiredDataCodes = [new DesiredCodeView { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", KodeverkName = "Sivilstand", Kind = "kode", Code = "2", Name = "Gift" }] };
+        var cut = OpenedRow(new ListClient(item, Sivilstand with { HasCodeValues = false }));
+
+        Assert.Null(OpenButton(cut));
+        Assert.Contains("Sivilstand: 2 Gift", System.Text.RegularExpressions.Regex.Replace(cut.Find("[id^='munin-explorer-list-panel-'][role=region]").TextContent, @"\s+", " "));
+    }
+
+    [Fact]
+    public void Summary_WhileThePickerIsOpen_ThenItIsHiddenAndComesBackWhenItShuts()
+    {
+        var item = Item() with { DesiredDataCodes = [new DesiredCodeView { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", KodeverkName = "Sivilstand", Kind = "kode", Code = "1", Name = "Ugift" }] };
+        var cut = OpenedRow(new ListClient(item, Sivilstand));
+        static bool Shown(IRenderedComponent<VariableListView> c) => c.FindAll("div.caption > div").Any(d => d.TextContent.Contains("Sivilstand:", StringComparison.Ordinal));
+        Assert.True(Shown(cut));
+
+        OpenButton(cut)!.Click(new MouseEventArgs { Detail = 1 });
+        cut.WaitForAssertion(() => Assert.False(Shown(cut)));
+
+        OpenButton(cut)!.Click(new MouseEventArgs { Detail = 1 });
+        cut.WaitForAssertion(() => Assert.True(Shown(cut)));
+    }
 }

@@ -86,7 +86,7 @@ public sealed partial class DesiredCodePicker : ComponentBase
     {
         foreach (var view in Chosen.Take(MaxChoices))
         {
-            _choices.Add(new Choice(view.ToChoice(), view.Name, view.ToName, view.Expired, view.Count));
+            _choices.Add(new Choice(view.ToChoice(), view.Name, view.ToName, view.Expired, view.Count, view.KodeverkName));
         }
     }
 
@@ -317,12 +317,13 @@ public sealed partial class DesiredCodePicker : ComponentBase
     // ---------------------------------------------------------------------------------------------- the choices
 
     /// <summary>A draft choice with what is known about it for display: its term(s), whether expired, its count.</summary>
-    internal sealed record Choice(DesiredCodeChoice Value, string? Name, string? ToName, bool Expired, int? Count)
+    internal sealed record Choice(DesiredCodeChoice Value, string? Name, string? ToName, bool Expired, int? Count, string? ListName = null)
     {
         public DesiredCodeView ToView() => new()
         {
             KodeverkType = Value.KodeverkType,
             KodeverkReference = Value.KodeverkReference,
+            KodeverkName = ListName,
             Kind = Value.Kind,
             Code = Value.Code,
             To = Value.To,
@@ -367,7 +368,7 @@ public sealed partial class DesiredCodePicker : ComponentBase
         }
 
         var value = new DesiredCodeChoice(link.KodeverkType, link.KodeverkReference, kind, code);
-        var choice = new Choice(value, name, null, Expired(validTo), kind == DesiredCodeKinds.Code ? 1 : null);
+        var choice = new Choice(value, name, null, Expired(validTo), kind == DesiredCodeKinds.Code ? 1 : null, ListNameOf(link));
         if (other is not null)
         {
             _choices[_choices.IndexOf(other)] = choice;
@@ -439,7 +440,7 @@ public sealed partial class DesiredCodePicker : ComponentBase
                 return;
             }
 
-            _choices.Add(new Choice(value, null, null, false, count.Value));
+            _choices.Add(new Choice(value, null, null, false, count.Value, ListNameOf(link)));
             _rangeFrom = _rangeTo = "";
             Announce(null, error: false);
         }
@@ -449,6 +450,9 @@ public sealed partial class DesiredCodePicker : ComponentBase
             Announce(T.PickerRangeUnknown, error: true);
         }
     }
+
+    // The list's name as the variable page gives it, so a saved choice keeps the label the summary shows.
+    private static string? ListNameOf(KodeverkLink link) => string.IsNullOrWhiteSpace(link.DisplayName) ? null : link.DisplayName;
 
     // The removed item took its button with it, so focus goes to the count, which says what is left.
     private void Remove(Choice choice)

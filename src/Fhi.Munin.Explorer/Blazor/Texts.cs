@@ -894,7 +894,9 @@ internal sealed record Texts(
     string PickerSaved,
     string PickerListUnavailable,
     Func<string, string> PickerInvalid,
-    Func<int, string> PickerTooMany)
+    Func<int, string> PickerTooMany,
+    // The share view's column of chosen codes.
+    string CodeSummaryHeading)
 {
     /// <summary>
     /// The label for a sort order. Every one that names a field uses the same words the result
@@ -1820,7 +1822,8 @@ internal sealed record Texts(
         PickerSaved: "Lagret",
         PickerListUnavailable: "Kodelisten kan ikke leses nå, så valgene er ikke lagret. Prøv igjen om litt.",
         PickerInvalid: choice => $"{choice} finnes ikke i kodelisten. Fjern det og lagre igjen.",
-        PickerTooMany: max => $"Høyst {max} valg per variabel.");
+        PickerTooMany: max => $"Høyst {max} valg per variabel.",
+        CodeSummaryHeading: "Ønskede verdier");
 
     private static readonly Texts En = new(
         Title: "Variable explorer",
@@ -2394,7 +2397,7 @@ internal sealed record Texts(
         DatasamlingColumnHint: "Datasamling is always shown, because it tells a variable's rows apart.",
         OpensInNewWindow: "(opens in a new window)",
         PickerOpen: "Choose from the code list",
-        PickerHeading: "Wanted values",
+        PickerHeading: "Desired values",
         PickerTabsLabel: "Code lists on the variable",
         PickerSearchLabel: "Search by code or name",
         PickerSearchHint: "For example «diabetes» or «E1»",
@@ -2422,7 +2425,8 @@ internal sealed record Texts(
         PickerSaved: "Saved",
         PickerListUnavailable: "The code list cannot be read now, so the choices were not saved. Try again shortly.",
         PickerInvalid: choice => $"{choice} is not in the code list. Remove it and save again.",
-        PickerTooMany: max => $"At most {max} choices per variable.")
+        PickerTooMany: max => $"At most {max} choices per variable.",
+        CodeSummaryHeading: "Desired values")
     {
         Reader = ReaderLanguage.English,
     };

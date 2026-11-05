@@ -536,6 +536,11 @@ else if (State?.IsAuthenticated == true)
                             <thead>
                                 <tr class="munin-explorer-data-list__item__row--header">
                                     <th scope="col" class="munin-explorer-dataitem-header__name">@T.ColumnVariable</th>
+                                    @* Next to the name rather than last: the host narrows its last column («Valg» elsewhere). *@
+                                    @if (SharedHasCodes)
+                                    {
+                                        <th scope="col">@T.CodeSummaryHeading</th>
+                                    }
                                     @OptionalHeaders()
                                 </tr>
                             </thead>
@@ -549,6 +554,20 @@ else if (State?.IsAuthenticated == true)
                                                   lang="@CatalogueLang(item.VariableName)">@RowName(item)</span>
                                             @CodeUnderName(item)
                                         </th>
+                                        @if (SharedHasCodes)
+                                        {
+                                            @* A share's codes, never its free text; unchecked when a client built it, so text only. *@
+                                            <td data-label="@T.CodeSummaryHeading">
+                                                @if (item.DesiredDataCodes.Count == 0)
+                                                {
+                                                    @T.NotSpecified
+                                                }
+                                                else
+                                                {
+                                                    <div>@DesiredCodeSummary.For(T, item.DesiredDataCodes, "no")</div>
+                                                }
+                                            </td>
+                                        }
                                         @Cells(item)
                                     </tr>
                                 }
@@ -930,6 +949,11 @@ else if (State?.IsAuthenticated == true)
                   aria-invalid="@DesiredDataInvalid(item)"
                   aria-describedby="@RowDesiredDataDescribedBy(item)"
                   @onchange="e => SaveDesiredDataAsync(item, e.Value?.ToString())"></textarea>
+        @* Stored codes show whether or not the picker is offered now (a link may have lost its values since). *@
+        @if (!IsPicking(item))
+        {
+            @DesiredCodeSummary.For(T, CodesOf(item), "no")
+        }
         @if (CanPickCodes(item, detail))
         {
             @* A disclosure, kept while open, so focus has somewhere to stay and to come back to. *@

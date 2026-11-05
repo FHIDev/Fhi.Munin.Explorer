@@ -992,4 +992,44 @@ public class SharedListViewTest : ExplorerTestContext
         Assert.Contains(w.SignIn, cut.Markup);
         Assert.Contains(w.Eyebrow, cut.Markup);
     }
+
+    [Fact]
+    public void SharedList_WhenItemsCarryChosenCodes_ThenAColumnShowsThemAsTextAndNoFreeText()
+    {
+        var store = new ShareStore();
+        var withCodes = Item("Hoveddiagnose", "HDIAG") with
+        {
+            DesiredDataFreeText = "privat tekst",
+            DesiredDataCodes =
+            [
+                new DesiredCodeView { KodeverkType = "HelsefagligKodeverk", KodeverkReference = "ICD-10", Kind = "node", Code = "E11", Count = 10 },
+                new DesiredCodeView { KodeverkType = "Kildekodeverk", KodeverkReference = "1569", KodeverkName = "Sivilstand", Kind = "kode", Code = "2", Name = "<b>Gift</b>" },
+            ],
+        };
+        store.ByCode["AB12CD"] = new SharedList("Kollegas liste", [withCodes, Item("Kjønn", "KJONN")]);
+
+        var cut = RenderView(new ShareClient(store) { OwnItems = [Item("Min egen", "EGEN")] }, shareCode: "AB12CD");
+        cut.WaitForAssertion(() => Assert.Equal(2, RowNames(cut).Count));
+
+        Assert.Contains(cut.FindAll("thead th"), th => th.TextContent.Trim() == "Ønskede verdier");
+        var cell = cut.FindAll("td[data-label='Ønskede verdier']")[0];
+        var text = System.Text.RegularExpressions.Regex.Replace(cell.TextContent, @"\s+", " ").Trim();
+        Assert.Contains("ICD-10: E11 med alt under (10 koder)", text);
+        Assert.Contains("Sivilstand: 2 <b>Gift</b>", text);
+        Assert.Empty(cell.QuerySelectorAll("b"));
+        Assert.DoesNotContain("privat tekst", cut.Markup);
+        Assert.Equal("Ikke oppgitt", cut.FindAll("td[data-label='Ønskede verdier']")[1].TextContent.Trim());
+    }
+
+    [Fact]
+    public void SharedList_WhenNoItemHasCodes_ThenThereIsNoCodesColumn()
+    {
+        var store = new ShareStore();
+        store.ByCode["AB12CD"] = new SharedList("Kollegas liste", Three);
+
+        var cut = RenderView(new ShareClient(store) { OwnItems = [Item("Min egen", "EGEN")] }, shareCode: "AB12CD");
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+
+        Assert.DoesNotContain(cut.FindAll("thead th"), th => th.TextContent.Trim() == "Ønskede verdier");
+    }
 }
