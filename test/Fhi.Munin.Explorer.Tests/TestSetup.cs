@@ -132,6 +132,23 @@ internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
         Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<VariableVersion>>([]);
 
+    public virtual Task<KodeverkCodePage?> SearchKodeverkCodesAsync(
+        Guid variableId, string kodeverkType, string kodeverkReference, string query, int skip = 0, int take = 50,
+        CancellationToken cancellationToken = default) => Task.FromResult<KodeverkCodePage?>(null);
+
+    public virtual Task<KodeverkCodePage?> GetKodeverkCodeChildrenAsync(
+        Guid variableId, string kodeverkType, string kodeverkReference, string? node, int skip = 0, int take = 50,
+        CancellationToken cancellationToken = default) => Task.FromResult<KodeverkCodePage?>(null);
+
+    public virtual Task<int?> CountKodeverkCodesAsync(
+        Guid variableId, DesiredCodeChoice choice, CancellationToken cancellationToken = default) =>
+        Task.FromResult<int?>(null);
+
+    public virtual Task<DesiredDataResult> SetMyListItemDesiredCodesAsync(
+        Guid id, Guid itemId, string? freeText, IReadOnlyList<DesiredCodeChoice> choices,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(new DesiredDataResult(DesiredDataOutcome.NotFound));
+
     public virtual Task<KodeverkCodes?> GetKodeverkCodesAsync(
         Guid variableId, string kodeverkType, string kodeverkReference,
         CancellationToken cancellationToken = default) =>

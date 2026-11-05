@@ -624,6 +624,38 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
             native: 0);
     }
 
+    [Fact]
+    public void DesiredCodePicker_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
+    {
+        // Two: the tree's top-level nodes, each with a button that opens the codes under it.
+        Services.AddSingleton<IMuninExplorerClient>(new CodeTreeClient());
+        var link = new KodeverkLink { KodeverkType = "HelsefagligKodeverk", KodeverkReference = "ICD-10", HasCodeValues = true };
+
+        AssertStandingGesturesAreRefused(
+            () => Render<DesiredCodePicker>(b => b
+                .Add(c => c.VariableId, Guid.NewGuid())
+                .Add(c => c.Links, [link])
+                .Add(c => c.Save, _ => Task.FromResult(new DesiredDataResult(DesiredDataOutcome.Saved)))),
+            expected: 2,
+            native: 0);
+    }
+
+    /// <summary>A code tree two nodes wide at the top and empty beneath them.</summary>
+    private sealed class CodeTreeClient : DisclosureClient
+    {
+        public override Task<KodeverkCodePage?> GetKodeverkCodeChildrenAsync(
+            Guid variableId, string kodeverkType, string kodeverkReference, string? node, int skip = 0, int take = 50,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<KodeverkCodePage?>(new KodeverkCodePage
+            {
+                Total = node is null ? 2 : 0,
+                Codes = node is null
+                    ? [new KodeverkCodeHit { Value = "E00-E90", Name = "Endokrine sykdommer", HasChildren = true },
+                       new KodeverkCodeHit { Value = "J00-J99", Name = "Sykdommer i åndedrettsorganene", HasChildren = true }]
+                    : [],
+            });
+    }
+
     // -----------------------------------------------------------------------
     // Completeness
 
@@ -636,6 +668,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     private static readonly Type[] Swept =
     [
         typeof(DatasamlingView),
+        typeof(DesiredCodePicker),
         typeof(DetailToc),
         typeof(KildeSearch),
         typeof(KildeView),

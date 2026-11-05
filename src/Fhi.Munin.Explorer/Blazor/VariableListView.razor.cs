@@ -650,6 +650,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        await FocusPickerButtonAsync();
+
         // All taken, so a flag none acts on does not linger to move focus on a later render.
         var fromSource = TakeSourceFocusTarget();
         var fromMenu = TakeMenuFocusTarget();
@@ -1036,6 +1038,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             : null;
 
         _desiredData.Clear();
+        _savedCodes.Clear();
+        _picking = null;
+        _codesSaved = null;
 
         if (_page is null)
         {
