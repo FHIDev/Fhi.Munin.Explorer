@@ -12,7 +12,7 @@ public sealed partial class VariableListView
     // What a save stored, until the next list read brings the API's own description of it.
     private readonly Dictionary<VariableDatasamlingKey, IReadOnlyList<DesiredCodeView>> _savedCodes = [];
     private VariableDatasamlingKey? _picking;
-    // Bumped on every open, close and list read, so an older picker's answer cannot touch a newer one.
+    // Bumped on every open and close, so an older picker's answer cannot touch a newer one; a list switch is _shownList's.
     private int _pickerGeneration;
     private VariableDatasamlingKey? _codesSaved;
     private ElementReference _pickerButton;

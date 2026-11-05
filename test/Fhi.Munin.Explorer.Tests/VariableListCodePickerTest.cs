@@ -21,6 +21,7 @@ public class VariableListCodePickerTest : ExplorerTestContext
     private sealed class ListClient(VariableListItem item, params KodeverkLink[] links) : EmptyMuninExplorerClient
     {
         public List<(Guid ItemId, string? FreeText, IReadOnlyList<DesiredCodeChoice> Choices)> Writes { get; } = [];
+        public TaskCompletionSource<DesiredDataResult>? Pending { get; set; }
 
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<VariableList>>([new VariableList { Id = ListId, Name = "Kreft", VariableCount = 1 }]);
@@ -53,7 +54,7 @@ public class VariableListCodePickerTest : ExplorerTestContext
             CancellationToken cancellationToken = default)
         {
             Writes.Add((itemId, freeText, choices));
-            return Task.FromResult(new DesiredDataResult(DesiredDataOutcome.Saved));
+            return Pending?.Task ?? Task.FromResult(new DesiredDataResult(DesiredDataOutcome.Saved));
         }
     }
 
@@ -120,5 +121,24 @@ public class VariableListCodePickerTest : ExplorerTestContext
         OpenButton(cut)!.Click(new MouseEventArgs { Detail = 2 });
 
         Assert.Equal("false", OpenButton(cut)!.GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void SaveCodes_WhenAnOlderPickersSaveLandsUnderANewerOne_ThenTheNewerOneStaysOpenAndNothingIsSaidSaved()
+    {
+        var client = new ListClient(Item(), Sivilstand) { Pending = new TaskCompletionSource<DesiredDataResult>() };
+        var cut = OpenedRow(client);
+        OpenButton(cut)!.Click(new MouseEventArgs { Detail = 1 });
+        cut.WaitForAssertion(() => Assert.Contains("Ugift", cut.Markup));
+        cut.FindAll("label").First(l => l.TextContent.Contains("Ugift", StringComparison.Ordinal)).QuerySelector("input[type=checkbox]")!.Change(true);
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Lagre").Click();
+
+        // Closed and opened again while the save is out: a newer picker for the same row.
+        OpenButton(cut)!.Click(new MouseEventArgs { Detail = 1 });
+        OpenButton(cut)!.Click(new MouseEventArgs { Detail = 1 });
+        client.Pending.SetResult(new DesiredDataResult(DesiredDataOutcome.Saved));
+
+        cut.WaitForAssertion(() => Assert.Equal("true", OpenButton(cut)!.GetAttribute("aria-expanded")));
+        Assert.DoesNotContain(cut.FindAll("[role=status]"), status => status.TextContent.Contains("Lagret", StringComparison.Ordinal));
     }
 }

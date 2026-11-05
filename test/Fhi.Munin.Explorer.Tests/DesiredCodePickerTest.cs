@@ -394,7 +394,7 @@ public class DesiredCodePickerTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Toggle_WhileASaveIsOut_ThenTheDraftHoldsAndARefusalNamesTheChoiceThatWasSent()
+    public void Remove_WhileASaveIsOut_ThenTheDraftHoldsAndARefusalNamesTheChoiceThatWasSent()
     {
         var pending = new TaskCompletionSource<DesiredDataResult>();
         Services.AddSingleton<IMuninExplorerClient>(new CodesClient());
@@ -407,6 +407,7 @@ public class DesiredCodePickerTest : ExplorerTestContext
         Press(cut, "Lagre");
 
         cut.FindAll("button").First(b => b.TextContent.Trim().StartsWith("Fjern 1", StringComparison.Ordinal)).Click();
+        Assert.All(cut.FindAll("input[type=checkbox]"), box => Assert.True(box.HasAttribute("disabled"), "no box can be ticked while saving"));
         pending.SetResult(new DesiredDataResult(DesiredDataOutcome.Refused, InvalidIndex: 1));
 
         cut.WaitForAssertion(() => Assert.Contains("2 Gift finnes ikke i kodelisten.", cut.Find("[role=alert]").TextContent));
