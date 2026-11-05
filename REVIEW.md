@@ -32,7 +32,7 @@ Everything else (naming, wording, structure, a smaller way to write it) is a **N
   changed input, default or config alters what that code does or how it is reached. Moved or renamed lines count as
   changed. A confirming round judges against the whole pull request's diff, not only the commits it reads. The
   reviewer gives the label, with the unchanged code's `file:line` and why nothing in the diff reaches it; the author
-  does not turn an Important finding into a Pre-existing one. A Pre-existing finding asks for no fix in this pull
+  does not turn an Important finding into a Pre-existing one, and when two reviewers label it differently the more severe label stands. A Pre-existing finding asks for no fix in this pull
   request and starts no new round. It does not count against the nit cap, or in the review line's N or «left». The
   pull request body lists each one: `Pre-existing: <file:line> – <bead id, or none: why>`. One that would be Important
   under this file always gets a follow-up bead.
