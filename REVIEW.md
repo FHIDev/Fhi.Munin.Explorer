@@ -19,6 +19,11 @@ the change could:
   contracts.
 - **Publish the wrong package.** The package csproj, `Directory.Build.props`, the release and packing scripts.
 
+- **State what the code does not do.** A claim in the PR body, a changelog fragment or a doc the change touches, about
+  behaviour, security, a command, a number, a file, a flag or an endpoint, that no code or test backs (the doc-claim
+  check, DevInfra `docs/review-risk-tiers.md`). The nit cap and «report only Important» after the first review do not
+  apply to it.
+
 Everything else (naming, wording, structure, a smaller way to write it) is a **Nit**.
 
 ## How to report
