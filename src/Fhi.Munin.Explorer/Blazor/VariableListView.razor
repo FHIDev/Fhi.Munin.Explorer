@@ -949,12 +949,13 @@ else if (State?.IsAuthenticated == true)
                   aria-invalid="@DesiredDataInvalid(item)"
                   aria-describedby="@RowDesiredDataDescribedBy(item)"
                   @onchange="e => SaveDesiredDataAsync(item, e.Value?.ToString())"></textarea>
+        @* Stored codes show whether or not the picker is offered now (a link may have lost its values since). *@
+        @if (!IsPicking(item))
+        {
+            @DesiredCodeSummary.For(T, CodesOf(item), "no")
+        }
         @if (CanPickCodes(item, detail))
         {
-            @if (!IsPicking(item))
-            {
-                @DesiredCodeSummary.For(T, CodesOf(item), "no")
-            }
             @* A disclosure, kept while open, so focus has somewhere to stay and to come back to. *@
             <button class="hd-button-square button-square--secondary" type="button"
                     aria-expanded="@(IsPicking(item) ? "true" : "false")" aria-controls="@RowPickerId(item)"

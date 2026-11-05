@@ -157,4 +157,14 @@ public class VariableListCodePickerTest : ExplorerTestContext
         Assert.DoesNotContain("Gift", cell.TextContent);
         Assert.Contains("Sivilstand: 2 Gift", System.Text.RegularExpressions.Regex.Replace(cut.Find("[id^='munin-explorer-list-panel-'][role=region]").TextContent, @"\s+", " "));
     }
+
+    [Fact]
+    public void Row_WhenTheCodeListNoLongerHasValues_ThenTheStoredCodesStillShow()
+    {
+        var item = Item() with { DesiredDataCodes = [new DesiredCodeView { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", KodeverkName = "Sivilstand", Kind = "kode", Code = "2", Name = "Gift" }] };
+        var cut = OpenedRow(new ListClient(item, Sivilstand with { HasCodeValues = false }));
+
+        Assert.Null(OpenButton(cut));
+        Assert.Contains("Sivilstand: 2 Gift", System.Text.RegularExpressions.Regex.Replace(cut.Find("[id^='munin-explorer-list-panel-'][role=region]").TextContent, @"\s+", " "));
+    }
 }
