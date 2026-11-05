@@ -104,6 +104,7 @@ that line.
 - **A changelog fragment is a claim to a host developer.** It is copied into `CHANGELOG.md`
   verbatim, so it must describe what the released package actually does — including any floor it
   imposes (a `Fhi.Helsedata.Stiler` version, a render mode, a required registration call).
+- **The doc-claim check** (DevInfra `docs/review-risk-tiers.md`): read the PR body, the changelog fragments and every guide or doc the change touches against the code, line by line. A claim about behaviour, security, a command or a number that no code you read or test backs is **Important**, also after the first review; a wording point is a Nit.
 
 ## 2. A rule stated in one place must hold everywhere else in the same change
 

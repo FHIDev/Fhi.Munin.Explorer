@@ -1,6 +1,6 @@
 # Review guidance: Fhi.Munin.Explorer
 
-Read by the pre-PR reviewer before it reviews a diff here, and by Copilot through its instructions. The same
+Read by the pre-PR reviewer before it reviews a diff here, and by the independent review. The same
 skeleton is used in Munin, Heimdall and DevInfra (DevInfra-0f5.2); each repository fills in its own failures.
 
 ## What failure looks like here

@@ -1,0 +1,2 @@
+category: Changed
+- **The pre-PR review reads PR text against the code; the independent review replaces Copilot** - The pre-PR reviewer gets the doc-claim check: the PR body, changelog fragments and every guide the change touches are read against the code, and an unbacked claim about behaviour, security, a command or a number is Important. prove-it and REVIEW.md name the independent review where they named Copilot, since no session requests a Copilot review any more (Robin, 5 November 2026). (DevInfra-0f5.14)

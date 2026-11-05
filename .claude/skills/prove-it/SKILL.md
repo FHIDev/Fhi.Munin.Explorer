@@ -188,7 +188,7 @@ Pre-PR review: skipped, <reason>
 
 Write the form that is true, with the real count and a real reason: the words in angle brackets are not text to
 keep. "Skipped" is for a change with nothing in it to review: a version pin, a generated file, a typo in prose.
-"Small" is not a reason; small PRs skip Copilot here, not this. A PR without the line reads as "did not run".
+"Small" is not a reason; small PRs skip the independent review, not this. A PR without the line reads as "did not run".
 
 Right under that line, unless the review was skipped, one hidden comment registers each round, its JSON on one line:
 `<!-- review-registration {"v":2,"rounds":[{"round":1,"head":"<the 40-character sha the reviewers read>","opus":{"tokens":null,"noise":0},"sonnet":{"tokens":null,"noise":0},"findings":[]}],"copilotReReview":null} -->`. Each round's `head` is the full id from `git rev-parse HEAD` when the reviewers start, pushed so
