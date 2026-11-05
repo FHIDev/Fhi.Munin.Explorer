@@ -1,6 +1,6 @@
 # Review guidance: Fhi.Munin.Explorer
 
-Read by the pre-PR reviewer before it reviews a diff here, and by Copilot through its instructions. The same
+Read by the pre-PR reviewer before it reviews a diff here, and by the independent review. The same
 skeleton is used in Munin, Heimdall and DevInfra (DevInfra-0f5.2); each repository fills in its own failures.
 
 ## What failure looks like here
@@ -18,6 +18,9 @@ the change could:
 - **Send the host's token somewhere else.** The bearer-token handler, the client's base address, or the token
   contracts.
 - **Publish the wrong package.** The package csproj, `Directory.Build.props`, the release and packing scripts.
+- **State what the code does not do.** A claim in the PR body, a changelog fragment or a doc the change touches, about
+  behaviour, security, a command, a number, a file, a flag or an endpoint, that no code or test backs (the doc-claim
+  check, DevInfra `docs/review-risk-tiers.md`). It is reported after the first review too, outside the nit cap.
 
 Everything else (naming, wording, structure, a smaller way to write it) is a **Nit**.
 
