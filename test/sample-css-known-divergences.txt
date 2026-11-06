@@ -641,3 +641,14 @@ missing-selector||.munin-explorer-header__actions .munin-explorer__dropdown|
 # Delete these two lines when helsedata pins a Stiler that carries it.
 unstyled-name||.munin-explorer-datasamling__description-rest|
 unstyled-name||.munin-explorer-datasamling__description-toggle|
+
+# Fhi.Metadata-9huq2.14: the code picker's tree; its Stiler rules are Fhi.Metadata-9huq2.16.
+# Delete these eight lines when helsedata pins a Stiler that carries them.
+unstyled-name||.munin-explorer-codetree|
+unstyled-name||.munin-explorer-codetree__box|
+unstyled-name||.munin-explorer-codetree__code|
+unstyled-name||.munin-explorer-codetree__count|
+unstyled-name||.munin-explorer-codetree__group|
+unstyled-name||.munin-explorer-codetree__name|
+unstyled-name||.munin-explorer-codetree__row|
+unstyled-name||.munin-explorer-codetree__toggle|
