@@ -36,7 +36,7 @@ rates what it does not name.
   something unusual; or when a claim users or integrators rely on (docs, a changelog, an API description, a status
   code) is false.
 - **Nit** when it needs several unlikely conditions together, an administrator acting oddly, or leads only to a
-  harmless outcome (an extra log line, a cosmetic glitch, a retry that succeeds). The author answers it on the pull
+  harmless outcome (an extra log line that holds no personal data, a cosmetic glitch outside the layout and accessibility kinds above, a retry that succeeds). The author answers it on the pull
   request, or files a low-priority bead when it is real and cheap to fix; that is not a request to file one for each
   Nit, and the Nit cap still applies.
 - **Judgement still decides.** Say why when you rate against this guidance: an unlikely edge on a sign-in or
@@ -69,7 +69,7 @@ the odds. A label that flickers for a moment and is right once a retry succeeds 
   included, and does not report them again. It names an earlier finding only when its fix did not work, and says so.
 - **Summary first.** The report starts with a count: "3 findings: 1 Important, 2 Nits", "3 findings: 1 Important,
   2 Nits (+1 Pre-existing Important)", or "No findings".
-- **Risk tier.** A `risk:high` pull request (DevInfra `docs/review-risk-tiers.md`) gets every Important item above
+- **Risk tier.** A `risk:high` pull request (DevInfra `docs/review-risk-tiers.md`) gets every Important item in «What failure looks like here»
   that touches its paths checked explicitly, ✓ or ✗ with `file:line`.
 
 ## Do not report
