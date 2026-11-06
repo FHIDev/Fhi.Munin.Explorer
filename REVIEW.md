@@ -43,8 +43,8 @@ rates what it does not name.
   permission path can stay Important, and a likely one with a harmless outcome can be a Nit.
 
 For example: a form that saves a draft into the wrong field when the page loads slowly is Important (ordinary use,
-wrong data). A failure that needs two administrators to restore the same version in the same second, and whose retry
-then succeeds, is a Nit. A changelog that promises a response format the code does not send is Important
+wrong data). A failure that needs two administrators to restore the same version in the same second, answers the
+documented status and succeeds on retry, is a Nit. A changelog that promises a response format the code does not send is Important
 (integrators rely on it). A sign-in path that admits a revoked user during a two-second race stays Important despite
 the odds. A label that flickers for a moment and is right once a retry succeeds is a Nit.
 
