@@ -56,10 +56,12 @@ public class VariableListCodePickerTest : ExplorerTestContext
             });
         }
 
+        public Exception? ChildrenFailure { get; init; }
+
         public override Task<KodeverkCodePage?> GetKodeverkCodeChildrenAsync(
             Guid variableId, string kodeverkType, string kodeverkReference, string? node, int skip = 0, int take = 50,
             CancellationToken cancellationToken = default) =>
-            Task.FromResult<KodeverkCodePage?>(new KodeverkCodePage
+            ChildrenFailure is { } failure ? Task.FromException<KodeverkCodePage?>(failure) : Task.FromResult<KodeverkCodePage?>(new KodeverkCodePage
             {
                 Total = 2,
                 CodeCount = CodeCount,
@@ -243,5 +245,57 @@ public class VariableListCodePickerTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.NotNull(cut.Find("table.munin-explorer-codes__table")));
         Assert.Equal(1, client.WholeListReads);
+    }
+
+    [Fact]
+    public void KodeverkList_WhenTheClientCannotAskForTheListsSize_ThenTheWholeListIsFetchedAsBefore()
+    {
+        var client = new ListClient(Item(), Sivilstand) { ChildrenFailure = new NotSupportedException() };
+        var cut = OpenedRow(client);
+
+        ShowCodes(cut)!.Click(new MouseEventArgs { Detail = 1 });
+
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find("table.munin-explorer-codes__table")));
+        Assert.Equal(1, client.WholeListReads);
+    }
+
+    [Fact]
+    public void KodeverkList_WhenAskingForTheListsSizeFails_ThenTheReaderIsToldAndTheWholeListIsNotFetched()
+    {
+        var client = new ListClient(Item(), Sivilstand) { ChildrenFailure = new HttpRequestException("down") };
+        var cut = OpenedRow(client);
+
+        ShowCodes(cut)!.Click(new MouseEventArgs { Detail = 1 });
+
+        cut.WaitForAssertion(() => Assert.Contains("Kunne ikke hente kodene nå.", cut.Markup));
+        Assert.Equal(0, client.WholeListReads);
+    }
+
+    [Fact]
+    public void KodeverkList_WhenAnUnnamedListHasMoreThan200Codes_ThenItIsNotFetchedToStandInForItsName()
+    {
+        var unnamed = new KodeverkLink { KodeverkType = "Kildekodeverk", KodeverkReference = "2337", HasCodeValues = true };
+        var client = new ListClient(Item(), unnamed) { CodeCount = 22141 };
+        var cut = OpenedRow(client);
+
+        ShowCodes(cut)!.Click(new MouseEventArgs { Detail = 1 });
+
+        cut.WaitForAssertion(() => Assert.Contains("Kodelisten har 22141 koder, for mange til å vises her.", cut.Markup));
+        Assert.Equal(0, client.WholeListReads);
+    }
+
+    [Fact]
+    public void KodeverkList_WhenItIsOpenAsThePickerStarts_ThenItsCodesAreHiddenWhilePickingAndBackAfter()
+    {
+        var cut = OpenedRow(new ListClient(Item(), Sivilstand));
+        ShowCodes(cut)!.Click(new MouseEventArgs { Detail = 1 });
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find("table.munin-explorer-codes__table")));
+
+        OpenButton(cut)!.Click(new MouseEventArgs { Detail = 1 });
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("[role=treeitem]")));
+
+        Assert.Empty(cut.FindAll("table.munin-explorer-codes__table"));
+        OpenButton(cut)!.Click(new MouseEventArgs { Detail = 1 });
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find("table.munin-explorer-codes__table")));
     }
 }

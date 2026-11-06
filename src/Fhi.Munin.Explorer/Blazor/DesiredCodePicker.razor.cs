@@ -104,8 +104,20 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     {
         foreach (var view in Chosen.Take(MaxChoices))
         {
-            _choices.Add(new Choice(view.ToChoice(), view.Name, view.ToName, view.Expired, view.Count, view.KodeverkName, view.Ancestors));
+            Insert(_choices.Count, new Choice(view.ToChoice(), view.Name, view.ToName, view.Expired, view.Count, view.KodeverkName, view.Ancestors));
         }
+    }
+
+    // The summary keys its lines on the value, so two equal choices would end the circuit; saved data may repeat one.
+    private bool Insert(int at, Choice choice)
+    {
+        if (_choices.Any(c => c.Value == choice.Value))
+        {
+            return false;
+        }
+
+        _choices.Insert(Math.Clamp(at, 0, _choices.Count), choice);
+        return true;
     }
 
     // A saved range from an ICD-10 block's first category to its last (E10..E14 under «E10-E14») stops at E14, so it
@@ -566,7 +578,8 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
     private IEnumerable<Choice> ChoicesIn(KodeverkLink link) => _choices.Where(c => SameList(c, link));
 
-    // Ticked when it or a parent is chosen whole, half-ticked when something under it is chosen.
+    // Ticked when it or a parent is chosen whole, half-ticked when something under it is chosen. An older range that
+    // starts under it may hold some of its codes, so it half-ticks it, but never ticks it.
     private Tick TickOf(KodeverkLink link, ListState state, KodeverkCodeHit hit)
     {
         var ancestors = AncestorsOf(state, hit);
@@ -576,12 +589,12 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
             return Tick.Checked;
         }
 
-        return chosen.Any(c => IsUnder(c, hit.Value)) ? Tick.Mixed : Tick.Empty;
+        return chosen.Any(c => IsUnder(c, hit.Value) || (IsOlderRange(c) && c.Ancestors.Contains(hit.Value))) ? Tick.Mixed : Tick.Empty;
     }
 
-    // «k av n» beside a parent: n from the API, k the sum of the choices under it. Saved picks can overlap, so k is
-    // held at n.
-    private string? OfCount(KodeverkLink link, KodeverkCodeHit hit, Tick tick)
+    // «k av n» beside a parent: n from the API, k the sum of the choices under it, held at n since saved picks can
+    // overlap. A range is left out of k, as its codes may reach outside; a code chosen alone, not whole, shows none.
+    private string? OfCount(KodeverkLink link, ListState state, KodeverkCodeHit hit, Tick tick)
     {
         if (hit.Count is not { } all || tick == Tick.Empty)
         {
@@ -590,11 +603,28 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
         if (tick == Tick.Checked)
         {
-            return T.PickerOf(all, all);
+            return WholeOver(link, AncestorsOf(state, hit)) is not null
+                || ChoicesIn(link).Any(c => c.Value.Kind == DesiredCodeKinds.Node && c.Value.Code == hit.Value)
+                ? T.PickerOf(all, all)
+                : null;
         }
 
         var under = ChoicesIn(link).Where(c => IsUnder(c, hit.Value)).ToList();
-        return under.All(c => c.Count is not null) ? T.PickerOf(Math.Min(under.Sum(c => c.Count!.Value), all), all) : null;
+        return under.Count > 0 && under.All(c => c.Count is not null) ? T.PickerOf(Math.Min(under.Sum(c => c.Count!.Value), all), all) : null;
+    }
+
+    // The outermost parent chosen whole: saved picks can nest one whole parent inside another.
+    private Choice? WholeOver(KodeverkLink link, IReadOnlyList<string> ancestors)
+    {
+        foreach (var ancestor in ancestors)
+        {
+            if (ChoicesIn(link).FirstOrDefault(c => c.Value.Kind == DesiredCodeKinds.Node && c.Value.Code == ancestor) is { } whole)
+            {
+                return whole;
+            }
+        }
+
+        return null;
     }
 
     // A group (an ICD-10 chapter or block) is only ever chosen with everything under it; the API refuses it as a code.
@@ -616,7 +646,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
         var at = under.Count > 0 ? _choices.IndexOf(under[0]) : _choices.Count;
         _choices.RemoveAll(under.Contains);
-        _choices.Insert(Math.Min(at, _choices.Count), ChoiceOf(link, state, hit));
+        Insert(at, ChoiceOf(link, state, hit));
         return true;
     }
 
@@ -643,9 +673,9 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
                 return;
             }
         }
-        else if (ChoicesIn(link).FirstOrDefault(c => IsDirect(c, hit.Value)) is { } direct)
+        else if (WholeOver(link, AncestorsOf(state, hit)) is null)
         {
-            _choices.Remove(direct);
+            _choices.RemoveAll(c => SameList(c, link) && IsDirect(c, hit.Value));
         }
         else
         {
@@ -661,13 +691,13 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         await RecountAsync();
     }
 
-    // Unticking a code under a parent chosen whole: the parent becomes its other children, level by level down to the
-    // code, so the rest stays chosen. Every level on the way is read first; a failed read changes nothing.
+    // Unticking a code under a parent chosen whole: the outermost such parent, and every pick under it, becomes its
+    // other children, level by level down to the code, never one already chosen. Every level on the way is read
+    // first; a failed read changes nothing.
     private async Task<bool> UntickUnderAsync(KodeverkLink link, ListState state, KodeverkCodeHit hit)
     {
         var ancestors = AncestorsOf(state, hit);
-        var whole = ChoicesIn(link).FirstOrDefault(c => c.Value.Kind == DesiredCodeKinds.Node && ancestors.Contains(c.Value.Code));
-        if (whole is null)
+        if (WholeOver(link, ancestors) is not { } whole)
         {
             return false;
         }
@@ -701,14 +731,27 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
             return false;
         }
 
-        if (_choices.Count - 1 + added.Count > MaxChoices)
+        var gone = ChoicesIn(link)
+            .Where(c => c == whole || IsUnder(c, whole.Value.Code) || IsDirect(c, hit.Value))
+            .ToHashSet();
+        var kept = _choices.Where(c => !gone.Contains(c)).Select(c => c.Value).ToHashSet();
+        added = [.. added.DistinctBy(c => c.Value).Where(c => !kept.Contains(c.Value))];
+        if (_choices.Count - gone.Count + added.Count > MaxChoices)
         {
             Announce(T.PickerFull(MaxChoices), error: true);
             return false;
         }
 
-        _choices.RemoveAt(at);
-        _choices.InsertRange(at, added);
+        at -= _choices.Take(at).Count(gone.Contains);
+        _choices.RemoveAll(gone.Contains);
+        foreach (var choice in added)
+        {
+            if (Insert(at, choice))
+            {
+                at++;
+            }
+        }
+
         return true;
     }
 

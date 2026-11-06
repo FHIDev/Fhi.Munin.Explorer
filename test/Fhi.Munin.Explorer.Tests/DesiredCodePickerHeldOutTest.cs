@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
 
-/// <summary>Regression tests for the findings of the first review of the code picker (Fhi.Metadata-9huq2.14).</summary>
+/// <summary>The code picker's saved ranges, level paging, keys inside the tree, hit rows, stale hits and cut levels (Fhi.Metadata-9huq2.14).</summary>
 public class DesiredCodePickerHeldOutTest : ExplorerTestContext
 {
     private static readonly Guid Variable = new("bc8a6515-af36-44d0-aa10-b498813327b4");
@@ -29,7 +29,7 @@ public class DesiredCodePickerHeldOutTest : ExplorerTestContext
             Hit("E14", "Uspesifisert diabetes", null, false, "IV", "E10-E14"),
         ],
         ["E10"] = [Hit("E100", "Med koma", null, false, "IV", "E10-E14", "E10")],
-        ["E11"] = [Hit("E110", "Med koma", null, false, "IV", "E10-E14", "E11")],
+        ["E11"] = [Hit("E110", "Med koma", null, false, "IV", "E10-E14", "E11"), Hit("E119", "Uten komplikasjoner", null, false, "IV", "E10-E14", "E11")],
     };
 
     private sealed class FakeClient : EmptyMuninExplorerClient
@@ -261,5 +261,112 @@ public class DesiredCodePickerHeldOutTest : ExplorerTestContext
 
         Assert.DoesNotContain("Kunne ikke hente kodelisten", cut.Find("[role=alert]").TextContent);
         Assert.Equal("true", Checked(cut, "BIG"));
+    }
+
+    private static List<(string Kind, string Code)> SavedAfter(Saves saves, IRenderedComponent<DesiredCodePicker> cut)
+    {
+        Press(cut, "Lagre");
+        return [.. Assert.Single(saves.Calls).Select(v => (v.Kind, v.Code))];
+    }
+
+    private static IRenderedComponent<DesiredCodePicker> OpenedTo(IRenderedComponent<DesiredCodePicker> cut, params string[] codes)
+    {
+        foreach (var code in codes)
+        {
+            Open(cut, code);
+        }
+
+        return cut;
+    }
+
+    [Fact]
+    public async Task Untick_WhenAParentChosenWholeAlsoHasAPickUnderIt_ThenThatPickIsChosenOnceAndTheCodeIsUnticked()
+    {
+        var saves = new Saves();
+        var cut = OpenedTo(Picker(saves, new FakeClient(), [
+            Saved(DesiredCodeKinds.Node, "E11", null, 3, "IV", "E10-E14"),
+            Saved(DesiredCodeKinds.Code, "E119", null, 1, "IV", "E10-E14", "E11"),
+        ]), "IV", "E10-E14", "E11");
+
+        Tick(cut, "E110");
+        await cut.InvokeAsync(() => { });
+
+        Assert.Equal("false", Checked(cut, "E110"));
+        Assert.Equal([(DesiredCodeKinds.Code, "E119")], SavedAfter(saves, cut));
+    }
+
+    [Fact]
+    public async Task Untick_WhenAWholeParentIsSavedInsideAnotherWholeParent_ThenTheInnerOneIsNotAddedTwice()
+    {
+        var saves = new Saves();
+        var cut = OpenedTo(Picker(saves, new FakeClient(), [
+            Saved(DesiredCodeKinds.Node, "IV", null, 15),
+            Saved(DesiredCodeKinds.Node, "E10", null, 3, "IV", "E10-E14"),
+        ]), "IV", "E10-E14", "E11");
+
+        Tick(cut, "E110");
+        await cut.InvokeAsync(() => { });
+
+        Assert.Equal("false", Checked(cut, "E110"));
+        var sent = SavedAfter(saves, cut);
+        Assert.Equal(sent.Count, sent.Distinct().Count());
+        Assert.Equal(
+            [(DesiredCodeKinds.Code, "E119"), (DesiredCodeKinds.Code, "E14"), (DesiredCodeKinds.Node, "E10"), (DesiredCodeKinds.Node, "E15-E16")],
+            sent.Order());
+    }
+
+    [Fact]
+    public async Task Untick_WhenTheCodesParentIsChosenWholeInsideAWholeBlock_ThenOnePressUnticksItAndAddsItsSiblingsOnce()
+    {
+        var saves = new Saves();
+        var cut = OpenedTo(Picker(saves, new FakeClient(), [
+            Saved(DesiredCodeKinds.Node, "E10-E14", null, 10, "IV"),
+            Saved(DesiredCodeKinds.Node, "E11", null, 3, "IV", "E10-E14"),
+        ]), "IV", "E10-E14", "E11");
+
+        Tick(cut, "E110");
+        await cut.InvokeAsync(() => { });
+
+        Assert.Equal("false", Checked(cut, "E110"));
+        Assert.Equal("mixed", Checked(cut, "E11"));
+        Assert.Equal([(DesiredCodeKinds.Code, "E119"), (DesiredCodeKinds.Code, "E14"), (DesiredCodeKinds.Node, "E10")], SavedAfter(saves, cut).Order());
+    }
+
+    [Fact]
+    public void Render_WhenTheSavedChoicesRepeatOne_ThenItIsShownAndSavedOnce()
+    {
+        var saves = new Saves();
+        var cut = Picker(saves, new FakeClient(), [
+            Saved(DesiredCodeKinds.Code, "E14", null, 1, "IV", "E10-E14"),
+            Saved(DesiredCodeKinds.Code, "E14", null, 1, "IV", "E10-E14"),
+        ]);
+
+        Assert.Single(cut.FindAll(".munin-explorer-data-list li"));
+        Assert.Equal([(DesiredCodeKinds.Code, "E14")], SavedAfter(saves, cut));
+    }
+
+    [Fact]
+    public void Render_WhenAnOlderRangeStartsUnderParents_ThenTheyAreHalfTickedWithNoCountAndTickingOneKeepsTheRange()
+    {
+        var saves = new Saves();
+        var cut = OpenedTo(Picker(saves, new FakeClient(), [Saved(DesiredCodeKinds.Range, "E10", "E12", 7, "IV", "E10-E14")]), "IV");
+
+        Assert.Equal("mixed", Checked(cut, "IV"));
+        Assert.Equal("mixed", Checked(cut, "E10-E14"));
+        Assert.Null(Row(cut, "E10-E14").Children[0].QuerySelector(".munin-explorer-codetree__count"));
+
+        Tick(cut, "E10-E14");
+
+        Assert.Contains((DesiredCodeKinds.Range, "E10"), SavedAfter(saves, cut));
+    }
+
+    [Fact]
+    public void Render_WhenACodeWithChildrenIsSavedAsACode_ThenItIsTickedWithNoCountAndItsChildrenAreNot()
+    {
+        var cut = OpenedTo(Picker(new Saves(), new FakeClient(), [Saved(DesiredCodeKinds.Code, "E11", null, 1, "IV", "E10-E14")]), "IV", "E10-E14", "E11");
+
+        Assert.Equal("true", Checked(cut, "E11"));
+        Assert.Null(Row(cut, "E11").Children[0].QuerySelector(".munin-explorer-codetree__count"));
+        Assert.Equal("false", Checked(cut, "E110"));
     }
 }

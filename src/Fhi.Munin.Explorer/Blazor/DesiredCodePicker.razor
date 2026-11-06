@@ -1,3 +1,4 @@
+@using System.Diagnostics
 @using Fhi.Munin.Explorer.Contracts
 @* The tree is the APG tree with checkable items (aria-checked, a roving tab stop); the tabs follow the panel's own APG
    tabs. Classes only: a host's stylesheet indents the levels and lines up the columns. *@
@@ -120,7 +121,8 @@
     {
         Tick.Checked => "true",
         Tick.Mixed => "mixed",
-        _ => "false",
+        Tick.Empty => "false",
+        _ => throw new UnreachableException($"no tick {tick}"),
     };
 
     // A box drawn as a character, so the state shows where no stylesheet draws one; hidden from a screen reader,
@@ -129,7 +131,8 @@
     {
         Tick.Checked => "☑",
         Tick.Mixed => "▣",
-        _ => "☐",
+        Tick.Empty => "☐",
+        _ => throw new UnreachableException($"no tick {tick}"),
     };
 
     // From the API's «utgått», which holds only when the code and all under it have expired; a leaf adds its year.
@@ -148,7 +151,7 @@
         var branch = open ? state.Branches.GetValueOrDefault(hit.Value) : null;
         var path = PathOf(parent, hit.Value);
         var id = RowId(section, path);
-        var count = OfCount(link, hit, tick);
+        var count = OfCount(link, state, hit, tick);
         var key = RowKey(section, path);
         return @<li @key="hit.Value" role="treeitem" id="@id" aria-labelledby="@($"{id}-label")" aria-level="@level"
                     aria-checked="@AriaChecked(tick)" aria-expanded="@(hit.HasChildren ? (open ? "true" : "false") : null)"

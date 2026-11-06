@@ -455,7 +455,7 @@ public class DesiredCodePickerTest : ExplorerTestContext
         Open(cut, "IV");
 
         cut.WaitForAssertion(() => Assert.Single(client.Counted));
-        Assert.Equal("false", Checked(cut, "E10-E14"));
+        Assert.Equal("mixed", Checked(cut, "E10-E14"));
         Assert.Contains("E10–E14 (eldre valg)", Text(cut));
         Assert.Single(cut.FindAll("button"), b => b.TextContent.Trim() == "Fjern E10–E14");
         Press(cut, "Lagre");
