@@ -74,6 +74,8 @@ public class DesiredCodePickerTest : ExplorerTestContext
         public Func<string, int, int, KodeverkCodePage>? Search { get; init; }
         public bool SearchFails { get; set; }
         public Func<IReadOnlyList<DesiredCodeChoice>, Task<int?>>? Union { get; init; }
+        public Func<DesiredCodeChoice, Task<int?>>? Count { get; init; }
+        public List<DesiredCodeChoice> Counted { get; } = [];
         public List<string> Searched { get; } = [];
 
         public override Task<KodeverkCodes?> GetKodeverkCodesAsync(
@@ -127,6 +129,15 @@ public class DesiredCodePickerTest : ExplorerTestContext
                 Total = 3,
                 Codes = [Icd10Tree["IV"][0], Icd10Tree["E10-E14"][0], Icd10Tree["E10-E14"][1]],
             });
+        }
+
+        // A block counts what the tree says is under it; E10-E14's ten codes in small.
+        public override Task<int?> CountKodeverkCodesAsync(
+            Guid variableId, DesiredCodeChoice choice, CancellationToken cancellationToken = default)
+        {
+            Counted.Add(choice);
+            return Count?.Invoke(choice)
+                ?? Task.FromResult(Icd10Tree.Values.SelectMany(level => level).FirstOrDefault(hit => hit.Value == choice.Code)?.Count);
         }
 
         public override Task<int?> CountKodeverkCodesUnionAsync(
@@ -404,19 +415,53 @@ public class DesiredCodePickerTest : ExplorerTestContext
     // ------------------------------------------------------------------------------------------- saved ranges
 
     [Fact]
-    public void Render_WhenASavedRangeIsExactlyABlock_ThenTheBlockIsTickedAndItIsSavedAsThatBlock()
+    public void Render_WhenASavedRangeHoldsTheSameCodesAsItsBlock_ThenTheBlockIsTickedAndItIsSavedAsThatBlock()
     {
         var saves = new Saves();
-        var cut = Picker(saves, [Icd10], [Saved(DesiredCodeKinds.Range, "E10", "E14", 10, "IV", "E10-E14")]);
+        var range = Saved(DesiredCodeKinds.Range, "E10", "E14", 10, "IV", "E10-E14") with { Expired = true };
+        var client = new TreeClient();
+        var cut = Picker(saves, [Icd10], [range], client: client);
         Open(cut, "IV");
 
-        Assert.Equal("true", Checked(cut, "E10-E14"));
+        cut.WaitForAssertion(() => Assert.Equal("true", Checked(cut, "E10-E14")));
+        Assert.Equal([new DesiredCodeChoice("HelsefagligKodeverk", "ICD-10", DesiredCodeKinds.Node, "E10-E14")], client.Counted);
         Assert.DoesNotContain("eldre valg", Text(cut));
         Assert.DoesNotContain(cut.FindAll("button"), b => b.TextContent.StartsWith("Fjern ", StringComparison.Ordinal));
         Press(cut, "Lagre");
 
         var sent = Assert.Single(Assert.Single(saves.Calls));
-        Assert.Equal((DesiredCodeKinds.Node, "E10-E14", (string?)null), (sent.Kind, sent.Code, sent.To));
+        Assert.Equal((DesiredCodeKinds.Node, "E10-E14", (string?)null, false, 10), (sent.Kind, sent.Code, sent.To, sent.Expired, sent.Count));
+        Assert.Equal(["IV"], sent.Ancestors);
+    }
+
+    // E10..E14 stops at E14 and leaves its subcodes out, so where E14 has any the block holds more than the range.
+    [Theory]
+    [InlineData("unequal")]
+    [InlineData("unknown")]
+    [InlineData("fails")]
+    public void Render_WhenASavedRangeIsNotKnownToHoldTheSameCodesAsItsBlock_ThenItStaysTheRangeItWasSavedAs(string answer)
+    {
+        var saves = new Saves();
+        var client = new TreeClient
+        {
+            Count = _ => answer switch
+            {
+                "unequal" => Task.FromResult<int?>(12),
+                "unknown" => Task.FromResult<int?>(null),
+                _ => Task.FromException<int?>(new HttpRequestException("down")),
+            },
+        };
+        var cut = Picker(saves, [Icd10], [Saved(DesiredCodeKinds.Range, "E10", "E14", 10, "IV", "E10-E14")], client: client);
+        Open(cut, "IV");
+
+        cut.WaitForAssertion(() => Assert.Single(client.Counted));
+        Assert.Equal("false", Checked(cut, "E10-E14"));
+        Assert.Contains("E10–E14 (eldre valg)", Text(cut));
+        Assert.Single(cut.FindAll("button"), b => b.TextContent.Trim() == "Fjern E10–E14");
+        Press(cut, "Lagre");
+
+        var sent = Assert.Single(Assert.Single(saves.Calls));
+        Assert.Equal((DesiredCodeKinds.Range, "E10", "E14", 10), (sent.Kind, sent.Code, sent.To, sent.Count));
     }
 
     [Fact]

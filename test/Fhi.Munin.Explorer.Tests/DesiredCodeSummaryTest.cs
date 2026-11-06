@@ -93,7 +93,7 @@ public class DesiredCodeSummaryTest : ExplorerTestContext
     }
 
     [Fact]
-    public void For_WhenASavedRangeIsExactlyABlock_ThenItReadsAsThatBlockAndAnotherRangeAsARange()
+    public void For_WhenASavedRangeRunsFromABlocksFirstCodeToItsLast_ThenItReadsAsTheRangeThatIsStored()
     {
         var text = Render(this,
         [
@@ -101,6 +101,6 @@ public class DesiredCodeSummaryTest : ExplorerTestContext
             new DesiredCodeView { KodeverkType = "HelsefagligKodeverk", KodeverkReference = "ICD-10", Kind = "range", Code = "E10", To = "E12", Count = 30, Ancestors = ["IV", "E10-E14"] },
         ]);
 
-        Assert.Contains("ICD-10: E10-E14 med alt under (50 koder), E10–E12 (30 koder)", text);
+        Assert.Contains("ICD-10: E10–E14 (50 koder), E10–E12 (30 koder)", text);
     }
 }

@@ -104,23 +104,51 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     {
         foreach (var view in Chosen.Take(MaxChoices))
         {
-            _choices.Add(AsBlock(view) ?? new Choice(
-                view.ToChoice(), view.Name, view.ToName, view.Expired, view.Count, view.KodeverkName, view.Ancestors));
+            _choices.Add(new Choice(view.ToChoice(), view.Name, view.ToName, view.Expired, view.Count, view.KodeverkName, view.Ancestors));
         }
     }
 
-    // A saved range that is exactly an ICD-10 block (E10..E14 under «E10-E14») is that block, ticked in the tree.
-    private static Choice? AsBlock(DesiredCodeView view)
-    {
-        var block = $"{view.Code}-{view.To}";
-        var at = view.Kind == DesiredCodeKinds.Range ? IndexOf(view.Ancestors, block) : -1;
-        if (at < 0)
-        {
-            return null;
-        }
+    // A saved range from an ICD-10 block's first category to its last (E10..E14 under «E10-E14») stops at E14, so it
+    // leaves out E14's subcodes. It lies inside the block, so it is the block only when both count the same codes.
+    private static string? BlockOf(Choice choice) =>
+        choice.Value.Kind == DesiredCodeKinds.Range && choice.Count is not null
+        && choice.Ancestors.Contains($"{choice.Value.Code}-{choice.Value.To}")
+            ? $"{choice.Value.Code}-{choice.Value.To}"
+            : null;
 
-        var value = new DesiredCodeChoice(view.KodeverkType, view.KodeverkReference, DesiredCodeKinds.Node, block);
-        return new Choice(value, null, null, view.Expired, view.Count, view.KodeverkName, [.. view.Ancestors.Take(at)]);
+    // An unknown count, a failed call, or another number keeps the range as it was saved.
+    private async Task AsBlocksAsync()
+    {
+        foreach (var range in _choices.Where(c => BlockOf(c) is not null).ToList())
+        {
+            var block = BlockOf(range)!;
+            var value = range.Value with { Kind = DesiredCodeKinds.Node, Code = block, To = null };
+            int? count;
+            try
+            {
+                count = await Client.CountKodeverkCodesAsync(VariableId, value);
+            }
+            catch (Exception ex)
+            {
+                Log?.LogWarning(ex, "the block {Block} of variable {VariableId} could not be counted", block, VariableId);
+                continue;
+            }
+
+            var at = _choices.IndexOf(range);
+            if (count is null || count != range.Count || at < 0 || _saving)
+            {
+                continue;
+            }
+
+            if (_choices.Any(c => SameList(c, range) && IsDirect(c, block)))
+            {
+                _choices.RemoveAt(at);
+            }
+            else
+            {
+                _choices[at] = new Choice(value, null, null, false, count, range.ListName, [.. range.Ancestors.Take(IndexOf(range.Ancestors, block))]);
+            }
+        }
     }
 
     private static int IndexOf(IReadOnlyList<string> list, string value)
@@ -139,12 +167,14 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     protected override async Task OnInitializedAsync()
     {
         var recount = RecountAsync();
+        var blocks = AsBlocksAsync();
         if (Current is { } link)
         {
             await OpenAsync(link);
         }
 
         await recount;
+        await blocks;
     }
 
     public void Dispose()
@@ -523,6 +553,9 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
     private static bool SameList(Choice choice, KodeverkLink link) =>
         choice.Value.KodeverkType == link.KodeverkType && choice.Value.KodeverkReference == link.KodeverkReference;
+
+    private static bool SameList(Choice choice, Choice other) =>
+        choice.Value.KodeverkType == other.Value.KodeverkType && choice.Value.KodeverkReference == other.Value.KodeverkReference;
 
     private static bool IsDirect(Choice choice, string code) =>
         choice.Value.Code == code && choice.Value.Kind is DesiredCodeKinds.Code or DesiredCodeKinds.Node;

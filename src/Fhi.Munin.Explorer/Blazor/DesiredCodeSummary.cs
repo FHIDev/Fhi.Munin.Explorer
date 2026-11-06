@@ -86,11 +86,6 @@ internal static class DesiredCodeSummary
             builder.AddContent(3, code.Name);
             builder.CloseElement();
         }
-        else if (code.Kind == DesiredCodeKinds.Range && code.Ancestors.Contains($"{code.Code}-{code.To}"))
-        {
-            // A saved range that is exactly an ICD-10 block reads as that block, as the picker's tree shows it.
-            builder.AddContent(4, t.PickerWithAllUnder($"{code.Code}-{code.To}"));
-        }
         else
         {
             builder.AddContent(4, DesiredCodePicker.Describe(t, code.ToChoice(), code.Name, code.ToName));
