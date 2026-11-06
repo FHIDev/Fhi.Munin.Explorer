@@ -24,6 +24,9 @@ public sealed partial class VariableListView
 
     private bool IsPicking(VariableListItem item) => _picking == VariableDatasamlingKey.Of(item);
 
+    private IReadOnlySet<KodeverkKey>? PickingLists(VariableListItem item, VariableDetail detail) =>
+        IsPicking(item) ? detail.KodeverkLinks.Where(link => link.HasCodeValues).Select(KodeverkKey.Of).ToHashSet() : null;
+
     // Said by the row, not the picker: the picker closes on a save, so its own region would never be read.
     private string? CodesSavedText(VariableListItem item) =>
         _codesSaved == VariableDatasamlingKey.Of(item)

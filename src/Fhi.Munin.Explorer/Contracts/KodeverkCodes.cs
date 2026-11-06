@@ -57,6 +57,9 @@ public sealed record KodeverkCodePage
     /// <summary>How many codes match in all, across every page.</summary>
     [JsonPropertyName("totalt")] public int Total { get; init; }
 
+    /// <summary>How many codes the whole list has, so a short list can be told from a long one without fetching it; 0 from an API that does not send it.</summary>
+    [JsonPropertyName("antallKoder")] public int CodeCount { get; init; }
+
     [JsonPropertyName("skip")] public int Skip { get; init; }
 
     [JsonPropertyName("take")] public int Take { get; init; }
@@ -78,6 +81,18 @@ public sealed record KodeverkCodeHit
 
     /// <summary>True when the code is a node in the tree: choosing it with everything under it, and the children call, apply.</summary>
     [JsonPropertyName("harUnderkoder")] public bool HasChildren { get; init; }
+
+    /// <summary>How many codes it covers with everything under it; null for a code with nothing under it, and from an older API.</summary>
+    [JsonPropertyName("antall")] public int? Count { get; init; }
+
+    /// <summary>The groups and codes above it, top first; empty at the top level and from an older API.</summary>
+    [JsonPropertyName("foreldre")] public IReadOnlyList<string> Ancestors { get; init; } = [];
+
+    /// <summary>True for an ICD-10 chapter or block, which can only be chosen with everything under it.</summary>
+    [JsonPropertyName("gruppe")] public bool IsGroup { get; init; }
+
+    /// <summary>True only when the code and every code under it have expired, unlike <see cref="ValidTo"/> alone.</summary>
+    [JsonPropertyName("utgatt")] public bool Expired { get; init; }
 }
 
 /// <summary>The answer of <c>GET …/codes/count</c>: how many codes one choice covers.</summary>

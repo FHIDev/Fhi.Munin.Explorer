@@ -69,6 +69,79 @@ public class DesiredCodesClientTest
     }
 
     [Fact]
+    public async Task CountKodeverkCodesUnionAsync_WhenEachKindIsGiven_ThenEachIsARepeatedParameterAndTheUnionIsRead()
+    {
+        var handler = StubHttpHandler.Ok("""{"antall":56}""");
+        DesiredCodeChoice[] choices =
+        [
+            new("HelsefagligKodeverk", "ICD-10", DesiredCodeKinds.Code, "E11.9"),
+            new("HelsefagligKodeverk", "ICD-10", DesiredCodeKinds.Node, "E10-E14"),
+            new("HelsefagligKodeverk", "ICD-10", DesiredCodeKinds.Node, "E11"),
+            new("HelsefagligKodeverk", "ICD-10", DesiredCodeKinds.Range, "E10", "E12"),
+        ];
+
+        var count = await Client(handler).CountKodeverkCodesUnionAsync(Variable, choices);
+
+        Assert.Equal(56, count);
+        Assert.Equal(Codes + "/count-union", handler.LastUri?.AbsolutePath);
+        Assert.Equal("?kode=E11.9&node=E10-E14&node=E11&intervall=E10..E12", handler.LastUri?.Query);
+    }
+
+    [Fact]
+    public async Task CountKodeverkCodesUnionAsync_WhenAChoiceIsNotInTheList_ThenNull() =>
+        Assert.Null(await Client(StubHttpHandler.Status(HttpStatusCode.NotFound))
+            .CountKodeverkCodesUnionAsync(Variable, [new DesiredCodeChoice("HelsefagligKodeverk", "ICD-10", DesiredCodeKinds.Code, "X")]));
+
+    [Fact]
+    public async Task CountKodeverkCodesUnionAsync_WhenNoneOrTwoListsAreGiven_ThenItIsRefusedBeforeAnyRequest()
+    {
+        var handler = StubHttpHandler.Ok("""{"antall":1}""");
+        var client = Client(handler);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => client.CountKodeverkCodesUnionAsync(Variable, []));
+        await Assert.ThrowsAsync<ArgumentException>(() => client.CountKodeverkCodesUnionAsync(Variable,
+        [
+            new DesiredCodeChoice("HelsefagligKodeverk", "ICD-10", DesiredCodeKinds.Code, "E11"),
+            new DesiredCodeChoice("Kildekodeverk", "2336", DesiredCodeKinds.Code, "1"),
+        ]));
+        await Assert.ThrowsAsync<ArgumentException>(() => client.CountKodeverkCodesUnionAsync(Variable,
+            [.. Enumerable.Range(0, 201).Select(i => new DesiredCodeChoice("HelsefagligKodeverk", "ICD-10", DesiredCodeKinds.Code, $"K{i}"))]));
+        Assert.Null(handler.LastUri);
+    }
+
+    [Fact]
+    public async Task GetKodeverkCodeChildrenAsync_WhenTheApiSendsTheTreesFields_ThenTheyAreRead()
+    {
+        var handler = StubHttpHandler.Ok("""
+            {"kodeverkType":"HelsefagligKodeverk","kodeverkReference":"ICD-10","totalt":1,"antallKoder":22141,"skip":0,"take":100,
+             "koder":[{"verdi":"E10-E14","navn":"Diabetes mellitus","gyldigFra":null,"gyldigTil":null,"harUnderkoder":true,
+                       "antall":50,"foreldre":["IV"],"gruppe":true,"utgatt":false}]}
+            """);
+
+        var page = await Client(handler).GetKodeverkCodeChildrenAsync(Variable, "HelsefagligKodeverk", "ICD-10", "IV", 0, 100);
+
+        var hit = Assert.Single(page!.Codes);
+        Assert.Equal((22141, 50, true, false), (page.CodeCount, hit.Count, hit.IsGroup, hit.Expired));
+        Assert.Equal(["IV"], hit.Ancestors);
+    }
+
+    [Fact]
+    public async Task GetMyListVariablesAsync_WhenAChosenCodeHasExpiredAndNamesItsParents_ThenBothAreRead()
+    {
+        var handler = StubHttpHandler.Ok($$"""
+            {"items":[{"variabelId":"{{Variable}}","desiredDataCodes":[
+              {"kodeverkType":"HelsefagligKodeverk","kodeverkReference":"ICD-10","kind":"kode","kode":"E110","utgatt":true,"foreldre":["IV","E10-E14","E11"]}]}],
+             "totalCount":1,"page":1,"size":100,"totalPages":1}
+            """);
+
+        var page = await Client(handler).GetMyListVariablesAsync(ListId);
+
+        var code = Assert.Single(Assert.Single(page!.Items).DesiredDataCodes);
+        Assert.True(code.Expired);
+        Assert.Equal(["IV", "E10-E14", "E11"], code.Ancestors);
+    }
+
+    [Fact]
     public async Task CountKodeverkCodesAsync_WhenTheCodeIsUnknown_ThenNull() =>
         Assert.Null(await Client(StubHttpHandler.Status(HttpStatusCode.NotFound))
             .CountKodeverkCodesAsync(Variable, new DesiredCodeChoice("HelsefagligKodeverk", "ICD-10", DesiredCodeKinds.Code, "X")));

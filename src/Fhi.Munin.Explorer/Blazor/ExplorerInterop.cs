@@ -225,7 +225,7 @@ internal sealed class ExplorerInterop : IAsyncDisposable
         await Tolerated(() => module.InvokeVoidAsync("restoreScroll", panelId)).ConfigureAwait(false);
     }
 
-    /// <summary>Closes an open download or «Flere valg» menu when the reader presses outside it, page-wide and once.</summary>
+    /// <summary>Page-wide and once: closes an open menu on a press outside it; keeps the code tree's keys from scrolling.</summary>
     /// <remarks>
     /// False when it did not get through (no module yet, or an interrupted call), so a later render asks again; the
     /// script installs one listener however often it is asked. Escape still closes a menu without it.

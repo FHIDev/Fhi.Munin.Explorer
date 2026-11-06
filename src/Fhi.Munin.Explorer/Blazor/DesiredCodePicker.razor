@@ -1,6 +1,7 @@
+@using System.Diagnostics
 @using Fhi.Munin.Explorer.Contracts
-@* Native controls throughout (checkboxes, buttons with aria-expanded, a labelled search field): they speak and work
-   with the keyboard in every reader without a composite widget of our own. Tabs follow the panel's own APG tabs. *@
+@* The tree is the APG tree with checkable items (aria-checked, a roving tab stop); the tabs follow the panel's own APG
+   tabs. Classes only: a host's stylesheet indents the levels and lines up the columns. *@
 <div class="margin-bottom" role="group" aria-labelledby="@Id("heading")">
     <p class="headline headline-xxs margin--none" id="@Id("heading")">@T.PickerHeading</p>
 
@@ -25,68 +26,61 @@
         @if (Current is { } link)
         {
             var state = StateOf(link);
-            @if (state.Loading && state.All is null && !state.Children.ContainsKey(Top))
+            var top = state.TopBranch;
+            @if (top is { Failed: true })
+            {
+                <p class="caption">@T.PickerLoadError</p>
+                <button class="hd-button-square button-square--ghost" type="button" @onclick="() => RetryAsync(link, Top)">@T.PickerRetry</button>
+            }
+            else if (top is not { Loaded: true })
             {
                 <p class="caption">@T.PickerLoading</p>
             }
-            else if (state.Failed)
-            {
-                <p class="caption">@T.PickerLoadError</p>
-            }
-            else if (state.All is { } all)
-            {
-                <ul class="munin-explorer-data-list">
-                    @foreach (var entry in all)
-                    {
-                        <li @key="entry.Value">
-                            <label>
-                                <input type="checkbox" checked="@IsChosen(link, DesiredCodeKinds.Code, entry.Value)"
-                                       disabled="@(_saving || Full && !IsChosen(link, DesiredCodeKinds.Code, entry.Value))"
-                                       @onchange="() => ToggleAsync(link, DesiredCodeKinds.Code, entry.Value, entry.Name, entry.ValidTo)" />
-                                @entry.Value <span lang="@CatalogueLang">@entry.Name</span>@ExpiredMark(entry.ValidTo)
-                            </label>
-                        </li>
-                    }
-                </ul>
-            }
             else
             {
-                <div class="margin-bottom">
-                    <label class="form-element__label" for="@Id("search")">@T.PickerSearchLabel</label>
-                    <p class="caption" id="@Id("search-hint")">@T.PickerSearchHint</p>
-                    <input id="@Id("search")" type="search" autocomplete="off" aria-describedby="@Id("search-hint")"
-                           value="@state.Query" @oninput="e => state.Query = e.Value?.ToString() ?? string.Empty"
-                           @onkeydown="e => SearchKeyAsync(e, link)" />
-                    <button class="hd-button-square button-square--secondary" type="button" @onclick="() => SearchAsync(link)">@T.PickerSearchButton</button>
-                </div>
-
-                @if (state.Searched is not null)
+                @if (state.IsLarge)
                 {
-                    <ul class="munin-explorer-data-list" aria-label="@T.PickerHits(state.HitTotal)">
-                        @foreach (var hit in state.Hits)
-                        {
-                            <li @key="hit.Value">@CodeRow(link, hit)</li>
-                        }
-                    </ul>
-                    @if (state.Hits.Count < state.HitTotal)
+                    <div class="margin-bottom">
+                        <label class="form-element__label" for="@Id("search")">@T.PickerSearchLabel</label>
+                        <p class="caption" id="@Id("search-hint")">@T.PickerSearchHint</p>
+                        <input id="@Id("search")" type="search" autocomplete="off" maxlength="100" aria-describedby="@Id("search-hint")"
+                               value="@state.Query" @oninput="e => QueryChanged(e, link)"
+                               @onkeydown="e => SearchKeyAsync(e, link)" />
+                    </div>
+
+                    @if (state.Searched is not null && state.Hits.Count > 0)
                     {
-                        <button class="hd-button-square button-square--ghost" type="button" @onclick="e => MoreHitsAsync(e, link)">@T.PickerMore</button>
+                        var activeHit = ActivePath(state, HitsSection);
+                        @if (state.Hits.Count < state.HitTotal)
+                        {
+                            <p class="caption">@T.PickerShowingHits(state.Hits.Count, state.HitTotal)</p>
+                        }
+                        <div class="munin-explorer-page__actions">
+                            <button class="hd-button-square button-square--ghost" type="button" aria-disabled="@(_saving ? "true" : "false")" @onclick="() => ChooseHitsAsync(link)">@T.PickerChooseHits</button>
+                            <button class="hd-button-square button-square--ghost" type="button" aria-disabled="@(_saving ? "true" : "false")" @onclick="() => ClearHitsAsync(link)">@T.PickerClearHits</button>
+                        </div>
+                        <ul class="munin-explorer-codetree" role="tree" aria-label="@T.PickerHits(state.HitTotal)" aria-multiselectable="true"
+                            @onkeydown="e => TreeKeyAsync(e, link, HitsSection)">
+                            @foreach (var hit in state.Hits)
+                            {
+                                @TreeRow(link, state, HitsSection, hit, 1, activeHit, null)
+                            }
+                        </ul>
                     }
                 }
 
-                <p class="headline headline-xxs margin--none">@T.PickerTreeHeading</p>
-                @Level(link, state, Top)
-
-                @if (IsHealth(link))
+                var active = ActivePath(state, TreeSection);
+                <p class="headline headline-xxs margin--none" id="@Id("tree")">@T.PickerTreeHeading</p>
+                <ul class="munin-explorer-codetree" role="tree" aria-labelledby="@Id("tree")" aria-multiselectable="true"
+                    @onkeydown="e => TreeKeyAsync(e, link, TreeSection)">
+                    @foreach (var hit in top.Codes)
+                    {
+                        @TreeRow(link, state, TreeSection, hit, 1, active, null)
+                    }
+                </ul>
+                @if (top.Codes.Count < top.Total)
                 {
-                    <fieldset class="margin-bottom">
-                        <legend class="form-element__label">@T.PickerRangeHeading</legend>
-                        <label for="@Id("from")">@T.PickerRangeFrom</label>
-                        <input id="@Id("from")" type="text" autocomplete="off" size="8" value="@_rangeFrom" @oninput="e => _rangeFrom = e.Value?.ToString() ?? string.Empty" />
-                        <label for="@Id("to")">@T.PickerRangeTo</label>
-                        <input id="@Id("to")" type="text" autocomplete="off" size="8" value="@_rangeTo" @oninput="e => _rangeTo = e.Value?.ToString() ?? string.Empty" />
-                        <button class="hd-button-square button-square--secondary" type="button" aria-disabled="@(Full || _saving ? "true" : "false")" @onclick="() => AddRangeAsync(link)">@T.PickerRangeAdd</button>
-                    </fieldset>
+                    <p class="caption">@T.PickerShowingLevel(top.Codes.Count, top.Total)</p>
                 }
             }
         }
@@ -94,20 +88,16 @@
 
     @if (_choices.Count > 0)
     {
-        <p class="form-element__label margin--none" id="@Id("chosen")">@T.PickerChosen</p>
+        <p class="form-element__label margin--none" id="@Id("chosen")">@(_union is { } codes ? T.PickerSelectedCodes(codes) : T.PickerChosen)</p>
         <ul class="munin-explorer-data-list" aria-labelledby="@Id("chosen")">
             @foreach (var choice in _choices)
             {
-                var words = Describe(T, choice.Value, choice.Name, choice.ToName);
-                <li @key="choice.Value">
-                    @ChoiceWords(choice)@(choice.Expired ? $" ({T.PickerExpired(null)})" : "")@(choice.Count is { } n && choice.Value.Kind != DesiredCodeKinds.Code ? $" ({T.PickerCodeCount(n)})" : "")
-                    <button class="hd-button-square button-square--ghost" type="button" aria-disabled="@(_saving ? "true" : "false")" @onclick="() => Remove(choice)">@T.PickerRemove(words)</button>
-                </li>
+                <li @key="choice.Value">@SummaryLine(choice)</li>
             }
         </ul>
     }
 
-    <p class="caption" tabindex="-1" @ref="_counter">@T.PickerChoiceCount(_choices.Count, MaxChoices)@(TotalCodes is { } total ? $" · {T.PickerCodeCount(total)}" : "")</p>
+    <p class="caption" tabindex="-1" @ref="_counter">@T.PickerChoiceCount(_choices.Count, MaxChoices)</p>
     @if (Full)
     {
         <p class="caption">@T.PickerFull(MaxChoices)</p>
@@ -127,54 +117,103 @@
     private static string TabName(KodeverkLink link) =>
         string.IsNullOrWhiteSpace(link.DisplayName) ? link.KodeverkReference : link.DisplayName;
 
-    // The code, then its catalogue term marked Norwegian; a node or a range in the package's own words.
-    private RenderFragment ChoiceWords(Choice choice) => choice.Value.Kind == DesiredCodeKinds.Code && !string.IsNullOrWhiteSpace(choice.Name)
-        ? @<span>@choice.Value.Code <span lang="@CatalogueLang">@choice.Name</span></span>
-        : @<span>@Describe(T, choice.Value, choice.Name, choice.ToName)</span>;
+    private static string AriaChecked(Tick tick) => tick switch
+    {
+        Tick.Checked => "true",
+        Tick.Mixed => "mixed",
+        Tick.Empty => "false",
+        _ => throw new UnreachableException($"no tick {tick}"),
+    };
 
-    private string ExpiredMark(DateTimeOffset? validTo) =>
-        ExpiredYear(validTo) is { } year ? $" ({T.PickerExpired(year)})" : "";
+    // A box drawn as a character, so the state shows where no stylesheet draws one; hidden from a screen reader,
+    // which hears aria-checked instead.
+    private static string Box(Tick tick) => tick switch
+    {
+        Tick.Checked => "☑",
+        Tick.Mixed => "▣",
+        Tick.Empty => "☐",
+        _ => throw new UnreachableException($"no tick {tick}"),
+    };
 
-    // A code in the search or the tree: the code itself, and for a node the code with everything under it.
-    private RenderFragment CodeRow(KodeverkLink link, KodeverkCodeHit hit) => @<span>
-        <label>
-            <input type="checkbox" checked="@IsChosen(link, DesiredCodeKinds.Code, hit.Value)"
-                   disabled="@(_saving || Full && !IsChosen(link, DesiredCodeKinds.Code, hit.Value) && !IsChosen(link, DesiredCodeKinds.Node, hit.Value))"
-                   @onchange="() => ToggleAsync(link, DesiredCodeKinds.Code, hit.Value, hit.Name, hit.ValidTo)" />
-            @hit.Value <span lang="@CatalogueLang">@hit.Name</span>@ExpiredMark(hit.ValidTo)
-        </label>
-        @if (hit.HasChildren)
+    // From the API's «utgått», which holds only when the code and all under it have expired; a leaf adds its year.
+    private string ExpiredMark(KodeverkCodeHit hit) =>
+        hit.Expired ? $" ({T.PickerExpired(hit.HasChildren || hit.IsGroup ? null : hit.ValidTo?.Year)})" : "";
+
+    private bool CanReveal(Choice choice) =>
+        choice.Value.Kind is DesiredCodeKinds.Code or DesiredCodeKinds.Node && Tabs.Any(link => SameList(choice, link));
+
+    // One code in the tree: its own line (the expand arrow in its own column, the box, the code, the name cut by the
+    // host's stylesheet but whole in the markup), then the level under it once it is opened.
+    private RenderFragment TreeRow(KodeverkLink link, ListState state, string section, KodeverkCodeHit hit, int level, string? active, string? parent)
+    {
+        var tick = TickOf(link, state, hit);
+        var open = hit.HasChildren && state.OpenIn(section).Contains(hit.Value);
+        var branch = open ? state.Branches.GetValueOrDefault(hit.Value) : null;
+        var path = PathOf(parent, hit.Value);
+        var id = RowId(section, path);
+        var count = OfCount(link, state, hit, tick);
+        var key = RowKey(section, path);
+        return @<li @key="hit.Value" role="treeitem" id="@id" aria-labelledby="@($"{id}-label")" aria-level="@level"
+                    aria-checked="@AriaChecked(tick)" aria-expanded="@(hit.HasChildren ? (open ? "true" : "false") : null)"
+                    aria-disabled="@(_saving ? "true" : null)" tabindex="@(path == active ? 0 : -1)" @ref="_rows[key]">
+            <div class="munin-explorer-codetree__row" @onclick="e => RowPressAsync(e, link, section, path, hit)">
+                <span class="munin-explorer-codetree__toggle" aria-hidden="true"
+                      @onclick="e => TogglePressAsync(e, link, section, path, hit)" @onclick:stopPropagation="true">@(hit.HasChildren ? (open ? "▾" : "▸") : "")</span>
+                <span class="munin-explorer-codetree__box" aria-hidden="true">@Box(tick)</span>
+                <span id="@($"{id}-label")"><span class="munin-explorer-codetree__code">@hit.Value</span>@(" ")<span class="munin-explorer-codetree__name" lang="@CatalogueLang" title="@hit.Name">@hit.Name</span>@ExpiredMark(hit)@if (count is not null)
+                    {
+                        @(" ")<span class="munin-explorer-codetree__count">@count</span>
+                    }</span>
+            </div>
+            @if (branch is { Failed: true })
+            {
+                @* The tree's keys are the rows' own: a key on this button is the button's, not the row's. *@
+                <p class="caption" @onkeydown:stopPropagation="true">@T.PickerBranchError @(" ")<button class="hd-button-reset" type="button" aria-label="@T.PickerRetryFor(hit.Value)" @onclick="() => RetryAsync(link, hit.Value)">@T.PickerRetry</button></p>
+            }
+            else if (branch is { Loaded: true })
+            {
+                <ul class="munin-explorer-codetree__group" role="group">
+                    @foreach (var child in branch.Codes)
+                    {
+                        @TreeRow(link, state, section, child, level + 1, active, path)
+                    }
+                </ul>
+                @if (branch.Codes.Count < branch.Total)
+                {
+                    <p class="caption">@T.PickerShowingLevel(branch.Codes.Count, branch.Total)</p>
+                }
+            }
+            else if (open)
+            {
+                <p class="caption">@T.PickerLoading</p>
+            }
+        </li>;
+    }
+
+    // A line of the read-only summary: the code opens the tree to it. Only a range the tree has no block for can be
+    // removed here, since nothing in the tree stands for it.
+    private RenderFragment SummaryLine(Choice choice) => @<span>
+        @if (IsOlderRange(choice))
         {
-            <label>
-                <input type="checkbox" checked="@IsChosen(link, DesiredCodeKinds.Node, hit.Value)"
-                       disabled="@(_saving || Full && !IsChosen(link, DesiredCodeKinds.Node, hit.Value) && !IsChosen(link, DesiredCodeKinds.Code, hit.Value))"
-                       @onchange="() => ToggleAsync(link, DesiredCodeKinds.Node, hit.Value, hit.Name, hit.ValidTo)" />
-                @T.PickerWithAllUnder(hit.Value)@(Find(link, DesiredCodeKinds.Node, hit.Value)?.Count is { } n ? $" ({T.PickerCodeCount(n)})" : "")
-            </label>
+            var words = Describe(T, choice.Value, choice.Name, choice.ToName);
+            @($"{words} ({T.PickerOlderChoice}){(choice.Count is { } n ? $" ({T.PickerCodeCount(n)})" : "")}")
+            @(" ")<button class="hd-button-square button-square--ghost" type="button" aria-disabled="@(_saving ? "true" : "false")" @onclick="() => RemoveAsync(choice)">@T.PickerRemove(words)</button>
+        }
+        else
+        {
+            @if (CanReveal(choice))
+            {
+                <button class="hd-button-reset" type="button" aria-label="@T.PickerShowInTree(choice.Value.Code)" @onclick="() => RevealAsync(choice)">@choice.Value.Code</button>
+            }
+            else
+            {
+                @choice.Value.Code
+            }
+            @if (!string.IsNullOrWhiteSpace(choice.Name))
+            {
+                @(" ")<span lang="@CatalogueLang">@choice.Name</span>
+            }
+            @(choice.Value.Kind == DesiredCodeKinds.Node ? $", {T.PickerAllUnder}{(choice.Count is { } c ? $" ({c})" : "")}" : "")@(choice.Expired ? $" ({T.PickerExpired(null)})" : "")
         }
     </span>;
-
-    // One level of the tree: each code with a disclosure button for its children, fetched on first open.
-    private RenderFragment Level(KodeverkLink link, ListState state, string node) => @<ul class="munin-explorer-data-list">
-        @foreach (var hit in state.Children.GetValueOrDefault(node) ?? [])
-        {
-            var open = state.Expanded.Contains(hit.Value);
-            <li @key="hit.Value">
-                @if (hit.HasChildren)
-                {
-                    <button class="hd-button-reset" type="button" aria-expanded="@(open ? "true" : "false")"
-                            @onclick="e => ToggleNodeAsync(e, link, hit.Value)"><span aria-hidden="true">@(open ? "▾" : "▸")</span><span class="screenreader-only">@T.PickerShowUnder(hit.Value)</span></button>
-                }
-                @CodeRow(link, hit)
-                @if (open)
-                {
-                    @Level(link, state, hit.Value)
-                }
-            </li>
-        }
-        @if ((state.Children.GetValueOrDefault(node)?.Count ?? 0) < state.ChildTotals.GetValueOrDefault(node))
-        {
-            <li><button class="hd-button-square button-square--ghost" type="button" @onclick="e => MoreChildrenAsync(e, link, node)">@T.PickerMore</button></li>
-        }
-    </ul>;
 }

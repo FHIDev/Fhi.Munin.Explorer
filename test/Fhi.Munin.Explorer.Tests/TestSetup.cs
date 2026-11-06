@@ -144,6 +144,10 @@ internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
         Guid variableId, DesiredCodeChoice choice, CancellationToken cancellationToken = default) =>
         Task.FromResult<int?>(null);
 
+    public virtual Task<int?> CountKodeverkCodesUnionAsync(
+        Guid variableId, IReadOnlyList<DesiredCodeChoice> choices, CancellationToken cancellationToken = default) =>
+        Task.FromResult<int?>(null);
+
     public virtual Task<DesiredDataResult> SetMyListItemDesiredCodesAsync(
         Guid id, Guid itemId, string? freeText, IReadOnlyList<DesiredCodeChoice> choices,
         CancellationToken cancellationToken = default) =>
