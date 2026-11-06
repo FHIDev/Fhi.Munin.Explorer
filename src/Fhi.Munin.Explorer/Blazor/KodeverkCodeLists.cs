@@ -29,7 +29,7 @@ internal sealed class KodeverkCodeLists(Guid variableId, IMuninExplorerClient cl
     private readonly Dictionary<KodeverkKey, CodesFailure> _failures = [];
     private readonly Dictionary<KodeverkKey, int> _tooLarge = [];
 
-    // Above this the list is not fetched whole or drawn as a table: ICD-10 alone is some 22 000 codes.
+    // Above this the list is not fetched whole or drawn as a table: a classification such as ICD-10 is far longer.
     internal const int MaxDrawn = 200;
 
     public Guid VariableId => variableId;

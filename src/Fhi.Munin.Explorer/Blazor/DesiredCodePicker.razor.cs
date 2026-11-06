@@ -50,6 +50,9 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     private bool _saving;
     private int? _union;
     private int _unionRun;
+    private int _revealRun;
+    private bool _disposed;
+    private Task _untick = Task.CompletedTask;
 
     [Inject] private IMuninExplorerClient Client { get; set; } = null!;
 
@@ -146,6 +149,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
     public void Dispose()
     {
+        _disposed = true;
         foreach (var state in _lists.Values)
         {
             state.Debounce?.Cancel();
@@ -213,19 +217,21 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     {
         try
         {
-            while (true)
+            // A page that adds nothing new ends the level, and the pages are capped, so a wrong total cannot loop.
+            for (var pages = 0; pages < LevelCap / PageSize + 1; pages++)
             {
                 var page = await Client.GetKodeverkCodeChildrenAsync(
-                    VariableId, link.KodeverkType, link.KodeverkReference, node == Top ? null : node, branch.Codes.Count, PageSize);
-                var codes = page?.Codes ?? [];
-                branch.Codes.AddRange(codes.Where(hit => branch.Codes.All(seen => seen.Value != hit.Value)));
-                branch.Total = page?.Total ?? branch.Codes.Count;
-                if (node == Top && page is { CodeCount: > 0 })
+                    VariableId, link.KodeverkType, link.KodeverkReference, node == Top ? null : node, branch.Codes.Count, PageSize)
+                    ?? throw new InvalidOperationException("the code list or the code is unknown");
+                var before = branch.Codes.Count;
+                branch.Codes.AddRange(page.Codes.Where(hit => branch.Codes.All(seen => seen.Value != hit.Value)));
+                branch.Total = page.Total;
+                if (node == Top && page.CodeCount > 0)
                 {
                     state.CodeCount = page.CodeCount;
                 }
 
-                if (codes.Count == 0 || branch.Codes.Count >= Math.Min(branch.Total, LevelCap))
+                if (branch.Codes.Count == before || branch.Codes.Count >= Math.Min(branch.Total, LevelCap))
                 {
                     break;
                 }
@@ -268,8 +274,13 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         return BranchAsync(link, state, node);
     }
 
-    private async Task SelectTabAsync(int index)
+    private async Task SelectTabAsync(int index, bool revealing = false)
     {
+        if (!revealing)
+        {
+            _revealRun++;
+        }
+
         _tab = index;
         _alert = null;
         if (Current is { } link)
@@ -307,6 +318,13 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     {
         var state = StateOf(link);
         state.Query = e.Value?.ToString() ?? "";
+        if (state.Query.Trim() != state.Searched)
+        {
+            // Hits of the last query must not be chosen as if they were this one's, nor an answer still out land.
+            state.SearchRun++;
+            ClearHits(state);
+        }
+
         state.Debounce?.Cancel();
         state.Debounce?.Dispose();
         state.Debounce = new CancellationTokenSource();
@@ -321,7 +339,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
             await Task.Delay(SearchDelay, Clock, token).ConfigureAwait(false);
             await InvokeAsync(async () =>
             {
-                if (!token.IsCancellationRequested)
+                if (!token.IsCancellationRequested && !_disposed)
                 {
                     await SearchAsync(link);
                     StateHasChanged();
@@ -351,23 +369,19 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         var run = ++state.SearchRun;
         if (!Searchable(query))
         {
-            state.Searched = null;
-            state.Hits.Clear();
-            state.HitsOpen.Clear();
+            ClearHits(state);
             return;
         }
 
         try
         {
             var page = await Client.SearchKodeverkCodesAsync(VariableId, link.KodeverkType, link.KodeverkReference, query, 0, SearchCap);
-            if (run != state.SearchRun)
+            if (run != state.SearchRun || _disposed)
             {
                 return;
             }
 
-            state.Hits.Clear();
-            state.HitsOpen.Clear();
-            state.Active.Remove(HitsSection);
+            ClearHits(state);
             state.Hits.AddRange((page?.Codes ?? []).DistinctBy(hit => hit.Value));
             foreach (var hit in state.Hits)
             {
@@ -381,11 +395,20 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         catch (Exception ex)
         {
             Log?.LogWarning(ex, "a code search in {Type}/{Reference} failed", link.KodeverkType, link.KodeverkReference);
-            if (run == state.SearchRun)
+            if (run == state.SearchRun && !_disposed)
             {
+                ClearHits(state);
                 Announce(T.PickerLoadError, error: true);
             }
         }
+    }
+
+    private static void ClearHits(ListState state)
+    {
+        state.Searched = null;
+        state.Hits.Clear();
+        state.HitsOpen.Clear();
+        state.Active.Remove(HitsSection);
     }
 
     // What the search shows, and never more: a hit already chosen, or under a chosen parent, is left as it is.
@@ -424,7 +447,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
         foreach (var hit in state.Hits)
         {
-            _choices.RemoveAll(c => SameList(c, link) && (IsDirect(c, hit.Value) || c.Ancestors.Contains(hit.Value)));
+            _choices.RemoveAll(c => SameList(c, link) && (IsDirect(c, hit.Value) || IsUnder(c, hit.Value)));
         }
 
         await RecountAsync();
@@ -439,7 +462,10 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         Checked,
     }
 
-    private readonly record struct Row(string Code, int Level, string? Parent, KodeverkCodeHit Hit, bool Open);
+    // A row is known by its path, not its code: an opened hit can list a code that is also a hit of its own.
+    private readonly record struct Row(string Path, string Code, int Level, string? Parent, KodeverkCodeHit Hit, bool Open);
+
+    internal static string PathOf(string? parent, string code) => parent is null ? code : $"{parent}\u001f{code}";
 
     // The rows a reader can see in one section, in order: what the arrow keys walk.
     private static List<Row> VisibleRows(ListState state, string section)
@@ -453,27 +479,28 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         {
             foreach (var hit in codes)
             {
+                var path = PathOf(parent, hit.Value);
                 var open = hit.HasChildren && state.OpenIn(section).Contains(hit.Value);
-                rows.Add(new Row(hit.Value, level, parent, hit, open));
+                rows.Add(new Row(path, hit.Value, level, parent, hit, open));
                 if (open && state.Branches.GetValueOrDefault(hit.Value) is { Loaded: true } branch)
                 {
-                    Walk(branch.Codes, level + 1, hit.Value);
+                    Walk(branch.Codes, level + 1, path);
                 }
             }
         }
     }
 
     // The row in the tab order: the last one moved to, or the first while that one is out of sight.
-    private static string? ActiveCode(ListState state, string section)
+    private static string? ActivePath(ListState state, string section)
     {
         var rows = VisibleRows(state, section);
-        return state.Active.TryGetValue(section, out var code) && rows.Any(r => r.Code == code) ? code : rows.FirstOrDefault().Code;
+        return state.Active.TryGetValue(section, out var path) && rows.Any(r => r.Path == path) ? path : rows.FirstOrDefault().Path;
     }
 
-    private static string RowKey(string section, string code) => $"{section}:{code}";
+    private static string RowKey(string section, string path) => $"{section}:{path}";
 
-    // Codes carry dots and spaces; hex keeps the id valid and distinct per code.
-    private string RowId(string section, string code) => Id($"{section}-{Convert.ToHexString(Encoding.UTF8.GetBytes(code))}");
+    // Codes carry dots and spaces; hex keeps the id valid and distinct per row.
+    private string RowId(string section, string path) => Id($"{section}-{Convert.ToHexString(Encoding.UTF8.GetBytes(path))}");
 
     private static IReadOnlyList<string> AncestorsOf(ListState state, KodeverkCodeHit hit) =>
         hit.Ancestors.Count > 0 ? hit.Ancestors : AncestorsOf(state, hit.Value);
@@ -500,6 +527,10 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     private static bool IsDirect(Choice choice, string code) =>
         choice.Value.Code == code && choice.Value.Kind is DesiredCodeKinds.Code or DesiredCodeKinds.Node;
 
+    // A range's parents are its first code's only, and it may run past the code, so it is never under one.
+    private static bool IsUnder(Choice choice, string code) =>
+        choice.Value.Kind != DesiredCodeKinds.Range && choice.Ancestors.Contains(code);
+
     private IEnumerable<Choice> ChoicesIn(KodeverkLink link) => _choices.Where(c => SameList(c, link));
 
     // Ticked when it or a parent is chosen whole, half-ticked when something under it is chosen.
@@ -512,10 +543,11 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
             return Tick.Checked;
         }
 
-        return chosen.Any(c => c.Ancestors.Contains(hit.Value)) ? Tick.Mixed : Tick.Empty;
+        return chosen.Any(c => IsUnder(c, hit.Value)) ? Tick.Mixed : Tick.Empty;
     }
 
-    // «k av n» beside a parent: n from the API, k from the choices under it, which the tree keeps from overlapping.
+    // «k av n» beside a parent: n from the API, k the sum of the choices under it. Saved picks can overlap, so k is
+    // held at n.
     private string? OfCount(KodeverkLink link, KodeverkCodeHit hit, Tick tick)
     {
         if (hit.Count is not { } all || tick == Tick.Empty)
@@ -528,8 +560,8 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
             return T.PickerOf(all, all);
         }
 
-        var under = ChoicesIn(link).Where(c => c.Ancestors.Contains(hit.Value)).ToList();
-        return under.All(c => c.Count is not null) ? T.PickerOf(under.Sum(c => c.Count!.Value), all) : null;
+        var under = ChoicesIn(link).Where(c => IsUnder(c, hit.Value)).ToList();
+        return under.All(c => c.Count is not null) ? T.PickerOf(Math.Min(under.Sum(c => c.Count!.Value), all), all) : null;
     }
 
     // A group (an ICD-10 chapter or block) is only ever chosen with everything under it; the API refuses it as a code.
@@ -543,7 +575,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     // Chooses a code whole, taking in what was chosen under it; false when that would pass the ceiling.
     private bool Choose(KodeverkLink link, ListState state, KodeverkCodeHit hit)
     {
-        var under = ChoicesIn(link).Where(c => c.Ancestors.Contains(hit.Value)).ToList();
+        var under = ChoicesIn(link).Where(c => IsUnder(c, hit.Value)).ToList();
         if (_choices.Count - under.Count + 1 > MaxChoices)
         {
             return false;
@@ -557,6 +589,12 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
     private async Task ToggleTickAsync(KodeverkLink link, KodeverkCodeHit hit)
     {
+        // A press while an untick reads waits for it, then acts on the draft that untick left.
+        while (!_untick.IsCompleted)
+        {
+            await _untick;
+        }
+
         // The draft holds still while it is being saved, so what the answer is about is what is on screen.
         if (_saving)
         {
@@ -576,9 +614,14 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         {
             _choices.Remove(direct);
         }
-        else if (!await UntickUnderAsync(link, state, hit))
+        else
         {
-            return;
+            var untick = UntickUnderAsync(link, state, hit);
+            _untick = untick;
+            if (!await untick)
+            {
+                return;
+            }
         }
 
         Announce(null, error: false);
@@ -602,9 +645,15 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         {
             var next = i + 1 < ancestors.Count ? ancestors[i + 1] : hit.Value;
             var branch = await BranchAsync(link, state, ancestors[i]);
-            if (branch is null || branch.Codes.Count < branch.Total)
+            if (branch is null)
             {
                 Announce(T.PickerLoadError, error: true);
+                return false;
+            }
+
+            if (branch.Codes.Count < branch.Total)
+            {
+                Announce(T.PickerLevelCut(ancestors[i]), error: true);
                 return false;
             }
 
@@ -648,7 +697,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         await BranchAsync(link, state, hit.Value);
     }
 
-    private async Task RowPressAsync(MouseEventArgs press, KodeverkLink link, string section, KodeverkCodeHit hit)
+    private async Task RowPressAsync(MouseEventArgs press, KodeverkLink link, string section, string path, KodeverkCodeHit hit)
     {
         // The package's standing-gesture clause: a double-click's second click and a shift-click are not presses.
         if (RowPress.WasSelectionStandingStill(press))
@@ -656,18 +705,18 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
             return;
         }
 
-        StateOf(link).Active[section] = hit.Value;
+        StateOf(link).Active[section] = path;
         await ToggleTickAsync(link, hit);
     }
 
-    private async Task TogglePressAsync(MouseEventArgs press, KodeverkLink link, string section, KodeverkCodeHit hit)
+    private async Task TogglePressAsync(MouseEventArgs press, KodeverkLink link, string section, string path, KodeverkCodeHit hit)
     {
         if (RowPress.WasSelectionStandingStill(press))
         {
             return;
         }
 
-        StateOf(link).Active[section] = hit.Value;
+        StateOf(link).Active[section] = path;
         await ToggleOpenAsync(link, section, hit);
     }
 
@@ -682,8 +731,8 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
             return;
         }
 
-        var active = ActiveCode(state, section);
-        var at = Math.Max(0, rows.FindIndex(r => r.Code == active));
+        var active = ActivePath(state, section);
+        var at = Math.Max(0, rows.FindIndex(r => r.Path == active));
         var row = rows[at];
         int? next = null;
         switch (e.Key)
@@ -703,14 +752,14 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
             case "ArrowRight" when row.Hit.HasChildren && !row.Open:
                 await ToggleOpenAsync(link, section, row.Hit);
                 break;
-            case "ArrowRight" when row.Open && at + 1 < rows.Count && rows[at + 1].Parent == row.Code:
+            case "ArrowRight" when row.Open && at + 1 < rows.Count && rows[at + 1].Parent == row.Path:
                 next = at + 1;
                 break;
             case "ArrowLeft" when row.Open:
                 await ToggleOpenAsync(link, section, row.Hit);
                 break;
             case "ArrowLeft" when row.Parent is { } parent:
-                next = rows.FindIndex(r => r.Code == parent);
+                next = rows.FindIndex(r => r.Path == parent);
                 break;
             case " " or "Spacebar":
                 await ToggleTickAsync(link, row.Hit);
@@ -719,32 +768,41 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
         if (next is { } to && to >= 0)
         {
-            state.Active[section] = rows[to].Code;
-            _focusRow = RowKey(section, rows[to].Code);
+            state.Active[section] = rows[to].Path;
+            _focusRow = RowKey(section, rows[to].Path);
         }
     }
 
-    // The summary's way into the tree: its tab, every level above the code opened, focus on its row.
+    // The summary's way into the tree: its tab, every level above the code opened, focus on its row. A later reveal,
+    // another tab or the picker closing while it reads takes over, and this one then does nothing more.
     private async Task RevealAsync(Choice choice)
     {
+        var run = ++_revealRun;
         var index = Tabs.ToList().FindIndex(link => SameList(choice, link));
         if (index < 0)
         {
             return;
         }
 
+        var link = Tabs[index];
+        bool Stale() => run != _revealRun || _disposed || Current is not { } now || KodeverkKey.Of(now) != KodeverkKey.Of(link);
         if (index != Math.Clamp(_tab, 0, Tabs.Count - 1))
         {
-            await SelectTabAsync(index);
+            await SelectTabAsync(index, revealing: true);
         }
 
-        var link = Tabs[index];
         var state = StateOf(link);
         await OpenAsync(link);
         var ancestors = choice.Ancestors.Count > 0 ? choice.Ancestors : AncestorsOf(state, choice.Value.Code);
         foreach (var ancestor in ancestors)
         {
-            if (await BranchAsync(link, state, ancestor) is null)
+            var branch = Stale() ? null : await BranchAsync(link, state, ancestor);
+            if (Stale())
+            {
+                return;
+            }
+
+            if (branch is null)
             {
                 Announce(T.PickerLoadError, error: true);
                 return;
@@ -753,14 +811,19 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
             state.TreeOpen.Add(ancestor);
         }
 
-        if (!VisibleRows(state, TreeSection).Any(r => r.Code == choice.Value.Code))
+        if (Stale())
+        {
+            return;
+        }
+
+        if (VisibleRows(state, TreeSection).FirstOrDefault(r => r.Code == choice.Value.Code) is not { Path: { } path })
         {
             Announce(T.PickerNotInTree(choice.Value.Code), error: true);
             return;
         }
 
-        state.Active[TreeSection] = choice.Value.Code;
-        _focusRow = RowKey(TreeSection, choice.Value.Code);
+        state.Active[TreeSection] = path;
+        _focusRow = RowKey(TreeSection, path);
     }
 
     // ---------------------------------------------------------------------------------------------- the choices

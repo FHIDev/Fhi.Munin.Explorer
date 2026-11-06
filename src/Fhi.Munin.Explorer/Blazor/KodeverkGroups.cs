@@ -266,9 +266,9 @@ internal sealed class KodeverkGroups : ComponentBase, IDisposable
 
         if (Lists.TooLargeOf(key) is { } size)
         {
-            builder.OpenElement(10, "p");
-            builder.AddAttribute(11, "class", "caption");
-            builder.AddContent(12, T.CodesTooMany(size));
+            builder.OpenElement(6, "p");
+            builder.AddAttribute(7, "class", "caption");
+            builder.AddContent(8, T.CodesTooMany(size));
             builder.CloseElement();
 
             return;
@@ -278,15 +278,15 @@ internal sealed class KodeverkGroups : ComponentBase, IDisposable
 
         if (codes.Count == 0)
         {
-            builder.OpenElement(6, "p");
-            builder.AddAttribute(7, "class", "caption");
-            builder.AddContent(8, T.NoCodes);
+            builder.OpenElement(9, "p");
+            builder.AddAttribute(10, "class", "caption");
+            builder.AddContent(11, T.NoCodes);
             builder.CloseElement();
 
             return;
         }
 
-        builder.AddContent(9, CodesTable(index, codes));
+        builder.AddContent(12, CodesTable(index, codes));
     };
 
     // A real <table>: four aligned columns have no other shape that survives being unstyled.

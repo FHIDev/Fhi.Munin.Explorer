@@ -126,6 +126,22 @@ public class DesiredCodesClientTest
     }
 
     [Fact]
+    public async Task GetMyListVariablesAsync_WhenAChosenCodeHasExpiredAndNamesItsParents_ThenBothAreRead()
+    {
+        var handler = StubHttpHandler.Ok($$"""
+            {"items":[{"variabelId":"{{Variable}}","desiredDataCodes":[
+              {"kodeverkType":"HelsefagligKodeverk","kodeverkReference":"ICD-10","kind":"kode","kode":"E110","utgatt":true,"foreldre":["IV","E10-E14","E11"]}]}],
+             "totalCount":1,"page":1,"size":100,"totalPages":1}
+            """);
+
+        var page = await Client(handler).GetMyListVariablesAsync(ListId);
+
+        var code = Assert.Single(Assert.Single(page!.Items).DesiredDataCodes);
+        Assert.True(code.Expired);
+        Assert.Equal(["IV", "E10-E14", "E11"], code.Ancestors);
+    }
+
+    [Fact]
     public async Task CountKodeverkCodesAsync_WhenTheCodeIsUnknown_ThenNull() =>
         Assert.Null(await Client(StubHttpHandler.Status(HttpStatusCode.NotFound))
             .CountKodeverkCodesAsync(Variable, new DesiredCodeChoice("HelsefagligKodeverk", "ICD-10", DesiredCodeKinds.Code, "X")));

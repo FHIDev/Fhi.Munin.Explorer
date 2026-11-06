@@ -51,7 +51,7 @@ public class DesiredCodePickerTest : ExplorerTestContext
         ["E11"] = [Hit("E110", "Med koma", null, false, false, null, "IV", "E10-E14", "E11")],
     };
 
-    private static readonly Dictionary<string, KodeverkCodeHit[]> SivilstandList = new()
+    private static readonly Dictionary<string, KodeverkCodeHit[]> MaritalStatusList = new()
     {
         [""] =
         [
@@ -68,7 +68,12 @@ public class DesiredCodePickerTest : ExplorerTestContext
         public int WholeListReads { get; private set; }
         public List<IReadOnlyList<DesiredCodeChoice>> Unions { get; } = [];
         public HashSet<string> Failing { get; } = [];
+        public HashSet<string> Missing { get; } = [];
+        public Dictionary<string, TaskCompletionSource> Held { get; } = [];
+        public Dictionary<string, KodeverkCodeHit[]>? Tree { get; init; }
         public Func<string, int, int, KodeverkCodePage>? Search { get; init; }
+        public bool SearchFails { get; set; }
+        public Func<IReadOnlyList<DesiredCodeChoice>, Task<int?>>? Union { get; init; }
         public List<string> Searched { get; } = [];
 
         public override Task<KodeverkCodes?> GetKodeverkCodesAsync(
@@ -89,14 +94,22 @@ public class DesiredCodePickerTest : ExplorerTestContext
                 return Task.FromException<KodeverkCodePage?>(new HttpRequestException("down"));
             }
 
+            if (Missing.Contains(node ?? ""))
+            {
+                return Task.FromResult<KodeverkCodePage?>(null);
+            }
+
             var health = kodeverkType == "HelsefagligKodeverk";
-            var codes = (health ? Icd10Tree : SivilstandList).GetValueOrDefault(node ?? "") ?? [];
-            return Task.FromResult<KodeverkCodePage?>(new KodeverkCodePage
+            var codes = (Tree ?? (health ? Icd10Tree : MaritalStatusList)).GetValueOrDefault(node ?? "") ?? [];
+            var page = new KodeverkCodePage
             {
                 Total = codes.Length,
                 CodeCount = health ? 22141 : codes.Length,
                 Codes = [.. codes.Skip(skip).Take(take)],
-            });
+            };
+            return Held.TryGetValue(node ?? "", out var gate)
+                ? gate.Task.ContinueWith(_ => (KodeverkCodePage?)page, TaskScheduler.Default)
+                : Task.FromResult<KodeverkCodePage?>(page);
         }
 
         public override Task<KodeverkCodePage?> SearchKodeverkCodesAsync(
@@ -104,6 +117,11 @@ public class DesiredCodePickerTest : ExplorerTestContext
             CancellationToken cancellationToken = default)
         {
             Searched.Add($"{query}:{take}");
+            if (SearchFails)
+            {
+                return Task.FromException<KodeverkCodePage?>(new HttpRequestException("down"));
+            }
+
             return Task.FromResult<KodeverkCodePage?>(Search?.Invoke(query, skip, take) ?? new KodeverkCodePage
             {
                 Total = 3,
@@ -115,7 +133,7 @@ public class DesiredCodePickerTest : ExplorerTestContext
             Guid variableId, IReadOnlyList<DesiredCodeChoice> choices, CancellationToken cancellationToken = default)
         {
             Unions.Add(choices);
-            return Task.FromResult<int?>(choices.Count * 7);
+            return Union?.Invoke(choices) ?? Task.FromResult<int?>(choices.Count * 7);
         }
     }
 
@@ -604,7 +622,7 @@ public class DesiredCodePickerTest : ExplorerTestContext
 
     private sealed class PendingSearchClient : EmptyMuninExplorerClient
     {
-        public TaskCompletionSource<KodeverkCodePage?> Search { get; } = new();
+        public TaskCompletionSource<KodeverkCodePage?> Search { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public override Task<KodeverkCodePage?> GetKodeverkCodeChildrenAsync(
             Guid variableId, string kodeverkType, string kodeverkReference, string? node, int skip = 0, int take = 50,
@@ -682,7 +700,7 @@ public class DesiredCodePickerTest : ExplorerTestContext
     [Fact]
     public void Tick_WhileASaveIsOut_ThenTheDraftHoldsAndARefusalNamesTheChoiceThatWasSent()
     {
-        var pending = new TaskCompletionSource<DesiredDataResult>();
+        var pending = new TaskCompletionSource<DesiredDataResult>(TaskCreationOptions.RunContinuationsAsynchronously);
         Services.AddSingleton<IMuninExplorerClient>(new TreeClient());
         var cut = Render<DesiredCodePicker>(b => b
             .Add(c => c.VariableId, Variable)
@@ -738,5 +756,310 @@ public class DesiredCodePickerTest : ExplorerTestContext
 
         Assert.Empty(cut.FindAll("[role=tablist]"));
         Assert.Contains("Ugift", Text(cut));
+    }
+
+    // ------------------------------------------------------------------------------------ paging and failures
+
+    private static IElement HitsTree(IRenderedComponent<DesiredCodePicker> cut) => cut.Find("ul[role=tree][aria-label]");
+
+    private static void SearchFor(IRenderedComponent<DesiredCodePicker> cut, string query)
+    {
+        cut.Find("input[type=search]").Input(query);
+        cut.Find("input[type=search]").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+    }
+
+    private static void TickHit(IRenderedComponent<DesiredCodePicker> cut, string code) =>
+        RowOf(HitsTree(cut), code)!.QuerySelector(".munin-explorer-codetree__row")!.Click(new MouseEventArgs { Detail = 1 });
+
+    // An API that pages wrongly: the same hundred codes on every page, or one new code a page, of a claimed thousand.
+    private sealed class WrongPagingClient(bool onePerPage) : EmptyMuninExplorerClient
+    {
+        public int Reads { get; private set; }
+
+        public override Task<KodeverkCodePage?> GetKodeverkCodeChildrenAsync(
+            Guid variableId, string kodeverkType, string kodeverkReference, string? node, int skip = 0, int take = 50,
+            CancellationToken cancellationToken = default)
+        {
+            if (++Reads > 10)
+            {
+                return Task.FromException<KodeverkCodePage?>(new InvalidOperationException("the level is read without end"));
+            }
+
+            KodeverkCodeHit[] codes = onePerPage ? [Hit($"K{skip}", "Kode")] : [.. Enumerable.Range(0, 100).Select(i => Hit($"K{i}", "Kode"))];
+            return Task.FromResult<KodeverkCodePage?>(new KodeverkCodePage { Total = 1000, CodeCount = 1000, Codes = codes });
+        }
+    }
+
+    [Theory]
+    [InlineData(false, 2)]
+    [InlineData(true, 3)]
+    public void Open_WhenTheApiPagesWrongly_ThenTheLevelStopsAtAPageWithNothingNewOrAtThePageCap(bool onePerPage, int reads)
+    {
+        var client = new WrongPagingClient(onePerPage);
+        var cut = Picker(new Saves(), [Icd10], client: client);
+
+        cut.WaitForAssertion(() => Assert.NotNull(RowOf(Tree(cut), "K0")));
+        Assert.Equal(reads, client.Reads);
+    }
+
+    [Fact]
+    public void Open_WhenTheApiDoesNotKnowABranch_ThenThatBranchOffersARetryNamingItsCodeAndIsNotShownEmpty()
+    {
+        var client = new TreeClient();
+        client.Missing.Add("E15-E16");
+        var cut = Picker(new Saves(), [Icd10], client: client);
+        Open(cut, "IV");
+        Open(cut, "E15-E16");
+
+        var retry = cut.Find("button[aria-label='Prøv igjen for E15-E16']");
+        Assert.Equal("Prøv igjen", retry.TextContent.Trim());
+        Assert.True(Row(cut, "E15-E16").Contains(retry));
+    }
+
+    [Fact]
+    public void Keys_WhenSpaceOrAnArrowIsPressedOnABranchsRetry_ThenNothingIsTickedAndNothingMoves()
+    {
+        var client = new TreeClient();
+        client.Failing.Add("E15-E16");
+        var cut = Picker(new Saves(), [Icd10], client: client);
+        Open(cut, "IV");
+        Open(cut, "E15-E16");
+        Assert.Equal("E15-E16", TabStop(cut));
+
+        // bUnit says so when a key reaches no handler: the tree's is not on the way up from the button.
+        foreach (var key in new[] { " ", "ArrowUp", "ArrowDown" })
+        {
+            Assert.Throws<MissingEventHandlerException>(() =>
+                cut.Find("button[aria-label='Prøv igjen for E15-E16']").KeyDown(new KeyboardEventArgs { Key = key }));
+        }
+
+        Assert.Equal("E15-E16", TabStop(cut));
+        Assert.Equal("false", Checked(cut, "E15-E16"));
+        Assert.DoesNotContain("1 av 200 valg", Text(cut));
+    }
+
+    // ------------------------------------------------------------------------------------- hits and old ranges
+
+    [Fact]
+    public void Search_WhenAnOpenedHitListsCodesThatAreHitsToo_ThenEveryRowIsItsOwnWithOneTabStopAndTheArrowsVisitEachOnce()
+    {
+        var client = new TreeClient
+        {
+            Search = (_, _, _) => new KodeverkCodePage { Total = 3, Codes = [Icd10Tree["IV"][0], Icd10Tree["E10-E14"][0], Icd10Tree["E10-E14"][1]] },
+        };
+        var cut = Picker(new Saves(), [Icd10], client: client);
+        SearchFor(cut, "diabetes");
+        RowOf(HitsTree(cut), "E10-E14")!.QuerySelector(".munin-explorer-codetree__toggle")!.Click(new MouseEventArgs { Detail = 1 });
+
+        var rows = HitsTree(cut).QuerySelectorAll("[role=treeitem]");
+        Assert.Equal(["E10-E14", "E10", "E11", "E14", "E10", "E11"], rows.Select(r => r.QuerySelector(".munin-explorer-codetree__code")!.TextContent));
+        Assert.Equal(rows.Length, rows.Select(r => r.Id).Distinct().Count());
+        Assert.Single(rows, r => r.GetAttribute("tabindex") == "0");
+
+        var visited = new List<int>();
+        for (var i = 0; i < rows.Length; i++)
+        {
+            visited.Add(HitsTree(cut).QuerySelectorAll("[role=treeitem]").ToList().FindIndex(r => r.GetAttribute("tabindex") == "0"));
+            HitsTree(cut).KeyDown(new KeyboardEventArgs { Key = "ArrowDown" });
+        }
+
+        Assert.Equal(Enumerable.Range(0, rows.Length), visited);
+    }
+
+    [Fact]
+    public void Tick_WhenAnOlderRangeStartsUnderAParentThatIsTickedOrClearedAsAHit_ThenTheRangeStaysChosen()
+    {
+        var saves = new Saves();
+        var client = new TreeClient { Search = (_, _, _) => new KodeverkCodePage { Total = 1, Codes = [Icd10Tree["IV"][0]] } };
+        var cut = Picker(saves, [Icd10], [Saved(DesiredCodeKinds.Range, "E10", "E20", 30, "IV", "E10-E14")], client: client);
+        Open(cut, "IV");
+
+        Tick(cut, "E10-E14");
+        Assert.Contains("E10–E20 (eldre valg)", Text(cut));
+        SearchFor(cut, "diabetes");
+        Press(cut, "Fjern treffene");
+        Press(cut, "Lagre");
+
+        var sent = Assert.Single(Assert.Single(saves.Calls));
+        Assert.Equal((DesiredCodeKinds.Range, "E10", "E20"), (sent.Kind, sent.Code, sent.To));
+    }
+
+    [Fact]
+    public void Search_WhenTheQueryChangesAndTheNewSearchFails_ThenNothingFromTheOldQueryCanBeChosen()
+    {
+        var client = new TreeClient();
+        var cut = Picker(new Saves(), [Icd10], client: client);
+        SearchFor(cut, "diabetes");
+        Assert.Contains(cut.FindAll("button"), b => b.TextContent.Trim() == "Velg treffene");
+
+        client.SearchFails = true;
+        cut.Find("input[type=search]").Input("diabetesx");
+        Assert.DoesNotContain(cut.FindAll("button"), b => b.TextContent.Trim() is "Velg treffene" or "Fjern treffene");
+        cut.Find("input[type=search]").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        cut.WaitForAssertion(() => Assert.Contains("Kunne ikke hente kodelisten nå.", cut.Find("[role=alert]").TextContent));
+        Assert.Empty(cut.FindAll("ul[role=tree][aria-label]"));
+        Assert.Contains("0 av 200 valg", Text(cut));
+    }
+
+    [Fact]
+    public void Search_WhenTheSameQueryFailsOnASecondTry_ThenTheReaderIsToldAndTheEarlierHitsGo()
+    {
+        var client = new TreeClient();
+        var cut = Picker(new Saves(), [Icd10], client: client);
+        SearchFor(cut, "diabetes");
+        Assert.NotEmpty(cut.FindAll("ul[role=tree][aria-label]"));
+
+        client.SearchFails = true;
+        cut.Find("input[type=search]").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        cut.WaitForAssertion(() => Assert.Contains("Kunne ikke hente kodelisten nå.", cut.Find("[role=alert]").TextContent));
+        Assert.Empty(cut.FindAll("ul[role=tree][aria-label]"));
+        Assert.DoesNotContain(cut.FindAll("button"), b => b.TextContent.Trim() is "Velg treffene" or "Fjern treffene");
+    }
+
+    [Fact]
+    public async Task Search_WhenTheAnswerComesAfterThePickerIsGone_ThenNothingThrowsAndNothingRenders()
+    {
+        var client = new PendingSearchClient();
+        var cut = Picker(new Saves(), [Icd10], client: client);
+        SearchFor(cut, "diabetes");
+        var renders = cut.RenderCount;
+
+        await Renderer.DisposeComponents();
+        client.Search.SetResult(new KodeverkCodePage { Total = 1, Codes = [Hit("E10", "Diabetes")] });
+        await client.Search.Task;
+        await cut.InvokeAsync(() => { });
+
+        Assert.Equal(renders, cut.RenderCount);
+    }
+
+    // ------------------------------------------------------------------------------------------ unticking
+
+    [Fact]
+    public void Untick_WhenTheTickedParentsLevelIsCutAt200_ThenTheReaderIsToldWhyAndTheParentStays()
+    {
+        var big = Enumerable.Range(0, 300).Select(i => Hit($"C{i:000}", "Kode", null, false, false, null, "BIG")).ToArray();
+        var client = new TreeClient
+        {
+            Tree = new() { [""] = [Hit("BIG", "Stor", 300)], ["BIG"] = big },
+            Search = (_, _, _) => new KodeverkCodePage { Total = 1, Codes = [big[5]] },
+        };
+        var saves = new Saves();
+        var cut = Picker(saves, [Icd10], [Saved(DesiredCodeKinds.Node, "BIG", null, 300)], client: client);
+        SearchFor(cut, "C005");
+
+        TickHit(cut, "C005");
+
+        cut.WaitForAssertion(() => Assert.Contains("BIG har for mange koder", cut.Find("[role=alert]").TextContent));
+        Assert.DoesNotContain("Kunne ikke hente kodelisten", cut.Find("[role=alert]").TextContent);
+        Press(cut, "Lagre");
+        Assert.Equal(["BIG"], Assert.Single(saves.Calls).Select(v => v.Code));
+    }
+
+    [Fact]
+    public void Untick_WhenASecondCodeIsUntickedWhileTheFirstReadsItsLevel_ThenBothAreUnticked()
+    {
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new TreeClient { Search = (_, _, _) => new KodeverkCodePage { Total = 2, Codes = [.. Icd10Tree["E10"]] } };
+        client.Held["E10"] = gate;
+        var saves = new Saves();
+        var cut = Picker(saves, [Icd10], [Saved(DesiredCodeKinds.Node, "E10", null, 3, "IV", "E10-E14")], client: client);
+        SearchFor(cut, "koma");
+
+        TickHit(cut, "E100");
+        TickHit(cut, "E101");
+        gate.SetResult();
+
+        cut.WaitForAssertion(() => Assert.Contains("0 av 200 valg", Text(cut)));
+        Assert.Equal("false", RowOf(HitsTree(cut), "E101")!.GetAttribute("aria-checked"));
+        Assert.Equal("false", RowOf(HitsTree(cut), "E100")!.GetAttribute("aria-checked"));
+        Press(cut, "Lagre");
+        cut.WaitForAssertion(() => Assert.Empty(Assert.Single(saves.Calls)));
+    }
+
+    [Fact]
+    public void Untick_WhenASiblingIsAGroupWithNothingListedUnderIt_ThenThatSiblingStaysChosenWholeNeverAsACode()
+    {
+        var client = new TreeClient
+        {
+            Tree = new()
+            {
+                [""] = [Hit("X", "Kapittel", 3, group: true)],
+                ["X"] =
+                [
+                    Hit("G1", "Gruppe", null, true, false, null, "X"),
+                    Hit("C1", "Kode 1", null, false, false, null, "X"),
+                    Hit("C2", "Kode 2", null, false, false, null, "X"),
+                ],
+            },
+        };
+        var saves = new Saves();
+        var cut = Picker(saves, [Icd10], [Saved(DesiredCodeKinds.Node, "X", null, 3)], client: client);
+        Open(cut, "X");
+
+        Tick(cut, "C1");
+        Press(cut, "Lagre");
+
+        Assert.Equal(
+            [(DesiredCodeKinds.Code, "C2"), (DesiredCodeKinds.Node, "G1")],
+            Assert.Single(saves.Calls).Select(v => (v.Kind, v.Code)).OrderBy(p => p.Code));
+    }
+
+    [Fact]
+    public void Tick_WhenEveryChildOfAParentIsTickedOneByOne_ThenEachStaysItsOwnChoiceAndTheParentIsHalfTicked()
+    {
+        var saves = new Saves();
+        var cut = Picker(saves, [Icd10]);
+        Open(cut, "IV");
+        Open(cut, "E10-E14");
+
+        Tick(cut, "E10");
+        Tick(cut, "E11");
+        Tick(cut, "E14");
+
+        Assert.Equal("mixed", Checked(cut, "E10-E14"));
+        Assert.Contains("7 av 10", Line(cut, "E10-E14"));
+        Press(cut, "Lagre");
+        Assert.Equal(["E10", "E11", "E14"], Assert.Single(saves.Calls).Select(v => v.Code));
+    }
+
+    // ---------------------------------------------------------------------------------------- the union count
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Summary_WhenTheUnionFailsOrIsNotFound_ThenTheTotalIsUnknownAndTheHeadingIsChosenAlone(bool fails)
+    {
+        var client = new TreeClient
+        {
+            Union = _ => fails ? Task.FromException<int?>(new HttpRequestException("down")) : Task.FromResult<int?>(null),
+        };
+        var cut = Picker(new Saves(), [Sivilstand], client: client);
+
+        Tick(cut, "1");
+
+        cut.WaitForAssertion(() => Assert.Equal("Valgt", cut.Find("p[id$='-chosen']").TextContent.Trim()));
+        Assert.DoesNotContain("Valgt:", Text(cut));
+    }
+
+    [Fact]
+    public void Summary_WhenAnOlderCountAnswersLast_ThenTheNewestCountStands()
+    {
+        var first = new TaskCompletionSource<int?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var second = new TaskCompletionSource<int?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var answers = new Queue<TaskCompletionSource<int?>>([first, second]);
+        var client = new TreeClient { Union = _ => answers.Dequeue().Task };
+        var cut = Picker(new Saves(), [Sivilstand], client: client);
+        Tick(cut, "1");
+        Tick(cut, "2");
+
+        second.SetResult(2);
+        cut.WaitForAssertion(() => Assert.Contains("Valgt: 2 koder", Text(cut)));
+        var renders = cut.RenderCount;
+        first.SetResult(1);
+
+        cut.WaitForState(() => cut.RenderCount > renders);
+        Assert.Contains("Valgt: 2 koder", Text(cut));
     }
 }

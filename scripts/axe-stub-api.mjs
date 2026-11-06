@@ -279,15 +279,24 @@ function serve(url, request, response) {
     response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(page));
     return;
   }
-  // The code picker's tree and its union count (Fhi.Metadata-9huq2.14): the captured list as one flat level.
+  // The code picker's tree and its union count (Fhi.Metadata-9huq2.14): the captured list as one level, whose first
+  // code on the list panel's variable has two codes under it, so a branch can be opened and half-ticked.
   const picker = path.match(/^\/api\/explorer\/variables\/[^/]+\/kodeverk\/[^/]+\/[^/]+\/codes\/(children|search|count-union)$/);
   if (picker !== null) {
     const codes = JSON.parse(bodies.get(codesRoute));
-    const all = picker[1] === 'search' || !path.includes(LIST_PANEL_VARIABLE)
+    const nested = path.includes(LIST_PANEL_VARIABLE);
+    const all = picker[1] === 'search' || !nested
       ? codes.koder
       : Array.from({ length: 12 }, (_, i) => ({ ...codes.koder[i % codes.koder.length], verdi: String(i) }));
-    const level = picker[1] === 'search' ? all.slice(0, 3) : url.searchParams.get('node') ? [] : all;
-    const koder = level.map(code => ({ ...code, harUnderkoder: false, antall: null, foreldre: [], gruppe: false, utgatt: false }));
+    const node = url.searchParams.get('node');
+    const plain = { harUnderkoder: false, antall: null, foreldre: [], gruppe: false, utgatt: false };
+    const koder = picker[1] === 'search'
+      ? all.slice(0, 3).map(code => ({ ...code, ...plain }))
+      : node === '0' && nested
+        ? ['0.1', '0.2'].map(verdi => ({ ...all[1], ...plain, verdi, foreldre: ['0'] }))
+        : node
+          ? []
+          : all.map((code, i) => ({ ...code, ...plain, ...(i === 0 && nested ? { harUnderkoder: true, antall: 2 } : {}) }));
     const skip = Number(url.searchParams.get('skip') ?? 0) || 0;
     const take = Number(url.searchParams.get('take') ?? 50) || 50;
     const body = picker[1] === 'count-union'

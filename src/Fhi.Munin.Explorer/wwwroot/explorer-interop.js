@@ -534,7 +534,8 @@ export function watchFolds() {
   // The code picker's tree moves and ticks on these keys itself; the browser would scroll the page on them as well.
   document.addEventListener('keydown', event => {
     if (![' ', 'ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-    if (event.target.matches?.('[role="tree"] [role="treeitem"]')) event.preventDefault();
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.target.matches?.('.munin-explorer-codetree [role="treeitem"]')) event.preventDefault();
   });
 
   // A window turned or resized across the phone width while a menu is open: it changes form, open, where it is.

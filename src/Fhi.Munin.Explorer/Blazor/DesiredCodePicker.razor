@@ -49,7 +49,7 @@
 
                     @if (state.Searched is not null && state.Hits.Count > 0)
                     {
-                        var activeHit = ActiveCode(state, HitsSection);
+                        var activeHit = ActivePath(state, HitsSection);
                         @if (state.Hits.Count < state.HitTotal)
                         {
                             <p class="caption">@T.PickerShowingHits(state.Hits.Count, state.HitTotal)</p>
@@ -62,19 +62,19 @@
                             @onkeydown="e => TreeKeyAsync(e, link, HitsSection)">
                             @foreach (var hit in state.Hits)
                             {
-                                @TreeRow(link, state, HitsSection, hit, 1, activeHit)
+                                @TreeRow(link, state, HitsSection, hit, 1, activeHit, null)
                             }
                         </ul>
                     }
                 }
 
-                var active = ActiveCode(state, TreeSection);
+                var active = ActivePath(state, TreeSection);
                 <p class="headline headline-xxs margin--none" id="@Id("tree")">@T.PickerTreeHeading</p>
                 <ul class="munin-explorer-codetree" role="tree" aria-labelledby="@Id("tree")" aria-multiselectable="true"
                     @onkeydown="e => TreeKeyAsync(e, link, TreeSection)">
                     @foreach (var hit in top.Codes)
                     {
-                        @TreeRow(link, state, TreeSection, hit, 1, active)
+                        @TreeRow(link, state, TreeSection, hit, 1, active, null)
                     }
                 </ul>
                 @if (top.Codes.Count < top.Total)
@@ -141,20 +141,21 @@
 
     // One code in the tree: its own line (the expand arrow in its own column, the box, the code, the name cut by the
     // host's stylesheet but whole in the markup), then the level under it once it is opened.
-    private RenderFragment TreeRow(KodeverkLink link, ListState state, string section, KodeverkCodeHit hit, int level, string? active)
+    private RenderFragment TreeRow(KodeverkLink link, ListState state, string section, KodeverkCodeHit hit, int level, string? active, string? parent)
     {
         var tick = TickOf(link, state, hit);
         var open = hit.HasChildren && state.OpenIn(section).Contains(hit.Value);
         var branch = open ? state.Branches.GetValueOrDefault(hit.Value) : null;
-        var id = RowId(section, hit.Value);
+        var path = PathOf(parent, hit.Value);
+        var id = RowId(section, path);
         var count = OfCount(link, hit, tick);
-        var key = RowKey(section, hit.Value);
+        var key = RowKey(section, path);
         return @<li @key="hit.Value" role="treeitem" id="@id" aria-labelledby="@($"{id}-label")" aria-level="@level"
                     aria-checked="@AriaChecked(tick)" aria-expanded="@(hit.HasChildren ? (open ? "true" : "false") : null)"
-                    aria-disabled="@(_saving ? "true" : null)" tabindex="@(hit.Value == active ? 0 : -1)" @ref="_rows[key]">
-            <div class="munin-explorer-codetree__row" @onclick="e => RowPressAsync(e, link, section, hit)">
+                    aria-disabled="@(_saving ? "true" : null)" tabindex="@(path == active ? 0 : -1)" @ref="_rows[key]">
+            <div class="munin-explorer-codetree__row" @onclick="e => RowPressAsync(e, link, section, path, hit)">
                 <span class="munin-explorer-codetree__toggle" aria-hidden="true"
-                      @onclick="e => TogglePressAsync(e, link, section, hit)" @onclick:stopPropagation="true">@(hit.HasChildren ? (open ? "▾" : "▸") : "")</span>
+                      @onclick="e => TogglePressAsync(e, link, section, path, hit)" @onclick:stopPropagation="true">@(hit.HasChildren ? (open ? "▾" : "▸") : "")</span>
                 <span class="munin-explorer-codetree__box" aria-hidden="true">@Box(tick)</span>
                 <span id="@($"{id}-label")"><span class="munin-explorer-codetree__code">@hit.Value</span>@(" ")<span class="munin-explorer-codetree__name" lang="@CatalogueLang" title="@hit.Name">@hit.Name</span>@ExpiredMark(hit)@if (count is not null)
                     {
@@ -163,14 +164,15 @@
             </div>
             @if (branch is { Failed: true })
             {
-                <p class="caption">@T.PickerBranchError @(" ")<button class="hd-button-reset" type="button" @onclick="() => RetryAsync(link, hit.Value)">@T.PickerRetry</button></p>
+                @* The tree's keys are the rows' own: a key on this button is the button's, not the row's. *@
+                <p class="caption" @onkeydown:stopPropagation="true">@T.PickerBranchError @(" ")<button class="hd-button-reset" type="button" aria-label="@T.PickerRetryFor(hit.Value)" @onclick="() => RetryAsync(link, hit.Value)">@T.PickerRetry</button></p>
             }
             else if (branch is { Loaded: true })
             {
                 <ul class="munin-explorer-codetree__group" role="group">
                     @foreach (var child in branch.Codes)
                     {
-                        @TreeRow(link, state, section, child, level + 1, active)
+                        @TreeRow(link, state, section, child, level + 1, active, path)
                     }
                 </ul>
                 @if (branch.Codes.Count < branch.Total)

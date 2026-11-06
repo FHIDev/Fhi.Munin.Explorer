@@ -99,7 +99,7 @@ public class VariableListCodePickerTest : ExplorerTestContext
     private static IElement? OpenButton(IRenderedComponent<VariableListView> cut) =>
         cut.FindAll("button[aria-controls$='-picker']").SingleOrDefault();
 
-    private static void TickUgift(IRenderedComponent<VariableListView> cut) =>
+    private static void TickUnmarried(IRenderedComponent<VariableListView> cut) =>
         cut.FindAll("[role=treeitem]").First(r => r.TextContent.Contains("Ugift", StringComparison.Ordinal))
             .QuerySelector(".munin-explorer-codetree__row")!.Click(new MouseEventArgs { Detail = 1 });
 
@@ -119,7 +119,7 @@ public class VariableListCodePickerTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Equal("true", OpenButton(cut)!.GetAttribute("aria-expanded")));
 
         cut.WaitForAssertion(() => Assert.Contains("Ugift", cut.Markup));
-        TickUgift(cut);
+        TickUnmarried(cut);
         cut.FindAll("button").Single(b => b.TextContent.Trim() == "Lagre").Click();
 
         var write = Assert.Single(client.Writes);
@@ -154,7 +154,7 @@ public class VariableListCodePickerTest : ExplorerTestContext
         var cut = OpenedRow(client);
         OpenButton(cut)!.Click(new MouseEventArgs { Detail = 1 });
         cut.WaitForAssertion(() => Assert.Contains("Ugift", cut.Markup));
-        TickUgift(cut);
+        TickUnmarried(cut);
         cut.FindAll("button").Single(b => b.TextContent.Trim() == "Lagre").Click();
 
         // Closed and opened again while the save is out: a newer picker for the same row.

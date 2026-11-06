@@ -955,7 +955,8 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
-  // The opened row's code picker on «Ønskede data», one code ticked in its tree so the summary shows (Fhi.Metadata-9huq2.14).
+  // The opened row's code picker on «Ønskede data»: the first code's branch opened and one code under it ticked, so a
+  // nested level, a half-ticked parent and the summary are all scanned (Fhi.Metadata-9huq2.14).
   'list-row-picker': async page => {
     await states['list-row-panel'](page);
 
@@ -965,7 +966,12 @@ export const states = {
     const first = picker.getByRole('treeitem').first();
     await first.waitFor({ state: 'visible', timeout: findTimeout });
     await first.focus();
-    await first.press('Space');
+    await first.press('ArrowRight');
+    const child = first.getByRole('treeitem').first();
+    await child.waitFor({ state: 'visible', timeout: findTimeout });
+    await first.press('ArrowRight');
+    await child.press('Space');
+    await first.and(page.locator('[aria-checked=mixed]')).waitFor({ state: 'attached', timeout: findTimeout });
     await picker.getByRole('button', { name: /^Vis .* i treet$/ }).first().waitFor({ state: 'visible', timeout: findTimeout });
   },
 };
