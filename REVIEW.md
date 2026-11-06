@@ -22,7 +22,31 @@ the change could:
   behaviour, security, a command, a number, a file, a flag or an endpoint, that no code or test backs (the doc-claim
   check, DevInfra `docs/review-risk-tiers.md`). It is reported after the first review too, outside the nit cap.
 
-Everything else (naming, wording, structure, a smaller way to write it) is a **Nit**.
+Naming, wording, structure and a smaller way to write it are **Nits**; anything else this list does not name is
+rated under «Judging severity».
+
+## Judging severity
+
+Guidance, weighed case by case and not a hard rule (Robin 6.11, ask:0mw4pa5ng000). Weigh how likely a defect is and
+what it costs when it happens. The kinds this file names as Important stay Important however unlikely; this section
+rates what it does not name.
+
+- **Important** when ordinary use can hit it (a normal user, client or integration on its usual path); when data is
+  lost, corrupted or shown wrong; when someone gets access they should not have without an administrator doing
+  something unusual; or when a claim users or integrators rely on (docs, a changelog, an API description, a status
+  code) is false.
+- **Nit** when it needs several unlikely conditions together, an administrator acting oddly, or leads only to a
+  harmless outcome (an extra log line that holds no personal data, a cosmetic glitch outside the layout and accessibility kinds above, a retry that succeeds). The author answers it on the pull
+  request, or files a low-priority bead when it is real and cheap to fix; that is not a request to file one for each
+  Nit, and the Nit cap still applies.
+- **Judgement still decides.** Say why when you rate against this guidance: an unlikely edge on a sign-in or
+  permission path can stay Important, and a likely one with a harmless outcome can be a Nit.
+
+For example: a form that saves a draft into the wrong field when the page loads slowly is Important (ordinary use,
+wrong data). A failure that needs two administrators to restore the same version in the same second, answers the
+documented status and succeeds on retry, is a Nit. A changelog that promises a response format the code does not send is Important
+(integrators rely on it). A sign-in path that admits a revoked user during a two-second race stays Important despite
+the odds. A label that flickers for a moment and is right once a retry succeeds is a Nit.
 
 ## How to report
 
@@ -45,7 +69,7 @@ Everything else (naming, wording, structure, a smaller way to write it) is a **N
   included, and does not report them again. It names an earlier finding only when its fix did not work, and says so.
 - **Summary first.** The report starts with a count: "3 findings: 1 Important, 2 Nits", "3 findings: 1 Important,
   2 Nits (+1 Pre-existing Important)", or "No findings".
-- **Risk tier.** A `risk:high` pull request (DevInfra `docs/review-risk-tiers.md`) gets every Important item above
+- **Risk tier.** A `risk:high` pull request (DevInfra `docs/review-risk-tiers.md`) gets every Important item in «What failure looks like here»
   that touches its paths checked explicitly, ✓ or ✗ with `file:line`.
 
 ## Do not report
