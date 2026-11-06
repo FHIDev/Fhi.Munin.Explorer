@@ -1,6 +1,6 @@
 # AGENTS.md: FHIDev/Fhi.Munin.Explorer
 
-<!-- team-doc:begin sha256=401720c83c63a7179032d2a1c455c8a60144512d69a15bdf144575a2c3149348 source=FHIDev/Fhi.Munin.DevInfra/docs/team/working-together.md -->
+<!-- team-doc:begin sha256=52fcdb52ace1090af91e8c18c94cf6019c52e7b801d0356f38081fcc1e077d58 source=FHIDev/Fhi.Munin.DevInfra/docs/team/working-together.md -->
 ## The team's rules, in short
 
 Full text: FHIDev/Fhi.Munin.DevInfra `docs/team/working-together.md`. This block is a synced copy; edit the
@@ -8,8 +8,8 @@ canonical doc, not this block.
 
 - **FHI's guidelines apply:** RL-KI-001 «Bruk av KI-agenter i programvareutvikling» and RL-KI-002 «Marketplace for
   KI-agenter og skills» (utvikling.sky.fhi.no/KI/). Each shared skill has a named owner (see the full doc).
-- **What reaches the model providers** (Anthropic; GitHub Copilot for the PR diffs it reviews): code, bead and PR
-  text (which carry team members' names) and team chat.
+- **What reaches the model providers** (Anthropic; GitHub Copilot only for a PR diff someone asks it to review,
+  which no session does since 5 November 2026): code, bead and PR text (which carry team members' names) and team chat.
   Never paste personal data about citizens, patients or research participants, production data or secrets into
   what an agent reads or sends. Details and open questions in the full doc.
 - **Beads are written only through Varde** (the `beads_*` tools), never with `bd`. When Varde cannot write, tell
