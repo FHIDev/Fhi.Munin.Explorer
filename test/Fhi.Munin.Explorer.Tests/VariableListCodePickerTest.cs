@@ -42,11 +42,28 @@ public class VariableListCodePickerTest : ExplorerTestContext
             Guid id, bool includeHistorical, Guid? datasamlingId, CancellationToken cancellationToken = default) =>
             Task.FromResult<VariableDetail?>(new VariableDetail { Id = id, PreferredTerm = "Sivilstand", KodeverkLinks = links });
 
+        public int WholeListReads { get; private set; }
+
+        public int CodeCount { get; init; } = 2;
+
         public override Task<KodeverkCodes?> GetKodeverkCodesAsync(
-            Guid variableId, string kodeverkType, string kodeverkReference, CancellationToken cancellationToken = default) =>
-            Task.FromResult<KodeverkCodes?>(new KodeverkCodes
+            Guid variableId, string kodeverkType, string kodeverkReference, CancellationToken cancellationToken = default)
+        {
+            WholeListReads++;
+            return Task.FromResult<KodeverkCodes?>(new KodeverkCodes
             {
                 Codes = [new KodeverkCode { Value = "1", Name = "Ugift" }, new KodeverkCode { Value = "2", Name = "Gift" }],
+            });
+        }
+
+        public override Task<KodeverkCodePage?> GetKodeverkCodeChildrenAsync(
+            Guid variableId, string kodeverkType, string kodeverkReference, string? node, int skip = 0, int take = 50,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<KodeverkCodePage?>(new KodeverkCodePage
+            {
+                Total = 2,
+                CodeCount = CodeCount,
+                Codes = [.. new[] { new KodeverkCodeHit { Value = "1", Name = "Ugift" }, new KodeverkCodeHit { Value = "2", Name = "Gift" } }.Take(take)],
             });
 
         public override Task<DesiredDataResult> SetMyListItemDesiredCodesAsync(
@@ -82,6 +99,14 @@ public class VariableListCodePickerTest : ExplorerTestContext
     private static IElement? OpenButton(IRenderedComponent<VariableListView> cut) =>
         cut.FindAll("button[aria-controls$='-picker']").SingleOrDefault();
 
+    private static void TickUgift(IRenderedComponent<VariableListView> cut) =>
+        cut.FindAll("[role=treeitem]").First(r => r.TextContent.Contains("Ugift", StringComparison.Ordinal))
+            .QuerySelector(".munin-explorer-codetree__row")!.Click(new MouseEventArgs { Detail = 1 });
+
+    // The kodeverk list's own «Vis koder» for the row's code list, in the Data tab under the picker.
+    private static IElement? ShowCodes(IRenderedComponent<VariableListView> cut) =>
+        cut.FindAll(".munin-explorer-kodeverk__item button[aria-expanded]").SingleOrDefault();
+
     [Fact]
     public void Picker_WhenTheRowsVariableHasACodeList_ThenItOpensSavesTheCodesWithTheFreeTextAndTheRowSaysSo()
     {
@@ -94,8 +119,7 @@ public class VariableListCodePickerTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Equal("true", OpenButton(cut)!.GetAttribute("aria-expanded")));
 
         cut.WaitForAssertion(() => Assert.Contains("Ugift", cut.Markup));
-        cut.FindAll("label").First(l => l.TextContent.Contains("Ugift", StringComparison.Ordinal))
-            .QuerySelector("input[type=checkbox]")!.Change(true);
+        TickUgift(cut);
         cut.FindAll("button").Single(b => b.TextContent.Trim() == "Lagre").Click();
 
         var write = Assert.Single(client.Writes);
@@ -130,7 +154,7 @@ public class VariableListCodePickerTest : ExplorerTestContext
         var cut = OpenedRow(client);
         OpenButton(cut)!.Click(new MouseEventArgs { Detail = 1 });
         cut.WaitForAssertion(() => Assert.Contains("Ugift", cut.Markup));
-        cut.FindAll("label").First(l => l.TextContent.Contains("Ugift", StringComparison.Ordinal)).QuerySelector("input[type=checkbox]")!.Change(true);
+        TickUgift(cut);
         cut.FindAll("button").Single(b => b.TextContent.Trim() == "Lagre").Click();
 
         // Closed and opened again while the save is out: a newer picker for the same row.
@@ -181,5 +205,43 @@ public class VariableListCodePickerTest : ExplorerTestContext
 
         OpenButton(cut)!.Click(new MouseEventArgs { Detail = 1 });
         cut.WaitForAssertion(() => Assert.True(Shown(cut)));
+    }
+
+    [Fact]
+    public void KodeverkList_WhileThePickerShowsTheSameList_ThenItsCodesAreNotOfferedTwice()
+    {
+        var cut = OpenedRow(new ListClient(Item(), Sivilstand));
+        Assert.NotNull(ShowCodes(cut));
+
+        OpenButton(cut)!.Click(new MouseEventArgs { Detail = 1 });
+        cut.WaitForAssertion(() => Assert.Contains("Ugift", cut.Markup));
+
+        Assert.Null(ShowCodes(cut));
+        OpenButton(cut)!.Click(new MouseEventArgs { Detail = 1 });
+        cut.WaitForAssertion(() => Assert.NotNull(ShowCodes(cut)));
+    }
+
+    [Fact]
+    public void KodeverkList_WhenTheListHasMoreThan200Codes_ThenItSaysSoAndNeverFetchesTheWholeList()
+    {
+        var client = new ListClient(Item(), Sivilstand) { CodeCount = 22141 };
+        var cut = OpenedRow(client);
+
+        ShowCodes(cut)!.Click(new MouseEventArgs { Detail = 1 });
+
+        cut.WaitForAssertion(() => Assert.Contains("Kodelisten har 22141 koder, for mange til å vises her.", cut.Markup));
+        Assert.Equal(0, client.WholeListReads);
+    }
+
+    [Fact]
+    public void KodeverkList_WhenTheListIsShort_ThenItIsFetchedAndDrawnAsBefore()
+    {
+        var client = new ListClient(Item(), Sivilstand);
+        var cut = OpenedRow(client);
+
+        ShowCodes(cut)!.Click(new MouseEventArgs { Detail = 1 });
+
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find("table.munin-explorer-codes__table")));
+        Assert.Equal(1, client.WholeListReads);
     }
 }

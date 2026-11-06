@@ -27,6 +27,10 @@ internal sealed class KodeverkCodeLists(Guid variableId, IMuninExplorerClient cl
     private readonly Dictionary<KodeverkKey, IReadOnlyList<KodeverkCode>> _codes = [];
     private readonly HashSet<KodeverkKey> _loading = [];
     private readonly Dictionary<KodeverkKey, CodesFailure> _failures = [];
+    private readonly Dictionary<KodeverkKey, int> _tooLarge = [];
+
+    // Above this the list is not fetched whole or drawn as a table: ICD-10 alone is some 22 000 codes.
+    internal const int MaxDrawn = 200;
 
     public Guid VariableId => variableId;
 
@@ -43,6 +47,9 @@ internal sealed class KodeverkCodeLists(Guid variableId, IMuninExplorerClient cl
 
     public IReadOnlyList<KodeverkCode>? CodesOf(KodeverkKey key) => _codes.GetValueOrDefault(key);
 
+    /// <summary>The list's size when it is too long to draw, so it was not fetched; null otherwise.</summary>
+    public int? TooLargeOf(KodeverkKey key) => _tooLarge.TryGetValue(key, out var count) ? count : null;
+
     /// <summary>Open this link's list, or close it. A failed list is fetched again: the press is the reader's only retry.</summary>
     public async Task ToggleAsync(KodeverkLink link)
     {
@@ -55,7 +62,7 @@ internal sealed class KodeverkCodeLists(Guid variableId, IMuninExplorerClient cl
             return;
         }
 
-        if (_codes.ContainsKey(key) || _loading.Contains(key))
+        if (_codes.ContainsKey(key) || _loading.Contains(key) || _tooLarge.ContainsKey(key))
         {
             return;
         }
@@ -77,7 +84,7 @@ internal sealed class KodeverkCodeLists(Guid variableId, IMuninExplorerClient cl
             var key = KodeverkKey.Of(link);
 
             // A failure counts as asked, so a kodeverk the payload names twice is not retried back to back.
-            if (_codes.ContainsKey(key) || _loading.Contains(key) || _failures.ContainsKey(key))
+            if (_codes.ContainsKey(key) || _loading.Contains(key) || _failures.ContainsKey(key) || _tooLarge.ContainsKey(key))
             {
                 continue;
             }
@@ -92,6 +99,20 @@ internal sealed class KodeverkCodeLists(Guid variableId, IMuninExplorerClient cl
         && DisplayText.Trimmed(link.DisplayName) is null
         && link.HasCodeValues;
 
+    // One code of the first level, for the list's size; an API or a client without the tree answers null, as before.
+    private async Task<int?> SizeOfAsync(KodeverkKey key)
+    {
+        try
+        {
+            var page = await client.GetKodeverkCodeChildrenAsync(variableId, key.Type, key.Reference, null, 0, 1);
+            return page?.CodeCount;
+        }
+        catch (NotSupportedException)
+        {
+            return null;
+        }
+    }
+
     private async Task LoadAsync(KodeverkKey key)
     {
         _failures.Remove(key);
@@ -99,6 +120,12 @@ internal sealed class KodeverkCodeLists(Guid variableId, IMuninExplorerClient cl
 
         try
         {
+            if (await SizeOfAsync(key) is > MaxDrawn and var size)
+            {
+                _tooLarge[key] = size;
+                return;
+            }
+
             // Null means the catalogue publishes no codes for this link, so it is cached as an empty list.
             var codes = await client.GetKodeverkCodesAsync(variableId, key.Type, key.Reference);
 

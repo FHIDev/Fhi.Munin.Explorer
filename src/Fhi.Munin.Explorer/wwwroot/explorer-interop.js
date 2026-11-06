@@ -531,6 +531,12 @@ export function watchFolds() {
     next.focus();
   });
 
+  // The code picker's tree moves and ticks on these keys itself; the browser would scroll the page on them as well.
+  document.addEventListener('keydown', event => {
+    if (![' ', 'ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    if (event.target.matches?.('[role="tree"] [role="treeitem"]')) event.preventDefault();
+  });
+
   // A window turned or resized across the phone width while a menu is open: it changes form, open, where it is.
   phoneWidth().addEventListener('change', () => {
     for (const panel of document.querySelectorAll('.munin-explorer-list-menu > .munin-explorer-list-menu__panel:not([hidden])')) {

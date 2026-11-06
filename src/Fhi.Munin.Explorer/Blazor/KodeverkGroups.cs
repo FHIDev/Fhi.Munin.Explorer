@@ -30,6 +30,9 @@ internal sealed class KodeverkGroups : ComponentBase, IDisposable
 
     [Parameter] public string Language { get; set; } = "no";
 
+    // The lists a code picker shows now: its tree holds the same codes, so they are not drawn twice.
+    [Parameter] public IReadOnlySet<KodeverkKey>? Picking { get; set; }
+
     private Texts T => Texts.For(Language);
 
     private KodeverkCodeLists? _listening;
@@ -106,7 +109,7 @@ internal sealed class KodeverkGroups : ComponentBase, IDisposable
 
     // Nothing fetched yet is the window before the fetch starts, and it reads as loading, not empty.
     private InlineCodes InlineCodesState(KodeverkKey key) =>
-        Lists.HasFailed(key) ? InlineCodes.Failed
+        Lists.HasFailed(key) || Lists.TooLargeOf(key) is not null ? InlineCodes.Failed
         : Lists.CodesOf(key) is not { } codes ? InlineCodes.Loading
         : codes.Count == 0 ? InlineCodes.None
         : InlineCodes.Codes;
@@ -197,7 +200,7 @@ internal sealed class KodeverkGroups : ComponentBase, IDisposable
             }
 
             // No button where the API serves no codes, nor where they are all inline already.
-            if (link.HasCodeValues && (inline is null or InlineCodes.Failed || showAll))
+            if (link.HasCodeValues && Picking?.Contains(key) != true && (inline is null or InlineCodes.Failed || showAll))
             {
                 builder.AddContent(seq + 12, CodesToggle(link, key, index, showAll));
             }
@@ -256,6 +259,16 @@ internal sealed class KodeverkGroups : ComponentBase, IDisposable
             builder.OpenElement(3, "p");
             builder.AddAttribute(4, "class", "infobox infobox--bg-yellow");
             builder.AddContent(5, failure is CodesFailure.Throttled ? T.RateLimitError : T.CodesError);
+            builder.CloseElement();
+
+            return;
+        }
+
+        if (Lists.TooLargeOf(key) is { } size)
+        {
+            builder.OpenElement(10, "p");
+            builder.AddAttribute(11, "class", "caption");
+            builder.AddContent(12, T.CodesTooMany(size));
             builder.CloseElement();
 
             return;

@@ -1,0 +1,2 @@
+category: Changed
+- **A code list of more than 200 codes is no longer fetched whole or drawn as a table.** «Vis koder» on such a list (ICD-10 is some 22 000 codes) says how many codes it has instead, after asking the API for one code of its first level; a shorter list is fetched and drawn as before. While an opened list row's code picker shows a code list, the Data tab leaves out that list's own «Vis koder». (Fhi.Metadata-9huq2.14)

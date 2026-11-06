@@ -3059,6 +3059,48 @@ table.munin-explorer-data-list tbody th {
   }
 }
 
+/* The code picker's tree (Fhi.Metadata-9huq2.14): a fixed indent per level, the arrow in its own column (blank for a
+   code with nothing under it), so boxes and codes line up by level; a long name is cut, the whole of it in the title. */
+.munin-explorer-codetree,
+.munin-explorer-codetree__group {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.munin-explorer-codetree__group {
+  padding-inline-start: 1.25rem;
+}
+.munin-explorer-codetree__row {
+  display: grid;
+  grid-template-columns: 1.25rem 1.5rem minmax(0, 1fr);
+  align-items: baseline;
+  cursor: pointer;
+}
+.munin-explorer-codetree__row > span:last-child {
+  display: flex;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.munin-explorer-codetree__toggle,
+.munin-explorer-codetree__box {
+  text-align: center;
+}
+.munin-explorer-codetree__code {
+  flex: 0 0 5.5em;
+  font-variant-numeric: tabular-nums;
+}
+.munin-explorer-codetree__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.munin-explorer-codetree__count {
+  margin-inline-start: auto;
+  white-space: nowrap;
+  color: var(--grey60);
+}
+
 .munin-explorer-codes__table th,
 .munin-explorer-codes__table td {
   padding: 6px 12px;

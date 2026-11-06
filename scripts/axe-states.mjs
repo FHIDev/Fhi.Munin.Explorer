@@ -955,16 +955,17 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
-  // The opened row's code picker on «Ønskede data», one code ticked so the chosen list shows (Fhi.Metadata-emsc0.3.7).
+  // The opened row's code picker on «Ønskede data», one code ticked in its tree so the summary shows (Fhi.Metadata-9huq2.14).
   'list-row-picker': async page => {
     await states['list-row-panel'](page);
 
     const panel = page.locator('[role=tabpanel]:not([hidden]) .munin-explorer-detail').first();
     await panel.getByRole('button', { name: 'Velg fra kodelisten', exact: true }).click();
     const picker = panel.getByRole('group', { name: 'Ønskede verdier', exact: true });
-    const first = picker.getByRole('checkbox').first();
+    const first = picker.getByRole('treeitem').first();
     await first.waitFor({ state: 'visible', timeout: findTimeout });
-    await first.check();
-    await picker.getByRole('button', { name: /^Fjern / }).first().waitFor({ state: 'visible', timeout: findTimeout });
+    await first.focus();
+    await first.press('Space');
+    await picker.getByRole('button', { name: /^Vis .* i treet$/ }).first().waitFor({ state: 'visible', timeout: findTimeout });
   },
 };

@@ -1,3 +1,4 @@
+using System.Text;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.Logging;
 using Microsoft.AspNetCore.Components;
@@ -8,33 +9,47 @@ using Microsoft.Extensions.Logging;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
-/// «Ønskede data» from a variable's code lists: one tab per list, a small list ticked whole, a large one searched and
-/// browsed as a tree, with a node chosen with everything under it and, in a health code system, a range.
+/// «Ønskede data» from a variable's code lists: one tab per list, each a tree whose parent boxes mean «with everything
+/// under it», searched first when the list is long, with a read-only summary of what is chosen under it.
 /// </summary>
 /// <remarks>The choices are a draft until <see cref="Save"/> answers: a refusal leaves them on screen to fix.</remarks>
-public sealed partial class DesiredCodePicker : ComponentBase
+public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 {
     /// <summary>The most choices the API stores for one item.</summary>
     internal const int MaxChoices = 200;
 
-    // Lists up to this many codes are ticked whole; longer ones are searched (the API's own threshold in the note).
+    // Lists up to this many codes open as a tree alone; longer ones open with the search field first.
     internal const int SmallList = 200;
 
-    private const int PageSize = 50;
+    // The API's largest page; a level is read page by page until it is whole or reaches LevelCap.
+    internal const int PageSize = 100;
+
+    // A flat list's one level is shown up to this many codes; search finds the rest.
+    internal const int LevelCap = 200;
+
+    internal const int SearchCap = 100;
+
+    internal static readonly TimeSpan SearchDelay = TimeSpan.FromMilliseconds(300);
+
+    private const string Top = "";
+    private const string TreeSection = "tree";
+    private const string HitsSection = "hits";
 
     private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
     private readonly List<Choice> _choices = [];
     private readonly Dictionary<KodeverkKey, ListState> _lists = [];
+    private readonly Dictionary<int, ElementReference> _tabButtons = [];
+    private readonly Dictionary<string, ElementReference> _rows = [];
     private int _tab;
     private string? _status;
     private string? _alert;
-    private readonly Dictionary<int, ElementReference> _tabButtons = [];
     private ElementReference _counter;
     private bool _focusTab;
     private bool _focusCounter;
+    private string? _focusRow;
     private bool _saving;
-    private string _rangeFrom = "";
-    private string _rangeTo = "";
+    private int? _union;
+    private int _unionRun;
 
     [Inject] private IMuninExplorerClient Client { get; set; } = null!;
 
@@ -86,82 +101,171 @@ public sealed partial class DesiredCodePicker : ComponentBase
     {
         foreach (var view in Chosen.Take(MaxChoices))
         {
-            _choices.Add(new Choice(view.ToChoice(), view.Name, view.ToName, view.Expired, view.Count, view.KodeverkName));
+            _choices.Add(AsBlock(view) ?? new Choice(
+                view.ToChoice(), view.Name, view.ToName, view.Expired, view.Count, view.KodeverkName, view.Ancestors));
         }
     }
 
-    protected override Task OnInitializedAsync() => Current is { } link ? OpenAsync(link) : Task.CompletedTask;
+    // A saved range that is exactly an ICD-10 block (E10..E14 under «E10-E14») is that block, ticked in the tree.
+    private static Choice? AsBlock(DesiredCodeView view)
+    {
+        var block = $"{view.Code}-{view.To}";
+        var at = view.Kind == DesiredCodeKinds.Range ? IndexOf(view.Ancestors, block) : -1;
+        if (at < 0)
+        {
+            return null;
+        }
+
+        var value = new DesiredCodeChoice(view.KodeverkType, view.KodeverkReference, DesiredCodeKinds.Node, block);
+        return new Choice(value, null, null, view.Expired, view.Count, view.KodeverkName, [.. view.Ancestors.Take(at)]);
+    }
+
+    private static int IndexOf(IReadOnlyList<string> list, string value)
+    {
+        for (var i = 0; i < list.Count; i++)
+        {
+            if (list[i] == value)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var recount = RecountAsync();
+        if (Current is { } link)
+        {
+            await OpenAsync(link);
+        }
+
+        await recount;
+    }
+
+    public void Dispose()
+    {
+        foreach (var state in _lists.Values)
+        {
+            state.Debounce?.Cancel();
+            state.Debounce?.Dispose();
+        }
+    }
 
     // ------------------------------------------------------------------------------------------------ the lists
 
+    private sealed class Branch
+    {
+        public List<KodeverkCodeHit> Codes { get; } = [];
+        public int Total { get; set; }
+        public bool Loaded { get; set; }
+        public bool Failed { get; set; }
+        public Task<Branch?>? Pending { get; set; }
+    }
+
     private sealed class ListState
     {
-        public bool Loading { get; set; }
-        public bool Paging { get; set; }
-        public bool SearchBusy { get; set; }
-        public int SearchRun { get; set; }
-        public bool Failed { get; set; }
-        public IReadOnlyList<KodeverkCode>? All { get; set; }
+        public int? CodeCount { get; set; }
+        public Dictionary<string, Branch> Branches { get; } = [];
+        public Dictionary<string, KodeverkCodeHit> Known { get; } = [];
+        public Dictionary<string, string> Parents { get; } = [];
+        public HashSet<string> TreeOpen { get; } = [];
+        public HashSet<string> HitsOpen { get; } = [];
+        public Dictionary<string, string> Active { get; } = [];
         public string Query { get; set; } = "";
         public string? Searched { get; set; }
         public List<KodeverkCodeHit> Hits { get; } = [];
         public int HitTotal { get; set; }
-        public Dictionary<string, List<KodeverkCodeHit>> Children { get; } = [];
-        public Dictionary<string, int> ChildTotals { get; } = [];
-        public HashSet<string> Expanded { get; } = [];
-        public bool IsLarge => All is null;
-    }
+        public int SearchRun { get; set; }
+        public CancellationTokenSource? Debounce { get; set; }
 
-    private const string Top = "";
+        public Branch? TopBranch => Branches.GetValueOrDefault(Top);
+
+        // The list's own size when the API says it, else the first level's: an older API sends no antallKoder.
+        public bool IsLarge => (CodeCount ?? TopBranch?.Total ?? 0) > SmallList;
+
+        public HashSet<string> OpenIn(string section) => section == HitsSection ? HitsOpen : TreeOpen;
+    }
 
     private ListState StateOf(KodeverkLink link) =>
         _lists.TryGetValue(KodeverkKey.Of(link), out var state) ? state : _lists[KodeverkKey.Of(link)] = new ListState();
 
-    private static bool IsHealth(KodeverkLink link) =>
-        string.Equals(link.KodeverkType, "HelsefagligKodeverk", StringComparison.OrdinalIgnoreCase);
+    private Task OpenAsync(KodeverkLink link) => BranchAsync(link, StateOf(link), Top);
 
-    // A health code system is searched from the start; any other list is fetched whole and searched only when long.
-    private async Task OpenAsync(KodeverkLink link)
+    // A level is read whole, page after page, up to LevelCap; one read at a time per level, which later askers share.
+    private Task<Branch?> BranchAsync(KodeverkLink link, ListState state, string node)
     {
-        var state = StateOf(link);
-        if (state.Loading || state.All is not null || state.Children.ContainsKey(Top))
+        if (state.Branches.TryGetValue(node, out var known) && (known.Loaded || known.Pending is not null))
         {
-            return;
+            return known.Loaded ? Task.FromResult<Branch?>(known) : known.Pending!;
         }
 
-        state.Loading = true;
-        state.Failed = false;
+        var branch = state.Branches[node] = new Branch();
+        var load = LoadBranchAsync(link, state, node, branch);
+
+        // A read that answered at once has already run its finally, so it is not pending.
+        branch.Pending = load.IsCompleted ? null : load;
+        return load;
+    }
+
+    private async Task<Branch?> LoadBranchAsync(KodeverkLink link, ListState state, string node, Branch branch)
+    {
         try
         {
-            if (!IsHealth(link)
-                && await Client.GetKodeverkCodesAsync(VariableId, link.KodeverkType, link.KodeverkReference) is { } codes
-                && codes.Codes.Count <= SmallList)
+            while (true)
             {
-                state.All = codes.Codes;
+                var page = await Client.GetKodeverkCodeChildrenAsync(
+                    VariableId, link.KodeverkType, link.KodeverkReference, node == Top ? null : node, branch.Codes.Count, PageSize);
+                var codes = page?.Codes ?? [];
+                branch.Codes.AddRange(codes.Where(hit => branch.Codes.All(seen => seen.Value != hit.Value)));
+                branch.Total = page?.Total ?? branch.Codes.Count;
+                if (node == Top && page is { CodeCount: > 0 })
+                {
+                    state.CodeCount = page.CodeCount;
+                }
+
+                if (codes.Count == 0 || branch.Codes.Count >= Math.Min(branch.Total, LevelCap))
+                {
+                    break;
+                }
             }
-            else
+
+            foreach (var hit in branch.Codes)
             {
-                await LoadChildrenAsync(link, state, Top, skip: 0);
+                state.Known[hit.Value] = hit;
+                if (node != Top)
+                {
+                    state.Parents[hit.Value] = node;
+                }
             }
+
+            branch.Loaded = true;
+            return branch;
         }
         catch (Exception ex)
         {
-            Log?.LogWarning(ex, "the code list {Type}/{Reference} of variable {VariableId} could not be read", link.KodeverkType, link.KodeverkReference, VariableId);
-            state.Failed = true;
+            Log?.LogWarning(ex, "the codes under {Node} in {Type}/{Reference} of variable {VariableId} could not be read",
+                node, link.KodeverkType, link.KodeverkReference, VariableId);
+            branch.Failed = true;
+            return null;
         }
         finally
         {
-            state.Loading = false;
+            branch.Pending = null;
         }
     }
 
-    private async Task LoadChildrenAsync(KodeverkLink link, ListState state, string node, int skip)
+    // A failed level is asked again from scratch: the press is the reader's retry.
+    private Task RetryAsync(KodeverkLink link, string node)
     {
-        var page = await Client.GetKodeverkCodeChildrenAsync(
-            VariableId, link.KodeverkType, link.KodeverkReference, node == Top ? null : node, skip, PageSize);
-        var list = state.Children.TryGetValue(node, out var known) && skip > 0 ? known : state.Children[node] = [];
-        list.AddRange((page?.Codes ?? []).Where(hit => list.All(seen => seen.Value != hit.Value)));
-        state.ChildTotals[node] = page?.Total ?? list.Count;
+        var state = StateOf(link);
+        if (state.Branches.TryGetValue(node, out var branch) && branch.Failed)
+        {
+            state.Branches.Remove(node);
+        }
+
+        return BranchAsync(link, state, node);
     }
 
     private async Task SelectTabAsync(int index)
@@ -193,74 +297,358 @@ public sealed partial class DesiredCodePicker : ComponentBase
         }
     }
 
-    // A new search takes the field's words; «Vis flere» pages the search already shown. Only the newest answer lands.
-    private async Task SearchAsync(KodeverkLink link, bool more = false)
+    // --------------------------------------------------------------------------------------------- the search
+
+    // The API refuses a query without a letter or a digit, so one is not sent.
+    private static bool Searchable(string query) => query.Length is > 0 and <= 100 && query.Any(char.IsLetterOrDigit);
+
+    // The wait runs beside the input's handler, not in it, so a keystroke that cancels it costs no second render.
+    private void QueryChanged(ChangeEventArgs e, KodeverkLink link)
     {
         var state = StateOf(link);
-        var query = more ? state.Searched ?? "" : state.Query.Trim();
-        if (query.Length == 0 || (more && state.SearchBusy))
-        {
-            if (!more)
-            {
-                // A cleared search also retires any answer still out, so it cannot bring the old hits back.
-                state.SearchRun++;
-                state.SearchBusy = false;
-                state.Searched = null;
-                state.Hits.Clear();
-            }
-
-            return;
-        }
-
-        var run = more ? state.SearchRun : ++state.SearchRun;
-        var skip = more ? state.Hits.Count : 0;
-        state.SearchBusy = true;
-        try
-        {
-            var page = await Client.SearchKodeverkCodesAsync(VariableId, link.KodeverkType, link.KodeverkReference, query, skip, PageSize);
-            if (run != state.SearchRun)
-            {
-                return;
-            }
-
-            if (!more)
-            {
-                state.Hits.Clear();
-            }
-
-            state.Hits.AddRange((page?.Codes ?? []).Where(hit => state.Hits.All(seen => seen.Value != hit.Value)));
-            state.HitTotal = page?.Total ?? state.Hits.Count;
-            state.Searched = query;
-            state.Failed = false;
-            Announce(T.PickerHits(state.HitTotal), error: false);
-        }
-        catch (Exception ex)
-        {
-            Log?.LogWarning(ex, "a code search in {Type}/{Reference} failed", link.KodeverkType, link.KodeverkReference);
-            Announce(T.PickerLoadError, error: true);
-        }
-        finally
-        {
-            // Only the newest search frees «Vis flere»: an older one finishing must not open it under a newer one.
-            if (run == state.SearchRun)
-            {
-                state.SearchBusy = false;
-            }
-        }
+        state.Query = e.Value?.ToString() ?? "";
+        state.Debounce?.Cancel();
+        state.Debounce?.Dispose();
+        state.Debounce = new CancellationTokenSource();
+        _ = SearchLaterAsync(link, state.Debounce.Token);
     }
 
-    private Task MoreHitsAsync(MouseEventArgs press, KodeverkLink link) =>
-        RowPress.WasSelectionStandingStill(press) ? Task.CompletedTask : SearchAsync(link, more: true);
+    private async Task SearchLaterAsync(KodeverkLink link, CancellationToken token)
+    {
+        try
+        {
+            // Off the renderer: a cancelled wait then posts nothing to it, and the search comes back through InvokeAsync.
+            await Task.Delay(SearchDelay, Clock, token).ConfigureAwait(false);
+            await InvokeAsync(async () =>
+            {
+                if (!token.IsCancellationRequested)
+                {
+                    await SearchAsync(link);
+                    StateHasChanged();
+                }
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer keystroke, Enter, or the picker closing took over.
+        }
+    }
 
     private async Task SearchKeyAsync(KeyboardEventArgs e, KodeverkLink link)
     {
         if (e.Key == "Enter")
         {
+            StateOf(link).Debounce?.Cancel();
             await SearchAsync(link);
         }
     }
 
-    private async Task ToggleNodeAsync(MouseEventArgs press, KodeverkLink link, string node)
+    // Only the newest answer lands: a cleared field also retires one still out, so it cannot bring old hits back.
+    private async Task SearchAsync(KodeverkLink link)
+    {
+        var state = StateOf(link);
+        var query = state.Query.Trim();
+        var run = ++state.SearchRun;
+        if (!Searchable(query))
+        {
+            state.Searched = null;
+            state.Hits.Clear();
+            state.HitsOpen.Clear();
+            return;
+        }
+
+        try
+        {
+            var page = await Client.SearchKodeverkCodesAsync(VariableId, link.KodeverkType, link.KodeverkReference, query, 0, SearchCap);
+            if (run != state.SearchRun)
+            {
+                return;
+            }
+
+            state.Hits.Clear();
+            state.HitsOpen.Clear();
+            state.Active.Remove(HitsSection);
+            state.Hits.AddRange((page?.Codes ?? []).DistinctBy(hit => hit.Value));
+            foreach (var hit in state.Hits)
+            {
+                state.Known.TryAdd(hit.Value, hit);
+            }
+
+            state.HitTotal = page?.Total ?? state.Hits.Count;
+            state.Searched = query;
+            Announce(T.PickerHits(state.HitTotal), error: false);
+        }
+        catch (Exception ex)
+        {
+            Log?.LogWarning(ex, "a code search in {Type}/{Reference} failed", link.KodeverkType, link.KodeverkReference);
+            if (run == state.SearchRun)
+            {
+                Announce(T.PickerLoadError, error: true);
+            }
+        }
+    }
+
+    // What the search shows, and never more: a hit already chosen, or under a chosen parent, is left as it is.
+    private async Task ChooseHitsAsync(KodeverkLink link)
+    {
+        var state = StateOf(link);
+        if (_saving)
+        {
+            return;
+        }
+
+        foreach (var hit in state.Hits.ToList())
+        {
+            if (TickOf(link, state, hit) == Tick.Checked)
+            {
+                continue;
+            }
+
+            if (!Choose(link, state, hit))
+            {
+                Announce(T.PickerFull(MaxChoices), error: true);
+                break;
+            }
+        }
+
+        await RecountAsync();
+    }
+
+    private async Task ClearHitsAsync(KodeverkLink link)
+    {
+        var state = StateOf(link);
+        if (_saving)
+        {
+            return;
+        }
+
+        foreach (var hit in state.Hits)
+        {
+            _choices.RemoveAll(c => SameList(c, link) && (IsDirect(c, hit.Value) || c.Ancestors.Contains(hit.Value)));
+        }
+
+        await RecountAsync();
+    }
+
+    // ----------------------------------------------------------------------------------------------- the tree
+
+    internal enum Tick
+    {
+        Empty,
+        Mixed,
+        Checked,
+    }
+
+    private readonly record struct Row(string Code, int Level, string? Parent, KodeverkCodeHit Hit, bool Open);
+
+    // The rows a reader can see in one section, in order: what the arrow keys walk.
+    private static List<Row> VisibleRows(ListState state, string section)
+    {
+        var rows = new List<Row>();
+        var roots = section == HitsSection ? state.Hits : state.TopBranch?.Codes ?? [];
+        Walk(roots, 1, null);
+        return rows;
+
+        void Walk(IReadOnlyList<KodeverkCodeHit> codes, int level, string? parent)
+        {
+            foreach (var hit in codes)
+            {
+                var open = hit.HasChildren && state.OpenIn(section).Contains(hit.Value);
+                rows.Add(new Row(hit.Value, level, parent, hit, open));
+                if (open && state.Branches.GetValueOrDefault(hit.Value) is { Loaded: true } branch)
+                {
+                    Walk(branch.Codes, level + 1, hit.Value);
+                }
+            }
+        }
+    }
+
+    // The row in the tab order: the last one moved to, or the first while that one is out of sight.
+    private static string? ActiveCode(ListState state, string section)
+    {
+        var rows = VisibleRows(state, section);
+        return state.Active.TryGetValue(section, out var code) && rows.Any(r => r.Code == code) ? code : rows.FirstOrDefault().Code;
+    }
+
+    private static string RowKey(string section, string code) => $"{section}:{code}";
+
+    // Codes carry dots and spaces; hex keeps the id valid and distinct per code.
+    private string RowId(string section, string code) => Id($"{section}-{Convert.ToHexString(Encoding.UTF8.GetBytes(code))}");
+
+    private static IReadOnlyList<string> AncestorsOf(ListState state, KodeverkCodeHit hit) =>
+        hit.Ancestors.Count > 0 ? hit.Ancestors : AncestorsOf(state, hit.Value);
+
+    private static IReadOnlyList<string> AncestorsOf(ListState state, string code)
+    {
+        if (state.Known.TryGetValue(code, out var hit) && hit.Ancestors.Count > 0)
+        {
+            return hit.Ancestors;
+        }
+
+        var path = new List<string>();
+        for (var at = code; state.Parents.TryGetValue(at, out var parent) && !path.Contains(parent); at = parent)
+        {
+            path.Insert(0, parent);
+        }
+
+        return path;
+    }
+
+    private static bool SameList(Choice choice, KodeverkLink link) =>
+        choice.Value.KodeverkType == link.KodeverkType && choice.Value.KodeverkReference == link.KodeverkReference;
+
+    private static bool IsDirect(Choice choice, string code) =>
+        choice.Value.Code == code && choice.Value.Kind is DesiredCodeKinds.Code or DesiredCodeKinds.Node;
+
+    private IEnumerable<Choice> ChoicesIn(KodeverkLink link) => _choices.Where(c => SameList(c, link));
+
+    // Ticked when it or a parent is chosen whole, half-ticked when something under it is chosen.
+    private Tick TickOf(KodeverkLink link, ListState state, KodeverkCodeHit hit)
+    {
+        var ancestors = AncestorsOf(state, hit);
+        var chosen = ChoicesIn(link).ToList();
+        if (chosen.Any(c => IsDirect(c, hit.Value) || (c.Value.Kind == DesiredCodeKinds.Node && ancestors.Contains(c.Value.Code))))
+        {
+            return Tick.Checked;
+        }
+
+        return chosen.Any(c => c.Ancestors.Contains(hit.Value)) ? Tick.Mixed : Tick.Empty;
+    }
+
+    // «k av n» beside a parent: n from the API, k from the choices under it, which the tree keeps from overlapping.
+    private string? OfCount(KodeverkLink link, KodeverkCodeHit hit, Tick tick)
+    {
+        if (hit.Count is not { } all || tick == Tick.Empty)
+        {
+            return null;
+        }
+
+        if (tick == Tick.Checked)
+        {
+            return T.PickerOf(all, all);
+        }
+
+        var under = ChoicesIn(link).Where(c => c.Ancestors.Contains(hit.Value)).ToList();
+        return under.All(c => c.Count is not null) ? T.PickerOf(under.Sum(c => c.Count!.Value), all) : null;
+    }
+
+    // A group (an ICD-10 chapter or block) is only ever chosen with everything under it; the API refuses it as a code.
+    private Choice ChoiceOf(KodeverkLink link, ListState state, KodeverkCodeHit hit, IReadOnlyList<string>? ancestors = null)
+    {
+        var node = hit.HasChildren || hit.IsGroup;
+        var value = new DesiredCodeChoice(link.KodeverkType, link.KodeverkReference, node ? DesiredCodeKinds.Node : DesiredCodeKinds.Code, hit.Value);
+        return new Choice(value, hit.Name, null, hit.Expired, node ? hit.Count : 1, ListNameOf(link), ancestors ?? AncestorsOf(state, hit));
+    }
+
+    // Chooses a code whole, taking in what was chosen under it; false when that would pass the ceiling.
+    private bool Choose(KodeverkLink link, ListState state, KodeverkCodeHit hit)
+    {
+        var under = ChoicesIn(link).Where(c => c.Ancestors.Contains(hit.Value)).ToList();
+        if (_choices.Count - under.Count + 1 > MaxChoices)
+        {
+            return false;
+        }
+
+        var at = under.Count > 0 ? _choices.IndexOf(under[0]) : _choices.Count;
+        _choices.RemoveAll(under.Contains);
+        _choices.Insert(Math.Min(at, _choices.Count), ChoiceOf(link, state, hit));
+        return true;
+    }
+
+    private async Task ToggleTickAsync(KodeverkLink link, KodeverkCodeHit hit)
+    {
+        // The draft holds still while it is being saved, so what the answer is about is what is on screen.
+        if (_saving)
+        {
+            return;
+        }
+
+        var state = StateOf(link);
+        if (TickOf(link, state, hit) != Tick.Checked)
+        {
+            if (!Choose(link, state, hit))
+            {
+                Announce(T.PickerFull(MaxChoices), error: true);
+                return;
+            }
+        }
+        else if (ChoicesIn(link).FirstOrDefault(c => IsDirect(c, hit.Value)) is { } direct)
+        {
+            _choices.Remove(direct);
+        }
+        else if (!await UntickUnderAsync(link, state, hit))
+        {
+            return;
+        }
+
+        Announce(null, error: false);
+        await RecountAsync();
+    }
+
+    // Unticking a code under a parent chosen whole: the parent becomes its other children, level by level down to the
+    // code, so the rest stays chosen. Every level on the way is read first; a failed read changes nothing.
+    private async Task<bool> UntickUnderAsync(KodeverkLink link, ListState state, KodeverkCodeHit hit)
+    {
+        var ancestors = AncestorsOf(state, hit);
+        var whole = ChoicesIn(link).FirstOrDefault(c => c.Value.Kind == DesiredCodeKinds.Node && ancestors.Contains(c.Value.Code));
+        if (whole is null)
+        {
+            return false;
+        }
+
+        var from = IndexOf(ancestors, whole.Value.Code);
+        var added = new List<Choice>();
+        for (var i = from; i < ancestors.Count; i++)
+        {
+            var next = i + 1 < ancestors.Count ? ancestors[i + 1] : hit.Value;
+            var branch = await BranchAsync(link, state, ancestors[i]);
+            if (branch is null || branch.Codes.Count < branch.Total)
+            {
+                Announce(T.PickerLoadError, error: true);
+                return false;
+            }
+
+            IReadOnlyList<string> path = [.. ancestors.Take(i + 1)];
+            added.AddRange(branch.Codes.Where(c => c.Value != next).Select(c => ChoiceOf(link, state, c, c.Ancestors.Count > 0 ? c.Ancestors : path)));
+        }
+
+        // Checked again after the reads: a save, or another press, may have come in meanwhile.
+        var at = _choices.IndexOf(whole);
+        if (_saving || at < 0)
+        {
+            return false;
+        }
+
+        if (_choices.Count - 1 + added.Count > MaxChoices)
+        {
+            Announce(T.PickerFull(MaxChoices), error: true);
+            return false;
+        }
+
+        _choices.RemoveAt(at);
+        _choices.InsertRange(at, added);
+        return true;
+    }
+
+    private async Task ToggleOpenAsync(KodeverkLink link, string section, KodeverkCodeHit hit)
+    {
+        var state = StateOf(link);
+        var open = state.OpenIn(section);
+        if (!hit.HasChildren)
+        {
+            return;
+        }
+
+        if (!open.Add(hit.Value))
+        {
+            open.Remove(hit.Value);
+            return;
+        }
+
+        await BranchAsync(link, state, hit.Value);
+    }
+
+    private async Task RowPressAsync(MouseEventArgs press, KodeverkLink link, string section, KodeverkCodeHit hit)
     {
         // The package's standing-gesture clause: a double-click's second click and a shift-click are not presses.
         if (RowPress.WasSelectionStandingStill(press))
@@ -268,57 +656,121 @@ public sealed partial class DesiredCodePicker : ComponentBase
             return;
         }
 
-        var state = StateOf(link);
-        if (!state.Expanded.Add(node))
+        StateOf(link).Active[section] = hit.Value;
+        await ToggleTickAsync(link, hit);
+    }
+
+    private async Task TogglePressAsync(MouseEventArgs press, KodeverkLink link, string section, KodeverkCodeHit hit)
+    {
+        if (RowPress.WasSelectionStandingStill(press))
         {
-            state.Expanded.Remove(node);
             return;
         }
 
-        if (!state.Children.ContainsKey(node))
+        StateOf(link).Active[section] = hit.Value;
+        await ToggleOpenAsync(link, section, hit);
+    }
+
+    // The APG tree: ↑ ↓ move, → opens or goes to the first child, ← closes or goes to the parent, Home and End jump,
+    // Space ticks. Focus moves with the tab stop (roving tabindex).
+    private async Task TreeKeyAsync(KeyboardEventArgs e, KodeverkLink link, string section)
+    {
+        var state = StateOf(link);
+        var rows = VisibleRows(state, section);
+        if (rows.Count == 0 || e.AltKey || e.CtrlKey || e.MetaKey)
         {
-            try
-            {
-                await LoadChildrenAsync(link, state, node, skip: 0);
-            }
-            catch (Exception ex)
-            {
-                Log?.LogWarning(ex, "the codes under {Node} could not be read", node);
-                state.Expanded.Remove(node);
-                Announce(T.PickerLoadError, error: true);
-            }
+            return;
+        }
+
+        var active = ActiveCode(state, section);
+        var at = Math.Max(0, rows.FindIndex(r => r.Code == active));
+        var row = rows[at];
+        int? next = null;
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                next = Math.Min(at + 1, rows.Count - 1);
+                break;
+            case "ArrowUp":
+                next = Math.Max(at - 1, 0);
+                break;
+            case "Home":
+                next = 0;
+                break;
+            case "End":
+                next = rows.Count - 1;
+                break;
+            case "ArrowRight" when row.Hit.HasChildren && !row.Open:
+                await ToggleOpenAsync(link, section, row.Hit);
+                break;
+            case "ArrowRight" when row.Open && at + 1 < rows.Count && rows[at + 1].Parent == row.Code:
+                next = at + 1;
+                break;
+            case "ArrowLeft" when row.Open:
+                await ToggleOpenAsync(link, section, row.Hit);
+                break;
+            case "ArrowLeft" when row.Parent is { } parent:
+                next = rows.FindIndex(r => r.Code == parent);
+                break;
+            case " " or "Spacebar":
+                await ToggleTickAsync(link, row.Hit);
+                break;
+        }
+
+        if (next is { } to && to >= 0)
+        {
+            state.Active[section] = rows[to].Code;
+            _focusRow = RowKey(section, rows[to].Code);
         }
     }
 
-    private async Task MoreChildrenAsync(MouseEventArgs press, KodeverkLink link, string node)
+    // The summary's way into the tree: its tab, every level above the code opened, focus on its row.
+    private async Task RevealAsync(Choice choice)
     {
-        var state = StateOf(link);
-        if (RowPress.WasSelectionStandingStill(press) || state.Paging)
+        var index = Tabs.ToList().FindIndex(link => SameList(choice, link));
+        if (index < 0)
         {
             return;
         }
 
-        state.Paging = true;
-        try
+        if (index != Math.Clamp(_tab, 0, Tabs.Count - 1))
         {
-            await LoadChildrenAsync(link, state, node, state.Children.GetValueOrDefault(node)?.Count ?? 0);
+            await SelectTabAsync(index);
         }
-        catch (Exception ex)
+
+        var link = Tabs[index];
+        var state = StateOf(link);
+        await OpenAsync(link);
+        var ancestors = choice.Ancestors.Count > 0 ? choice.Ancestors : AncestorsOf(state, choice.Value.Code);
+        foreach (var ancestor in ancestors)
         {
-            Log?.LogWarning(ex, "more codes under {Node} could not be read", node);
-            Announce(T.PickerLoadError, error: true);
+            if (await BranchAsync(link, state, ancestor) is null)
+            {
+                Announce(T.PickerLoadError, error: true);
+                return;
+            }
+
+            state.TreeOpen.Add(ancestor);
         }
-        finally
+
+        if (!VisibleRows(state, TreeSection).Any(r => r.Code == choice.Value.Code))
         {
-            state.Paging = false;
+            Announce(T.PickerNotInTree(choice.Value.Code), error: true);
+            return;
         }
+
+        state.Active[TreeSection] = choice.Value.Code;
+        _focusRow = RowKey(TreeSection, choice.Value.Code);
     }
 
     // ---------------------------------------------------------------------------------------------- the choices
 
-    /// <summary>A draft choice with what is known about it for display: its term(s), whether expired, its count.</summary>
-    internal sealed record Choice(DesiredCodeChoice Value, string? Name, string? ToName, bool Expired, int? Count, string? ListName = null)
+    /// <summary>A draft choice with what is known about it for display: its term(s), whether expired, its count, what is above it.</summary>
+    internal sealed record Choice(
+        DesiredCodeChoice Value, string? Name, string? ToName, bool Expired, int? Count, string? ListName = null, IReadOnlyList<string>? Above = null)
     {
+        public IReadOnlyList<string> Ancestors => Above ?? [];
+
         public DesiredCodeView ToView() => new()
         {
             KodeverkType = Value.KodeverkType,
@@ -331,131 +783,20 @@ public sealed partial class DesiredCodePicker : ComponentBase
             ToName = ToName,
             Expired = Expired,
             Count = Count,
+            Ancestors = Ancestors,
         };
     }
 
     internal IReadOnlyList<Choice> Choices => _choices;
 
-    private Choice? Find(KodeverkLink link, string kind, string code) =>
-        _choices.FirstOrDefault(c => c.Value.Kind == kind && c.Value.Code == code
-            && c.Value.KodeverkType == link.KodeverkType && c.Value.KodeverkReference == link.KodeverkReference);
-
-    private bool IsChosen(KodeverkLink link, string kind, string code) => Find(link, kind, code) is not null;
-
-    private bool Expired(DateTimeOffset? validTo) => validTo is { } end && end < Clock.GetUtcNow();
-
-    private int? ExpiredYear(DateTimeOffset? validTo) => Expired(validTo) ? validTo!.Value.Year : null;
-
-    // A code and the same code with everything under it are one choice or the other, never both.
-    private async Task ToggleAsync(KodeverkLink link, string kind, string code, string name, DateTimeOffset? validTo)
-    {
-        // The draft holds still while it is being saved, so what the answer is about is what is on screen.
-        if (_saving)
-        {
-            return;
-        }
-
-        if (Find(link, kind, code) is { } chosen)
-        {
-            _choices.Remove(chosen);
-            return;
-        }
-
-        var other = Find(link, kind == DesiredCodeKinds.Node ? DesiredCodeKinds.Code : DesiredCodeKinds.Node, code);
-        if (other is null && Full)
-        {
-            return;
-        }
-
-        var value = new DesiredCodeChoice(link.KodeverkType, link.KodeverkReference, kind, code);
-        var choice = new Choice(value, name, null, Expired(validTo), kind == DesiredCodeKinds.Code ? 1 : null, ListNameOf(link));
-        if (other is not null)
-        {
-            _choices[_choices.IndexOf(other)] = choice;
-        }
-        else
-        {
-            _choices.Add(choice);
-        }
-
-        if (kind == DesiredCodeKinds.Node)
-        {
-            await CountAsync(choice);
-        }
-    }
-
-    private async Task CountAsync(Choice choice)
-    {
-        try
-        {
-            var count = await Client.CountKodeverkCodesAsync(VariableId, choice.Value);
-            var at = _choices.IndexOf(choice);
-            if (at >= 0)
-            {
-                _choices[at] = choice with { Count = count };
-            }
-        }
-        catch (Exception ex)
-        {
-            // The count is a help, not a condition: the choice stands without it.
-            Log?.LogWarning(ex, "the count of {Code} could not be read", choice.Value.Code);
-        }
-    }
-
-    private async Task AddRangeAsync(KodeverkLink link)
-    {
-        var from = _rangeFrom.Trim();
-        var to = _rangeTo.Trim();
-        if (from.Length == 0 || to.Length == 0 || Full || _saving)
-        {
-            return;
-        }
-
-        var value = new DesiredCodeChoice(link.KodeverkType, link.KodeverkReference, DesiredCodeKinds.Range, from, to);
-        if (_choices.Any(c => c.Value == value))
-        {
-            return;
-        }
-
-        try
-        {
-            // Asked first: a range the list does not have is refused here, not at «Lagre».
-            var count = await Client.CountKodeverkCodesAsync(VariableId, value);
-
-            // Checked again after the wait: a second press, or a save, may have come in meanwhile.
-            if (_saving || _choices.Any(c => c.Value == value))
-            {
-                return;
-            }
-
-            if (Full)
-            {
-                Announce(T.PickerFull(MaxChoices), error: true);
-                return;
-            }
-
-            if (count is null)
-            {
-                Announce(T.PickerRangeUnknown, error: true);
-                return;
-            }
-
-            _choices.Add(new Choice(value, null, null, false, count.Value, ListNameOf(link)));
-            _rangeFrom = _rangeTo = "";
-            Announce(null, error: false);
-        }
-        catch (Exception ex)
-        {
-            Log?.LogWarning(ex, "a range in {Type}/{Reference} of variable {VariableId} could not be counted", link.KodeverkType, link.KodeverkReference, VariableId);
-            Announce(T.PickerRangeUnknown, error: true);
-        }
-    }
+    // A range the tree has no block for: kept, and the one choice the summary can remove.
+    private static bool IsOlderRange(Choice choice) => choice.Value.Kind == DesiredCodeKinds.Range;
 
     // The list's name as the variable page gives it, so a saved choice keeps the label the summary shows.
     private static string? ListNameOf(KodeverkLink link) => string.IsNullOrWhiteSpace(link.DisplayName) ? null : link.DisplayName;
 
-    // The removed item took its button with it, so focus goes to the count, which says what is left.
-    private void Remove(Choice choice)
+    // The removed line took its button with it, so focus goes to the count, which says what is left.
+    private async Task RemoveAsync(Choice choice)
     {
         if (_saving)
         {
@@ -464,6 +805,7 @@ public sealed partial class DesiredCodePicker : ComponentBase
 
         _choices.Remove(choice);
         _focusCounter = true;
+        await RecountAsync();
     }
 
     /// <summary>A choice as words: the code and its term, «med alt under», or a range.</summary>
@@ -474,7 +816,43 @@ public sealed partial class DesiredCodePicker : ComponentBase
         _ => string.IsNullOrWhiteSpace(name) ? value.Code : $"{value.Code} {name}",
     };
 
-    private int? TotalCodes => _choices.All(c => c.Count is not null) ? _choices.Sum(c => c.Count!.Value) : null;
+    // The union of the choices per code list, from the API: E11 inside a chosen E10-E14 counts once. Only the newest
+    // answer lands; a list it cannot count leaves the total unknown rather than short.
+    private async Task RecountAsync()
+    {
+        var run = ++_unionRun;
+        if (_choices.Count == 0)
+        {
+            _union = 0;
+            return;
+        }
+
+        int? total = 0;
+        try
+        {
+            foreach (var list in _choices.GroupBy(c => (c.Value.KodeverkType, c.Value.KodeverkReference)))
+            {
+                if (await Client.CountKodeverkCodesUnionAsync(VariableId, [.. list.Select(c => c.Value)]) is not { } count)
+                {
+                    total = null;
+                    break;
+                }
+
+                total += count;
+            }
+        }
+        catch (Exception ex)
+        {
+            // The count is a help, not a condition: the choices stand without it.
+            Log?.LogWarning(ex, "the chosen codes of variable {VariableId} could not be counted", VariableId);
+            total = null;
+        }
+
+        if (run == _unionRun)
+        {
+            _union = total;
+        }
+    }
 
     // ------------------------------------------------------------------------------------------------- saving
 
@@ -493,6 +871,12 @@ public sealed partial class DesiredCodePicker : ComponentBase
             {
                 _focusTab = false;
                 await tab.FocusAsync();
+            }
+
+            if (_focusRow is { } key && _rows.TryGetValue(key, out var row))
+            {
+                _focusRow = null;
+                await row.FocusAsync();
             }
 
             if (_focusCounter)
