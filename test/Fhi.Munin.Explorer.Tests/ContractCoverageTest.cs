@@ -352,11 +352,12 @@ public class ContractCoverageTest
     [Fact]
     public void KodeverkCodePage_WhenReadFromTheDocumentedResponse_ThenEveryFieldIsCovered()
     {
-        // Inline: the API's ExplorerKodeverkCodePageDto and ExplorerKodeverkCodeCountDto (Munin #7095).
+        // Inline: the API's ExplorerKodeverkCodePageDto and ExplorerKodeverkCodeCountDto (Munin #7095, #7134).
         Assert.NotNull(JsonSerializer.Deserialize<KodeverkCodePage>(
             """
-            {"kodeverkType":"HelsefagligKodeverk","kodeverkReference":"ICD-10","totalt":1,"skip":0,"take":50,
-             "koder":[{"verdi":"C34","navn":"Lunge","gyldigFra":null,"gyldigTil":null,"harUnderkoder":true}]}
+            {"kodeverkType":"HelsefagligKodeverk","kodeverkReference":"ICD-10","totalt":1,"antallKoder":22141,"skip":0,"take":50,
+             "koder":[{"verdi":"C34","navn":"Lunge","gyldigFra":null,"gyldigTil":null,"harUnderkoder":true,
+                       "antall":12,"foreldre":["II","C30-C39"],"gruppe":false,"utgatt":false}]}
             """, Strict));
         Assert.Equal(3, JsonSerializer.Deserialize<KodeverkCodeCount>("""{"antall":3}""", Strict)!.Count);
     }
@@ -364,12 +365,12 @@ public class ContractCoverageTest
     [Fact]
     public void DesiredDataCodes_WhenReadFromTheDocumentedResponse_ThenEveryFieldIsCovered()
     {
-        // Inline: the API's DesiredCodeView on a list item (Munin #7097).
+        // Inline: the API's DesiredCodeView on a list item (Munin #7097, #7134).
         var item = JsonSerializer.Deserialize<VariableListItem>(
             """
             {"variabelId":"bc8a6515-af36-44d0-aa10-b498813327b4","desiredDataCodes":[
               {"kodeverkType":"HelsefagligKodeverk","kodeverkReference":"ICD-10","kind":"range","kode":"C30","til":"C39",
-               "navn":"Nese","tilNavn":"Annet","utgatt":true,"antall":40}]}
+               "navn":"Nese","tilNavn":"Annet","utgatt":true,"antall":40,"kodeverkNavn":"ICD-10","foreldre":["II","C30-C39"]}]}
             """, Strict);
         Assert.True(Assert.Single(item!.DesiredDataCodes).Expired);
     }

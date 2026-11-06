@@ -1,0 +1,2 @@
+category: Added
+- **`IMuninExplorerClient.CountKodeverkCodesUnionAsync` counts several code choices together, each code once.** It calls `GET …/codes/count-union` with 1 to 200 choices from one code list, and answers null when a choice is not in the list. `KodeverkCodePage` gains `CodeCount` (`antallKoder`), `KodeverkCodeHit` gains `Count`, `Ancestors`, `IsGroup` and `Expired`, and `DesiredCodeView` gains `Ancestors`. The interface member has a default that throws `NotSupportedException`, so an implementation written before it still builds. (Fhi.Metadata-9huq2.14)

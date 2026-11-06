@@ -357,6 +357,23 @@ public interface IMuninExplorerClient
             $"This {nameof(IMuninExplorerClient)} does not implement {nameof(CountKodeverkCodesAsync)}. " +
             "Consume MuninExplorerClient, or implement the member.");
 
+    /// <summary>
+    /// How many codes several choices from one code list cover together, each code counted once: E11 with everything
+    /// under it and the block E10-E14 count E10-E14's codes. Null when the variable, the link or a choice is unknown.
+    /// </summary>
+    /// <remarks>
+    /// Every choice must name the same type and reference, the link asked, and there must be 1 to 200 of them; others are
+    /// refused with an <see cref="ArgumentException"/> before any request is made. The default refuses, as
+    /// <see cref="SearchKodeverkCodesAsync"/>'s does.
+    /// </remarks>
+    Task<int?> CountKodeverkCodesUnionAsync(
+        Guid variableId,
+        IReadOnlyList<DesiredCodeChoice> choices,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"This {nameof(IMuninExplorerClient)} does not implement {nameof(CountKodeverkCodesUnionAsync)}. " +
+            "Consume MuninExplorerClient, or implement the member.");
+
     // ------------------------------------------------------------------ the user's own variable lists
     //
     // Everything above is anonymous and read-only. Everything below is not: the whole of
