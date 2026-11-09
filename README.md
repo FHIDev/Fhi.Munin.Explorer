@@ -976,6 +976,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-dataitem-main` | handle |
   | `munin-explorer-dataitem-main__column` | handle |
   | `munin-explorer-dataitem-main__column__text` | handle |
+  | `munin-explorer-dataitem-main__desiredCodes` | handle |
   | `munin-explorer-dataitem-main__desiredData` | handle |
   | `munin-explorer-dataitem-main__expand-icon` | handle |
   | `munin-explorer-dataitem-main__name` | handle |

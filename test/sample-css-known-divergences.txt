@@ -657,3 +657,7 @@ unstyled-name||.munin-explorer-codetree__toggle|
 # Fhi.Metadata-9huq2.16, with the code tree's rules; these lines go when helsedata pins that Stiler.
 missing-selector||.munin-explorer-kodeverk__reference|
 missing-selector||.munin-explorer-lead|
+# The list row's «Ønskede data» cell wraps the chosen codes in their own box (Fhi.Metadata-9huq2.19); Stiler's grid rules for
+# it, and the textarea's column 2, come with Fhi.Metadata-9huq2.16. These lines go when helsedata pins that Stiler.
+unstyled-name||.munin-explorer-dataitem-main__desiredCodes|
+invented-selector|@media (width < 1280px)|.munin-explorer-list-scroll table.munin-explorer-data-list .munin-explorer-dataitem-main__desiredData > textarea|grid-column

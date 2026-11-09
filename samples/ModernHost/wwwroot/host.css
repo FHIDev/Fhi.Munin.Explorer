@@ -1786,6 +1786,11 @@ table.munin-explorer-data-list > tbody > :where(tr) > th[scope=row] > button > .
   width: 28%;
 }
 
+/* The chosen codes above the note in the list's cell (Fhi.Metadata-9huq2.19). */
+table.munin-explorer-data-list .munin-explorer-dataitem-main__desiredData > .munin-explorer-dataitem-main__desiredCodes {
+  margin-bottom: 4px;
+}
+
 /* Stiler's own: one line to start, growing to four, then scrolling. Without field-sizing it stays one line. */
 table.munin-explorer-data-list .munin-explorer-dataitem-main__desiredData > textarea {
   field-sizing: content;
@@ -5749,6 +5754,13 @@ table.munin-explorer-data-list tbody th {
   .munin-explorer-list-scroll table.munin-explorer-data-list > :where(thead, tbody) > :where(tr) > td:not([data-label]) > .munin-explorer-detail {
     max-width: none;
     position: static;
+  }
+  /* The chosen codes span the cell under the data-label, and the note keeps the value column. */
+  .munin-explorer-list-scroll table.munin-explorer-data-list .munin-explorer-dataitem-main__desiredData > .munin-explorer-dataitem-main__desiredCodes {
+    grid-column: 1 / -1;
+  }
+  .munin-explorer-list-scroll table.munin-explorer-data-list .munin-explorer-dataitem-main__desiredData > textarea {
+    grid-column: 2;
   }
 }
 

@@ -350,12 +350,16 @@ else if (State?.IsAuthenticated == true)
                                        place and not the other without anything failing. *@
                                     @Cells(item)
 
-                                    @* From the draft, so a refused text stays in the field. The spans name the field, which the
-                                       column header cannot (WCAG 4.1.2); the textarea is the only in-flow child, as Stiler's
-                                       narrow two-column grid puts any second block under the data-label. *@
+                                    @* From the draft, so a refused text stays in the field. The spans name the field (WCAG 4.1.2).
+                                       In Stiler's narrow two-column grid the codes' box spans the cell and the textarea keeps
+                                       column 2; it stays a direct child, which Stiler sizes by «td > textarea». *@
                                     <td class="munin-explorer-dataitem-main__desiredData" data-label="@T.FieldDesiredData">
                                         <span class="screenreader-only" id="@DesiredDataLabelId(item)">@T.FieldDesiredData</span>
                                         <span class="screenreader-only" id="@DesiredDataNoteLabelId(item)">@T.DesiredDataNote</span>
+                                        @if (CodesOf(item).Count > 0)
+                                        {
+                                            <div class="munin-explorer-dataitem-main__desiredCodes">@DesiredCodeSummary.For(T, CodesOf(item), "no")</div>
+                                        }
                                         @* One line to start, so the row stays low; Stiler lets it grow to four, then scroll. *@
                                         <textarea class="textarea__field"
                                                   rows="1"

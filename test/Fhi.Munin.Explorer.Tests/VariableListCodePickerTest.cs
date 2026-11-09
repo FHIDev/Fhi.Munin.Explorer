@@ -172,18 +172,27 @@ public class VariableListCodePickerTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Row_WhenTheItemHasChosenCodes_ThenTheOpenedRowNamesThemAndTheCellKeepsOnlyItsTextarea()
+    public void Row_WhenTheItemHasChosenCodes_ThenTheCellShowsThemInTheirOwnBoxBeforeItsTextarea()
     {
         var item = Item() with { DesiredDataCodes = [new DesiredCodeView { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", KodeverkName = "Sivilstand", Kind = "kode", Code = "2", Name = "Gift" }] };
         var cut = OpenedRow(new ListClient(item, Sivilstand));
 
-        // The textarea is the cell's only in-flow child: Stiler sizes it by «td > textarea», and below 1280px
-        // the cell is a two-column grid whose first column is the data-label, so a second block would push it under.
+        // Stiler's narrow grid spans the box over the cell and keeps the textarea, still a direct child, in column 2.
+        var cell = cut.Find("td.munin-explorer-dataitem-main__desiredData");
+        Assert.Equal(["SPAN", "SPAN", "DIV", "TEXTAREA"], cell.Children.Select(c => c.TagName));
+        Assert.All(cell.Children.Take(2), span => Assert.Contains("screenreader-only", span.ClassList));
+        Assert.Contains("munin-explorer-dataitem-main__desiredCodes", cell.Children[2].ClassList);
+        Assert.Contains("Sivilstand: 2 Gift", System.Text.RegularExpressions.Regex.Replace(cell.Children[2].TextContent, @"\s+", " "));
+        Assert.Contains("Sivilstand: 2 Gift", System.Text.RegularExpressions.Regex.Replace(cut.Find("[id^='munin-explorer-list-panel-'][role=region]").TextContent, @"\s+", " "));
+    }
+
+    [Fact]
+    public void Row_WhenTheItemHasNoChosenCodes_ThenTheCellIsItsTextareaAlone()
+    {
+        var cut = OpenedRow(new ListClient(Item(), Sivilstand));
+
         var cell = cut.Find("td.munin-explorer-dataitem-main__desiredData");
         Assert.Equal(["SPAN", "SPAN", "TEXTAREA"], cell.Children.Select(c => c.TagName));
-        Assert.All(cell.Children.Take(2), span => Assert.Contains("screenreader-only", span.ClassList));
-        Assert.DoesNotContain("Gift", cell.TextContent);
-        Assert.Contains("Sivilstand: 2 Gift", System.Text.RegularExpressions.Regex.Replace(cut.Find("[id^='munin-explorer-list-panel-'][role=region]").TextContent, @"\s+", " "));
     }
 
     [Theory]
