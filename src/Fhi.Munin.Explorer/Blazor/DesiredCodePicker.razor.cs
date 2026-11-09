@@ -156,21 +156,24 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
                 continue;
             }
 
+            // Every read comes before the draft is looked at: the reader may change it while one is out.
+            var name = count == range.Count ? await BlockNameAsync(range, block) : null;
             var at = _choices.IndexOf(range);
-            if (count is null || count != range.Count || at < 0 || _saving)
+            if (count is null || count != range.Count || at < 0 || _saving || _disposed)
             {
                 continue;
             }
 
-            // Only a Node pick of the block is the block; a legacy Code pick of it is not, and the API refuses it.
+            // Only a Node pick of the block is the block. A legacy Code pick of it, which the API refuses, goes with the range.
+            _choices.RemoveAll(c => SameList(c, range) && c.Value.Kind == DesiredCodeKinds.Code && c.Value.Code == block);
+            at = _choices.IndexOf(range);
             if (_choices.Any(c => SameList(c, range) && c.Value.Kind == DesiredCodeKinds.Node && c.Value.Code == block))
             {
                 _choices.RemoveAt(at);
             }
             else
             {
-                _choices[at] = new Choice(value, await BlockNameAsync(range, block), null, false, count, range.ListName,
-                    [.. range.Ancestors.Take(IndexOf(range.Ancestors, block))]);
+                _choices[at] = new Choice(value, name, null, false, count, range.ListName, [.. range.Ancestors.Take(IndexOf(range.Ancestors, block))]);
             }
         }
     }
@@ -623,7 +626,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     private IEnumerable<Choice> ChoicesIn(KodeverkLink link) => _choices.Where(c => SameList(c, link));
 
     // A choice stands to a code as itself (IsDirect), over it (a whole parent: WholeOver) or under it (IsUnder). A Code
-    // pick of a code with subcodes half-ticks it, as an older range does the codes above its first code. Ticking removes
+    // pick of a code with subcodes (or of a group) half-ticks it, as an older range does the codes above its first code. Ticking removes
     // what is under and adds itself; Untick removes itself and what is under it, and splits a whole parent over it.
     private Tick TickOf(KodeverkLink link, ListState state, KodeverkCodeHit hit)
     {
@@ -639,7 +642,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
             : Tick.Empty;
     }
 
-    // A code with subcodes chosen as just itself is some of what its box stands for, so the box is half-ticked.
+    // A code with subcodes, or a group, chosen as just itself is some of what its box stands for, so the box is half-ticked.
     private static bool IsOwnCodeOnly(Choice choice, KodeverkCodeHit hit) =>
         (hit.HasChildren || hit.IsGroup) && choice.Value.Kind == DesiredCodeKinds.Code && choice.Value.Code == hit.Value;
 
@@ -785,7 +788,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
                 if (read.Codes.Count >= read.Total)
                 {
                     _notInTree.Add(whole.Value);
-                    Announce(T.PickerInvalid(Describe(T, whole.Value, whole.Name, whole.ToName)), error: true);
+                    Announce(T.PickerLeftList(Describe(T, whole.Value, whole.Name, whole.ToName)), error: true);
                     return false;
                 }
 
