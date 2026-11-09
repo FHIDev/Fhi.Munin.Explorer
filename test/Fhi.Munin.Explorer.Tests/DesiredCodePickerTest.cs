@@ -72,6 +72,7 @@ public class DesiredCodePickerTest : ExplorerTestContext
         public Dictionary<string, TaskCompletionSource> Held { get; } = [];
         public Dictionary<string, KodeverkCodeHit[]>? Tree { get; init; }
         public Func<string, int, int, KodeverkCodePage>? Search { get; init; }
+        public TaskCompletionSource? SearchHeld { get; set; }
         public bool SearchFails { get; set; }
         public Func<IReadOnlyList<DesiredCodeChoice>, Task<int?>>? Union { get; init; }
         public Func<DesiredCodeChoice, Task<int?>>? Count { get; init; }
@@ -124,11 +125,14 @@ public class DesiredCodePickerTest : ExplorerTestContext
                 return Task.FromException<KodeverkCodePage?>(new HttpRequestException("down"));
             }
 
-            return Task.FromResult<KodeverkCodePage?>(Search?.Invoke(query, skip, take) ?? new KodeverkCodePage
+            var page = Search?.Invoke(query, skip, take) ?? new KodeverkCodePage
             {
                 Total = 3,
                 Codes = [Icd10Tree["IV"][0], Icd10Tree["E10-E14"][0], Icd10Tree["E10-E14"][1]],
-            });
+            };
+            return SearchHeld is { } held
+                ? held.Task.ContinueWith(_ => (KodeverkCodePage?)page, TaskScheduler.Default)
+                : Task.FromResult<KodeverkCodePage?>(page);
         }
 
         // A block counts what the tree says is under it; E10-E14's ten codes in small.
@@ -996,7 +1000,7 @@ public class DesiredCodePickerTest : ExplorerTestContext
 
         TickHit(cut, "C005");
 
-        cut.WaitForAssertion(() => Assert.Contains("BIG har for mange koder til at én kan tas ut her. Fjern CH og velg", cut.Find("[role=alert]").TextContent));
+        cut.WaitForAssertion(() => Assert.Contains("BIG har for mange koder til at én kan tas ut her. Fjern haken for CH og velg", cut.Find("[role=alert]").TextContent));
     }
 
     [Fact]
@@ -1089,7 +1093,56 @@ public class DesiredCodePickerTest : ExplorerTestContext
         Assert.Equal(["E10", "E11", "E14"], Assert.Single(saves.Calls).Select(v => v.Code));
     }
 
+    [Fact]
+    public void Untick_WhenTheWholeParentIsOnATopLevelCutAt200_ThenTheTextNamesTheListAsTheLevel()
+    {
+        var top = Enumerable.Range(0, 300).Select(i => Hit($"T{i:000}", "Kode")).Append(Hit("Z", "Siste", 2)).ToArray();
+        var under = Hit("Z1", "Under", null, false, false, null, "Z");
+        var client = new TreeClient
+        {
+            Tree = new() { [""] = top, ["Z"] = [under, Hit("Z2", "Under", null, false, false, null, "Z")] },
+            Search = (_, _, _) => new KodeverkCodePage { Total = 1, Codes = [under] },
+        };
+        var saves = new Saves();
+        var cut = Picker(saves, [Icd10], [Saved(DesiredCodeKinds.Node, "Z", null, 2)], client: client);
+        SearchFor(cut, "Z1");
+
+        TickHit(cut, "Z1");
+
+        cut.WaitForAssertion(() => Assert.Contains(
+            "ICD-10 har for mange koder til at én kan tas ut her. Fjern haken for Z og velg", cut.Find("[role=alert]").TextContent));
+        Press(cut, "Lagre");
+        Assert.Equal([(DesiredCodeKinds.Node, "Z")], Assert.Single(saves.Calls).Select(v => (v.Kind, v.Code)));
+    }
+
+    [Fact]
+    public void ChooseHits_WhenAHitIsChosenAsJustItsOwnCode_ThenItIsChosenWithEverythingUnderItInPlaceOfThatCode()
+    {
+        var saves = new Saves();
+        var client = new TreeClient { Search = (_, _, _) => new KodeverkCodePage { Total = 1, Codes = [Icd10Tree["E10-E14"][1]] } };
+        var cut = Picker(saves, [Icd10], [Saved(DesiredCodeKinds.Code, "E11", null, 1, "IV", "E10-E14")], client: client);
+        SearchFor(cut, "E11");
+        Assert.Equal("mixed", RowOf(HitsTree(cut), "E11")!.GetAttribute("aria-checked"));
+
+        Press(cut, "Velg treffene");
+        Press(cut, "Lagre");
+
+        Assert.Equal([(DesiredCodeKinds.Node, "E11")], Assert.Single(saves.Calls).Select(v => (v.Kind, v.Code)));
+    }
+
     // ---------------------------------------------------------------------------------------- the union count
+
+    [Fact]
+    public void Summary_WhenTheHostsClientHasNoUnionCount_ThenTheHeadingIsChosenAloneAndNothingThrows()
+    {
+        // A host client written before the picker: neither the union count nor the tree's levels are implemented.
+        var cut = Picker(new Saves(), [Icd10], [Saved(DesiredCodeKinds.Code, "E14", null, 1, "IV", "E10-E14")], client: new UnupgradedHostClient());
+
+        cut.WaitForAssertion(() => Assert.Contains("Kunne ikke hente kodelisten nå.", Text(cut)));
+        Assert.Equal("Valgt", cut.Find("p[id$='-chosen']").TextContent.Trim());
+        Assert.Contains("E14", cut.Find(".munin-explorer-data-list").TextContent);
+        Assert.Empty(cut.FindAll("[role=treeitem]"));
+    }
 
     [Theory]
     [InlineData(true)]
@@ -1126,5 +1179,126 @@ public class DesiredCodePickerTest : ExplorerTestContext
 
         cut.WaitForState(() => cut.RenderCount > renders);
         Assert.Contains("Valgt: 2 koder", Text(cut));
+    }
+
+    [Fact]
+    public void Render_WhenASavedRangeBecomesItsBlock_ThenTheBlockKeepsItsName()
+    {
+        var saves = new Saves();
+        var client = new TreeClient { Search = (query, _, _) => new KodeverkCodePage { Total = 1, Codes = [Icd10Tree["IV"].Single(h => h.Value == query)] } };
+        var cut = Picker(saves, [Icd10], [Saved(DesiredCodeKinds.Range, "E10", "E14", 10, "IV", "E10-E14")], client: client);
+        Open(cut, "IV");
+        cut.WaitForAssertion(() => Assert.Equal("true", Checked(cut, "E10-E14")));
+
+        Assert.Equal(["E10-E14:1"], client.Searched);
+        Assert.Contains("Diabetes mellitus", cut.Find(".munin-explorer-data-list").TextContent);
+        Press(cut, "Lagre");
+        var sent = Assert.Single(Assert.Single(saves.Calls));
+        Assert.Equal((DesiredCodeKinds.Node, "E10-E14", "Diabetes mellitus"), (sent.Kind, sent.Code, sent.Name));
+    }
+
+    [Fact]
+    public void Render_WhenTheBlocksNameCannotBeRead_ThenTheRangeStillBecomesTheBlock()
+    {
+        var saves = new Saves();
+        var cut = Picker(saves, [Icd10], [Saved(DesiredCodeKinds.Range, "E10", "E14", 10, "IV", "E10-E14")], client: new TreeClient { SearchFails = true });
+        Open(cut, "IV");
+        cut.WaitForAssertion(() => Assert.Equal("true", Checked(cut, "E10-E14")));
+
+        Press(cut, "Lagre");
+        var sent = Assert.Single(Assert.Single(saves.Calls));
+        Assert.Equal((DesiredCodeKinds.Node, "E10-E14", (string?)null), (sent.Kind, sent.Code, sent.Name));
+    }
+
+    [Fact]
+    public void Recount_WhenTheNewTotalIsStillAskedFor_ThenTheOldTotalIsNotShown()
+    {
+        TaskCompletionSource<int?>? held = null;
+        var client = new TreeClient { Union = choices => held?.Task ?? Task.FromResult<int?>(choices.Count * 7) };
+        var cut = Picker(new Saves(), [Icd10], [Saved(DesiredCodeKinds.Code, "E14", null, 1, "IV", "E10-E14")], client: client);
+        cut.WaitForAssertion(() => Assert.Contains("Valgt: 7 koder", Text(cut)));
+        Open(cut, "IV");
+        Open(cut, "E10-E14");
+        held = new TaskCompletionSource<int?>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Tick(cut, "E11");
+
+        cut.WaitForAssertion(() => Assert.DoesNotContain("Valgt: 7 koder", Text(cut)));
+        held.SetResult(14);
+        cut.WaitForAssertion(() => Assert.Contains("Valgt: 14 koder", Text(cut)));
+    }
+
+    [Fact]
+    public void Untick_WhenTheWholeParentHasLeftTheList_ThenItSaysSoAndItCanBeRemoved()
+    {
+        var saves = new Saves();
+        var tree = new Dictionary<string, KodeverkCodeHit[]>(Icd10Tree) { ["E10-E14"] = [Icd10Tree["E10-E14"][1], Icd10Tree["E10-E14"][2]] };
+        var client = new TreeClient { Tree = tree, Search = (_, _, _) => new KodeverkCodePage { Total = 1, Codes = [Icd10Tree["E10"][0]] } };
+        var cut = Picker(saves, [Icd10], [Saved(DesiredCodeKinds.Node, "E10", null, 3, "IV", "E10-E14")], client: client);
+        SearchFor(cut, "E100");
+
+        TickHit(cut, "E100");
+
+        cut.WaitForAssertion(() => Assert.Contains("finnes ikke lenger i kodelisten. Fjern det.", cut.Find("[role=alert]").TextContent));
+        Assert.DoesNotContain("Kunne ikke hente kodelisten", cut.Find("[role=alert]").TextContent);
+        Assert.Contains(cut.FindAll(".munin-explorer-data-list button"), b => b.TextContent.Trim().StartsWith("Fjern E10", StringComparison.Ordinal));
+        Press(cut, "Lagre");
+        Assert.Equal([(DesiredCodeKinds.Node, "E10")], Assert.Single(saves.Calls).Select(v => (v.Kind, v.Code)));
+    }
+
+    [Fact]
+    public void Render_WhenALegacyCodePickOfTheBlockIsSavedBesideAnEqualRange_ThenBothBecomeTheBlock()
+    {
+        var saves = new Saves();
+        var cut = Picker(saves, [Icd10], [
+            Saved(DesiredCodeKinds.Range, "E10", "E14", 10, "IV", "E10-E14"),
+            Saved(DesiredCodeKinds.Code, "E10-E14", null, null, "IV"),
+        ]);
+        Open(cut, "IV");
+        cut.WaitForAssertion(() => Assert.Single(((TreeClient)Services.GetRequiredService<IMuninExplorerClient>()).Counted));
+
+        Press(cut, "Lagre");
+        Assert.Equal([(DesiredCodeKinds.Node, "E10-E14")], Assert.Single(saves.Calls).Select(v => (v.Kind, v.Code)));
+        var client = (TreeClient)Services.GetRequiredService<IMuninExplorerClient>();
+        Assert.Equal([new DesiredCodeChoice("HelsefagligKodeverk", "ICD-10", DesiredCodeKinds.Node, "E10-E14")], client.Unions[^1]);
+    }
+
+    [Fact]
+    public void Tick_WhenAnotherBlockIsTickedWhileTheBlocksNameIsRead_ThenBothBlocksAreChosen()
+    {
+        var saves = new Saves();
+        var held = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new TreeClient
+        {
+            SearchHeld = held,
+            Search = (query, _, _) => new KodeverkCodePage { Total = 1, Codes = [Icd10Tree["IV"].Single(h => h.Value == query)] },
+        };
+        var cut = Picker(saves, [Icd10], [
+            Saved(DesiredCodeKinds.Code, "E15", null, 1, "IV", "E15-E16"),
+            Saved(DesiredCodeKinds.Code, "E16", null, 1, "IV", "E15-E16"),
+            Saved(DesiredCodeKinds.Range, "E10", "E14", 10, "IV", "E10-E14"),
+        ], client: client);
+        Open(cut, "IV");
+        cut.WaitForAssertion(() => Assert.Single(client.Searched));
+
+        // Taking in the two codes before the range moves it up a place while its block's name is read.
+        Tick(cut, "E15-E16");
+        held.SetResult();
+
+        cut.WaitForAssertion(() => Assert.Contains("Diabetes mellitus", cut.Find(".munin-explorer-data-list").TextContent));
+        Press(cut, "Lagre");
+        cut.WaitForAssertion(() => Assert.Single(saves.Calls));
+        Assert.Equal(
+            [(DesiredCodeKinds.Node, "E10-E14"), (DesiredCodeKinds.Node, "E15-E16")],
+            saves.Calls[0].Select(v => (v.Kind, v.Code)).Order());
+    }
+
+    [Fact]
+    public void Render_WhenAGroupWithNothingListedUnderItIsSavedAsACode_ThenItIsHalfTicked()
+    {
+        var client = new TreeClient { Tree = new() { [""] = [Hit("G", "Gruppe", null, group: true)] } };
+        var cut = Picker(new Saves(), [Icd10], [Saved(DesiredCodeKinds.Code, "G", null, null)], client: client);
+
+        cut.WaitForAssertion(() => Assert.Equal("mixed", Checked(cut, "G")));
     }
 }

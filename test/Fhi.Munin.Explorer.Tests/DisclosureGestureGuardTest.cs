@@ -624,20 +624,50 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
             native: 0);
     }
 
+    /// <summary>The code picker's disclosures: tree nodes, opened from the arrow on their row rather than a button.</summary>
+    private const string TreeNode = "[role=treeitem][aria-expanded]";
+
     [Fact]
-    public void DesiredCodePicker_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
+    public void DesiredCodePicker_WhenEveryTreeNodesArrowIsGestured_ThenNoneOfThemMoves()
     {
-        // None: a tree node opens from its treeitem, not from a button; DesiredCodePickerTest pins its standing gestures.
+        // The button sweep finds nothing here, so each node's arrow is gestured from shut and from open instead.
         Services.AddSingleton<IMuninExplorerClient>(new CodeTreeClient());
         var link = new KodeverkLink { KodeverkType = "HelsefagligKodeverk", KodeverkReference = "ICD-10", HasCodeValues = true };
+        IRenderedComponent<DesiredCodePicker> Scene() => Render<DesiredCodePicker>(b => b
+            .Add(c => c.VariableId, Guid.NewGuid())
+            .Add(c => c.Links, [link])
+            .Add(c => c.Save, _ => Task.FromResult(new DesiredDataResult(DesiredDataOutcome.Saved))));
 
-        AssertStandingGesturesAreRefused(
-            () => Render<DesiredCodePicker>(b => b
-                .Add(c => c.VariableId, Guid.NewGuid())
-                .Add(c => c.Links, [link])
-                .Add(c => c.Save, _ => Task.FromResult(new DesiredDataResult(DesiredDataOutcome.Saved)))),
-            expected: 0,
-            native: 0);
+        var first = Scene();
+        Assert.Empty(first.FindAll(Disclosure));
+        Assert.Empty(first.FindAll(NativeDisclosure));
+        Assert.Equal(2, first.FindAll(TreeNode).Count);
+
+        for (var at = 0; at < 2; at++)
+        {
+            var cut = Scene();
+            string Nodes() => string.Join("\n", cut.FindAll(TreeNode).Select(n => $"{n.Id} = {n.GetAttribute("aria-expanded")}"));
+            void Arrow(long clicks = 1, bool shift = false) =>
+                cut.FindAll(TreeNode)[at].QuerySelector(".munin-explorer-codetree__toggle")!
+                    .Click(new MouseEventArgs { Detail = clicks, ShiftKey = shift });
+
+            var shut = Nodes();
+            Arrow(clicks: 2);
+            Assert.Equal(shut, Nodes());
+            Arrow(shift: true);
+            Assert.Equal(shut, Nodes());
+
+            Arrow();
+            var open = Nodes();
+            Assert.NotEqual(shut, open);
+            Arrow(clicks: 2);
+            Assert.Equal(open, Nodes());
+            Arrow(shift: true);
+            Assert.Equal(open, Nodes());
+
+            Arrow();
+            Assert.Equal(shut, Nodes());
+        }
     }
 
     /// <summary>A code tree two nodes wide at the top and empty beneath them.</summary>
