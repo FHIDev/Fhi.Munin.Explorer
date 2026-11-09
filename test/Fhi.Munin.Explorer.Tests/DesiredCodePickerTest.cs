@@ -1301,4 +1301,70 @@ public class DesiredCodePickerTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Equal("mixed", Checked(cut, "G")));
     }
+
+    // Robin, from the rig: «Lagre» right under the tree, and «Valgt» folds after ten (Fhi.Metadata-9huq2.19).
+    private static DesiredCodeView[] TwelveSaved() =>
+        [.. Enumerable.Range(1, 12).Select(i => Saved(DesiredCodeKinds.Code, $"Z{i:00}", null, 1))];
+
+    private static IReadOnlyList<IElement> ChosenLines(IRenderedComponent<DesiredCodePicker> cut) =>
+        cut.FindAll("ul.munin-explorer-data-list > li");
+
+    [Fact]
+    public void Render_WhenCodesAreChosen_ThenSaveAndCancelComeBeforeTheChosenList()
+    {
+        var cut = Picker(new Saves(), [Icd10], [Saved(DesiredCodeKinds.Code, "E14", null, 1, "IV", "E10-E14")]);
+
+        var markup = cut.Markup;
+        Assert.InRange(markup.IndexOf(">Lagre</button>", StringComparison.Ordinal), 0, markup.IndexOf("munin-explorer-data-list", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("no", "Vis alle 12 valgte", "Vis færre")]
+    [InlineData("en", "Show all 12 chosen", "Show fewer")]
+    public void Render_WhenMoreThanTenAreChosen_ThenTenShowAndADisclosureShowsTheRest(string language, string more, string fewer)
+    {
+        Services.AddSingleton<TimeProvider>(new ManualClock());
+        Services.AddSingleton<IMuninExplorerClient>(new TreeClient());
+        var cut = Render<DesiredCodePicker>(b => b
+            .Add(c => c.VariableId, Variable)
+            .Add(c => c.Links, [Icd10])
+            .Add(c => c.Chosen, TwelveSaved())
+            .Add(c => c.Save, new Saves().SaveAsync)
+            .Add(c => c.Language, language));
+
+        Assert.Equal(10, ChosenLines(cut).Count);
+        var toggle = cut.FindAll("button").Single(b => b.TextContent.Trim() == more);
+        Assert.Equal("false", toggle.GetAttribute("aria-expanded"));
+        Assert.Equal(cut.Find("ul.munin-explorer-data-list").Id, toggle.GetAttribute("aria-controls"));
+
+        toggle.Click();
+
+        Assert.Equal(12, ChosenLines(cut).Count);
+        var open = cut.FindAll("button").Single(b => b.TextContent.Trim() == fewer);
+        Assert.Equal("true", open.GetAttribute("aria-expanded"));
+        Assert.All(ChosenLines(cut), line => Assert.NotNull(line.QuerySelector("button")));
+    }
+
+    [Fact]
+    public void Render_WhenTenOrFewerAreChosen_ThenThereIsNoDisclosure()
+    {
+        var cut = Picker(new Saves(), [Icd10], [.. TwelveSaved().Take(10)]);
+
+        Assert.Equal(10, ChosenLines(cut).Count);
+        Assert.DoesNotContain(cut.FindAll("button"), b => b.TextContent.StartsWith("Vis alle", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Save_WhenAPickPastTheFoldIsRefused_ThenItIsListedWithItsRemoveWhileTheRestStaysFolded()
+    {
+        var saves = new Saves { Answer = new DesiredDataResult(DesiredDataOutcome.Refused, InvalidIndex: 11) };
+        var cut = Picker(saves, [Icd10], TwelveSaved());
+        Assert.Equal(10, ChosenLines(cut).Count);
+
+        Press(cut, "Lagre");
+
+        cut.WaitForAssertion(() => Assert.Equal(11, ChosenLines(cut).Count));
+        var refused = ChosenLines(cut).Single(line => line.TextContent.Contains("Z12", StringComparison.Ordinal));
+        Assert.Contains(refused.QuerySelectorAll("button"), b => b.TextContent.StartsWith("Fjern", StringComparison.Ordinal));
+    }
 }

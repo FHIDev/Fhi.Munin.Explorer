@@ -86,15 +86,30 @@
         }
     </div>
 
+    @* Right under the tree, so a long «Valgt» never pushes them out of reach. *@
+    <div class="munin-explorer-page__actions">
+        <button class="hd-button-square button-square--primary" type="button" aria-disabled="@(_saving ? "true" : "false")" @onclick="SaveAsync">@T.PickerSave</button>
+        <button class="hd-button-square button-square--ghost" type="button" @onclick="CancelAsync">@T.PickerCancel</button>
+    </div>
+
+    @* Present from the first render, so a late answer (a search, a refusal) is a change a screen reader reads. *@
+    <p class="caption" role="status" aria-live="polite" aria-atomic="true">@_status</p>
+    <p class="caption" role="alert" aria-atomic="true">@_alert</p>
+
     @if (_choices.Count > 0)
     {
         <p class="form-element__label margin--none" id="@Id("chosen")">@(_union is { } codes ? T.PickerSelectedCodes(codes) : T.PickerChosen)</p>
-        <ul class="munin-explorer-data-list" aria-labelledby="@Id("chosen")">
-            @foreach (var choice in _choices)
+        <ul class="munin-explorer-data-list" id="@Id("chosen-list")" aria-labelledby="@Id("chosen")">
+            @foreach (var choice in ShownChoices)
             {
                 <li @key="choice.Value">@SummaryLine(choice)</li>
             }
         </ul>
+        @if (_choices.Count > FoldAfter)
+        {
+            <button class="hd-button-reset" type="button" aria-expanded="@(_showAllChosen ? "true" : "false")" aria-controls="@Id("chosen-list")"
+                    @onclick="() => _showAllChosen = !_showAllChosen">@(_showAllChosen ? T.PickerShowFewerChosen : T.PickerShowAllChosen(_choices.Count))</button>
+        }
     }
 
     <p class="caption" tabindex="-1" @ref="_counter">@T.PickerChoiceCount(_choices.Count, MaxChoices)</p>
@@ -103,14 +118,6 @@
         <p class="caption">@T.PickerFull(MaxChoices)</p>
     }
 
-    @* Present from the first render, so a late answer (a search, a refusal) is a change a screen reader reads. *@
-    <p class="caption" role="status" aria-live="polite" aria-atomic="true">@_status</p>
-    <p class="caption" role="alert" aria-atomic="true">@_alert</p>
-
-    <div class="munin-explorer-page__actions">
-        <button class="hd-button-square button-square--primary" type="button" aria-disabled="@(_saving ? "true" : "false")" @onclick="SaveAsync">@T.PickerSave</button>
-        <button class="hd-button-square button-square--ghost" type="button" @onclick="CancelAsync">@T.PickerCancel</button>
-    </div>
 </div>
 
 @code {

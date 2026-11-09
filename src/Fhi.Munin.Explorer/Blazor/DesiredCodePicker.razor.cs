@@ -17,6 +17,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 {
     /// <summary>The most choices the API stores for one item.</summary>
     internal const int MaxChoices = 200;
+    internal const int FoldAfter = 10;
 
     // Lists up to this many codes open as a tree alone; longer ones open with the search field first.
     internal const int SmallList = 200;
@@ -1057,6 +1058,14 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     private static bool IsOlderRange(Choice choice) => choice.Value.Kind == DesiredCodeKinds.Range;
 
     // What the summary can remove: whatever no box in the tree stands for.
+    private bool _showAllChosen;
+
+    // The first ten, and every pick the tree cannot show: its «Fjern» is the only way out, so it is never folded away.
+    private IEnumerable<Choice> ShownChoices => _showAllChosen
+        ? _choices
+        : _choices.Where((choice, index) => index < FoldAfter || _notInTree.Contains(choice.Value)
+                                             || (_noCount.Contains(choice.Value) && !InLoadedTree(choice)));
+
     private bool Removable(Choice choice) =>
         IsOlderRange(choice) || !CanReveal(choice) || _notInTree.Contains(choice.Value)
         || (_noCount.Contains(choice.Value) && !InLoadedTree(choice));
