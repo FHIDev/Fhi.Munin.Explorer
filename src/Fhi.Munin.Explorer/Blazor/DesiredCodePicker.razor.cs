@@ -37,6 +37,10 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
     private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
     private readonly List<Choice> _choices = [];
+
+    // Choices the tree cannot show: not counted when the list was read, not found on the way into the tree, or named by
+    // a refused save. Each gets a «Fjern» in the summary, as nothing in the tree stands for it.
+    private readonly HashSet<DesiredCodeChoice> _unreachable = [];
     private readonly Dictionary<KodeverkKey, ListState> _lists = [];
     private readonly Dictionary<int, ElementReference> _tabButtons = [];
     private readonly Dictionary<string, ElementReference> _rows = [];
@@ -104,7 +108,11 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     {
         foreach (var view in Chosen.Take(MaxChoices))
         {
-            Insert(_choices.Count, new Choice(view.ToChoice(), view.Name, view.ToName, view.Expired, view.Count, view.KodeverkName, view.Ancestors));
+            var choice = new Choice(view.ToChoice(), view.Name, view.ToName, view.Expired, view.Count, view.KodeverkName, view.Ancestors);
+            if (Insert(_choices.Count, choice) && view.Count is null)
+            {
+                _unreachable.Add(choice.Value);
+            }
         }
     }
 
@@ -479,17 +487,31 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         await RecountAsync();
     }
 
+    // Each hit as if its box were unticked, a hit under a whole parent included; stops at the first that cannot be.
     private async Task ClearHitsAsync(KodeverkLink link)
     {
+        while (!_untick.IsCompleted)
+        {
+            await _untick;
+        }
+
         var state = StateOf(link);
         if (_saving)
         {
             return;
         }
 
-        foreach (var hit in state.Hits)
+        foreach (var hit in state.Hits.ToList())
         {
-            _choices.RemoveAll(c => SameList(c, link) && (IsDirect(c, hit.Value) || IsUnder(c, hit.Value)));
+            var tick = TickOf(link, state, hit);
+            if (tick == Tick.Mixed)
+            {
+                _choices.RemoveAll(c => SameList(c, link) && IsUnder(c, hit.Value));
+            }
+            else if (tick == Tick.Checked && !await UntickAsync(link, state, hit))
+            {
+                break;
+            }
         }
 
         await RecountAsync();
@@ -578,8 +600,9 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
     private IEnumerable<Choice> ChoicesIn(KodeverkLink link) => _choices.Where(c => SameList(c, link));
 
-    // Ticked when it or a parent is chosen whole, half-ticked when something under it is chosen. An older range that
-    // starts under it may hold some of its codes, so it half-ticks it, but never ticks it.
+    // A choice stands to a code as itself (IsDirect), over it (a whole parent: WholeOver) or under it (IsUnder); an older
+    // range only half-ticks the codes above its first code. Ticking removes what is under and adds itself; Untick removes
+    // itself and what is under it, and splits a whole parent over it.
     private Tick TickOf(KodeverkLink link, ListState state, KodeverkCodeHit hit)
     {
         var ancestors = AncestorsOf(state, hit);
@@ -646,7 +669,9 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
         var at = under.Count > 0 ? _choices.IndexOf(under[0]) : _choices.Count;
         _choices.RemoveAll(under.Contains);
-        Insert(at, ChoiceOf(link, state, hit));
+        var chosen = ChoiceOf(link, state, hit);
+        _unreachable.Remove(chosen.Value);
+        Insert(at, chosen);
         return true;
     }
 
@@ -673,22 +698,28 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
                 return;
             }
         }
-        else if (WholeOver(link, AncestorsOf(state, hit)) is null)
+        else if (!await UntickAsync(link, state, hit))
         {
-            _choices.RemoveAll(c => SameList(c, link) && IsDirect(c, hit.Value));
-        }
-        else
-        {
-            var untick = UntickUnderAsync(link, state, hit);
-            _untick = untick;
-            if (!await untick)
-            {
-                return;
-            }
+            return;
         }
 
         Announce(null, error: false);
         await RecountAsync();
+    }
+
+    // Unticks a ticked code: without a whole parent over it, the code and every pick under it go; with one, that parent
+    // is split. False when nothing changed (a read failed, a save came in, or the ceiling); the reason is announced.
+    private async Task<bool> UntickAsync(KodeverkLink link, ListState state, KodeverkCodeHit hit)
+    {
+        if (WholeOver(link, AncestorsOf(state, hit)) is null)
+        {
+            _choices.RemoveAll(c => SameList(c, link) && (IsDirect(c, hit.Value) || IsUnder(c, hit.Value)));
+            return true;
+        }
+
+        var untick = UntickUnderAsync(link, state, hit);
+        _untick = untick;
+        return await untick;
     }
 
     // Unticking a code under a parent chosen whole: the outermost such parent, and every pick under it, becomes its
@@ -894,6 +925,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
         if (VisibleRows(state, TreeSection).FirstOrDefault(r => r.Code == choice.Value.Code) is not { Path: { } path })
         {
+            _unreachable.Add(choice.Value);
             Announce(T.PickerNotInTree(choice.Value.Code), error: true);
             return;
         }
@@ -928,8 +960,11 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
     internal IReadOnlyList<Choice> Choices => _choices;
 
-    // A range the tree has no block for: kept, and the one choice the summary can remove.
+    // A range the tree has no block for: kept, and shown as an older choice.
     private static bool IsOlderRange(Choice choice) => choice.Value.Kind == DesiredCodeKinds.Range;
+
+    // What the summary can remove: whatever no box in the tree stands for.
+    private bool Removable(Choice choice) => IsOlderRange(choice) || !CanReveal(choice) || _unreachable.Contains(choice.Value);
 
     // The list's name as the variable page gives it, so a saved choice keeps the label the summary shows.
     private static string? ListNameOf(KodeverkLink link) => string.IsNullOrWhiteSpace(link.DisplayName) ? null : link.DisplayName;
@@ -943,6 +978,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         }
 
         _choices.Remove(choice);
+        _unreachable.Remove(choice.Value);
         _focusCounter = true;
         await RecountAsync();
     }
@@ -1055,6 +1091,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
                     break;
                 case { Outcome: DesiredDataOutcome.Refused, InvalidIndex: { } index } when index >= 0 && index < submitted.Count:
                     var bad = submitted[index];
+                    _unreachable.Add(bad.Value);
                     Announce(T.PickerInvalid(Describe(T, bad.Value, bad.Name, bad.ToName)), error: true);
                     break;
                 case { Outcome: DesiredDataOutcome.Refused, MaxSelections: { } max }:

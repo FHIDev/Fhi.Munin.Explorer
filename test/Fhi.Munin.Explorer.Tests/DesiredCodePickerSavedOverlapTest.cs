@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>Unticking under overlapping saved picks, half-ticked rows over an older range, and the count beside a saved single code.</summary>
-public class DesiredCodePickerHeldOutRound2Test : ExplorerTestContext
+public class DesiredCodePickerSavedOverlapTest : ExplorerTestContext
 {
     private static readonly Guid Variable = new("bc8a6515-af36-44d0-aa10-b498813327b4");
 

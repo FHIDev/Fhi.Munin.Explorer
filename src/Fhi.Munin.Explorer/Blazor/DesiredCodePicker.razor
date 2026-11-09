@@ -190,8 +190,8 @@
         </li>;
     }
 
-    // A line of the read-only summary: the code opens the tree to it. Only a range the tree has no block for can be
-    // removed here, since nothing in the tree stands for it.
+    // A line of the read-only summary: the code opens the tree to it. Only what no box in the tree stands for can be
+    // removed here: a range the tree has no block for, and a choice the tree cannot show.
     private RenderFragment SummaryLine(Choice choice) => @<span>
         @if (IsOlderRange(choice))
         {
@@ -214,6 +214,11 @@
                 @(" ")<span lang="@CatalogueLang">@choice.Name</span>
             }
             @(choice.Value.Kind == DesiredCodeKinds.Node ? $", {T.PickerAllUnder}{(choice.Count is { } c ? $" ({c})" : "")}" : "")@(choice.Expired ? $" ({T.PickerExpired(null)})" : "")
+            @if (Removable(choice))
+            {
+                var words = Describe(T, choice.Value, choice.Name, choice.ToName);
+                @(" ")<button class="hd-button-square button-square--ghost" type="button" aria-disabled="@(_saving ? "true" : "false")" @onclick="() => RemoveAsync(choice)">@T.PickerRemove(words)</button>
+            }
         }
     </span>;
 }
