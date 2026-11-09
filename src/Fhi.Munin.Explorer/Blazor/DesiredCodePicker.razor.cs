@@ -738,10 +738,9 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         return await untick;
     }
 
-    // Unticking a code under a parent chosen whole: the outermost such parent, and every pick under it, becomes its
-    // other children, level by level down to the code, never one already chosen. A code on the way (not a group) stays
-    // chosen on its own, as the whole parent covered it. Every level on the way is read first; a failed read changes
-    // nothing.
+    // Unticking a code under a parent chosen whole: that parent and every pick under it become its other children, level
+    // by level down to the code, never one already chosen, and each code on the way (not a group) is kept on its own.
+    // Every level is read first; a failed read changes nothing.
     private async Task<bool> UntickUnderAsync(KodeverkLink link, ListState state, KodeverkCodeHit hit)
     {
         var ancestors = AncestorsOf(state, hit);
