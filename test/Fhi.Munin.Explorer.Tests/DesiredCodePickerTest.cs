@@ -1419,4 +1419,18 @@ public class DesiredCodePickerTest : ExplorerTestContext
         Assert.Equal(10, ChosenLines(cut).Count);
         Assert.Contains(cut.FindAll("button"), b => b.TextContent.Trim() == "Vis alle 11 valgte");
     }
+
+    [Fact]
+    public void Search_WhenHitsShow_ThenTheHitsAndTheTreeShareOneScrollAreaAndLagreComesAfterIt()
+    {
+        var cut = Picker(new Saves(), [Icd10]);
+        SearchFor(cut, "diabetes");
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("ul.munin-explorer-codetree[role=tree]").Count));
+
+        var scroll = Assert.Single(cut.FindAll(".munin-explorer-codetree-scroll"));
+        Assert.Equal(2, scroll.QuerySelectorAll(":scope > ul.munin-explorer-codetree[role=tree]").Length);
+        Assert.Null(scroll.QuerySelector("input[type=search]"));
+        var markup = cut.Markup;
+        Assert.InRange(markup.IndexOf("munin-explorer-codetree-scroll", StringComparison.Ordinal), 0, markup.IndexOf(">Lagre</button>", StringComparison.Ordinal));
+    }
 }

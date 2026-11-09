@@ -928,6 +928,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-codes` | handle |
   | `munin-explorer-codes__table` | handle |
   | `munin-explorer-codetree` | handle |
+  | `munin-explorer-codetree-scroll` | handle |
   | `munin-explorer-codetree__box` | handle |
   | `munin-explorer-codetree__code` | handle |
   | `munin-explorer-codetree__count` | handle |

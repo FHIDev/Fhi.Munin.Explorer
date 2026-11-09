@@ -661,3 +661,6 @@ missing-selector||.munin-explorer-lead|
 # it, and the textarea's column 2, come with Fhi.Metadata-9huq2.16. These lines go when helsedata pins that Stiler.
 unstyled-name||.munin-explorer-dataitem-main__desiredCodes|
 invented-selector|@media (width < 1280px)|.munin-explorer-list-scroll table.munin-explorer-data-list .munin-explorer-dataitem-main__desiredData > textarea|grid-column
+# The picker's scroll area for the search hits and the tree (Fhi.Metadata-9huq2.19); Stiler's rule comes with
+# Fhi.Metadata-9huq2.16. This line goes when helsedata pins that Stiler.
+unstyled-name||.munin-explorer-codetree-scroll|
