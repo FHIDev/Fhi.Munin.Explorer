@@ -12809,7 +12809,7 @@ public class VariableSearchTest : ExplorerTestContext
         // sit too. The two must land on the same level or the tab reads as two outlines.
         Assert.Equal("H4", panel.QuerySelector(".munin-explorer-meta__heading")!.TagName);
         Assert.Equal("H5", statistics.TagName);
-        Assert.Contains("Kildekodeverk", panel.QuerySelectorAll("h5").Select(h => h.TextContent));
+        Assert.Contains(panel.QuerySelectorAll("h5"), h => h.TextContent.StartsWith("Kildekodeverk: ", StringComparison.Ordinal));
     }
 
     // ---------------------------------------------------------------------------------
@@ -13392,17 +13392,10 @@ public class VariableSearchTest : ExplorerTestContext
             .Knows(Codes2337())
             .Knows(Codes3402());
 
-    private const string KodeverkLeadNorwegian =
-        "Kildekodeverket er verdiene slik de er registrert i kildesystemet. "
-        + "Administrative kodeverk er nasjonale kodeverk. "
-        + "Helsefaglige kodeverk er nasjonale kliniske kodeverk og terminologier.";
-
     [Fact]
-    public void Kodeverk_WhenTheWholeVariableIsOpened_ThenTheLeadIsTheFirstThingUnderTheHeading()
+    public void Kodeverk_WhenTheWholeVariableIsOpened_ThenTheListFollowsTheHeadingWithNoLead()
     {
-        // The fixture names Kildekodeverk, Administrativt, Kildekodeverk again, then Helsefaglig: one
-        // sentence per kind, in the order the payload first names each, and no kind twice.
-        // (Fhi.Metadata-35w0p.24)
+        // The lead sentences per kind are gone: each link's own heading says its kind. (Fhi.Metadata-9huq2.19)
         var cut = OpenData(KodeverkRows());
 
         WholeVariableToggle(cut).Click();
@@ -13410,9 +13403,9 @@ public class VariableSearchTest : ExplorerTestContext
         var section = cut.Find($"#{DetailSectionIds.CodeLists}");
 
         Assert.Equal("Kodeverk", section.Children[0].TextContent);
-        Assert.Equal("P", section.Children[1].TagName);
-        Assert.Equal(DetailBlocks.Lead, section.Children[1].ClassName);
-        Assert.Equal(KodeverkLeadNorwegian, section.Children[1].TextContent);
+        Assert.Equal("UL", section.Children[1].TagName);
+        Assert.Contains("munin-explorer-kodeverk", section.Children[1].ClassList);
+        Assert.DoesNotContain("Kildekodeverket er", section.TextContent, StringComparison.Ordinal);
     }
 
     // The groups used to be drawn at the view's own title level, beside Kodeverk's parent rather
@@ -13446,17 +13439,16 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.Equal($"H{headingLevel + 1}", title.TagName);
         Assert.Equal($"H{headingLevel + 2}", kodeverk.Children[0].TagName);
-        Assert.Equal(["Kildekodeverk", "Helsefaglig kodeverk"], groups.Select(g => g.TextContent));
+        Assert.Equal(["Kildekodeverk: 2336", "Helsefaglig kodeverk: ICD-10"], groups.Select(g => g.TextContent));
         Assert.All(groups, g => Assert.Equal($"H{headingLevel + 3}", g.TagName));
         Assert.StartsWith("Statistikk", statistics.TextContent, StringComparison.Ordinal);
         Assert.Equal($"H{headingLevel + 2}", statistics.TagName);
     }
 
     [Fact]
-    public void Kodeverk_WhenHelsefagligComesFirstInThePayload_ThenItsSentenceLeads()
+    public void Kodeverk_WhenHelsefagligComesFirstInThePayload_ThenItsHeadingComesFirst()
     {
-        // The fixture above names its kinds in the same order the sentences are declared in, so it
-        // cannot tell payload order from a fixed one. This payload reverses them.
+        // Payload order, not an order of ours: this payload reverses the kinds' declared order.
         var id = Guid.NewGuid();
         var variable = Detail(id) with
         {
@@ -13468,28 +13460,43 @@ public class VariableSearchTest : ExplorerTestContext
         };
         var cut = OpenData(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(variable));
 
-        Assert.Equal(
-            "Helsefaglige kodeverk er nasjonale kliniske kodeverk og terminologier. "
-            + "Kildekodeverket er verdiene slik de er registrert i kildesystemet.",
-            Panel(cut).QuerySelector("[role=tabpanel]")!.Children[0].TextContent);
+        Assert.Equal(["Helsefaglig kodeverk: ICD-10", "Kildekodeverk: 2336"], KodeverkGroupHeadings(cut));
     }
 
     [Theory]
-    [InlineData(null, KodeverkLeadNorwegian)]
-    [InlineData("en",
-        "The source code system holds the values as they are recorded in the source system. "
-        + "Administrative code systems are national code systems. "
-        + "Clinical code systems are national clinical code systems and terminologies.")]
-    public void Kodeverk_WhenTheDataTabIsOpen_ThenTheSameLeadOpensTheTab(string? language, string lead)
+    [InlineData(null, "Kildekodeverk: 2336", "Kildekodeverk: 2337", "Administrativt kodeverk: 3402",
+                "Helsefaglig kodeverk: ICD-10")]
+    [InlineData("en", "Source code system: 2336", "Source code system: 2337", "Administrative code system: 3402",
+                "Clinical code system: ICD-10")]
+    public void Kodeverk_WhenTheDataTabIsOpen_ThenEachLinkIsHeadedByItsKindAndReference(
+        string? language, params string[] headings)
     {
-        // The tab draws the same block as the whole variable, so it opens with the same sentence,
-        // in the reader's language, before the first kind's heading.
+        // One heading per link, «kind: reference», so the two kildekodeverk (apart in the payload) get one
+        // each, side by side; the tab opens on the list. (Fhi.Metadata-9huq2.19)
         var cut = OpenData(KodeverkRows(), p => p.Add(c => c.Language, language));
 
-        var first = Panel(cut).QuerySelector("[role=tabpanel]")!.Children[0];
+        var tab = Panel(cut).QuerySelector("[role=tabpanel]")!;
 
-        Assert.Equal(DetailBlocks.Lead, first.ClassName);
-        Assert.Equal(lead, first.TextContent);
+        Assert.Equal(headings, KodeverkGroupHeadings(cut));
+        Assert.Equal("UL", tab.Children[0].TagName);
+        Assert.Equal(4, KodeverkLines(cut).Count);
+        Assert.All(KodeverkLines(cut), line => Assert.Equal("H4", line.Children[0].TagName));
+    }
+
+    [Fact]
+    public void Kodeverk_WhenALinkHasNoReference_ThenItsHeadingIsTheKindAlone()
+    {
+        var id = Guid.NewGuid();
+        var cut = OpenData(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(Detail(id) with
+        {
+            KodeverkLinks =
+            [
+                new() { KodeverkType = "HelsefagligKodeverk", KodeverkReference = " ", DisplayName = "ICD-10" },
+                new() { KodeverkType = "AdministrativtKodeverk", KodeverkReference = "3402", DisplayName = "Kommunenummer" },
+            ]
+        }));
+
+        Assert.Equal(["Helsefaglig kodeverk", "Administrativt kodeverk: 3402"], KodeverkGroupHeadings(cut));
     }
 
     /// <summary>Open the first row and move to the Data tab, where the kodeverk live.</summary>
@@ -13510,6 +13517,9 @@ public class VariableSearchTest : ExplorerTestContext
     private static IReadOnlyList<AngleSharp.Dom.IElement> KodeverkLines(
         IRenderedComponent<VariableSearch> cut) =>
         [.. Panel(cut).QuerySelectorAll("li.munin-explorer-kodeverk__item")];
+
+    private static AngleSharp.Dom.IElement LineHeading(AngleSharp.Dom.IElement line) =>
+        line.QuerySelector(".munin-explorer-group")!;
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> CodeToggles(
         IRenderedComponent<VariableSearch> cut) =>
@@ -13729,28 +13739,28 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Kodeverk_WhenTheDataTabIsOpen_ThenTheLinksAreGroupedByKindInPayloadOrder()
+    public void Kodeverk_WhenTheDataTabIsOpen_ThenTheLinksOfOneKindStayTogetherInPayloadOrder()
     {
         var cut = OpenData(KodeverkRows());
 
-        // One heading per kind, in the order the payload first mentions each — not one heading per
-        // link, and not an order of ours. The two kildekodeverk are apart in the payload, so a
-        // grouping that only worked on adjacent links would show four headings here.
-        Assert.Equal(["Kildekodeverk", "Administrativt kodeverk", "Helsefaglig kodeverk"],
+        // Kinds in the order the payload first mentions each, not an order of ours. The two
+        // kildekodeverk are apart in the payload, so an ordering that only kept adjacent links
+        // together would put Administrativt between them.
+        Assert.Equal(["Kildekodeverk: 2336", "Kildekodeverk: 2337", "Administrativt kodeverk: 3402",
+                      "Helsefaglig kodeverk: ICD-10"],
                      KodeverkGroupHeadings(cut));
 
-        var groups = Panel(cut).QuerySelectorAll("ul.munin-explorer-kodeverk");
-
-        // The links' own items only: a nameless link's code preview is a list nested inside one.
-        Assert.Equal([2, 1, 1], groups.Select(g => g.QuerySelectorAll("li.munin-explorer-kodeverk__item").Length));
+        // One list of links; a nameless link's code preview is a list nested inside its item.
+        var list = Assert.Single(Panel(cut).QuerySelectorAll("ul.munin-explorer-kodeverk"));
+        Assert.Equal(4, list.QuerySelectorAll("li.munin-explorer-kodeverk__item").Length);
     }
 
     [Fact]
-    public void Kodeverk_WhenTheApiResolvedNoName_ThenTheReferenceIsLabelledRatherThanStandingIn()
+    public void Kodeverk_WhenTheApiResolvedNoName_ThenItSaysSoUnderTheHeadingRatherThanTheReferenceStandingIn()
     {
         // Still the rule for every kind but Kildekodeverk. A V-AK's OId is an official number, so a
-        // missing name is an ordinary lookup miss: it is said out loud and the reference is
-        // labelled, rather than the reference standing in as the name.
+        // missing name is an ordinary lookup miss: it is said out loud, and the reference stays in
+        // the heading rather than standing in as the name.
         var id = Guid.NewGuid();
         var cut = OpenData(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(Detail(id) with
         {
@@ -13763,23 +13773,20 @@ public class VariableSearchTest : ExplorerTestContext
         var nameless = KodeverkLines(cut)[0];
 
         Assert.Equal("Ukjent navn", nameless.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
-        Assert.Equal("Referanse: 3402",
-                     nameless.QuerySelector(".munin-explorer-kodeverk__reference")!.TextContent);
-        Assert.DoesNotContain("Administrativt kodeverk: 3402", Panel(cut).TextContent);
+        Assert.Equal("Administrativt kodeverk: 3402", LineHeading(nameless).TextContent);
     }
 
     [Fact]
     public void Kodeverk_WhenTheApiResolvedAName_ThenBothTheNameAndTheReferenceAreShown()
     {
-        // The reference is on every line, named one and nameless alike: it is the thing a reader
-        // can look the kodeverk up by, and a name alone cannot be typed into anything.
+        // The reference is in every line's heading, named one and nameless alike: it is the thing a
+        // reader can look the kodeverk up by, and a name alone cannot be typed into anything.
         var cut = OpenData(KodeverkRows());
 
         var named = KodeverkLines(cut)[1];
 
         Assert.Equal("Skjemastatus", named.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
-        Assert.Equal("Referanse: 2337",
-                     named.QuerySelector(".munin-explorer-kodeverk__reference")!.TextContent);
+        Assert.Equal("Kildekodeverk: 2337", LineHeading(named).TextContent);
 
         // The catalogue's own name, so a screen reader on an English page still says it in
         // Norwegian rather than reading it with English phonetics.
@@ -13825,7 +13832,7 @@ public class VariableSearchTest : ExplorerTestContext
         var tabKodeverk = tab.QuerySelector("ul.munin-explorer-kodeverk") is not null;
         var tabStatistics = tab.QuerySelector("dl.munin-explorer-figures") is not null;
         var tabSaysNothingIsThere = tab.Children
-            .Where(e => e.LocalName == "p" && !e.ClassList.Contains(DetailBlocks.Lead))
+            .Where(e => e.LocalName == "p")
             .Select(p => p.TextContent)
             .ToList();
 
@@ -14495,17 +14502,17 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Codes_WhenAKildekodeverkHasAName_ThenItsLineIsMarkedUpExactlyAsBefore()
+    public void Codes_WhenAKildekodeverkHasAName_ThenItsLineIsItsHeadingItsNameAndItsControl()
     {
-        // The markup of a named line before Fhi.Metadata-0ajsy, captured from main less bUnit's
-        // handler ids. The restructure is for the unnamed case only; this catches it leaking.
+        // The whole markup of a named line less bUnit's handler ids: «kind: reference» as the heading,
+        // the name as plain text, then the control. (Fhi.Metadata-0ajsy, Fhi.Metadata-9huq2.19)
         var cut = OpenData(KodeverkRows());
         var named = KodeverkLines(cut)[1];
         var nameId = named.QuerySelector(".munin-explorer-kodeverk__name")!.Id;
 
         Assert.Equal(
-            $"<li class=\"munin-explorer-kodeverk__item\"><p class=\"munin-explorer-kodeverk__name\" id=\"{nameId}\" lang=\"no\">Skjemastatus</p>"
-            + "<p class=\"caption munin-explorer-kodeverk__reference\">Referanse: 2337</p>"
+            "<li class=\"munin-explorer-kodeverk__item\"><h4 class=\"headline headline-xxs margin--none munin-explorer-group\">Kildekodeverk: 2337</h4>"
+            + $"<p class=\"munin-explorer-kodeverk__name\" id=\"{nameId}\" lang=\"no\">Skjemastatus</p>"
             + "<button class=\"hd-button-square button-square--ghost margin-bottom\" type=\"button\" aria-expanded=\"false\">Vis koder</button></li>",
             System.Text.RegularExpressions.Regex.Replace(named.OuterHtml, @" blazor:\w+=""\d+""", ""));
     }
@@ -14523,9 +14530,9 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal(Codes2336().Codes.Select(code => $"{code.Value} {code.Name}"),
                      PreviewItems(nameless).Select(li => li.TextContent));
 
-        // None of the three things that stood here before.
+        // No «Ukjent navn» and no control; the reference is the heading's, as on every line.
         Assert.DoesNotContain("Ukjent navn", Panel(cut).TextContent);
-        Assert.Null(nameless.QuerySelector(".munin-explorer-kodeverk__reference"));
+        Assert.Equal("Kildekodeverk: 2336", LineHeading(nameless).TextContent);
         Assert.Empty(nameless.QuerySelectorAll("button"));
 
         // The catalogue's own words, so an English page still has them said in Norwegian — the rule
@@ -14603,7 +14610,7 @@ public class VariableSearchTest : ExplorerTestContext
         var named = KodeverkLines(cut)[2];
 
         Assert.Equal("Kommunenummer", named.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
-        Assert.Equal("Referanse: 3402", named.QuerySelector(".munin-explorer-kodeverk__reference")!.TextContent);
+        Assert.Equal("Administrativt kodeverk: 3402", LineHeading(named).TextContent);
 
         var control = Assert.Single(named.QuerySelectorAll("button"));
 
@@ -14628,10 +14635,9 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = OpenData(client);
         var nameless = KodeverkLines(cut)[0];
 
-        // The reference is back, because with no codes and no name it is the only thing telling two
-        // such links apart — and the control with it, which is the only retry a reader has.
+        // The heading's reference is what tells two such links apart; the control is back, the only retry a reader has.
         Assert.Equal("Ukjent navn", nameless.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
-        Assert.Equal("Referanse: 2336", nameless.QuerySelector(".munin-explorer-kodeverk__reference")!.TextContent);
+        Assert.Equal("Kildekodeverk: 2336", LineHeading(nameless).TextContent);
         Assert.Equal("Vis koder", Assert.Single(nameless.QuerySelectorAll("button")).TextContent);
 
         // Still mounted, and the failure reported nowhere but on its own line: the rows, the rest of
@@ -14674,7 +14680,7 @@ public class VariableSearchTest : ExplorerTestContext
         var nameless = KodeverkLines(cut)[0];
 
         Assert.Equal("Henter koder …", nameless.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
-        Assert.Null(nameless.QuerySelector(".munin-explorer-kodeverk__reference"));
+        Assert.Equal("Kildekodeverk: 2336", LineHeading(nameless).TextContent);
     }
 
     [Fact]
@@ -14688,8 +14694,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.Equal("Ingen kodeverdier tilgjengelig",
                      nameless.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
-        Assert.Equal("Referanse: 2336",
-                     nameless.QuerySelector(".munin-explorer-kodeverk__reference")!.TextContent);
+        Assert.Equal("Kildekodeverk: 2336", LineHeading(nameless).TextContent);
         Assert.Empty(nameless.QuerySelectorAll("button"));
     }
 
@@ -14704,8 +14709,7 @@ public class VariableSearchTest : ExplorerTestContext
         var nameless = KodeverkLines(cut)[0];
 
         Assert.Equal("Ukjent navn", nameless.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
-        Assert.Equal("Referanse: 2336",
-                     nameless.QuerySelector(".munin-explorer-kodeverk__reference")!.TextContent);
+        Assert.Equal("Kildekodeverk: 2336", LineHeading(nameless).TextContent);
         Assert.Empty(nameless.QuerySelectorAll("button"));
         Assert.Empty(client.CodeRequests);
     }
@@ -14823,15 +14827,14 @@ public class VariableSearchTest : ExplorerTestContext
 
         // The two facet words are the filter panel's own, deliberately: a helsefaglig kodeverk is
         // the same thing whether it is being filtered on or read off a variable.
-        Assert.Equal(["Source code system", "Administrative code system", "Clinical code system"],
+        Assert.Equal(["Source code system: 2336", "Source code system: 2337", "Administrative code system: 3402",
+                      "Clinical code system: ICD-10"],
                      KodeverkGroupHeadings(cut));
         // The nameless link's codes are the catalogue's own words, so they stay Norwegian on an
         // English page — and it says nothing about being unnamed, in either language.
         Assert.Equal(["0 Velg verdi", "1 0: Tap av produktiv tale"],
                      PreviewItems(KodeverkLines(cut)[0]).Select(li => li.TextContent));
         Assert.DoesNotContain("Unnamed", Panel(cut).TextContent);
-        Assert.Equal("Reference: 2337",
-                     KodeverkLines(cut)[1].QuerySelector(".munin-explorer-kodeverk__reference")!.TextContent);
 
         CodeToggles(cut)[0].Click();
 
@@ -14866,12 +14869,10 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.Equal(
         [
-            "munin-explorer-lead",                  // ours, the sentence opening the kodeverk block
-            "munin-explorer-group",                 // ours, already in use on the Details tab
             "munin-explorer-kodeverk",              // ours, a handle — the list of links
             "munin-explorer-kodeverk__item",
+            "munin-explorer-group",                 // ours, already in use on the Details tab
             "munin-explorer-kodeverk__name",
-            "munin-explorer-kodeverk__reference",
             "munin-explorer-codes",                 // ours, a handle — the open code list
             "munin-explorer-codes__table",
         ], invented);
@@ -14880,9 +14881,8 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.Contains("hd-button-square", toggle);
         Assert.Contains("button-square--ghost", toggle);
-        // Line 1: the nameless link above it draws no reference, because its codes are its identity.
-        Assert.Contains("caption",
-                        KodeverkLines(cut)[1].QuerySelector(".munin-explorer-kodeverk__reference")!.ClassName!);
+        // Each line's heading is Stiler's headline, as the Details tab's group headings are.
+        Assert.Contains("headline", LineHeading(KodeverkLines(cut)[1]).ClassName!);
     }
 
     // Every dl but the chassis's hero row, which repeats six of the kilde's fields above the body:
@@ -14987,16 +14987,14 @@ public class VariableSearchTest : ExplorerTestContext
         Toggles(cut)[0].Click();
 
         // Data first. Which kind a link is says what "2336" alone cannot: a kildekodeverk the
-        // register defined is not a national classification. It is a heading over the links of
-        // that kind rather than a prefix on each.
-        Assert.Equal(["Kildekodeverk", "Administrativt kodeverk"], KodeverkGroupHeadings(cut));
+        // register defined is not a national classification. Each link's heading says it, with the reference.
+        Assert.Equal(["Kildekodeverk: 2336", "Administrativt kodeverk: 2.16.578.1.12.4.1.1.7110"],
+                     KodeverkGroupHeadings(cut));
 
         // This fake serves no codes for 2336, so the nameless link says the endpoint published none
         // rather than guessing — and keeps its reference, which is then all that identifies it.
         Assert.Equal(["Ingen kodeverdier tilgjengelig", "ICD-10"],
                      KodeverkLines(cut).Select(l => l.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent));
-        Assert.Equal(["Referanse: 2336", "Referanse: 2.16.578.1.12.4.1.1.7110"],
-                     KodeverkLines(cut).Select(l => l.QuerySelector(".munin-explorer-kodeverk__reference")!.TextContent));
 
         var about = ShowAbout(cut);
 
@@ -16197,15 +16195,13 @@ public class VariableSearchTest : ExplorerTestContext
             "munin-explorer-container",  // ours, Stiler components/munin-explorer/
             "munin-explorer-results",    // ours, Stiler components/munin-explorer/
             "munin-explorer-detail",     // ours, a handle
-            // The Data tab, which opens first (Fhi.Metadata-l9l2n.101): the lead sentence, the
-            // kodeverk group headings and the links under them.
-            "munin-explorer-lead",
-            "munin-explorer-group",      // ours — helsedata's panel is flat, so it has no
-                                            // group heading to borrow a name from
+            // The Data tab, which opens first (Fhi.Metadata-l9l2n.101): the list of kodeverk links,
+            // each headed by its kind and reference (Fhi.Metadata-9huq2.19).
             "munin-explorer-kodeverk",
             "munin-explorer-kodeverk__item",
+            "munin-explorer-group",      // ours — helsedata's panel is flat, so it has no
+                                            // group heading to borrow a name from
             "munin-explorer-kodeverk__name",
-            "munin-explorer-kodeverk__reference",
         ], invented);
 
         // The definition list lives in Detaljer.

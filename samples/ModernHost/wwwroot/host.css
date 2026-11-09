@@ -2392,13 +2392,6 @@ table.munin-explorer-data-list tbody th {
   color: #51547b;
 }
 
-/* ---- the sentence that opens a detail block ----
-   Stiler's own complete-record lead declaration, so the lead sentences read as that one does.
-   Stiler's rule for this name is Fhi.Metadata-3z2s3. */
-.munin-explorer-lead {
-  margin: 0 0 8px;
-}
-
 /* ---- the host's lede under the explorer title ----
    Stiler's declarations for it; its grid row is with the explorer grid's, at 1024px and up.
    Stiler's rule for this name is Fhi.Metadata-35w0p.66. */
@@ -3017,13 +3010,6 @@ table.munin-explorer-data-list tbody th {
 }
 
 .munin-explorer-kodeverk__name > ul:has(> li > span) > li > span:first-child {
-  font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
-}
-
-/* The reference is the thing a reader can look the kodeverk up by, so it is set in a monospace
-   face — a run of digits like 2336 or a dotted OID reads as an identifier rather than as prose. */
-.munin-explorer-kodeverk__reference {
-  margin: 2px 0 8px;
   font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
 }
 

@@ -1076,8 +1076,6 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-kodeverk` | handle |
   | `munin-explorer-kodeverk__item` | handle |
   | `munin-explorer-kodeverk__name` | handle |
-  | `munin-explorer-kodeverk__reference` | handle |
-  | `munin-explorer-lead` | handle |
   | `munin-explorer-list-code` | meaning |
   | `munin-explorer-list-create` | meaning |
   | `munin-explorer-list-create__field` | meaning |

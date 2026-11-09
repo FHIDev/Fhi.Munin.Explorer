@@ -276,11 +276,7 @@ public sealed partial class VariableListView
     private string RowDesiredDataId(VariableListItem item) =>
         $"munin-explorer-list-panel-desired-{_instance}-{ItemSuffix(item)}";
 
-    private string RowDesiredDataHintId(VariableListItem item) => $"{RowDesiredDataId(item)}-hint";
-
-    // The hint always, and the refusal sentence the column's field points at too while this row stands refused.
-    private string RowDesiredDataDescribedBy(VariableListItem item) =>
-        DesiredDataDescribedBy(item) is { } refusal ? $"{RowDesiredDataHintId(item)} {refusal}" : RowDesiredDataHintId(item);
+    private string RowDesiredDataHeadingId(VariableListItem item) => $"{RowDesiredDataId(item)}-heading";
 
     private string RowNotesId(VariableListItem item) =>
         $"munin-explorer-list-panel-notes-{_instance}-{ItemSuffix(item)}";

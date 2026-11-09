@@ -1,0 +1,2 @@
+category: Notes for hosts
+- **Two class names are no longer emitted: `munin-explorer-kodeverk__reference` and `munin-explorer-lead`.** The reference now sits in each code list's heading (`.headline.munin-explorer-group`, which moved inside `li.munin-explorer-kodeverk__item`), and the kodeverk lead sentence is gone. Fhi.Helsedata.Stiler's rule for `.munin-explorer-kodeverk__reference` can be removed; it styles nothing any more. Stiler has no rule for `munin-explorer-lead`. (Fhi.Metadata-9huq2.19)

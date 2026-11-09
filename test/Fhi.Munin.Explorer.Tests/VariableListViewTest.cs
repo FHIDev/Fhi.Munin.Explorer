@@ -1861,7 +1861,7 @@ public partial class VariableListViewTest : ExplorerTestContext
         var hidden = cut.FindAll("tbody .screenreader-only");
 
         Assert.Equal(3, hidden.Count);
-        Assert.All(hidden, h => Assert.Equal("Ønskede data", h.TextContent.Trim()));
+        Assert.All(hidden, h => Assert.Equal("Andre ønsker til dataene (valgfritt)", h.TextContent.Trim()));
         Assert.DoesNotContain("Kode: ", cut.Markup, StringComparison.Ordinal);
     }
 
@@ -4088,16 +4088,17 @@ public partial class VariableListViewTest : ExplorerTestContext
         Assert.Equal("true", DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
     }
 
-    [Fact]
-    public void View_WhenTheAnnotationFieldIsDrawn_ThenItAnnouncesTheColumnAndTheVariable()
+    [Theory]
+    [InlineData(null, "Andre ønsker til dataene (valgfritt) Alder ved diagnose")]
+    [InlineData("en", "Other wishes for the data (optional) Alder ved diagnose")]
+    public void View_WhenTheAnnotationFieldIsDrawn_ThenItAnnouncesTheNoteAndTheVariable(string? language, string name)
     {
-        // Forty fields all announcing "Ønskede data" leave a screen reader user with no way to
-        // tell which variable they are annotating (WCAG 4.1.2). Resolved through AccessibleName
-        // rather than by asserting an attribute is present, because a placeholder satisfies the
-        // latter and is not a name.
-        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+        // Forty fields with one label leave no way to tell which variable is annotated (WCAG 4.1.2); the
+        // field is the optional note beside the codes (Fhi.Metadata-9huq2.19). AccessibleName, because a
+        // placeholder satisfies an attribute check and is not a name.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")), language: language);
 
-        Assert.Equal("Ønskede data Alder ved diagnose", AccessibleName.Of(DesiredDataFields(cut)[0]));
+        Assert.Equal(name, AccessibleName.Of(DesiredDataFields(cut)[0]));
     }
 
     [Fact]
