@@ -1367,4 +1367,29 @@ public class DesiredCodePickerTest : ExplorerTestContext
         var refused = ChosenLines(cut).Single(line => line.TextContent.Contains("Z12", StringComparison.Ordinal));
         Assert.Contains(refused.QuerySelectorAll("button"), b => b.TextContent.StartsWith("Fjern", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void Render_WhenAnOlderRangeIsPastTheFold_ThenItIsListedWithItsRemove()
+    {
+        DesiredCodeView[] saved = [.. TwelveSaved().Take(11), Saved(DesiredCodeKinds.Range, "E10", "E12", 6, "IV", "E10-E14")];
+        var cut = Picker(new Saves(), [Icd10], saved);
+
+        Assert.Equal(11, ChosenLines(cut).Count);
+        var range = ChosenLines(cut).Single(line => line.TextContent.Contains("eldre valg", StringComparison.Ordinal));
+        Assert.Contains(range.QuerySelectorAll("button"), b => b.TextContent.StartsWith("Fjern", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Remove_WhenTheListDropsToTenWhileUnfolded_ThenItFoldsAgainWhenItGrowsPastTen()
+    {
+        var cut = Picker(new Saves(), [Sivilstand], [.. TwelveSaved().Take(11)]);
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Vis alle 11 valgte").Click();
+        ChosenLines(cut)[0].QuerySelectorAll("button").First(b => b.TextContent.StartsWith("Fjern", StringComparison.Ordinal)).Click();
+        Assert.DoesNotContain(cut.FindAll("button"), b => b.TextContent.Trim() == "Vis færre");
+
+        Tick(cut, "1");
+
+        Assert.Equal(10, ChosenLines(cut).Count);
+        Assert.Contains(cut.FindAll("button"), b => b.TextContent.Trim() == "Vis alle 11 valgte");
+    }
 }

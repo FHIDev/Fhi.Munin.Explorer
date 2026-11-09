@@ -1057,15 +1057,14 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     // A range the tree has no block for: kept, and shown as an older choice.
     private static bool IsOlderRange(Choice choice) => choice.Value.Kind == DesiredCodeKinds.Range;
 
-    // What the summary can remove: whatever no box in the tree stands for.
     private bool _showAllChosen;
 
-    // The first ten, and every pick the tree cannot show: its «Fjern» is the only way out, so it is never folded away.
+    // The first ten, and every choice only its «Fjern» can remove, so that way out is never folded away.
     private IEnumerable<Choice> ShownChoices => _showAllChosen
         ? _choices
-        : _choices.Where((choice, index) => index < FoldAfter || _notInTree.Contains(choice.Value)
-                                             || (_noCount.Contains(choice.Value) && !InLoadedTree(choice)));
+        : _choices.Where((choice, index) => index < FoldAfter || Removable(choice));
 
+    // What the summary can remove: whatever no box in the tree stands for.
     private bool Removable(Choice choice) =>
         IsOlderRange(choice) || !CanReveal(choice) || _notInTree.Contains(choice.Value)
         || (_noCount.Contains(choice.Value) && !InLoadedTree(choice));
@@ -1089,6 +1088,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         _choices.Remove(choice);
         _noCount.Remove(choice.Value);
         _notInTree.Remove(choice.Value);
+        _showAllChosen &= _choices.Count > FoldAfter;
         _focusCounter = true;
         await RecountAsync();
     }
