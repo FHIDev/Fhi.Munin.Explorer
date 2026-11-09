@@ -38,9 +38,11 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
     private readonly List<Choice> _choices = [];
 
-    // Choices the tree cannot show: not counted when the list was read, not found on the way into the tree, or named by
-    // a refused save. Each gets a «Fjern» in the summary, as nothing in the tree stands for it.
-    private readonly HashSet<DesiredCodeChoice> _unreachable = [];
+    // Choices the tree may not show, each with a «Fjern» in the summary. Munin sends no count also while a list cannot be
+    // read, so _noCount holds only until a loaded level of the tree holds the code; not found on the way into the tree,
+    // or named by a refused save, holds until the line goes.
+    private readonly HashSet<DesiredCodeChoice> _noCount = [];
+    private readonly HashSet<DesiredCodeChoice> _notInTree = [];
     private readonly Dictionary<KodeverkKey, ListState> _lists = [];
     private readonly Dictionary<int, ElementReference> _tabButtons = [];
     private readonly Dictionary<string, ElementReference> _rows = [];
@@ -111,7 +113,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
             var choice = new Choice(view.ToChoice(), view.Name, view.ToName, view.Expired, view.Count, view.KodeverkName, view.Ancestors);
             if (Insert(_choices.Count, choice) && view.Count is null)
             {
-                _unreachable.Add(choice.Value);
+                _noCount.Add(choice.Value);
             }
         }
     }
@@ -673,7 +675,8 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         var at = under.Count > 0 ? _choices.IndexOf(under[0]) : _choices.Count;
         _choices.RemoveAll(under.Contains);
         var chosen = ChoiceOf(link, state, hit);
-        _unreachable.Remove(chosen.Value);
+        _noCount.Remove(chosen.Value);
+        _notInTree.Remove(chosen.Value);
         Insert(at, chosen);
         return true;
     }
@@ -945,7 +948,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
         if (VisibleRows(state, TreeSection).FirstOrDefault(r => r.Code == choice.Value.Code) is not { Path: { } path })
         {
-            _unreachable.Add(choice.Value);
+            _notInTree.Add(choice.Value);
             Announce(T.PickerNotInTree(choice.Value.Code), error: true);
             return;
         }
@@ -983,11 +986,15 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     // A range the tree has no block for: kept, and shown as an older choice.
     private static bool IsOlderRange(Choice choice) => choice.Value.Kind == DesiredCodeKinds.Range;
 
-    // What the summary can remove: whatever no box in the tree stands for. Munin sends no count also while a list cannot be
-    // read, so a marked code the tree has since shown is reachable after all.
+    // What the summary can remove: whatever no box in the tree stands for.
     private bool Removable(Choice choice) =>
-        IsOlderRange(choice) || !CanReveal(choice)
-        || (_unreachable.Contains(choice.Value) && !Tabs.Any(link => SameList(choice, link) && _lists.TryGetValue(KodeverkKey.Of(link), out var state) && state.Known.ContainsKey(choice.Value.Code)));
+        IsOlderRange(choice) || !CanReveal(choice) || _notInTree.Contains(choice.Value)
+        || (_noCount.Contains(choice.Value) && !InLoadedTree(choice));
+
+    // A search hit is not enough: only a level read from the tree shows the code where the reader can find it again.
+    private bool InLoadedTree(Choice choice) =>
+        Tabs.Any(link => SameList(choice, link) && _lists.TryGetValue(KodeverkKey.Of(link), out var state)
+            && state.Branches.Values.Any(b => b.Loaded && b.Codes.Any(c => c.Value == choice.Value.Code)));
 
     // The list's name as the variable page gives it, so a saved choice keeps the label the summary shows.
     private static string? ListNameOf(KodeverkLink link) => string.IsNullOrWhiteSpace(link.DisplayName) ? null : link.DisplayName;
@@ -1001,7 +1008,8 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         }
 
         _choices.Remove(choice);
-        _unreachable.Remove(choice.Value);
+        _noCount.Remove(choice.Value);
+        _notInTree.Remove(choice.Value);
         _focusCounter = true;
         await RecountAsync();
     }
@@ -1117,7 +1125,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
                     break;
                 case { Outcome: DesiredDataOutcome.Refused, InvalidIndex: { } index } when index >= 0 && index < submitted.Count:
                     var bad = submitted[index];
-                    _unreachable.Add(bad.Value);
+                    _notInTree.Add(bad.Value);
                     Announce(T.PickerInvalid(Describe(T, bad.Value, bad.Name, bad.ToName)), error: true);
                     break;
                 case { Outcome: DesiredDataOutcome.Refused, MaxSelections: { } max }:

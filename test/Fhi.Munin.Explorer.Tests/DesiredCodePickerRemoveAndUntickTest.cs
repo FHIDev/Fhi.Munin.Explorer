@@ -260,4 +260,31 @@ public class DesiredCodePickerRemoveAndUntickTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Single(saves.Calls));
         Assert.Equal([(DesiredCodeKinds.Code, "E110")], saves.Calls[0].Select(v => (v.Kind, v.Code)));
     }
+
+    [Fact]
+    public void Render_WhenACodeWithNoCountIsOnlyASearchHit_ThenItsLineKeepsItsRemoveButton()
+    {
+        var client = new FakeClient { Search = (_, _, _) => new KodeverkCodePage { Total = 1, Codes = [Hit("E139", "Annen", null, false, "IV", "E10-E14")] } };
+        var cut = Picker(new Saves(), [Saved(DesiredCodeKinds.Code, "E139", null, "ICD-10", "IV", "E10-E14")], client);
+
+        cut.Find("input[type=search]").Input("E139");
+        cut.Find("input[type=search]").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Single(RemoveButtons(cut));
+    }
+
+    [Fact]
+    public async Task Reveal_WhenACodeSeenAsASearchHitIsNotFoundInTheTree_ThenItsLineHasARemoveButton()
+    {
+        var client = new FakeClient { Search = (_, _, _) => new KodeverkCodePage { Total = 1, Codes = [Hit("E139", "Annen", null, false, "IV", "E10-E14")] } };
+        var cut = Picker(new Saves(), [Saved(DesiredCodeKinds.Code, "E139", 1, "ICD-10", "IV", "E10-E14")], client);
+        cut.Find("input[type=search]").Input("E139");
+        cut.Find("input[type=search]").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        cut.Find("button[aria-label='Vis E139 i treet']").Click();
+        await cut.InvokeAsync(() => { });
+
+        Assert.Contains("Fant ikke E139 i treet", cut.Find("[role=alert]").TextContent);
+        Assert.Single(RemoveButtons(cut));
+    }
 }

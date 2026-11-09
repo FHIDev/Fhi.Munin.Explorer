@@ -982,6 +982,23 @@ public class DesiredCodePickerTest : ExplorerTestContext
     // ------------------------------------------------------------------------------------------ unticking
 
     [Fact]
+    public void Untick_WhenALevelUnderTheWholeParentIsCutAt200_ThenTheTextNamesTheLevelAndTheParentToUntick()
+    {
+        var big = Enumerable.Range(0, 300).Select(i => Hit($"C{i:000}", "Kode", null, false, false, null, "CH", "BIG")).ToArray();
+        var client = new TreeClient
+        {
+            Tree = new() { [""] = [Hit("CH", "Kapittel", 301, true)], ["CH"] = [Hit("BIG", "Stor", 300, false, false, null, "CH")], ["BIG"] = big },
+            Search = (_, _, _) => new KodeverkCodePage { Total = 1, Codes = [big[5]] },
+        };
+        var cut = Picker(new Saves(), [Icd10], [Saved(DesiredCodeKinds.Node, "CH", null, 301)], client: client);
+        SearchFor(cut, "C005");
+
+        TickHit(cut, "C005");
+
+        cut.WaitForAssertion(() => Assert.Contains("BIG har for mange koder til at én kan tas ut her. Fjern CH og velg", cut.Find("[role=alert]").TextContent));
+    }
+
+    [Fact]
     public void Untick_WhenTheTickedParentsLevelIsCutAt200_ThenTheReaderIsToldWhyAndTheParentStays()
     {
         var big = Enumerable.Range(0, 300).Select(i => Hit($"C{i:000}", "Kode", null, false, false, null, "BIG")).ToArray();
