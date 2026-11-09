@@ -350,17 +350,16 @@ else if (State?.IsAuthenticated == true)
                                        place and not the other without anything failing. *@
                                     @Cells(item)
 
-                                    @* Rendered from the draft rather than from the item, which keeps a
-                                       text the API refused in the field instead of reverting it under
-                                       the reader. The column header names the COLUMN; this span names
-                                       the field, which a control still owes on its own (WCAG 4.1.2). *@
+                                    @* From the draft, so a refused text stays in the field. The spans name the field, which the
+                                       column header cannot (WCAG 4.1.2); the textarea is the only in-flow child, as Stiler's
+                                       narrow two-column grid puts any second block under the data-label. *@
                                     <td class="munin-explorer-dataitem-main__desiredData" data-label="@T.FieldDesiredData">
-                                        <span class="screenreader-only" id="@DesiredDataLabelId(item)">@T.DesiredDataNote</span>
-                                        @* The stored codes before the note, as the opened row shows them; the picker stays in the row. *@
-                                        @DesiredCodeSummary.For(T, CodesOf(item), "no")
+                                        <span class="screenreader-only" id="@DesiredDataLabelId(item)">@T.FieldDesiredData</span>
+                                        <span class="screenreader-only" id="@DesiredDataNoteLabelId(item)">@T.DesiredDataNote</span>
                                         @* One line to start, so the row stays low; Stiler lets it grow to four, then scroll. *@
                                         <textarea class="textarea__field"
                                                   rows="1"
+                                                  placeholder="@T.DesiredDataNote"
                                                   value="@DesiredDataOf(item)"
                                                   aria-labelledby="@DesiredDataLabelledBy(item)"
                                                   aria-invalid="@DesiredDataInvalid(item)"

@@ -2962,13 +2962,13 @@ table.munin-explorer-data-list tbody th {
 
 /* ---- the Data tab's kodeverk ----
 
-   All five names below are ours, and every one is a handle: there was no kodeverk section
-   anywhere to read a shape back off, because helsedata's variable page has no such panel at all.
-   Rules for them reached Stiler 0.1.13 with the rest of the prefix; the sample supplies what a
+   The kodeverk and codes names below are ours, and every one is a handle: there was no kodeverk
+   section anywhere to read a shape back off, because helsedata's variable page has no such panel at
+   all. Rules for them reached Stiler 0.1.13 with the rest of the prefix; the sample supplies what a
    host would — the arrangement, nothing more.
 
-   The list is a plain <ul> with its bullets off, because the group heading above it already says
-   these are kodeverk of one kind and a bullet per line adds nothing. */
+   Each link is a plain <ul> of one item with its bullet off, under its own heading «kind: reference»,
+   which already says what the line is. */
 .munin-explorer-kodeverk {
   list-style: none;
   padding: 0;

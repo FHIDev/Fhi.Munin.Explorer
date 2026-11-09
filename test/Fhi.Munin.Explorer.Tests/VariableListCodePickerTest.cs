@@ -172,29 +172,18 @@ public class VariableListCodePickerTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Row_WhenTheItemHasChosenCodes_ThenTheCellShowsThemBeforeItsNoteAndTheOpenedRowNamesThem()
+    public void Row_WhenTheItemHasChosenCodes_ThenTheOpenedRowNamesThemAndTheCellKeepsOnlyItsTextarea()
     {
         var item = Item() with { DesiredDataCodes = [new DesiredCodeView { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", KodeverkName = "Sivilstand", Kind = "kode", Code = "2", Name = "Gift" }] };
         var cut = OpenedRow(new ListClient(item, Sivilstand));
 
-        // The textarea stays the cell's direct child: Stiler sizes it by «td > textarea». The codes come
-        // first, as the opened row shows them, and the picker stays out of the cell. (Fhi.Metadata-9huq2.19)
+        // The textarea is the cell's only in-flow child: Stiler sizes it by «td > textarea», and below 1280px
+        // the cell is a two-column grid whose first column is the data-label, so a second block would push it under.
         var cell = cut.Find("td.munin-explorer-dataitem-main__desiredData");
-        var textarea = cell.QuerySelector(":scope > textarea")!;
-        var summary = cell.Children.Single(c => c.TextContent.Contains("Sivilstand: 2 Gift", StringComparison.Ordinal));
-        Assert.True(cell.Children.Index(summary) < cell.Children.Index(textarea));
-        Assert.Empty(cell.QuerySelectorAll("button"));
-        Assert.Equal("Andre ønsker til dataene (valgfritt) Sivilstand", AccessibleName.Of(textarea));
+        Assert.Equal(["SPAN", "SPAN", "TEXTAREA"], cell.Children.Select(c => c.TagName));
+        Assert.All(cell.Children.Take(2), span => Assert.Contains("screenreader-only", span.ClassList));
+        Assert.DoesNotContain("Gift", cell.TextContent);
         Assert.Contains("Sivilstand: 2 Gift", System.Text.RegularExpressions.Regex.Replace(cut.Find("[id^='munin-explorer-list-panel-'][role=region]").TextContent, @"\s+", " "));
-    }
-
-    [Fact]
-    public void Row_WhenTheItemHasNoCodes_ThenTheCellIsItsNoteAlone()
-    {
-        var cut = OpenedRow(new ListClient(Item(), Sivilstand));
-
-        var cell = cut.Find("td.munin-explorer-dataitem-main__desiredData");
-        Assert.Equal(["SPAN", "TEXTAREA"], cell.Children.Select(c => c.TagName));
     }
 
     [Theory]
@@ -230,7 +219,9 @@ public class VariableListCodePickerTest : ExplorerTestContext
         // Without a picker the stored codes and the note are what is left of the group, in that order.
         var group = panel.QuerySelector("[role=group]")!;
         var all = group.QuerySelectorAll("*").ToList();
-        Assert.True(all.FindIndex(e => e.TextContent.StartsWith("Sivilstand:", StringComparison.Ordinal)) < all.IndexOf(group.QuerySelector("textarea")!));
+        var summary = all.FindIndex(e => e.TextContent.StartsWith("Sivilstand:", StringComparison.Ordinal));
+        Assert.True(summary >= 0);
+        Assert.True(summary < all.IndexOf(group.QuerySelector("textarea")!));
     }
 
     [Fact]

@@ -104,17 +104,20 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// <summary>The sentence a refused annotation is explained by, which its field points at.</summary>
     private string DesiredDataRefusalId => $"munin-explorer-list-desired-data-refusal-{_instance}";
 
-    /// <summary>The note's label in one row, which that row's field is named from.</summary>
+    /// <summary>The word "Ønskede data" in one row, which that row's field is named from.</summary>
     private string DesiredDataLabelId(VariableListItem item) =>
         $"munin-explorer-list-desired-data-label-{_instance}-{ItemSuffix(item)}";
 
+    private string DesiredDataNoteLabelId(VariableListItem item) =>
+        $"munin-explorer-list-desired-data-note-{_instance}-{ItemSuffix(item)}";
+
     /// <summary>
-    /// The annotation field's name: the note's label, then the row's, so forty fields do not all just
-    /// say the same (WCAG 4.1.2). Two elements rather than one <c>aria-label</c>, so our word and
+    /// The annotation field's name: the column's word (its visible label, WCAG 2.5.3), the note's label,
+    /// then the row's, so forty fields do not all just say "Ønskede data" (WCAG 4.1.2). Two elements rather than one <c>aria-label</c>, so our word and
     /// Munin's Norwegian name keep their own languages (WCAG 3.1.2).
     /// </summary>
     private string DesiredDataLabelledBy(VariableListItem item) =>
-        $"{DesiredDataLabelId(item)} {RowNameId(item)}";
+        $"{DesiredDataLabelId(item)} {DesiredDataNoteLabelId(item)} {RowNameId(item)}";
 
     private Page<VariableListItem>? _page;
     private Guid? _shownList;

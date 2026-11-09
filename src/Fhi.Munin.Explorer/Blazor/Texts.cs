@@ -365,9 +365,9 @@ internal sealed record Texts(
     string FieldStatistics,
     string FlagYes,
     string FlagNo,
-    // (maxLength) — "Ønskede data kan ikke overstige 500 tegn."
+    // (maxLength) — "Andre ønsker til dataene kan ikke overstige 500 tegn."
     Func<int, string> DesiredDataTooLong,
-    // An opened list row: the free text under the code picker's «Ønskede data», and the "Mine notater" tab.
+    // The free text beside the picked codes, in the opened row and the list's column; and the "Mine notater" tab.
     string DesiredDataNote,
     string TabNotes,
     string NotesLabel,
@@ -1431,7 +1431,7 @@ internal sealed record Texts(
         FlagYes: "Ja",
         FlagNo: "Nei",
         DesiredDataTooLong: maxLength =>
-            $"Ønskede data kan ikke overstige {maxLength} tegn. Teksten er ikke lagret.",
+            $"Andre ønsker til dataene kan ikke overstige {maxLength} tegn. Teksten er ikke lagret.",
         DesiredDataNote: "Andre ønsker til dataene (valgfritt)",
         TabNotes: "Mine notater",
         NotesLabel: "Egne notater",
@@ -2043,7 +2043,7 @@ internal sealed record Texts(
         FlagYes: "Yes",
         FlagNo: "No",
         DesiredDataTooLong: maxLength =>
-            $"Desired data must be {maxLength} characters or fewer. Your text has not been saved.",
+            $"Other wishes for the data must be {maxLength} characters or fewer. Your text has not been saved.",
         DesiredDataNote: "Other wishes for the data (optional)",
         TabNotes: "My notes",
         NotesLabel: "Your notes",

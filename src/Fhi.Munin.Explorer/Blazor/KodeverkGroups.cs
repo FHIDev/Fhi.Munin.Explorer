@@ -75,10 +75,7 @@ internal sealed class KodeverkGroups : ComponentBase, IDisposable
             .GroupBy(entry => entry.Link.KodeverkType, StringComparer.OrdinalIgnoreCase)
             .SelectMany(group => group);
 
-        builder.OpenElement(0, "ul");
-        builder.AddAttribute(1, "class", "munin-explorer-kodeverk");
-        builder.AddContent(2, Items(links));
-        builder.CloseElement();
+        builder.AddContent(0, Items(links));
     }
 
     // The kind alone where the API sent no reference, rather than a heading ending in a colon.
@@ -149,24 +146,27 @@ internal sealed class KodeverkGroups : ComponentBase, IDisposable
             var occurrence = occurrences.GetValueOrDefault(key);
             occurrences[key] = occurrence + 1;
 
-            builder.OpenElement(seq, "li");
-            // Keyed on the link, so two links reordered keep their own lists open.
-            builder.SetKey((key, occurrence));
-            builder.AddAttribute(seq + 1, "class", "munin-explorer-kodeverk__item");
-
-            builder.OpenElement(seq + 2, $"h{Level}");
-            builder.AddAttribute(seq + 3, "class", "headline headline-xxs margin--none munin-explorer-group");
-            builder.AddContent(seq + 4, HeadingOf(T, link));
+            // The heading before its list, as the kind headings were, so the hosts' group spacing still applies.
+            builder.OpenElement(seq, $"h{Level}");
+            builder.AddAttribute(seq + 1, "class", "headline headline-xxs margin--none munin-explorer-group");
+            builder.AddContent(seq + 2, HeadingOf(T, link));
             builder.CloseElement();
 
+            builder.OpenElement(seq + 3, "ul");
+            builder.AddAttribute(seq + 4, "class", "munin-explorer-kodeverk");
+            builder.OpenElement(seq + 5, "li");
+            // Keyed on the link, so two links reordered keep their own lists open.
+            builder.SetKey((key, occurrence));
+            builder.AddAttribute(seq + 6, "class", "munin-explorer-kodeverk__item");
+
             // A list cannot sit inside a <p>, so the preview's slot is a div wearing the same class.
-            builder.OpenElement(seq + 5, inline is InlineCodes.Codes ? "div" : "p");
-            builder.AddAttribute(seq + 6, "class", "munin-explorer-kodeverk__name");
-            builder.AddAttribute(seq + 7, "id", NameId(index));
+            builder.OpenElement(seq + 7, inline is InlineCodes.Codes ? "div" : "p");
+            builder.AddAttribute(seq + 8, "class", "munin-explorer-kodeverk__name");
+            builder.AddAttribute(seq + 9, "id", NameId(index));
 
             if (inline is { } state)
             {
-                builder.AddContent(seq + 8, state switch
+                builder.AddContent(seq + 10, state switch
                 {
                     InlineCodes.Loading => (RenderFragment)(b => b.AddContent(0, T.CodesLoading)),
                     InlineCodes.Failed => b => b.AddContent(0, T.KodeverkUnnamed),
@@ -176,12 +176,12 @@ internal sealed class KodeverkGroups : ComponentBase, IDisposable
             }
             else if (DisplayText.Trimmed(link.DisplayName) is { } name)
             {
-                builder.AddAttribute(seq + 9, "lang", "no");
-                builder.AddContent(seq + 10, name);
+                builder.AddAttribute(seq + 11, "lang", "no");
+                builder.AddContent(seq + 12, name);
             }
             else
             {
-                builder.AddContent(seq + 11, T.KodeverkUnnamed);
+                builder.AddContent(seq + 13, T.KodeverkUnnamed);
             }
 
             builder.CloseElement();
@@ -189,9 +189,10 @@ internal sealed class KodeverkGroups : ComponentBase, IDisposable
             // No button where the API serves no codes, nor where they are all inline already.
             if (link.HasCodeValues && Picking?.Contains(key) != true && (inline is null or InlineCodes.Failed || showAll))
             {
-                builder.AddContent(seq + 12, CodesToggle(link, key, index, showAll));
+                builder.AddContent(seq + 14, CodesToggle(link, key, index, showAll));
             }
 
+            builder.CloseElement();
             builder.CloseElement();
 
             seq += 20;

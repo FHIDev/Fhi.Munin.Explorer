@@ -13395,7 +13395,7 @@ public class VariableSearchTest : ExplorerTestContext
     [Fact]
     public void Kodeverk_WhenTheWholeVariableIsOpened_ThenTheListFollowsTheHeadingWithNoLead()
     {
-        // The lead sentences per kind are gone: each link's own heading says its kind. (Fhi.Metadata-9huq2.19)
+        // No sentence per kind between the section's heading and the first link: the link's heading says its kind.
         var cut = OpenData(KodeverkRows());
 
         WholeVariableToggle(cut).Click();
@@ -13403,8 +13403,9 @@ public class VariableSearchTest : ExplorerTestContext
         var section = cut.Find($"#{DetailSectionIds.CodeLists}");
 
         Assert.Equal("Kodeverk", section.Children[0].TextContent);
-        Assert.Equal("UL", section.Children[1].TagName);
-        Assert.Contains("munin-explorer-kodeverk", section.Children[1].ClassList);
+        Assert.Contains("munin-explorer-group", section.Children[1].ClassList);
+        Assert.Equal("Kildekodeverk: 2336", section.Children[1].TextContent);
+        Assert.Contains("munin-explorer-kodeverk", section.Children[2].ClassList);
         Assert.DoesNotContain("Kildekodeverket er", section.TextContent, StringComparison.Ordinal);
     }
 
@@ -13472,15 +13473,15 @@ public class VariableSearchTest : ExplorerTestContext
         string? language, params string[] headings)
     {
         // One heading per link, «kind: reference», so the two kildekodeverk (apart in the payload) get one
-        // each, side by side; the tab opens on the list. (Fhi.Metadata-9huq2.19)
+        // each, side by side; the tab opens on the first, and each heading stands right before its list.
         var cut = OpenData(KodeverkRows(), p => p.Add(c => c.Language, language));
 
         var tab = Panel(cut).QuerySelector("[role=tabpanel]")!;
 
         Assert.Equal(headings, KodeverkGroupHeadings(cut));
-        Assert.Equal("UL", tab.Children[0].TagName);
+        Assert.Equal("H4", tab.Children[0].TagName);
         Assert.Equal(4, KodeverkLines(cut).Count);
-        Assert.All(KodeverkLines(cut), line => Assert.Equal("H4", line.Children[0].TagName));
+        Assert.All(KodeverkLines(cut), line => Assert.Equal("H4", LineHeading(line).TagName));
     }
 
     [Fact]
@@ -13518,8 +13519,9 @@ public class VariableSearchTest : ExplorerTestContext
         IRenderedComponent<VariableSearch> cut) =>
         [.. Panel(cut).QuerySelectorAll("li.munin-explorer-kodeverk__item")];
 
+    // A link's heading stands right before the one-item list that holds its line.
     private static AngleSharp.Dom.IElement LineHeading(AngleSharp.Dom.IElement line) =>
-        line.QuerySelector(".munin-explorer-group")!;
+        line.ParentElement!.PreviousElementSibling!;
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> CodeToggles(
         IRenderedComponent<VariableSearch> cut) =>
@@ -13750,9 +13752,10 @@ public class VariableSearchTest : ExplorerTestContext
                       "Helsefaglig kodeverk: ICD-10"],
                      KodeverkGroupHeadings(cut));
 
-        // One list of links; a nameless link's code preview is a list nested inside its item.
-        var list = Assert.Single(Panel(cut).QuerySelectorAll("ul.munin-explorer-kodeverk"));
-        Assert.Equal(4, list.QuerySelectorAll("li.munin-explorer-kodeverk__item").Length);
+        // A list per link, each under its heading; a nameless link's code preview is a list nested in its item.
+        var lists = Panel(cut).QuerySelectorAll("ul.munin-explorer-kodeverk");
+        Assert.Equal([1, 1, 1, 1], lists.Select(l => l.QuerySelectorAll("li.munin-explorer-kodeverk__item").Length));
+        Assert.All(lists, l => Assert.Contains("munin-explorer-group", l.PreviousElementSibling!.ClassList));
     }
 
     [Fact]
@@ -14504,15 +14507,16 @@ public class VariableSearchTest : ExplorerTestContext
     [Fact]
     public void Codes_WhenAKildekodeverkHasAName_ThenItsLineIsItsHeadingItsNameAndItsControl()
     {
-        // The whole markup of a named line less bUnit's handler ids: «kind: reference» as the heading,
+        // The whole markup of a named line less bUnit's handler ids, under its heading «kind: reference»:
         // the name as plain text, then the control. (Fhi.Metadata-0ajsy, Fhi.Metadata-9huq2.19)
         var cut = OpenData(KodeverkRows());
         var named = KodeverkLines(cut)[1];
         var nameId = named.QuerySelector(".munin-explorer-kodeverk__name")!.Id;
 
+        Assert.Equal("<h4 class=\"headline headline-xxs margin--none munin-explorer-group\">Kildekodeverk: 2337</h4>",
+                     LineHeading(named).OuterHtml);
         Assert.Equal(
-            "<li class=\"munin-explorer-kodeverk__item\"><h4 class=\"headline headline-xxs margin--none munin-explorer-group\">Kildekodeverk: 2337</h4>"
-            + $"<p class=\"munin-explorer-kodeverk__name\" id=\"{nameId}\" lang=\"no\">Skjemastatus</p>"
+            $"<li class=\"munin-explorer-kodeverk__item\"><p class=\"munin-explorer-kodeverk__name\" id=\"{nameId}\" lang=\"no\">Skjemastatus</p>"
             + "<button class=\"hd-button-square button-square--ghost margin-bottom\" type=\"button\" aria-expanded=\"false\">Vis koder</button></li>",
             System.Text.RegularExpressions.Regex.Replace(named.OuterHtml, @" blazor:\w+=""\d+""", ""));
     }
@@ -14869,9 +14873,9 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.Equal(
         [
+            "munin-explorer-group",                 // ours, already in use on the Details tab
             "munin-explorer-kodeverk",              // ours, a handle — the list of links
             "munin-explorer-kodeverk__item",
-            "munin-explorer-group",                 // ours, already in use on the Details tab
             "munin-explorer-kodeverk__name",
             "munin-explorer-codes",                 // ours, a handle — the open code list
             "munin-explorer-codes__table",
@@ -16195,12 +16199,12 @@ public class VariableSearchTest : ExplorerTestContext
             "munin-explorer-container",  // ours, Stiler components/munin-explorer/
             "munin-explorer-results",    // ours, Stiler components/munin-explorer/
             "munin-explorer-detail",     // ours, a handle
-            // The Data tab, which opens first (Fhi.Metadata-l9l2n.101): the list of kodeverk links,
-            // each headed by its kind and reference (Fhi.Metadata-9huq2.19).
-            "munin-explorer-kodeverk",
-            "munin-explorer-kodeverk__item",
+            // The Data tab, which opens first (Fhi.Metadata-l9l2n.101): each kodeverk link's
+            // heading, «kind: reference», and the list under it.
             "munin-explorer-group",      // ours — helsedata's panel is flat, so it has no
                                             // group heading to borrow a name from
+            "munin-explorer-kodeverk",
+            "munin-explorer-kodeverk__item",
             "munin-explorer-kodeverk__name",
         ], invented);
 

@@ -108,10 +108,12 @@ public class ListRowPanelTest : ExplorerTestContext
             Guid id, Guid variableId, string? freeText, CancellationToken cancellationToken = default)
         {
             DesiredDataWritten.Add((variableId, freeText));
-            return Task.FromResult(new DesiredDataResult(DesiredDataOutcome.Saved));
+            return Task.FromResult(DesiredDataAnswer);
         }
 
         public bool DetailMissing { get; init; }
+
+        public DesiredDataResult DesiredDataAnswer { get; init; } = new(DesiredDataOutcome.Saved);
 
         /// <summary>Held until the test releases it, as a browser's fetch is never instant.</summary>
         public TaskCompletionSource? DetailGate { get; init; }
@@ -1104,6 +1106,26 @@ public class ListRowPanelTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Equal(
             "C76, C77, C78", cut.Find("td.munin-explorer-dataitem-main__desiredData textarea").GetAttribute("value")));
         Assert.Equal([(DatabaseVersion.VariableId, (string?)"C76, C77, C78")], client.DesiredDataWritten);
+    }
+
+    [Fact]
+    public void DesiredData_WhenTheDataTabsNoteIsRefused_ThenItIsDescribedByTheRefusal()
+    {
+        var client = new PanelClient(DatabaseVersion) { DesiredDataAnswer = new(DesiredDataOutcome.Refused, 500, 612) };
+        var cut = RenderView(client);
+
+        NameButton(cut, "Databaseversjon").Click();
+        cut.WaitForElement("[role=tablist]");
+        var label = cut.FindAll("[role=tabpanel] label").Single(l => l.TextContent.Trim() == "Andre ønsker til dataene (valgfritt)");
+        cut.Find($"#{label.GetAttribute("for")}").Change(new string('x', 612));
+
+        cut.WaitForAssertion(() =>
+        {
+            var field = cut.Find($"#{label.GetAttribute("for")}");
+            Assert.Equal("true", field.GetAttribute("aria-invalid"));
+            Assert.Contains("Andre ønsker til dataene kan ikke overstige 500 tegn",
+                            cut.Find($"#{field.GetAttribute("aria-describedby")}").TextContent, StringComparison.Ordinal);
+        });
     }
 
     [Fact]
