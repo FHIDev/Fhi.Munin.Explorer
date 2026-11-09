@@ -1334,14 +1334,12 @@ public class DesiredCodePickerTest : ExplorerTestContext
 
         Assert.Equal(10, ChosenLines(cut).Count);
         var toggle = cut.FindAll("button").Single(b => b.TextContent.Trim() == more);
-        Assert.Equal("false", toggle.GetAttribute("aria-expanded"));
         Assert.Equal(cut.Find("ul.munin-explorer-data-list").Id, toggle.GetAttribute("aria-controls"));
 
         toggle.Click();
 
         Assert.Equal(12, ChosenLines(cut).Count);
-        var open = cut.FindAll("button").Single(b => b.TextContent.Trim() == fewer);
-        Assert.Equal("true", open.GetAttribute("aria-expanded"));
+        Assert.Single(cut.FindAll("button"), b => b.TextContent.Trim() == fewer);
         Assert.All(ChosenLines(cut), line => Assert.NotNull(line.QuerySelector("button")));
     }
 
@@ -1380,14 +1378,43 @@ public class DesiredCodePickerTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Remove_WhenTheListDropsToTenWhileUnfolded_ThenItFoldsAgainWhenItGrowsPastTen()
+    public void Render_WhenAChoiceFromAListNoLongerLinkedIsPastTheFold_ThenItIsListedWithItsRemove()
     {
-        var cut = Picker(new Saves(), [Sivilstand], [.. TwelveSaved().Take(11)]);
+        var gone = new DesiredCodeView { KodeverkType = "HelsefagligKodeverk", KodeverkReference = "ICD-9", Kind = DesiredCodeKinds.Code, Code = "250", Count = 1 };
+        var cut = Picker(new Saves(), [Icd10], [.. TwelveSaved().Take(11), gone]);
+
+        Assert.Equal(11, ChosenLines(cut).Count);
+        var line = ChosenLines(cut).Single(l => l.TextContent.Contains("250", StringComparison.Ordinal));
+        Assert.Contains(line.QuerySelectorAll("button"), b => b.TextContent.StartsWith("Fjern", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Render_WhenAnUncountedChoiceOutsideTheLoadedTreeIsPastTheFold_ThenItIsListed()
+    {
+        var cut = Picker(new Saves(), [Icd10], [.. TwelveSaved().Take(11), Saved(DesiredCodeKinds.Code, "Z99")]);
+
+        Assert.Equal(11, ChosenLines(cut).Count);
+        Assert.Contains(ChosenLines(cut), l => l.TextContent.Contains("Z99", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Render_WhenEveryChoicePastTenIsListedAnyway_ThenThereIsNoToggle()
+    {
+        var cut = Picker(new Saves(), [Icd10], [.. TwelveSaved().Take(10), Saved(DesiredCodeKinds.Range, "E10", "E12", 6, "IV", "E10-E14")]);
+
+        Assert.Equal(11, ChosenLines(cut).Count);
+        Assert.DoesNotContain(cut.FindAll("button"), b => b.TextContent.StartsWith("Vis alle", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Untick_WhenTheTreeBringsTheListToTenWhileUnfolded_ThenItFoldsAgainPastTen()
+    {
+        var cut = Picker(new Saves(), [Sivilstand, Icd10], [.. TwelveSaved().Take(10)]);
+        Tick(cut, "1");
         cut.FindAll("button").Single(b => b.TextContent.Trim() == "Vis alle 11 valgte").Click();
-        ChosenLines(cut)[0].QuerySelectorAll("button").First(b => b.TextContent.StartsWith("Fjern", StringComparison.Ordinal)).Click();
-        Assert.DoesNotContain(cut.FindAll("button"), b => b.TextContent.Trim() == "Vis færre");
 
         Tick(cut, "1");
+        Tick(cut, "2");
 
         Assert.Equal(10, ChosenLines(cut).Count);
         Assert.Contains(cut.FindAll("button"), b => b.TextContent.Trim() == "Vis alle 11 valgte");

@@ -105,10 +105,11 @@
                 <li @key="choice.Value">@SummaryLine(choice)</li>
             }
         </ul>
-        @if (_choices.Count > FoldAfter)
+        @* Its label says what it does next, so it carries no aria-expanded beside it. *@
+        @if (ShowAllChosen || AnyFolded)
         {
-            <button class="hd-button-reset" type="button" aria-expanded="@(_showAllChosen ? "true" : "false")" aria-controls="@Id("chosen-list")"
-                    @onclick="() => _showAllChosen = !_showAllChosen">@(_showAllChosen ? T.PickerShowFewerChosen : T.PickerShowAllChosen(_choices.Count))</button>
+            <button class="hd-button-reset" type="button" aria-controls="@Id("chosen-list")"
+                    @onclick="() => _showAllChosen = !ShowAllChosen">@(ShowAllChosen ? T.PickerShowFewerChosen : T.PickerShowAllChosen(_choices.Count))</button>
         }
     }
 

@@ -1059,10 +1059,15 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
     private bool _showAllChosen;
 
+    // Cleared whenever «Valgt» is at ten or fewer, so whatever brings it there folds it again past ten.
+    private bool ShowAllChosen => _showAllChosen = _showAllChosen && _choices.Count > FoldAfter;
+
     // The first ten, and every choice only its «Fjern» can remove, so that way out is never folded away.
-    private IEnumerable<Choice> ShownChoices => _showAllChosen
+    private IEnumerable<Choice> ShownChoices => ShowAllChosen
         ? _choices
         : _choices.Where((choice, index) => index < FoldAfter || Removable(choice));
+
+    private bool AnyFolded => !ShowAllChosen && ShownChoices.Count() < _choices.Count;
 
     // What the summary can remove: whatever no box in the tree stands for.
     private bool Removable(Choice choice) =>
@@ -1088,7 +1093,6 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         _choices.Remove(choice);
         _noCount.Remove(choice.Value);
         _notInTree.Remove(choice.Value);
-        _showAllChosen &= _choices.Count > FoldAfter;
         _focusCounter = true;
         await RecountAsync();
     }
