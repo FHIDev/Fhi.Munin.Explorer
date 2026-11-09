@@ -464,6 +464,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     // What the search shows, and never more: a hit already chosen, or under a chosen parent, is left as it is.
     private async Task ChooseHitsAsync(KodeverkLink link)
     {
+        await UntickDoneAsync();
         var state = StateOf(link);
         if (_saving)
         {
@@ -490,11 +491,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     // Each hit as if its box were unticked, a hit under a whole parent included; stops at the first that cannot be.
     private async Task ClearHitsAsync(KodeverkLink link)
     {
-        while (!_untick.IsCompleted)
-        {
-            await _untick;
-        }
-
+        await UntickDoneAsync();
         var state = StateOf(link);
         if (_saving)
         {
@@ -511,6 +508,12 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
             else if (tick == Tick.Checked && !await UntickAsync(link, state, hit))
             {
                 break;
+            }
+
+            // A hit's untick may read; a save or closing the picker meanwhile ends the run there.
+            if (_saving || _disposed)
+            {
+                return;
             }
         }
 
@@ -675,13 +678,18 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         return true;
     }
 
-    private async Task ToggleTickAsync(KodeverkLink link, KodeverkCodeHit hit)
+    // A press while an untick reads waits for it, then acts on the draft that untick left.
+    private async Task UntickDoneAsync()
     {
-        // A press while an untick reads waits for it, then acts on the draft that untick left.
         while (!_untick.IsCompleted)
         {
             await _untick;
         }
+    }
+
+    private async Task ToggleTickAsync(KodeverkLink link, KodeverkCodeHit hit)
+    {
+        await UntickDoneAsync();
 
         // The draft holds still while it is being saved, so what the answer is about is what is on screen.
         if (_saving)
@@ -747,7 +755,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
             if (branch.Codes.Count < branch.Total)
             {
-                Announce(T.PickerLevelCut(ancestors[i]), error: true);
+                Announce(T.PickerLevelCut(ancestors[i], whole.Value.Code), error: true);
                 return false;
             }
 
@@ -900,6 +908,18 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
         var state = StateOf(link);
         await OpenAsync(link);
+        if (Stale())
+        {
+            return;
+        }
+
+        // The top level that failed to read is an error, not a sign the code is gone.
+        if (state.TopBranch is not { Loaded: true, Failed: false })
+        {
+            Announce(T.PickerLoadError, error: true);
+            return;
+        }
+
         var ancestors = choice.Ancestors.Count > 0 ? choice.Ancestors : AncestorsOf(state, choice.Value.Code);
         foreach (var ancestor in ancestors)
         {
@@ -963,8 +983,11 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     // A range the tree has no block for: kept, and shown as an older choice.
     private static bool IsOlderRange(Choice choice) => choice.Value.Kind == DesiredCodeKinds.Range;
 
-    // What the summary can remove: whatever no box in the tree stands for.
-    private bool Removable(Choice choice) => IsOlderRange(choice) || !CanReveal(choice) || _unreachable.Contains(choice.Value);
+    // What the summary can remove: whatever no box in the tree stands for. Munin sends no count also while a list cannot be
+    // read, so a marked code the tree has since shown is reachable after all.
+    private bool Removable(Choice choice) =>
+        IsOlderRange(choice) || !CanReveal(choice)
+        || (_unreachable.Contains(choice.Value) && !Tabs.Any(link => SameList(choice, link) && _lists.TryGetValue(KodeverkKey.Of(link), out var state) && state.Known.ContainsKey(choice.Value.Code)));
 
     // The list's name as the variable page gives it, so a saved choice keeps the label the summary shows.
     private static string? ListNameOf(KodeverkLink link) => string.IsNullOrWhiteSpace(link.DisplayName) ? null : link.DisplayName;
@@ -1068,6 +1091,9 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
     private async Task SaveAsync()
     {
+        // An untick still reading would land after the draft was sent, so the save sends what it leaves.
+        await UntickDoneAsync();
+
         // aria-disabled rather than disabled while saving: disabling the focused button drops focus to <body>.
         if (_saving)
         {

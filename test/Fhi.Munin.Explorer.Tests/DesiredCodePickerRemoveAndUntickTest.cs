@@ -8,8 +8,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
-/// The code picker's way out for a saved choice the tree cannot show (no tab, no count, refused on save), unticking a
-/// parent saved with a pick under it, and «Fjern treffene» over a hit inside a parent chosen whole (Fhi.Metadata-9huq2.14).
+/// The code picker's way out for a saved choice the tree cannot show (no tab, no count, not found on the way into the tree,
+/// refused on save), unticking a parent saved with a pick under it, «Fjern treffene» over a hit inside a parent chosen
+/// whole, and a save pressed while an untick still reads (Fhi.Metadata-9huq2.14).
 /// </summary>
 public class DesiredCodePickerRemoveAndUntickTest : ExplorerTestContext
 {
@@ -39,12 +40,26 @@ public class DesiredCodePickerRemoveAndUntickTest : ExplorerTestContext
     {
         public Func<string, int, int, KodeverkCodePage?> Search { get; init; } = (_, _, _) => new KodeverkCodePage();
 
-        public override Task<KodeverkCodePage?> GetKodeverkCodeChildrenAsync(
+        public bool TopFails { get; init; }
+
+        public Dictionary<string, TaskCompletionSource> Gates { get; } = [];
+
+        public override async Task<KodeverkCodePage?> GetKodeverkCodeChildrenAsync(
             Guid variableId, string kodeverkType, string kodeverkReference, string? node, int skip = 0, int take = 50,
             CancellationToken cancellationToken = default)
         {
+            if (node is null && TopFails)
+            {
+                throw new HttpRequestException("Kodeverk is down");
+            }
+
+            if (node is not null && Gates.TryGetValue(node, out var gate))
+            {
+                await gate.Task;
+            }
+
             var codes = Icd10Tree.GetValueOrDefault(node ?? "") ?? [];
-            return Task.FromResult<KodeverkCodePage?>(new KodeverkCodePage { Total = codes.Length, CodeCount = 22141, Codes = [.. codes.Skip(skip).Take(take)] });
+            return new KodeverkCodePage { Total = codes.Length, CodeCount = 22141, Codes = [.. codes.Skip(skip).Take(take)] };
         }
 
         public override Task<KodeverkCodePage?> SearchKodeverkCodesAsync(
@@ -110,7 +125,7 @@ public class DesiredCodePickerRemoveAndUntickTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Remove_WhenASavedCodesListHasNoTab_ThenItsLineHasFjernAndSavingSendsNothing()
+    public void Remove_WhenASavedCodesListHasNoTab_ThenItsLineHasARemoveButtonAndSavingSendsNothing()
     {
         var saves = new Saves();
         var cut = Picker(saves, [Saved(DesiredCodeKinds.Code, "1A00", 1, "ICD-11")]);
@@ -119,7 +134,7 @@ public class DesiredCodePickerRemoveAndUntickTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Remove_WhenASavedCodeHasNoCount_ThenItsLineHasFjernAndSavingSendsNothing()
+    public void Remove_WhenASavedCodeHasNoCount_ThenItsLineHasARemoveButtonAndSavingSendsNothing()
     {
         var saves = new Saves();
         var cut = Picker(saves, [Saved(DesiredCodeKinds.Code, "E139", null, "ICD-10", "IV", "E10-E14")]);
@@ -128,7 +143,7 @@ public class DesiredCodePickerRemoveAndUntickTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Remove_WhenTheSaveRefusesASavedCode_ThenItsLineHasFjernAndTheNextSaveLeavesItOut()
+    public void Remove_WhenTheSaveRefusesASavedCode_ThenItsLineHasARemoveButtonAndTheNextSaveLeavesItOut()
     {
         var saves = new Saves(new DesiredDataResult(DesiredDataOutcome.Refused, InvalidIndex: 0));
         var cut = Picker(saves, [Saved(DesiredCodeKinds.Code, "E14", 1, "ICD-10", "IV", "E10-E14")]);
@@ -140,7 +155,7 @@ public class DesiredCodePickerRemoveAndUntickTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Render_WhenASavedCodeWithACountIsOnAListedList_ThenItsLineHasNoFjern()
+    public void Render_WhenASavedCodeWithACountIsOnAListedList_ThenItsLineHasNoRemoveButton()
     {
         var cut = Picker(new Saves(), [Saved(DesiredCodeKinds.Code, "E14", 1, "ICD-10", "IV", "E10-E14")]);
 
@@ -184,5 +199,65 @@ public class DesiredCodePickerRemoveAndUntickTest : ExplorerTestContext
 
         Assert.Equal("false", Row(Hits(cut), "E119").GetAttribute("aria-checked"));
         Assert.Equal([(DesiredCodeKinds.Code, "E110")], SavedAfter(saves, cut));
+    }
+
+    [Fact]
+    public void Render_WhenACodeWithNoCountIsShownByTheTree_ThenItsLineHasNoRemoveButton()
+    {
+        var cut = Picker(new Saves(), [Saved(DesiredCodeKinds.Code, "E14", null, "ICD-10", "IV", "E10-E14")]);
+        Assert.Single(RemoveButtons(cut));
+
+        Open(cut, "IV");
+        Open(cut, "E10-E14");
+
+        Assert.Empty(RemoveButtons(cut));
+    }
+
+    [Fact]
+    public async Task Reveal_WhenTheCodeIsNotInTheTree_ThenItsLineHasARemoveButton()
+    {
+        var cut = Picker(new Saves(), [Saved(DesiredCodeKinds.Code, "E139", 1, "ICD-10", "IV", "E10-E14")]);
+        Assert.Empty(RemoveButtons(cut));
+
+        cut.Find("button[aria-label='Vis E139 i treet']").Click();
+        await cut.InvokeAsync(() => { });
+
+        Assert.Contains("Fant ikke E139 i treet", cut.Find("[role=alert]").TextContent);
+        Assert.Single(RemoveButtons(cut));
+    }
+
+    [Fact]
+    public async Task Reveal_WhenTheTopLevelCannotBeRead_ThenItSaysSoAndOffersNoRemoveButton()
+    {
+        var cut = Picker(new Saves(), [Saved(DesiredCodeKinds.Code, "E14", 1, "ICD-10")], new FakeClient { TopFails = true });
+
+        cut.Find("button[aria-label='Vis E14 i treet']").Click();
+        await cut.InvokeAsync(() => { });
+
+        Assert.Contains("Kunne ikke hente kodelisten nå", cut.Find("[role=alert]").TextContent);
+        Assert.Empty(RemoveButtons(cut));
+    }
+
+    [Fact]
+    public async Task Save_WhenPressedWhileAnUntickStillReads_ThenItSendsWhatTheUntickLeaves()
+    {
+        var saves = new Saves();
+        var client = new FakeClient
+        {
+            Search = (_, _, _) => new KodeverkCodePage { Total = 1, Codes = [Icd10Tree["E11"][1]] },
+        };
+        var gate = client.Gates["E11"] = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var cut = Picker(saves, [Saved(DesiredCodeKinds.Node, "E11", 3, "ICD-10", "IV", "E10-E14")], client);
+        cut.Find("input[type=search]").Input("E119");
+        cut.Find("input[type=search]").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Row(Hits(cut), "E119").QuerySelector(".munin-explorer-codetree__row")!.Click(new MouseEventArgs { Detail = 1 });
+        Press(cut, "Lagre");
+        Assert.Empty(saves.Calls);
+        gate.SetResult();
+        await cut.InvokeAsync(() => { });
+
+        cut.WaitForAssertion(() => Assert.Single(saves.Calls));
+        Assert.Equal([(DesiredCodeKinds.Code, "E110")], saves.Calls[0].Select(v => (v.Kind, v.Code)));
     }
 }

@@ -901,7 +901,7 @@ internal sealed record Texts(
     string PickerBranchError,
     string PickerRetry,
     Func<string, string> PickerRetryFor,
-    Func<string, string> PickerLevelCut,
+    Func<string, string, string> PickerLevelCut,
     // The share view's column of chosen codes.
     string CodeSummaryHeading)
 {
@@ -1836,7 +1836,7 @@ internal sealed record Texts(
         PickerBranchError: "Kunne ikke hente kodene under.",
         PickerRetry: "Prøv igjen",
         PickerRetryFor: code => $"Prøv igjen for {code}",
-        PickerLevelCut: code => $"{code} har for mange koder til at én kan tas ut her. Fjern {code} og velg kodene du vil ha, for eksempel med søket.",
+        PickerLevelCut: (level, whole) => $"{level} har for mange koder til at én kan tas ut her. Fjern {whole} og velg kodene du vil ha, for eksempel med søket.",
         CodeSummaryHeading: "Ønskede verdier");
 
     private static readonly Texts En = new(
@@ -2446,7 +2446,7 @@ internal sealed record Texts(
         PickerBranchError: "Could not fetch the codes under it.",
         PickerRetry: "Try again",
         PickerRetryFor: code => $"Try again for {code}",
-        PickerLevelCut: code => $"{code} has too many codes to leave one out here. Untick {code} and choose the codes you want, for example with the search.",
+        PickerLevelCut: (level, whole) => $"{level} has too many codes to leave one out here. Untick {whole} and choose the codes you want, for example with the search.",
         CodeSummaryHeading: "Desired values")
     {
         Reader = ReaderLanguage.English,
