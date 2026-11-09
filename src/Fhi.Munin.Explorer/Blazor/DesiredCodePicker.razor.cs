@@ -655,6 +655,11 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         return null;
     }
 
+    // A code with subcodes kept on its own, as the split of a whole parent keeps the codes on the way down.
+    private static Choice CodeOnly(KodeverkLink link, KodeverkCodeHit hit, IReadOnlyList<string> ancestors) =>
+        new(new DesiredCodeChoice(link.KodeverkType, link.KodeverkReference, DesiredCodeKinds.Code, hit.Value),
+            hit.Name, null, hit.Expired, 1, ListNameOf(link), ancestors);
+
     // A group (an ICD-10 chapter or block) is only ever chosen with everything under it; the API refuses it as a code.
     private Choice ChoiceOf(KodeverkLink link, ListState state, KodeverkCodeHit hit, IReadOnlyList<string>? ancestors = null)
     {
@@ -734,8 +739,9 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     }
 
     // Unticking a code under a parent chosen whole: the outermost such parent, and every pick under it, becomes its
-    // other children, level by level down to the code, never one already chosen. Every level on the way is read
-    // first; a failed read changes nothing.
+    // other children, level by level down to the code, never one already chosen. A code on the way (not a group) stays
+    // chosen on its own, as the whole parent covered it. Every level on the way is read first; a failed read changes
+    // nothing.
     private async Task<bool> UntickUnderAsync(KodeverkLink link, ListState state, KodeverkCodeHit hit)
     {
         var ancestors = AncestorsOf(state, hit);
@@ -746,8 +752,27 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
         var from = IndexOf(ancestors, whole.Value.Code);
         var added = new List<Choice>();
+
+        // The whole parent's own row tells whether it is a code or a group; its level is read when it was never shown.
+        if (!state.Known.ContainsKey(whole.Value.Code) && await BranchAsync(link, state, from == 0 ? Top : ancestors[from - 1]) is null)
+        {
+            Announce(T.PickerLoadError, error: true);
+            return false;
+        }
+
         for (var i = from; i < ancestors.Count; i++)
         {
+            if (!state.Known.TryGetValue(ancestors[i], out var onTheWay))
+            {
+                Announce(T.PickerLoadError, error: true);
+                return false;
+            }
+
+            if (!onTheWay.IsGroup)
+            {
+                added.Add(CodeOnly(link, onTheWay, [.. ancestors.Take(i)]));
+            }
+
             var next = i + 1 < ancestors.Count ? ancestors[i + 1] : hit.Value;
             var branch = await BranchAsync(link, state, ancestors[i]);
             if (branch is null)

@@ -198,7 +198,7 @@ public class DesiredCodePickerRemoveAndUntickTest : ExplorerTestContext
         await cut.InvokeAsync(() => { });
 
         Assert.Equal("false", Row(Hits(cut), "E119").GetAttribute("aria-checked"));
-        Assert.Equal([(DesiredCodeKinds.Code, "E110")], SavedAfter(saves, cut));
+        Assert.Equal([(DesiredCodeKinds.Code, "E11"), (DesiredCodeKinds.Code, "E110")], SavedAfter(saves, cut).Order());
     }
 
     [Fact]
@@ -258,7 +258,7 @@ public class DesiredCodePickerRemoveAndUntickTest : ExplorerTestContext
         await cut.InvokeAsync(() => { });
 
         cut.WaitForAssertion(() => Assert.Single(saves.Calls));
-        Assert.Equal([(DesiredCodeKinds.Code, "E110")], saves.Calls[0].Select(v => (v.Kind, v.Code)));
+        Assert.Equal([(DesiredCodeKinds.Code, "E11"), (DesiredCodeKinds.Code, "E110")], saves.Calls[0].Select(v => (v.Kind, v.Code)).Order());
     }
 
     [Fact]

@@ -373,7 +373,7 @@ public class DesiredCodePickerTest : ExplorerTestContext
     }
 
     [Fact]
-    public async Task Untick_WhenACodeUnderAParentChosenWholeIsUnticked_ThenThatParentBecomesItsOtherChildrenLevelByLevel()
+    public async Task Untick_WhenACodeUnderAParentChosenWholeIsUnticked_ThenThatParentBecomesItsOtherChildrenAndTheCodesOnTheWay()
     {
         var saves = new Saves();
         var cut = Picker(saves, [Icd10], [Saved(DesiredCodeKinds.Node, "E10-E14", null, 10, "IV")]);
@@ -384,12 +384,13 @@ public class DesiredCodePickerTest : ExplorerTestContext
         Tick(cut, "E100");
         await cut.InvokeAsync(() => { });
 
+        // E10 is a code of its own, which the block covered: it stays chosen, without the subcode unticked.
         Assert.Equal("false", Checked(cut, "E100"));
-        Assert.Equal("mixed", Checked(cut, "E10"));
+        Assert.Equal("true", Checked(cut, "E10"));
         Press(cut, "Lagre");
         var sent = Assert.Single(saves.Calls);
         Assert.Equal(
-            [(DesiredCodeKinds.Code, "E101"), (DesiredCodeKinds.Node, "E11"), (DesiredCodeKinds.Code, "E14")],
+            [(DesiredCodeKinds.Code, "E10"), (DesiredCodeKinds.Code, "E101"), (DesiredCodeKinds.Node, "E11"), (DesiredCodeKinds.Code, "E14")],
             sent.Select(v => (v.Kind, v.Code)).OrderBy(p => p.Code));
     }
 
@@ -1033,11 +1034,13 @@ public class DesiredCodePickerTest : ExplorerTestContext
         TickHit(cut, "E101");
         gate.SetResult();
 
-        cut.WaitForAssertion(() => Assert.Contains("0 av 200 valg", Text(cut)));
-        Assert.Equal("false", RowOf(HitsTree(cut), "E101")!.GetAttribute("aria-checked"));
-        Assert.Equal("false", RowOf(HitsTree(cut), "E100")!.GetAttribute("aria-checked"));
+        // E10's own code, which the reader did not untick, stays chosen. «1 av 200» also shows before the presses, so the
+        // wait is on the rows.
+        cut.WaitForAssertion(() => Assert.Equal(
+            "false false", $"{RowOf(HitsTree(cut), "E100")!.GetAttribute("aria-checked")} {RowOf(HitsTree(cut), "E101")!.GetAttribute("aria-checked")}"));
+        Assert.Contains("1 av 200 valg", Text(cut));
         Press(cut, "Lagre");
-        cut.WaitForAssertion(() => Assert.Empty(Assert.Single(saves.Calls)));
+        cut.WaitForAssertion(() => Assert.Equal([(DesiredCodeKinds.Code, "E10")], Assert.Single(saves.Calls).Select(v => (v.Kind, v.Code))));
     }
 
     [Fact]

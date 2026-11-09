@@ -292,7 +292,7 @@ public class DesiredCodePickerHeldOutTest : ExplorerTestContext
         await cut.InvokeAsync(() => { });
 
         Assert.Equal("false", Checked(cut, "E110"));
-        Assert.Equal([(DesiredCodeKinds.Code, "E119")], SavedAfter(saves, cut));
+        Assert.Equal([(DesiredCodeKinds.Code, "E11"), (DesiredCodeKinds.Code, "E119")], SavedAfter(saves, cut).Order());
     }
 
     [Fact]
@@ -311,7 +311,7 @@ public class DesiredCodePickerHeldOutTest : ExplorerTestContext
         var sent = SavedAfter(saves, cut);
         Assert.Equal(sent.Count, sent.Distinct().Count());
         Assert.Equal(
-            [(DesiredCodeKinds.Code, "E119"), (DesiredCodeKinds.Code, "E14"), (DesiredCodeKinds.Node, "E10"), (DesiredCodeKinds.Node, "E15-E16")],
+            [(DesiredCodeKinds.Code, "E11"), (DesiredCodeKinds.Code, "E119"), (DesiredCodeKinds.Code, "E14"), (DesiredCodeKinds.Node, "E10"), (DesiredCodeKinds.Node, "E15-E16")],
             sent.Order());
     }
 
@@ -328,8 +328,8 @@ public class DesiredCodePickerHeldOutTest : ExplorerTestContext
         await cut.InvokeAsync(() => { });
 
         Assert.Equal("false", Checked(cut, "E110"));
-        Assert.Equal("mixed", Checked(cut, "E11"));
-        Assert.Equal([(DesiredCodeKinds.Code, "E119"), (DesiredCodeKinds.Code, "E14"), (DesiredCodeKinds.Node, "E10")], SavedAfter(saves, cut).Order());
+        Assert.Equal("true", Checked(cut, "E11"));
+        Assert.Equal([(DesiredCodeKinds.Code, "E11"), (DesiredCodeKinds.Code, "E119"), (DesiredCodeKinds.Code, "E14"), (DesiredCodeKinds.Node, "E10")], SavedAfter(saves, cut).Order());
     }
 
     [Fact]
