@@ -3056,6 +3056,14 @@ table.munin-explorer-data-list tbody th {
 .munin-explorer-codetree__group {
   padding-inline-start: 1.25rem;
 }
+/* A long list scrolls in its own box, so «Lagre» and «Avbryt» under the picker stay in view; a focused code scrolls
+   itself into view. The 2px keeps a focus ring from being cut at the box's edge. */
+.munin-explorer-codetree {
+  max-height: 60vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px;
+}
 .munin-explorer-codetree__row {
   display: grid;
   grid-template-columns: 1.25rem 1.5rem minmax(0, 1fr);
