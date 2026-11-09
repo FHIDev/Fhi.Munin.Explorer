@@ -1176,4 +1176,95 @@ public class DesiredCodePickerTest : ExplorerTestContext
         cut.WaitForState(() => cut.RenderCount > renders);
         Assert.Contains("Valgt: 2 koder", Text(cut));
     }
+
+    // ------------------------------------------------------------------ follow-ups chosen by Robin (9huq2.17)
+
+    [Fact]
+    public void Render_WhenASavedRangeBecomesItsBlock_ThenTheBlockKeepsItsName()
+    {
+        var saves = new Saves();
+        var cut = Picker(saves, [Icd10], [Saved(DesiredCodeKinds.Range, "E10", "E14", 10, "IV", "E10-E14")]);
+        Open(cut, "IV");
+        cut.WaitForAssertion(() => Assert.Equal("true", Checked(cut, "E10-E14")));
+
+        Assert.Contains("Diabetes mellitus", cut.Find(".munin-explorer-data-list").TextContent);
+        Press(cut, "Lagre");
+        var sent = Assert.Single(Assert.Single(saves.Calls));
+        Assert.Equal((DesiredCodeKinds.Node, "E10-E14", "Diabetes mellitus"), (sent.Kind, sent.Code, sent.Name));
+    }
+
+    [Fact]
+    public void Render_WhenTheBlocksNameCannotBeRead_ThenTheRangeStillBecomesTheBlock()
+    {
+        var saves = new Saves();
+        var cut = Picker(saves, [Icd10], [Saved(DesiredCodeKinds.Range, "E10", "E14", 10, "IV", "E10-E14")], client: new TreeClient { SearchFails = true });
+        Open(cut, "IV");
+        cut.WaitForAssertion(() => Assert.Equal("true", Checked(cut, "E10-E14")));
+
+        Press(cut, "Lagre");
+        var sent = Assert.Single(Assert.Single(saves.Calls));
+        Assert.Equal((DesiredCodeKinds.Node, "E10-E14", (string?)null), (sent.Kind, sent.Code, sent.Name));
+    }
+
+    [Fact]
+    public void Recount_WhileTheNewTotalIsAskedFor_ThenTheOldTotalIsNotShown()
+    {
+        TaskCompletionSource<int?>? held = null;
+        var client = new TreeClient { Union = choices => held?.Task ?? Task.FromResult<int?>(choices.Count * 7) };
+        var cut = Picker(new Saves(), [Icd10], [Saved(DesiredCodeKinds.Code, "E14", null, 1, "IV", "E10-E14")], client: client);
+        cut.WaitForAssertion(() => Assert.Contains("Valgt: 7 koder", Text(cut)));
+        Open(cut, "IV");
+        Open(cut, "E10-E14");
+        held = new TaskCompletionSource<int?>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Tick(cut, "E11");
+
+        cut.WaitForAssertion(() => Assert.DoesNotContain("Valgt: 7 koder", Text(cut)));
+        held.SetResult(14);
+        cut.WaitForAssertion(() => Assert.Contains("Valgt: 14 koder", Text(cut)));
+    }
+
+    [Fact]
+    public void Untick_WhenTheWholeParentHasLeftTheList_ThenItSaysSoAndItCanBeRemoved()
+    {
+        var saves = new Saves();
+        var tree = new Dictionary<string, KodeverkCodeHit[]>(Icd10Tree) { ["E10-E14"] = [Icd10Tree["E10-E14"][1], Icd10Tree["E10-E14"][2]] };
+        var client = new TreeClient { Tree = tree, Search = (_, _, _) => new KodeverkCodePage { Total = 1, Codes = [Icd10Tree["E10"][0]] } };
+        var cut = Picker(saves, [Icd10], [Saved(DesiredCodeKinds.Node, "E10", null, 3, "IV", "E10-E14")], client: client);
+        SearchFor(cut, "E100");
+
+        TickHit(cut, "E100");
+
+        cut.WaitForAssertion(() => Assert.Contains("finnes ikke i kodelisten", cut.Find("[role=alert]").TextContent));
+        Assert.DoesNotContain("Kunne ikke hente kodelisten", cut.Find("[role=alert]").TextContent);
+        Assert.Contains(cut.FindAll(".munin-explorer-data-list button"), b => b.TextContent.Trim().StartsWith("Fjern E10", StringComparison.Ordinal));
+        Press(cut, "Lagre");
+        Assert.Equal([(DesiredCodeKinds.Node, "E10")], Assert.Single(saves.Calls).Select(v => (v.Kind, v.Code)));
+    }
+
+    [Fact]
+    public void Render_WhenALegacyCodePickOfTheBlockIsSavedBesideAnEqualRange_ThenTheRangeStillBecomesTheBlock()
+    {
+        var saves = new Saves();
+        var cut = Picker(saves, [Icd10], [
+            Saved(DesiredCodeKinds.Range, "E10", "E14", 10, "IV", "E10-E14"),
+            Saved(DesiredCodeKinds.Code, "E10-E14", null, null, "IV"),
+        ]);
+        Open(cut, "IV");
+        cut.WaitForAssertion(() => Assert.Single(((TreeClient)Services.GetRequiredService<IMuninExplorerClient>()).Counted));
+
+        Press(cut, "Lagre");
+        Assert.Equal(
+            [(DesiredCodeKinds.Code, "E10-E14"), (DesiredCodeKinds.Node, "E10-E14")],
+            Assert.Single(saves.Calls).Select(v => (v.Kind, v.Code)).OrderBy(p => p.Kind, StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void Render_WhenAGroupWithNothingListedUnderItIsSavedAsACode_ThenItIsHalfTicked()
+    {
+        var client = new TreeClient { Tree = new() { [""] = [Hit("G", "Gruppe", null, group: true)] } };
+        var cut = Picker(new Saves(), [Icd10], [Saved(DesiredCodeKinds.Code, "G", null, null)], client: client);
+
+        cut.WaitForAssertion(() => Assert.Equal("mixed", Checked(cut, "G")));
+    }
 }

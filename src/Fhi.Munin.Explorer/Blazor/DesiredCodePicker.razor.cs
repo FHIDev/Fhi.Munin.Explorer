@@ -162,14 +162,31 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
                 continue;
             }
 
-            if (_choices.Any(c => SameList(c, range) && IsDirect(c, block)))
+            // Only a Node pick of the block is the block; a legacy Code pick of it is not, and the API refuses it.
+            if (_choices.Any(c => SameList(c, range) && c.Value.Kind == DesiredCodeKinds.Node && c.Value.Code == block))
             {
                 _choices.RemoveAt(at);
             }
             else
             {
-                _choices[at] = new Choice(value, null, null, false, count, range.ListName, [.. range.Ancestors.Take(IndexOf(range.Ancestors, block))]);
+                _choices[at] = new Choice(value, await BlockNameAsync(range, block), null, false, count, range.ListName,
+                    [.. range.Ancestors.Take(IndexOf(range.Ancestors, block))]);
             }
+        }
+    }
+
+    // The API answers a group whose code is the query first, so one hit names the block; without it the line shows the code.
+    private async Task<string?> BlockNameAsync(Choice range, string block)
+    {
+        try
+        {
+            var page = await Client.SearchKodeverkCodesAsync(VariableId, range.Value.KodeverkType, range.Value.KodeverkReference, block, 0, 1);
+            return page?.Codes.FirstOrDefault(hit => hit.Value == block)?.Name;
+        }
+        catch (Exception ex)
+        {
+            Log?.LogWarning(ex, "the block {Block} of variable {VariableId} could not be named", block, VariableId);
+            return null;
         }
     }
 
@@ -624,7 +641,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
     // A code with subcodes chosen as just itself is some of what its box stands for, so the box is half-ticked.
     private static bool IsOwnCodeOnly(Choice choice, KodeverkCodeHit hit) =>
-        hit.HasChildren && choice.Value.Kind == DesiredCodeKinds.Code && choice.Value.Code == hit.Value;
+        (hit.HasChildren || hit.IsGroup) && choice.Value.Kind == DesiredCodeKinds.Code && choice.Value.Code == hit.Value;
 
     // «k av n» beside a parent: n from the API, k the sum of the choices under it and of its own code chosen alone, held
     // at n since saved picks can overlap. A range is left out of k, as its codes may reach outside; a leaf has no n.
@@ -762,8 +779,16 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         if (!state.Known.ContainsKey(whole.Value.Code))
         {
             var level = from == 0 ? Top : ancestors[from - 1];
-            if (await BranchAsync(link, state, level) is { } read && !state.Known.ContainsKey(whole.Value.Code) && read.Codes.Count < read.Total)
+            if (await BranchAsync(link, state, level) is { } read && !state.Known.ContainsKey(whole.Value.Code))
             {
+                // A level read whole without it: the saved pick has left the list, so it gets its own «Fjern».
+                if (read.Codes.Count >= read.Total)
+                {
+                    _notInTree.Add(whole.Value);
+                    Announce(T.PickerInvalid(Describe(T, whole.Value, whole.Name, whole.ToName)), error: true);
+                    return false;
+                }
+
                 Announce(T.PickerLevelCut(level == Top ? ListNameOf(link) ?? link.KodeverkReference : level, whole.Value.Code), error: true);
                 return false;
             }
@@ -1066,6 +1091,9 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
             _union = 0;
             return;
         }
+
+        // The old total is no longer the draft's while the new one is asked for.
+        _union = null;
 
         int? total = 0;
         try
