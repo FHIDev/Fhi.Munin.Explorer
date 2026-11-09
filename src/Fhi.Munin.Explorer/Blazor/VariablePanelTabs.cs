@@ -44,6 +44,9 @@ internal sealed class VariablePanelTabs : ComponentBase
     /// <summary>A datatype code's name where the detail's own vocabulary has none.</summary>
     [Parameter] public Func<string, string?>? DataTypeName { get; set; }
 
+    /// <summary>The code lists a picker in <see cref="DataTop"/> shows now, which the kodeverk list leaves out.</summary>
+    [Parameter] public IReadOnlySet<KodeverkKey>? Picking { get; set; }
+
     private Texts T => Texts.For(Language);
 
     private PanelTab[] Tabs => Notes is null ? [PanelTab.Data, PanelTab.About] : [PanelTab.Data, PanelTab.About, PanelTab.Notes];
@@ -131,9 +134,10 @@ internal sealed class VariablePanelTabs : ComponentBase
         builder.AddComponentParameter(5, nameof(KodeverkGroups.Lists), Lists);
         builder.AddComponentParameter(6, nameof(KodeverkGroups.Level), SectionLevel);
         builder.AddComponentParameter(7, nameof(KodeverkGroups.Language), Language);
+        builder.AddComponentParameter(8, nameof(KodeverkGroups.Picking), Picking);
         builder.CloseComponent();
 
-        builder.AddContent(8, StatisticsBlock.For(
+        builder.AddContent(9, StatisticsBlock.For(
             Detail, SectionLevel, "headline headline-xxs margin--none munin-explorer-group", T, StatisticsLayout.Drawer));
     };
 

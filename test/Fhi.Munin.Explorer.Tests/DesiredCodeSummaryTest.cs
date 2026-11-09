@@ -91,4 +91,16 @@ public class DesiredCodeSummaryTest : ExplorerTestContext
 
         Assert.StartsWith("1569: 9 Ukjent", text);
     }
+
+    [Fact]
+    public void For_WhenASavedRangeRunsFromABlocksFirstCodeToItsLast_ThenItReadsAsTheRangeThatIsStored()
+    {
+        var text = Render(this,
+        [
+            new DesiredCodeView { KodeverkType = "HelsefagligKodeverk", KodeverkReference = "ICD-10", Kind = "range", Code = "E10", To = "E14", Count = 50, Ancestors = ["IV", "E10-E14"] },
+            new DesiredCodeView { KodeverkType = "HelsefagligKodeverk", KodeverkReference = "ICD-10", Kind = "range", Code = "E10", To = "E12", Count = 30, Ancestors = ["IV", "E10-E14"] },
+        ]);
+
+        Assert.Contains("ICD-10: E10–E14 (50 koder), E10–E12 (30 koder)", text);
+    }
 }

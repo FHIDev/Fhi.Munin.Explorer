@@ -30,6 +30,9 @@ internal sealed class KodeverkGroups : ComponentBase, IDisposable
 
     [Parameter] public string Language { get; set; } = "no";
 
+    // The lists a code picker shows now: its tree holds the same codes, so they are not drawn twice.
+    [Parameter] public IReadOnlySet<KodeverkKey>? Picking { get; set; }
+
     private Texts T => Texts.For(Language);
 
     private KodeverkCodeLists? _listening;
@@ -106,7 +109,7 @@ internal sealed class KodeverkGroups : ComponentBase, IDisposable
 
     // Nothing fetched yet is the window before the fetch starts, and it reads as loading, not empty.
     private InlineCodes InlineCodesState(KodeverkKey key) =>
-        Lists.HasFailed(key) ? InlineCodes.Failed
+        Lists.HasFailed(key) || Lists.TooLargeOf(key) is not null ? InlineCodes.Failed
         : Lists.CodesOf(key) is not { } codes ? InlineCodes.Loading
         : codes.Count == 0 ? InlineCodes.None
         : InlineCodes.Codes;
@@ -197,7 +200,7 @@ internal sealed class KodeverkGroups : ComponentBase, IDisposable
             }
 
             // No button where the API serves no codes, nor where they are all inline already.
-            if (link.HasCodeValues && (inline is null or InlineCodes.Failed || showAll))
+            if (link.HasCodeValues && Picking?.Contains(key) != true && (inline is null or InlineCodes.Failed || showAll))
             {
                 builder.AddContent(seq + 12, CodesToggle(link, key, index, showAll));
             }
@@ -261,19 +264,29 @@ internal sealed class KodeverkGroups : ComponentBase, IDisposable
             return;
         }
 
-        var codes = Lists.CodesOf(key) ?? [];
-
-        if (codes.Count == 0)
+        if (Lists.TooLargeOf(key) is { } size)
         {
             builder.OpenElement(6, "p");
             builder.AddAttribute(7, "class", "caption");
-            builder.AddContent(8, T.NoCodes);
+            builder.AddContent(8, T.CodesTooMany(size));
             builder.CloseElement();
 
             return;
         }
 
-        builder.AddContent(9, CodesTable(index, codes));
+        var codes = Lists.CodesOf(key) ?? [];
+
+        if (codes.Count == 0)
+        {
+            builder.OpenElement(9, "p");
+            builder.AddAttribute(10, "class", "caption");
+            builder.AddContent(11, T.NoCodes);
+            builder.CloseElement();
+
+            return;
+        }
+
+        builder.AddContent(12, CodesTable(index, codes));
     };
 
     // A real <table>: four aligned columns have no other shape that survives being unstyled.

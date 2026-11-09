@@ -219,6 +219,9 @@ public sealed record DesiredCodeView
     /// <summary>How many codes the choice covers; null when it could not be counted.</summary>
     [JsonPropertyName("antall")] public int? Count { get; init; }
 
+    /// <summary>The groups and codes above the choice's code, top first; empty when unknown, and from an older API.</summary>
+    [JsonPropertyName("foreldre")] public IReadOnlyList<string> Ancestors { get; init; } = [];
+
     /// <summary>The same choice, to send back when the reader keeps it.</summary>
     public DesiredCodeChoice ToChoice() => new(KodeverkType, KodeverkReference, Kind, Code, To);
 }

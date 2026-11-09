@@ -254,6 +254,39 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         return count?.Count;
     }
 
+    /// <inheritdoc/>
+    public async Task<int?> CountKodeverkCodesUnionAsync(
+        Guid variableId,
+        IReadOnlyList<DesiredCodeChoice> choices,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(choices);
+        if (choices.Count is 0 or > MaxUnionChoices)
+        {
+            throw new ArgumentException($"Count 1 to {MaxUnionChoices} choices at a time, not {choices.Count}.", nameof(choices));
+        }
+
+        var first = choices[0];
+        if (choices.Any(c => c.KodeverkType != first.KodeverkType || c.KodeverkReference != first.KodeverkReference))
+        {
+            throw new ArgumentException("Every choice in one union count must come from the same code list.", nameof(choices));
+        }
+
+        var query = string.Join("&", choices.Select(choice => choice.Kind switch
+        {
+            DesiredCodeKinds.Node => $"node={Uri.EscapeDataString(choice.Code)}",
+            DesiredCodeKinds.Range => $"intervall={Uri.EscapeDataString($"{choice.Code}..{choice.To}")}",
+            _ => $"kode={Uri.EscapeDataString(choice.Code)}",
+        }));
+        var count = await GetOrNullAsync<KodeverkCodeCount>(
+            $"{CodesRoute(variableId, first.KodeverkType, first.KodeverkReference)}/count-union?{query}",
+            cancellationToken);
+        return count?.Count;
+    }
+
+    // The API's own ceiling on one union count, the picker's ceiling on choices.
+    private const int MaxUnionChoices = 200;
+
     private static string CodesRoute(Guid variableId, string kodeverkType, string kodeverkReference) =>
         $"api/explorer/variables/{variableId}"
         + $"/kodeverk/{EscapePathSegment(kodeverkType, nameof(kodeverkType))}"

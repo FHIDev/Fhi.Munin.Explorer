@@ -927,6 +927,14 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-codelists` | id |
   | `munin-explorer-codes` | handle |
   | `munin-explorer-codes__table` | handle |
+  | `munin-explorer-codetree` | handle |
+  | `munin-explorer-codetree__box` | handle |
+  | `munin-explorer-codetree__code` | handle |
+  | `munin-explorer-codetree__count` | handle |
+  | `munin-explorer-codetree__group` | handle |
+  | `munin-explorer-codetree__name` | handle |
+  | `munin-explorer-codetree__row` | handle |
+  | `munin-explorer-codetree__toggle` | handle |
   | `munin-explorer-complete-record` | handle |
   | `munin-explorer-complete-record__fields` | handle |
   | `munin-explorer-complete-record__lead` | handle |

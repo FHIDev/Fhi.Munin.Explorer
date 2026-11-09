@@ -627,7 +627,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     [Fact]
     public void DesiredCodePicker_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
     {
-        // Two: the tree's top-level nodes, each with a button that opens the codes under it.
+        // None: a tree node opens from its treeitem, not from a button; DesiredCodePickerTest pins its standing gestures.
         Services.AddSingleton<IMuninExplorerClient>(new CodeTreeClient());
         var link = new KodeverkLink { KodeverkType = "HelsefagligKodeverk", KodeverkReference = "ICD-10", HasCodeValues = true };
 
@@ -636,7 +636,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
                 .Add(c => c.VariableId, Guid.NewGuid())
                 .Add(c => c.Links, [link])
                 .Add(c => c.Save, _ => Task.FromResult(new DesiredDataResult(DesiredDataOutcome.Saved)))),
-            expected: 2,
+            expected: 0,
             native: 0);
     }
 
