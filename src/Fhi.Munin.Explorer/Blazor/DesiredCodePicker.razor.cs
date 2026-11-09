@@ -605,9 +605,9 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
     private IEnumerable<Choice> ChoicesIn(KodeverkLink link) => _choices.Where(c => SameList(c, link));
 
-    // A choice stands to a code as itself (IsDirect), over it (a whole parent: WholeOver) or under it (IsUnder); an older
-    // range only half-ticks the codes above its first code. Ticking removes what is under and adds itself; Untick removes
-    // itself and what is under it, and splits a whole parent over it.
+    // A choice stands to a code as itself (IsDirect), over it (a whole parent: WholeOver) or under it (IsUnder). A Code
+    // pick of a code with subcodes half-ticks it, as an older range does the codes above its first code. Ticking removes
+    // what is under and adds itself; Untick removes itself and what is under it, and splits a whole parent over it.
     private Tick TickOf(KodeverkLink link, ListState state, KodeverkCodeHit hit)
     {
         var ancestors = AncestorsOf(state, hit);
@@ -626,8 +626,8 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     private static bool IsOwnCodeOnly(Choice choice, KodeverkCodeHit hit) =>
         hit.HasChildren && choice.Value.Kind == DesiredCodeKinds.Code && choice.Value.Code == hit.Value;
 
-    // «k av n» beside a parent: n from the API, k the sum of the choices under it, held at n since saved picks can
-    // overlap. A range is left out of k, as its codes may reach outside; a code chosen alone, not whole, shows none.
+    // «k av n» beside a parent: n from the API, k the sum of the choices under it and of its own code chosen alone, held
+    // at n since saved picks can overlap. A range is left out of k, as its codes may reach outside; a leaf has no n.
     private string? OfCount(KodeverkLink link, ListState state, KodeverkCodeHit hit, Tick tick)
     {
         if (hit.Count is not { } all || tick == Tick.Empty)

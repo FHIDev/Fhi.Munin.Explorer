@@ -277,7 +277,7 @@ public class DesiredCodePickerSplitKeepsCodesTest : ExplorerTestContext
         SearchAndUntickE100(cut);
         await cut.InvokeAsync(() => { });
 
-        Assert.Contains("E10-E14 har for mange koder til at én kan tas ut her. Fjern E10", cut.Find("[role=alert]").TextContent);
+        Assert.Contains("E10-E14 har for mange koder til at én kan tas ut her. Fjern haken for E10", cut.Find("[role=alert]").TextContent);
         Assert.Equal(Expected((DesiredCodeKinds.Node, "E10")), SavedAfter(saves, cut));
     }
 }

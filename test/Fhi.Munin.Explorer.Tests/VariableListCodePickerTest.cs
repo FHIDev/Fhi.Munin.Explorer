@@ -210,7 +210,7 @@ public class VariableListCodePickerTest : ExplorerTestContext
     }
 
     [Fact]
-    public void KodeverkList_WhileThePickerShowsTheSameList_ThenItsCodesAreNotOfferedTwice()
+    public void KodeverkList_WhenThePickerShowsTheSameList_ThenItsCodesAreNotOfferedTwice()
     {
         var cut = OpenedRow(new ListClient(Item(), Sivilstand));
         Assert.NotNull(ShowCodes(cut));

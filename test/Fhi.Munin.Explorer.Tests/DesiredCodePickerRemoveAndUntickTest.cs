@@ -8,9 +8,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
-/// The code picker's way out for a saved choice the tree cannot show (no tab, no count, not found on the way into the tree,
-/// refused on save), unticking a parent saved with a pick under it, «Fjern treffene» over a hit inside a parent chosen
-/// whole, and a save pressed while an untick still reads (Fhi.Metadata-9huq2.14).
+/// The picker's way out for a saved choice the tree cannot show (no tab, no count, not found in the tree, refused on save),
+/// unticking a parent saved with a pick under it, «Fjern treffene» under a whole parent and when the picker closes, and a
+/// save or «Velg treffene» pressed while an untick still reads (Fhi.Metadata-9huq2.14).
 /// </summary>
 public class DesiredCodePickerRemoveAndUntickTest : ExplorerTestContext
 {
@@ -44,10 +44,13 @@ public class DesiredCodePickerRemoveAndUntickTest : ExplorerTestContext
 
         public Dictionary<string, TaskCompletionSource> Gates { get; } = [];
 
+        public List<string> Asked { get; } = [];
+
         public override async Task<KodeverkCodePage?> GetKodeverkCodeChildrenAsync(
             Guid variableId, string kodeverkType, string kodeverkReference, string? node, int skip = 0, int take = 50,
             CancellationToken cancellationToken = default)
         {
+            Asked.Add(node ?? "");
             if (node is null && TopFails)
             {
                 throw new HttpRequestException("Kodeverk is down");
@@ -222,7 +225,7 @@ public class DesiredCodePickerRemoveAndUntickTest : ExplorerTestContext
         cut.Find("button[aria-label='Vis E139 i treet']").Click();
         await cut.InvokeAsync(() => { });
 
-        Assert.Contains("Fant ikke E139 i treet", cut.Find("[role=alert]").TextContent);
+        Assert.Contains("E139 vises ikke i treet", cut.Find("[role=alert]").TextContent);
         Assert.Single(RemoveButtons(cut));
     }
 
@@ -262,6 +265,54 @@ public class DesiredCodePickerRemoveAndUntickTest : ExplorerTestContext
     }
 
     [Fact]
+    public async Task ClearHits_WhenThePickerClosesWhileAHitsUntickReads_ThenTheRunStopsThereAndReadsNoMore()
+    {
+        var client = new FakeClient
+        {
+            Search = (_, _, _) => new KodeverkCodePage { Total = 2, Codes = [Icd10Tree["E11"][1], Icd10Tree["E10"][0]] },
+        };
+        var gate = client.Gates["E11"] = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var cut = Picker(new Saves(), [
+            Saved(DesiredCodeKinds.Node, "E11", 3, "ICD-10", "IV", "E10-E14"),
+            Saved(DesiredCodeKinds.Node, "E10", 1, "ICD-10", "IV", "E10-E14"),
+        ], client);
+        cut.Find("input[type=search]").Input("koma");
+        cut.Find("input[type=search]").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Press(cut, "Fjern treffene");
+        await Renderer.DisposeComponents();
+        gate.SetResult();
+        await cut.InvokeAsync(() => { });
+
+        // E100's untick under the whole E10 would read E10's level.
+        Assert.DoesNotContain("E10", client.Asked);
+    }
+
+    [Fact]
+    public async Task ChooseHits_WhenPressedWhileAnUntickStillReads_ThenItChoosesOnTheDraftThatUntickLeaves()
+    {
+        var saves = new Saves();
+        var client = new FakeClient
+        {
+            Search = (_, _, _) => new KodeverkCodePage { Total = 1, Codes = [Icd10Tree["E11"][1]] },
+        };
+        var gate = client.Gates["E11"] = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var cut = Picker(saves, [Saved(DesiredCodeKinds.Node, "E11", 3, "ICD-10", "IV", "E10-E14")], client);
+        cut.Find("input[type=search]").Input("E119");
+        cut.Find("input[type=search]").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Row(Hits(cut), "E119").QuerySelector(".munin-explorer-codetree__row")!.Click(new MouseEventArgs { Detail = 1 });
+        Press(cut, "Velg treffene");
+        gate.SetResult();
+        await cut.InvokeAsync(() => { });
+
+        cut.WaitForAssertion(() => Assert.Equal("true", Row(Hits(cut), "E119").GetAttribute("aria-checked")));
+        Assert.Equal(
+            [(DesiredCodeKinds.Code, "E11"), (DesiredCodeKinds.Code, "E110"), (DesiredCodeKinds.Code, "E119")],
+            SavedAfter(saves, cut).Order());
+    }
+
+    [Fact]
     public void Render_WhenACodeWithNoCountIsOnlyASearchHit_ThenItsLineKeepsItsRemoveButton()
     {
         var client = new FakeClient { Search = (_, _, _) => new KodeverkCodePage { Total = 1, Codes = [Hit("E139", "Annen", null, false, "IV", "E10-E14")] } };
@@ -284,7 +335,7 @@ public class DesiredCodePickerRemoveAndUntickTest : ExplorerTestContext
         cut.Find("button[aria-label='Vis E139 i treet']").Click();
         await cut.InvokeAsync(() => { });
 
-        Assert.Contains("Fant ikke E139 i treet", cut.Find("[role=alert]").TextContent);
+        Assert.Contains("E139 vises ikke i treet", cut.Find("[role=alert]").TextContent);
         Assert.Single(RemoveButtons(cut));
     }
 }

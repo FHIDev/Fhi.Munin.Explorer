@@ -1832,11 +1832,11 @@ internal sealed record Texts(
         PickerAllUnder: "med alt under",
         PickerOlderChoice: "eldre valg",
         PickerShowInTree: code => $"Vis {code} i treet",
-        PickerNotInTree: code => $"Fant ikke {code} i treet.",
+        PickerNotInTree: code => $"{code} vises ikke i treet.",
         PickerBranchError: "Kunne ikke hente kodene under.",
         PickerRetry: "Prøv igjen",
         PickerRetryFor: code => $"Prøv igjen for {code}",
-        PickerLevelCut: (level, whole) => $"{level} har for mange koder til at én kan tas ut her. Fjern {whole} og velg kodene du vil ha, for eksempel med søket.",
+        PickerLevelCut: (level, whole) => $"{level} har for mange koder til at én kan tas ut her. Fjern haken for {whole} og velg kodene du vil ha, for eksempel med søket.",
         CodeSummaryHeading: "Ønskede verdier");
 
     private static readonly Texts En = new(
@@ -2442,7 +2442,7 @@ internal sealed record Texts(
         PickerAllUnder: "with everything under it",
         PickerOlderChoice: "earlier choice",
         PickerShowInTree: code => $"Show {code} in the tree",
-        PickerNotInTree: code => $"Could not find {code} in the tree.",
+        PickerNotInTree: code => $"{code} is not shown in the tree.",
         PickerBranchError: "Could not fetch the codes under it.",
         PickerRetry: "Try again",
         PickerRetryFor: code => $"Try again for {code}",

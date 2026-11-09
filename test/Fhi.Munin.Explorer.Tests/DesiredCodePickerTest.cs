@@ -996,7 +996,7 @@ public class DesiredCodePickerTest : ExplorerTestContext
 
         TickHit(cut, "C005");
 
-        cut.WaitForAssertion(() => Assert.Contains("BIG har for mange koder til at én kan tas ut her. Fjern CH og velg", cut.Find("[role=alert]").TextContent));
+        cut.WaitForAssertion(() => Assert.Contains("BIG har for mange koder til at én kan tas ut her. Fjern haken for CH og velg", cut.Find("[role=alert]").TextContent));
     }
 
     [Fact]
@@ -1089,7 +1089,56 @@ public class DesiredCodePickerTest : ExplorerTestContext
         Assert.Equal(["E10", "E11", "E14"], Assert.Single(saves.Calls).Select(v => v.Code));
     }
 
+    [Fact]
+    public void Untick_WhenTheWholeParentIsOnATopLevelCutAt200_ThenTheTextNamesTheListAsTheLevel()
+    {
+        var top = Enumerable.Range(0, 300).Select(i => Hit($"T{i:000}", "Kode")).Append(Hit("Z", "Siste", 2)).ToArray();
+        var under = Hit("Z1", "Under", null, false, false, null, "Z");
+        var client = new TreeClient
+        {
+            Tree = new() { [""] = top, ["Z"] = [under, Hit("Z2", "Under", null, false, false, null, "Z")] },
+            Search = (_, _, _) => new KodeverkCodePage { Total = 1, Codes = [under] },
+        };
+        var saves = new Saves();
+        var cut = Picker(saves, [Icd10], [Saved(DesiredCodeKinds.Node, "Z", null, 2)], client: client);
+        SearchFor(cut, "Z1");
+
+        TickHit(cut, "Z1");
+
+        cut.WaitForAssertion(() => Assert.Contains(
+            "ICD-10 har for mange koder til at én kan tas ut her. Fjern haken for Z og velg", cut.Find("[role=alert]").TextContent));
+        Press(cut, "Lagre");
+        Assert.Equal([(DesiredCodeKinds.Node, "Z")], Assert.Single(saves.Calls).Select(v => (v.Kind, v.Code)));
+    }
+
+    [Fact]
+    public void ChooseHits_WhenAHitIsChosenAsJustItsOwnCode_ThenItIsChosenWithEverythingUnderItInPlaceOfThatCode()
+    {
+        var saves = new Saves();
+        var client = new TreeClient { Search = (_, _, _) => new KodeverkCodePage { Total = 1, Codes = [Icd10Tree["E10-E14"][1]] } };
+        var cut = Picker(saves, [Icd10], [Saved(DesiredCodeKinds.Code, "E11", null, 1, "IV", "E10-E14")], client: client);
+        SearchFor(cut, "E11");
+        Assert.Equal("mixed", RowOf(HitsTree(cut), "E11")!.GetAttribute("aria-checked"));
+
+        Press(cut, "Velg treffene");
+        Press(cut, "Lagre");
+
+        Assert.Equal([(DesiredCodeKinds.Node, "E11")], Assert.Single(saves.Calls).Select(v => (v.Kind, v.Code)));
+    }
+
     // ---------------------------------------------------------------------------------------- the union count
+
+    [Fact]
+    public void Summary_WhenTheHostsClientHasNoUnionCount_ThenTheHeadingIsChosenAloneAndNothingThrows()
+    {
+        // A host client written before the picker: neither the union count nor the tree's levels are implemented.
+        var cut = Picker(new Saves(), [Icd10], [Saved(DesiredCodeKinds.Code, "E14", null, 1, "IV", "E10-E14")], client: new UnupgradedHostClient());
+
+        cut.WaitForAssertion(() => Assert.Contains("Kunne ikke hente kodelisten nå.", Text(cut)));
+        Assert.Equal("Valgt", cut.Find("p[id$='-chosen']").TextContent.Trim());
+        Assert.Contains("E14", cut.Find(".munin-explorer-data-list").TextContent);
+        Assert.Empty(cut.FindAll("[role=treeitem]"));
+    }
 
     [Theory]
     [InlineData(true)]
