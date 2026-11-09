@@ -1108,6 +1108,12 @@ public class ListRowPanelTest : ExplorerTestContext
         Assert.Equal([(DatabaseVersion.VariableId, (string?)"C76, C77, C78")], client.DesiredDataWritten);
     }
 
+    [Theory]
+    [InlineData("no", "Andre ønsker til dataene kan ikke overstige 500 tegn. Teksten er ikke lagret.")]
+    [InlineData("en", "Other wishes for the data must be 500 characters or fewer. Your text has not been saved.")]
+    public void DesiredDataTooLong_WhenTheNoteIsTooLong_ThenItNamesTheNote(string language, string expected) =>
+        Assert.Equal(expected, Texts.For(language).DesiredDataTooLong(500));
+
     [Fact]
     public void DesiredData_WhenTheDataTabsNoteIsRefused_ThenItIsDescribedByTheRefusal()
     {

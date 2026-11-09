@@ -134,19 +134,13 @@ internal sealed class KodeverkGroups : ComponentBase, IDisposable
     {
         var seq = 0;
 
-        // How often each key has appeared, so a kodeverk the payload names twice gets a unique key.
-        var occurrences = new Dictionary<KodeverkKey, int>();
-
         foreach (var (link, index) in links)
         {
             var key = KodeverkKey.Of(link);
             var inline = KodeverkCodeLists.IsUnnamedKildekodeverk(link) ? InlineCodesState(key) : (InlineCodes?)null;
             var showAll = inline is InlineCodes.Codes && Lists.CodesOf(key)!.Count > InlineCodePreview;
 
-            var occurrence = occurrences.GetValueOrDefault(key);
-            occurrences[key] = occurrence + 1;
-
-            // The heading before its list, as the kind headings were, so the hosts' group spacing still applies.
+            // The heading directly before its list, so the hosts' group spacing applies to it.
             builder.OpenElement(seq, $"h{Level}");
             builder.AddAttribute(seq + 1, "class", "headline headline-xxs margin--none munin-explorer-group");
             builder.AddContent(seq + 2, HeadingOf(T, link));
@@ -155,8 +149,6 @@ internal sealed class KodeverkGroups : ComponentBase, IDisposable
             builder.OpenElement(seq + 3, "ul");
             builder.AddAttribute(seq + 4, "class", "munin-explorer-kodeverk");
             builder.OpenElement(seq + 5, "li");
-            // Keyed on the link, so two links reordered keep their own lists open.
-            builder.SetKey((key, occurrence));
             builder.AddAttribute(seq + 6, "class", "munin-explorer-kodeverk__item");
 
             // A list cannot sit inside a <p>, so the preview's slot is a div wearing the same class.
