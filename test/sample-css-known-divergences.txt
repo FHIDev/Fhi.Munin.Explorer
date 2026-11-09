@@ -652,3 +652,8 @@ unstyled-name||.munin-explorer-codetree__group|
 unstyled-name||.munin-explorer-codetree__name|
 unstyled-name||.munin-explorer-codetree__row|
 unstyled-name||.munin-explorer-codetree__toggle|
+# Stiler's rules for the code list's «Referanse» line and the lead sentence above the code lists, which the Data tab no
+# longer draws since each code list is headed «<type>: <reference>» (Fhi.Metadata-9huq2.19). The hosts fragment asks Stiler
+# to drop both rules; these lines go when it has.
+missing-selector||.munin-explorer-kodeverk__reference|
+missing-selector||.munin-explorer-lead|
