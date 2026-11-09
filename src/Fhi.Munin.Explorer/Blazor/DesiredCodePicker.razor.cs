@@ -40,7 +40,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
     // Choices the tree may not show, each with a «Fjern» in the summary. Munin sends no count also while a list cannot be
     // read, so _noCount holds only until a loaded level of the tree holds the code; not found on the way into the tree,
-    // or named by a refused save, holds until the line goes.
+    // gone from a level read whole, or named by a refused save, holds until the line goes.
     private readonly HashSet<DesiredCodeChoice> _noCount = [];
     private readonly HashSet<DesiredCodeChoice> _notInTree = [];
     private readonly Dictionary<KodeverkKey, ListState> _lists = [];
@@ -141,6 +141,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     // An unknown count, a failed call, or another number keeps the range as it was saved.
     private async Task AsBlocksAsync()
     {
+        var dropped = false;
         foreach (var range in _choices.Where(c => BlockOf(c) is not null).ToList())
         {
             var block = BlockOf(range)!;
@@ -165,7 +166,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
             }
 
             // Only a Node pick of the block is the block. A legacy Code pick of it, which the API refuses, goes with the range.
-            _choices.RemoveAll(c => SameList(c, range) && c.Value.Kind == DesiredCodeKinds.Code && c.Value.Code == block);
+            dropped |= _choices.RemoveAll(c => SameList(c, range) && c.Value.Kind == DesiredCodeKinds.Code && c.Value.Code == block) > 0;
             at = _choices.IndexOf(range);
             if (_choices.Any(c => SameList(c, range) && c.Value.Kind == DesiredCodeKinds.Node && c.Value.Code == block))
             {
@@ -175,6 +176,12 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
             {
                 _choices[at] = new Choice(value, name, null, false, count, range.ListName, [.. range.Ancestors.Take(IndexOf(range.Ancestors, block))]);
             }
+        }
+
+        // The opening count could not count a Code pick of a group; without it the draft can be counted.
+        if (dropped)
+        {
+            await RecountAsync();
         }
     }
 
@@ -625,9 +632,9 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
     private IEnumerable<Choice> ChoicesIn(KodeverkLink link) => _choices.Where(c => SameList(c, link));
 
-    // A choice stands to a code as itself (IsDirect), over it (a whole parent: WholeOver) or under it (IsUnder). A Code
-    // pick of a code with subcodes (or of a group) half-ticks it, as an older range does the codes above its first code. Ticking removes
-    // what is under and adds itself; Untick removes itself and what is under it, and splits a whole parent over it.
+    // A choice stands to a code as itself (IsDirect), over it (a whole parent: WholeOver) or under it (IsUnder). A Code pick
+    // of a code with subcodes (or of a group) half-ticks it, as an older range does the codes above its first code. Ticking
+    // removes what is under and adds itself; Untick removes itself and what is under it, and splits a whole parent over it.
     private Tick TickOf(KodeverkLink link, ListState state, KodeverkCodeHit hit)
     {
         var ancestors = AncestorsOf(state, hit);
@@ -750,7 +757,8 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     }
 
     // Unticks a ticked code: without a whole parent over it, the code and every pick under it go; with one, that parent
-    // is split. False when nothing changed (a read failed, a save came in, or the ceiling); the reason is announced.
+    // is split. False when nothing changed (a read failed, a save came in, the parent left the list, or the ceiling); the
+    // reason is announced.
     private async Task<bool> UntickAsync(KodeverkLink link, ListState state, KodeverkCodeHit hit)
     {
         if (WholeOver(link, AncestorsOf(state, hit)) is null)

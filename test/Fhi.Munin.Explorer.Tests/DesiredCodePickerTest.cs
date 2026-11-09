@@ -1259,6 +1259,8 @@ public class DesiredCodePickerTest : ExplorerTestContext
 
         Press(cut, "Lagre");
         Assert.Equal([(DesiredCodeKinds.Node, "E10-E14")], Assert.Single(saves.Calls).Select(v => (v.Kind, v.Code)));
+        var client = (TreeClient)Services.GetRequiredService<IMuninExplorerClient>();
+        Assert.Equal([new DesiredCodeChoice("HelsefagligKodeverk", "ICD-10", DesiredCodeKinds.Node, "E10-E14")], client.Unions[^1]);
     }
 
     [Fact]
