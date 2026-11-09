@@ -384,9 +384,9 @@ public class DesiredCodePickerTest : ExplorerTestContext
         Tick(cut, "E100");
         await cut.InvokeAsync(() => { });
 
-        // E10 is a code of its own, which the block covered: it stays chosen, without the subcode unticked.
+        // E10 is a code of its own, which the block covered: it stays chosen, so its box is half-ticked.
         Assert.Equal("false", Checked(cut, "E100"));
-        Assert.Equal("true", Checked(cut, "E10"));
+        Assert.Equal("mixed", Checked(cut, "E10"));
         Press(cut, "Lagre");
         var sent = Assert.Single(saves.Calls);
         Assert.Equal(

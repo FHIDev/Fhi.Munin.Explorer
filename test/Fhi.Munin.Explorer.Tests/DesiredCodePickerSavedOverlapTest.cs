@@ -165,12 +165,13 @@ public class DesiredCodePickerSavedOverlapTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Render_WhenASingleCodeThatHasChildrenIsSaved_ThenItsRowDoesNotCountChildren()
+    public void Render_WhenASingleCodeThatHasChildrenIsSaved_ThenItsRowCountsOnlyThatCode()
     {
         var cut = Picker(new Saves(), [Saved(DesiredCodeKinds.Code, "E11", null, 1, "IV", "E10-E14")]);
         OpenDownTo(cut, "IV", "E10-E14");
 
         var text = Row(cut, "E11").QuerySelector(".munin-explorer-codetree__row")!.TextContent;
-        Assert.DoesNotContain(" av ", text);
+        Assert.Contains("1 av 3", text);
+        Assert.DoesNotContain("3 av 3", text);
     }
 }

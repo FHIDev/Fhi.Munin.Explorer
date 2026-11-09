@@ -39,11 +39,20 @@ public class DesiredCodePickerSplitKeepsCodesTest : ExplorerTestContext
     {
         public Func<string, int, int, KodeverkCodePage?> Search { get; init; } = (_, _, _) => new KodeverkCodePage();
 
+        public HashSet<string> Failing { get; } = [];
+
+        public Dictionary<string, KodeverkCodeHit[]> Levels { get; } = [];
+
         public override Task<KodeverkCodePage?> GetKodeverkCodeChildrenAsync(
             Guid variableId, string kodeverkType, string kodeverkReference, string? node, int skip = 0, int take = 50,
             CancellationToken cancellationToken = default)
         {
-            var codes = Icd10Tree.GetValueOrDefault(node ?? "") ?? [];
+            if (Failing.Contains(node ?? ""))
+            {
+                throw new HttpRequestException("Kodeverk is down");
+            }
+
+            var codes = Levels.GetValueOrDefault(node ?? "") ?? Icd10Tree.GetValueOrDefault(node ?? "") ?? [];
             return Task.FromResult<KodeverkCodePage?>(
                 new KodeverkCodePage { Total = codes.Length, CodeCount = 22141, Codes = [.. codes.Skip(skip).Take(take)] });
         }
@@ -121,7 +130,7 @@ public class DesiredCodePickerSplitKeepsCodesTest : ExplorerTestContext
 
         await OpenDownToE10AndUntickE100(cut);
 
-        Assert.Equal("true", Row(Tree(cut), "E10").GetAttribute("aria-checked"));
+        Assert.Equal("mixed", Row(Tree(cut), "E10").GetAttribute("aria-checked"));
         Assert.Equal(
             Expected(
                 (DesiredCodeKinds.Code, "E10"),
@@ -180,5 +189,95 @@ public class DesiredCodePickerSplitKeepsCodesTest : ExplorerTestContext
         await cut.InvokeAsync(() => { });
 
         Assert.Equal(Expected((DesiredCodeKinds.Code, "E10"), (DesiredCodeKinds.Code, "E101")), SavedAfter(saves, cut));
+    }
+
+    private static FakeClient HitsE100() =>
+        new() { Search = (_, _, _) => new KodeverkCodePage { Total = 1, Codes = [Icd10Tree["E10"][0]] } };
+
+    private static void SearchAndUntickE100(IRenderedComponent<DesiredCodePicker> cut)
+    {
+        cut.Find("input[type=search]").Input("E100");
+        cut.Find("input[type=search]").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+        Tick(Row(Hits(cut), "E100"));
+    }
+
+    [Fact]
+    public void Tick_WhenACodeWithSubcodesIsChosenAsJustItself_ThenOnePressChoosesItWholeAndDropsTheCodePicks()
+    {
+        var saves = new Saves();
+        var cut = Picker(saves, [
+            Saved(DesiredCodeKinds.Code, "E10", 1, "IV", "E10-E14"),
+            Saved(DesiredCodeKinds.Code, "E101", 1, "IV", "E10-E14", "E10"),
+        ]);
+        Open(cut, "IV");
+        Open(cut, "E10-E14");
+        Assert.Equal("mixed", Row(Tree(cut), "E10").GetAttribute("aria-checked"));
+        Assert.Contains("2 av 3", Row(Tree(cut), "E10").TextContent);
+
+        Tick(Row(Tree(cut), "E10"));
+
+        Assert.Equal("true", Row(Tree(cut), "E10").GetAttribute("aria-checked"));
+        Assert.Equal(Expected((DesiredCodeKinds.Node, "E10")), SavedAfter(saves, cut));
+    }
+
+    [Fact]
+    public void ClearHits_WhenAHitWithSubcodesIsChosenAsJustItself_ThenItsCodeGoesToo()
+    {
+        var saves = new Saves();
+        var client = new FakeClient { Search = (_, _, _) => new KodeverkCodePage { Total = 1, Codes = [Icd10Tree["E10-E14"][0]] } };
+        var cut = Picker(saves, [Saved(DesiredCodeKinds.Code, "E10", 1, "IV", "E10-E14")], client);
+        cut.Find("input[type=search]").Input("E10");
+        cut.Find("input[type=search]").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Press(cut, "Fjern treffene");
+
+        Assert.Empty(SavedAfter(saves, cut));
+    }
+
+    [Fact]
+    public async Task Untick_WhenACodeOnTheWayIsAlsoSavedOnItsOwn_ThenItIsChosenOnce()
+    {
+        var saves = new Saves();
+        var cut = Picker(saves, [Saved(DesiredCodeKinds.Node, "E10-E14", 8, "IV"), Saved(DesiredCodeKinds.Code, "E10", 1, "IV", "E10-E14")]);
+
+        await OpenDownToE10AndUntickE100(cut);
+
+        Assert.Equal(
+            Expected((DesiredCodeKinds.Code, "E10"), (DesiredCodeKinds.Code, "E101"), (DesiredCodeKinds.Node, "E11"), (DesiredCodeKinds.Code, "E14")),
+            SavedAfter(saves, cut));
+    }
+
+    [Fact]
+    public async Task Untick_WhenTheWholeParentsLevelCannotBeRead_ThenItSaysSoAndNothingChanges()
+    {
+        var saves = new Saves();
+        var client = HitsE100();
+        client.Failing.Add("E10-E14");
+        var cut = Picker(saves, [Saved(DesiredCodeKinds.Node, "E10", 3, "IV", "E10-E14")], client);
+
+        SearchAndUntickE100(cut);
+        await cut.InvokeAsync(() => { });
+
+        Assert.Contains("Kunne ikke hente kodelisten nå", cut.Find("[role=alert]").TextContent);
+        Assert.Equal(Expected((DesiredCodeKinds.Node, "E10")), SavedAfter(saves, cut));
+    }
+
+    [Fact]
+    public async Task Untick_WhenTheWholeParentIsPastTheFirst200OfItsLevel_ThenItSaysTheLevelIsTooLongAndNothingChanges()
+    {
+        var saves = new Saves();
+        var client = HitsE100();
+        client.Levels["E10-E14"] =
+        [
+            .. Enumerable.Range(0, 250).Select(i => Hit($"E09{i:000}", "Annen", null, false, "IV", "E10-E14")),
+            Icd10Tree["E10-E14"][0],
+        ];
+        var cut = Picker(saves, [Saved(DesiredCodeKinds.Node, "E10", 3, "IV", "E10-E14")], client);
+
+        SearchAndUntickE100(cut);
+        await cut.InvokeAsync(() => { });
+
+        Assert.Contains("E10-E14 har for mange koder til at én kan tas ut her. Fjern E10", cut.Find("[role=alert]").TextContent);
+        Assert.Equal(Expected((DesiredCodeKinds.Node, "E10")), SavedAfter(saves, cut));
     }
 }

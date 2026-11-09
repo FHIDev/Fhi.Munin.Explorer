@@ -505,7 +505,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
             var tick = TickOf(link, state, hit);
             if (tick == Tick.Mixed)
             {
-                _choices.RemoveAll(c => SameList(c, link) && IsUnder(c, hit.Value));
+                _choices.RemoveAll(c => SameList(c, link) && (IsUnder(c, hit.Value) || IsOwnCodeOnly(c, hit)));
             }
             else if (tick == Tick.Checked && !await UntickAsync(link, state, hit))
             {
@@ -612,13 +612,19 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     {
         var ancestors = AncestorsOf(state, hit);
         var chosen = ChoicesIn(link).ToList();
-        if (chosen.Any(c => IsDirect(c, hit.Value) || (c.Value.Kind == DesiredCodeKinds.Node && ancestors.Contains(c.Value.Code))))
+        if (chosen.Any(c => (IsDirect(c, hit.Value) && !IsOwnCodeOnly(c, hit)) || (c.Value.Kind == DesiredCodeKinds.Node && ancestors.Contains(c.Value.Code))))
         {
             return Tick.Checked;
         }
 
-        return chosen.Any(c => IsUnder(c, hit.Value) || (IsOlderRange(c) && c.Ancestors.Contains(hit.Value))) ? Tick.Mixed : Tick.Empty;
+        return chosen.Any(c => IsOwnCodeOnly(c, hit) || IsUnder(c, hit.Value) || (IsOlderRange(c) && c.Ancestors.Contains(hit.Value)))
+            ? Tick.Mixed
+            : Tick.Empty;
     }
+
+    // A code with subcodes chosen as just itself is some of what its box stands for, so the box is half-ticked.
+    private static bool IsOwnCodeOnly(Choice choice, KodeverkCodeHit hit) =>
+        hit.HasChildren && choice.Value.Kind == DesiredCodeKinds.Code && choice.Value.Code == hit.Value;
 
     // «k av n» beside a parent: n from the API, k the sum of the choices under it, held at n since saved picks can
     // overlap. A range is left out of k, as its codes may reach outside; a code chosen alone, not whole, shows none.
@@ -637,8 +643,8 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
                 : null;
         }
 
-        var under = ChoicesIn(link).Where(c => IsUnder(c, hit.Value)).ToList();
-        return under.Count > 0 && under.All(c => c.Count is not null) ? T.PickerOf(Math.Min(under.Sum(c => c.Count!.Value), all), all) : null;
+        var some = ChoicesIn(link).Where(c => IsUnder(c, hit.Value) || IsOwnCodeOnly(c, hit)).ToList();
+        return some.Count > 0 && some.All(c => c.Count is not null) ? T.PickerOf(Math.Min(some.Sum(c => c.Count!.Value), all), all) : null;
     }
 
     // The outermost parent chosen whole: saved picks can nest one whole parent inside another.
@@ -671,7 +677,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     // Chooses a code whole, taking in what was chosen under it; false when that would pass the ceiling.
     private bool Choose(KodeverkLink link, ListState state, KodeverkCodeHit hit)
     {
-        var under = ChoicesIn(link).Where(c => IsUnder(c, hit.Value)).ToList();
+        var under = ChoicesIn(link).Where(c => IsUnder(c, hit.Value) || IsOwnCodeOnly(c, hit)).ToList();
         if (_choices.Count - under.Count + 1 > MaxChoices)
         {
             return false;
@@ -753,10 +759,14 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         var added = new List<Choice>();
 
         // The whole parent's own row tells whether it is a code or a group; its level is read when it was never shown.
-        if (!state.Known.ContainsKey(whole.Value.Code) && await BranchAsync(link, state, from == 0 ? Top : ancestors[from - 1]) is null)
+        if (!state.Known.ContainsKey(whole.Value.Code))
         {
-            Announce(T.PickerLoadError, error: true);
-            return false;
+            var level = from == 0 ? Top : ancestors[from - 1];
+            if (await BranchAsync(link, state, level) is { } read && !state.Known.ContainsKey(whole.Value.Code) && read.Codes.Count < read.Total)
+            {
+                Announce(T.PickerLevelCut(level == Top ? ListNameOf(link) ?? link.KodeverkReference : level, whole.Value.Code), error: true);
+                return false;
+            }
         }
 
         for (var i = from; i < ancestors.Count; i++)

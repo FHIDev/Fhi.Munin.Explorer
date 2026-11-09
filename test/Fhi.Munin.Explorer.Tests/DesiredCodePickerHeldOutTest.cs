@@ -328,7 +328,7 @@ public class DesiredCodePickerHeldOutTest : ExplorerTestContext
         await cut.InvokeAsync(() => { });
 
         Assert.Equal("false", Checked(cut, "E110"));
-        Assert.Equal("true", Checked(cut, "E11"));
+        Assert.Equal("mixed", Checked(cut, "E11"));
         Assert.Equal([(DesiredCodeKinds.Code, "E11"), (DesiredCodeKinds.Code, "E119"), (DesiredCodeKinds.Code, "E14"), (DesiredCodeKinds.Node, "E10")], SavedAfter(saves, cut).Order());
     }
 
@@ -361,12 +361,12 @@ public class DesiredCodePickerHeldOutTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Render_WhenACodeWithChildrenIsSavedAsACode_ThenItIsTickedWithNoCountAndItsChildrenAreNot()
+    public void Render_WhenACodeWithChildrenIsSavedAsACode_ThenItIsHalfTickedAsOneOfItsCodesAndItsChildrenAreNot()
     {
         var cut = OpenedTo(Picker(new Saves(), new FakeClient(), [Saved(DesiredCodeKinds.Code, "E11", null, 1, "IV", "E10-E14")]), "IV", "E10-E14", "E11");
 
-        Assert.Equal("true", Checked(cut, "E11"));
-        Assert.Null(Row(cut, "E11").Children[0].QuerySelector(".munin-explorer-codetree__count"));
+        Assert.Equal("mixed", Checked(cut, "E11"));
+        Assert.Equal("1 av 3", Row(cut, "E11").Children[0].QuerySelector(".munin-explorer-codetree__count")!.TextContent.Trim());
         Assert.Equal("false", Checked(cut, "E110"));
     }
 }
