@@ -684,7 +684,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     the host's, for the reason the kilder box gives.
     `munin-explorer-list-code` is a saved-list row's variable code, under its name since the code
     column went (`Fhi.Metadata-b2w2z`), and a search row's, under a name another row on the page
-    shares (`Fhi.Metadata-l9l2n.161`). Undrawn, it runs on after the name at the name's size, so
+    shares with a different code (`Fhi.Metadata-l9l2n.161`). Undrawn, it runs on after the name at the name's size, so
     a host owes it `display: block`; Stiler also sets it small and grey, and lets it break in the
     cards and in a search row's name cell, where a long code would otherwise be cut off or run
     over the next column.

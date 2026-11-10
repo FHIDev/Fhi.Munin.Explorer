@@ -67,6 +67,7 @@ public class SharedNameRowsTest : ExplorerTestContext
         Assert.Equal("V_PARKINSON.F7.NPR_PROSEDYRER_1", code.TextContent);
         Assert.Same(name.ParentElement, code.ParentElement);
         Assert.Equal("SPAN", code.ParentElement!.TagName);
+        Assert.Equal("min-width: 0", code.ParentElement.GetAttribute("style"));
         Assert.Null(code.GetAttribute("lang"));
         Assert.Equal("V_PARKINSON.F7.NPR_PROSEDYRER_2",
                      Toggle(cut, 2).QuerySelector(".munin-explorer-list-code")!.TextContent);
@@ -107,11 +108,13 @@ public class SharedNameRowsTest : ExplorerTestContext
     {
         Services.AddSingleton<IMuninExplorerClient>(new FakeClient(
             Variable(Shared, "V_PARKINSON.F7.NPR_PROSEDYRER_1"),
+            Variable(Shared, "V_PARKINSON.F7.NPR_PROSEDYRER_2"),
             Variable(Shared, " ")));
         var cut = Render<VariableSearch>();
 
-        Assert.Null(Toggle(cut, 1).QuerySelector(".munin-explorer-list-code"));
-        Assert.Equal($"Vis detaljer for {Shared}", AccessibleName.Of(Toggle(cut, 1)));
+        Assert.NotNull(Toggle(cut, 0).QuerySelector(".munin-explorer-list-code"));
+        Assert.Null(Toggle(cut, 2).QuerySelector(".munin-explorer-list-code"));
+        Assert.Equal($"Vis detaljer for {Shared}", AccessibleName.Of(Toggle(cut, 2)));
     }
 
     [Fact]
@@ -157,7 +160,7 @@ public class SharedNameRowsTest : ExplorerTestContext
     {
         Services.AddSingleton<IMuninExplorerClient>(new FakeClient(
             [Variable(Shared, "V_PARKINSON.F7.NPR_PROSEDYRER_1"), Variable(Shared, "V_PARKINSON.F7.NPR_PROSEDYRER_2")],
-            new() { ["dato"] = [Variable("Diagnosedato", "V_PARKINSON.F1.DIAGNOSEDATO"), Variable("Dødsdato", "V_PARKINSON.F9.DODSDATO")] }));
+            new() { ["dato"] = [Variable("Diagnosedato", "V_PARKINSON.F1.DIAGNOSEDATO"), Variable(Shared, "V_PARKINSON.F9.DODSDATO")] }));
         var cut = Render<VariableSearch>();
         Assert.Equal(2, cut.FindAll("ul.munin-explorer-data-list .munin-explorer-list-code").Count);
 
@@ -169,7 +172,7 @@ public class SharedNameRowsTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Rows_WhenOnlyTheEnglishNamesAreShared_ThenAnEnglishReaderSeesTheCodesAndANorwegianOneDoesNot()
+    public void Rows_WhenOnlyTheEnglishNamesAreShared_ThenTheCodesComeWhenTheReaderSwitchesToEnglish()
     {
         var rows = new[]
         {
@@ -177,13 +180,13 @@ public class SharedNameRowsTest : ExplorerTestContext
             Variable("Tiltak kodet via NCSP", "V_B") with { PreferredTermEn = "Procedure code" },
         };
         Services.AddSingleton<IMuninExplorerClient>(new FakeClient(rows));
-        var cut = Render<VariableSearch>(p => p.Add(c => c.Language, "en"));
+        var cut = Render<VariableSearch>(p => p.Add(c => c.Language, "no"));
 
-        Assert.Equal("V_A", Toggle(cut, 0).QuerySelector(".munin-explorer-list-code")!.TextContent);
+        Assert.Empty(cut.FindAll("ul.munin-explorer-data-list .munin-explorer-list-code"));
 
-        cut.Render(b => b.Add(c => c.Language, "no"));
+        cut.Render(b => b.Add(c => c.Language, "en"));
 
-        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("ul.munin-explorer-data-list .munin-explorer-list-code")));
+        cut.WaitForAssertion(() => Assert.Equal("V_A", Toggle(cut, 0).QuerySelector(".munin-explorer-list-code")?.TextContent));
     }
 
     [Fact]
