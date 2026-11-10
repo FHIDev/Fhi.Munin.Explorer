@@ -176,10 +176,6 @@ invented-declaration||.munin-explorer-pagination-content [aria-disabled=true]:ho
 invented-declaration||.munin-explorer-pagination-content [aria-disabled=true]|background-color
 invented-declaration||.munin-explorer-pagination-pages .hd-button-reset.current|font-weight
 invented-declaration||.munin-explorer-pagination-size select|background-color
-invented-declaration||.munin-explorer-pagination-size select|border
-invented-declaration||.munin-explorer-pagination-size select|border-radius
-invented-declaration||.munin-explorer-pagination-size select|color
-invented-declaration||.munin-explorer-pagination-size select|padding
 missing-declaration|@media (max-width:1280px)|.munin-explorer-meta__grid|margin-bottom
 missing-declaration|@media (max-width:1280px)|.munin-explorer-meta__grid|width
 missing-declaration|@media (min-width:1024px)|.munin-explorer > .munin-explorer-filters|position
@@ -541,89 +537,6 @@ invented-selector||.munin-explorer-meta__grid dd + dd|margin-top
 invented-selector||.munin-explorer-meta__grid dt|margin-bottom
 invented-selector||.munin-explorer-page__fields dd + dd|margin-top
 invented-selector||.munin-explorer-page__fields dt|margin-bottom
-
-# The list menus' phone sheet and in-page desktop panel (Fhi.Metadata-mhqx0.8): the sample draws them ahead of Stiler,
-# whose patch for the same rules is with Loki. Delete these lines when the Stiler pin carries them.
-invented-selector|@media (min-width:480px) and (prefers-reduced-motion:no-preference)|.munin-explorer-list-menu > .munin-explorer-list-menu__panel|interpolate-size
-invented-selector|@media (min-width:480px) and (prefers-reduced-motion:no-preference)|.munin-explorer-list-menu > .munin-explorer-list-menu__panel|overflow
-invented-selector|@media (min-width:480px) and (prefers-reduced-motion:no-preference)|.munin-explorer-list-menu > .munin-explorer-list-menu__panel|transition
-invented-selector|@media (min-width:480px)|.munin-explorer-list-menu > .munin-explorer-list-menu__panel|border
-invented-selector|@media (min-width:480px)|.munin-explorer-list-menu > .munin-explorer-list-menu__panel|box-shadow
-invented-selector|@media (min-width:480px)|.munin-explorer-list-menu > .munin-explorer-list-menu__panel|flex-basis
-invented-selector|@media (min-width:480px)|.munin-explorer-list-menu > .munin-explorer-list-menu__panel|max-width
-invented-selector|@media (min-width:480px)|.munin-explorer-list-menu > .munin-explorer-list-menu__panel|min-width
-invented-selector|@media (min-width:480px)|.munin-explorer-list-menu > .munin-explorer-list-menu__panel|order
-invented-selector|@media (min-width:480px)|.munin-explorer-list-menu > .munin-explorer-list-menu__panel|position
-invented-selector|@media (min-width:480px)|.munin-explorer-list-menu--end > button|margin-left
-invented-selector|@media (min-width:480px)|.munin-explorer-list-menu|display
-unstyled-name||.munin-explorer-list-menu__close|
-unstyled-name||.munin-explorer-list-menu__panel--sheet|
-invented-selector|@media (min-width:480px)|.munin-explorer-list-menu > .munin-explorer-list-menu__panel|contain
-invented-selector|@media (min-width:480px) and (max-width:767px)|.munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer-list-menu > .munin-explorer-list-menu__panel|grid-column
-invented-selector||.munin-explorer-list-menu__check:has( > input[aria-disabled=true])|cursor
-invented-selector||.munin-explorer-list-menu__check:has( > input[aria-disabled=true])|color
-
-# The three <select> and the saved-list table (Fhi.Metadata-x0vme): the sample draws them as Stiler PR 40317 does,
-# ahead of the Stiler pin. Delete these lines when the Stiler pin carries 40317.
-invented-declaration||.munin-explorer-page__actions > label > select|appearance
-invented-declaration||.munin-explorer-page__actions > label > select|background
-invented-declaration||.munin-explorer-page__actions > label > select|border
-invented-declaration||.munin-explorer-page__actions > label > select|border-radius
-invented-declaration||.munin-explorer-page__actions > label > select|box-sizing
-invented-declaration||.munin-explorer-page__actions > label > select|color
-invented-declaration||.munin-explorer-page__actions > label > select|font-size
-invented-declaration||.munin-explorer-page__actions > label > select|height
-invented-declaration||.munin-explorer-page__actions > label > select|padding
-invented-declaration||.munin-explorer-pagination-size select|appearance
-invented-declaration||.munin-explorer-pagination-size select|background
-invented-declaration||.munin-explorer-pagination-size select|box-sizing
-invented-declaration||.munin-explorer-results__toolbar select|appearance
-invented-declaration||.munin-explorer-results__toolbar select|background
-invented-declaration||.munin-explorer-results__toolbar select|border
-invented-declaration||.munin-explorer-results__toolbar select|border-radius
-invented-declaration||.munin-explorer-results__toolbar select|box-sizing
-invented-declaration||.munin-explorer-results__toolbar select|color
-invented-declaration||.munin-explorer-results__toolbar select|padding
-invented-declaration||table.munin-explorer-data-list|width
-invented-selector|@media (forced-colors:active)|.munin-explorer-page__actions > label > select|appearance
-invented-selector|@media (forced-colors:active)|.munin-explorer-page__actions > label > select|background-image
-invented-selector|@media (forced-colors:active)|.munin-explorer-page__actions > label > select|padding
-invented-selector|@media (forced-colors:active)|.munin-explorer-pagination-size select|appearance
-invented-selector|@media (forced-colors:active)|.munin-explorer-pagination-size select|background-image
-invented-selector|@media (forced-colors:active)|.munin-explorer-pagination-size select|padding
-invented-selector|@media (forced-colors:active)|.munin-explorer-results__toolbar select|appearance
-invented-selector|@media (forced-colors:active)|.munin-explorer-results__toolbar select|background-image
-invented-selector|@media (forced-colors:active)|.munin-explorer-results__toolbar select|padding
-invented-selector||.munin-explorer-page__actions > label > select:focus|border-color
-invented-selector||.munin-explorer-pagination-size select:focus|border-color
-invented-selector||.munin-explorer-results__toolbar select:focus|border-color
-invented-selector||table.munin-explorer-data-list > thead > :where(tr) > th:last-child|white-space
-invented-selector||table.munin-explorer-data-list > thead > :where(tr) > th:last-child|width
-
-# Fhi.Metadata-l9l2n.135: «Alle felt» (the complete record's <summary>) gets the Explorer's focus ring; the same rule is in
-# the Stiler patch for this bead. Delete these two lines when helsedata pins a Stiler that carries it.
-invented-selector||.munin-explorer-complete-record > summary:focus-visible|outline
-invented-selector||.munin-explorer-complete-record > summary:focus-visible|outline-offset
-
-# Fhi.Metadata-l9l2n.136: the explorer title is placed by any heading tag, not h2 alone, so a host that passes HeadingLevel=1
-# keeps it in the head row on desktop. The same three selectors are in the Stiler patch for this bead; delete these
-# seven lines when helsedata pins a Stiler that carries it.
-invented-selector|@media (min-width:1024px)|.munin-explorer > *:not(:is(h1, h2, h3, h4, h5, h6)):not(form):not(.munin-explorer-filters):not(.munin-explorer-drilldown):not(.munin-explorer__lede)|grid-column
-invented-selector|@media (min-width:1024px)|.munin-explorer > *:not(:is(h1, h2, h3, h4, h5, h6)):not(form):not(.munin-explorer-filters):not(.munin-explorer-drilldown):not(.munin-explorer__lede)|min-inline-size
-invented-selector|@media (min-width:1024px)|.munin-explorer > :is(h1, h2, h3, h4, h5, h6)|grid-area
-invented-selector|@media (min-width:1024px)|.munin-explorer:has( > .munin-explorer-filters--collapsed) > *:not(:is(h1, h2, h3, h4, h5, h6)):not(form):not(.munin-explorer-filters):not(.munin-explorer-drilldown):not(.munin-explorer__lede)|grid-column
-missing-selector|@media (min-width:1024px)|.munin-explorer > *:not(h2):not(form):not(.munin-explorer-filters):not(.munin-explorer-drilldown):not(.munin-explorer__lede)|
-missing-selector|@media (min-width:1024px)|.munin-explorer > h2|
-missing-selector|@media (min-width:1024px)|.munin-explorer:has( > .munin-explorer-filters--collapsed) > *:not(h2):not(form):not(.munin-explorer-filters):not(.munin-explorer-drilldown):not(.munin-explorer__lede)|
-
-# Fhi.Metadata-l9l2n.144: the version-history toggles get the Explorer's focus ring; the same rule is in the Stiler patch
-# for this bead. Delete these two lines when helsedata pins a Stiler that carries it.
-invented-selector||.munin-explorer-versions__toggle:focus-visible|outline
-invented-selector||.munin-explorer-versions__toggle:focus-visible|outline-offset
-
-# Fhi.Metadata-l9l2n.142: «Søk om tilgang» (munin-explorer-kilde__access) ships with the Stiler patch AB#122579; delete this line
-# when helsedata pins a Stiler that carries it.
-unstyled-name||.munin-explorer-kilde__access|
 
 # Fhi.Metadata-l9l2n.139: no Explorer since 2.8.0 renders munin-explorer__dropdown, so the samples dropped its
 # rules; by the baseline before it, the pinned Stiler still carries them. Delete these when a pin drops them.

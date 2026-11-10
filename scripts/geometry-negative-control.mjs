@@ -48,10 +48,11 @@ const cases = [
     defect: 'the closed column picker raised to the open action menu layer (ADO 122180)',
     path: '/', state: 'list-actions-menu', width: 1440,
     // Laid over the open panel, one layer above it: since Stiler PR 40240 stacks the row the two no
-    // longer overlap where they stand. Absolute, so it scrolls with the panel.
+    // longer overlap where they stand. Absolute, so it scrolls with the panel; a block, because from
+    // 480px Stiler 40315 makes the menu `display: contents`, which has no box to place.
     apply: page => page.evaluate(() => {
       const picker = document.querySelector('.munin-explorer-header .munin-explorer-list-menu:has(> [id^="munin-explorer-columns-toggle-"])');
-      picker.style.position = 'absolute';
+      Object.assign(picker.style, { display: 'block', position: 'absolute' });
       const origin = (picker.offsetParent ?? document.body).getBoundingClientRect();
       const open = document.querySelector('.munin-explorer-list-menu__panel:not([hidden])');
       const panel = open.getBoundingClientRect();
