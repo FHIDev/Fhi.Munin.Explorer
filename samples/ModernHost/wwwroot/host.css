@@ -2381,7 +2381,7 @@ table.munin-explorer-data-list tbody th {
    `munin-explorer-page__fields` and `munin-explorer-page__language` are Stiler's own since 0.1.75
    and stand in the extracted region below. The marker is `margin: 0` there and nothing else — none
    of the panel marker's uppercase, letter-spacing or grey — so writing that look here would invent
-   it, and a host on Stiler draws the name at body size until `Fhi.Metadata-4ozhj` lands.
+   it, and a host on Stiler draws the name at body size.
 
    The swap moves these sample pages, whatever it does on a host with Stiler: the stand-in for the
    panel grid above diverges from Stiler's by six recorded declarations
