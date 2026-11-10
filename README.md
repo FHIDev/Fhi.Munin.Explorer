@@ -648,12 +648,11 @@ These are not style preferences — each one is a host that breaks otherwise.
     the panel keeps its two. Not so in the sample hosts: their
     `munin-explorer-meta__grid` stand-in diverges from Stiler's by six recorded declarations, so a
     sample detail page's fact lists gain a 40px row gap, a 24px bottom margin and the `font`
-    shorthand they had none of. The language marker moves on both: Stiler declares `margin: 0` for
-    it and none of the panel marker's uppercase, letter-spacing or grey, which
-    `assert-sample-css-matches-stiler.sh` names three divergences at a time against the pin. So
-    the language name draws at body size on a host that has Stiler until
-    `Fhi.Metadata-4ozhj` lands, and the sample stand-ins draw it that way too rather than inventing
-    the look the guard cannot see.
+    shorthand they had none of. The language marker moves on both: Stiler declares only `margin: 0`
+    for it, none of the panel marker's uppercase, letter-spacing or grey, and both sample
+    stand-ins declare the same, so `assert-sample-css-matches-stiler.sh` finds nothing there. The
+    language name draws at body size on a host that has Stiler, and the sample stand-ins draw it
+    that way too rather than inventing a look the guard cannot see.
   - Names that carry meaning nothing else carries, so a host without Stiler's rules has to draw
     them itself: `munin-explorer-crumb` carries the link affordance for a trail step, which is a
     `<button>` — every step of the hierarchy trail over the results — and without it a trail reads as plain text with no sign it can be pressed;

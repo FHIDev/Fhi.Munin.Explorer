@@ -1979,9 +1979,9 @@ table.munin-explorer-data-list tbody th {
   margin-top: 0;
 }
 
-/* "Alle metadatafelt": Stiler does not know these three names yet (Fhi.Metadata-35w0p.21), so this
-   stand-in is their whole styling. Denser than `munin-explorer-page__fields` on purpose — it repeats
-   every field the sections above showed, so it reads as a reference table, not top to bottom. */
+/* "Alle metadatafelt", its three names as Stiler draws them (Fhi.Metadata-35w0p.21). Denser than
+   `munin-explorer-page__fields` on purpose — it repeats every field the sections above showed, so it
+   reads as a reference table, not top to bottom. */
 .munin-explorer-complete-record__lead {
   margin: 0 0 8px;
   max-width: 45ch;
