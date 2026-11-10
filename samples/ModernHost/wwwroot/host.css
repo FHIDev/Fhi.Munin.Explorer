@@ -1693,7 +1693,7 @@ table.munin-explorer-data-list > tbody > :where(tr) > th[scope=row] > button > .
   white-space: nowrap;
 }
 
-/* A search row's code under a shared name wraps, or a long one widens the name column and leaves a phone's card (Fhi.Metadata-l9l2n.161). */
+/* A search row's code under a shared name wraps, or a long one holds the name at its width, over the next column and out of a phone's card (Fhi.Metadata-l9l2n.161). */
 .munin-explorer-dataitem-main__name .munin-explorer-list-code {
   white-space: normal;
   overflow-wrap: anywhere;
