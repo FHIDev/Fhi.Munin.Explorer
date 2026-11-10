@@ -2380,14 +2380,13 @@ table.munin-explorer-data-list tbody th {
 /* ---- the fact lists on a detail page ----
 
    `munin-explorer-page__fields` and `munin-explorer-page__language` are Stiler's own since 0.1.75
-   and stand in the extracted region below. The marker is `margin: 0` there and nothing else — none
-   of the panel marker's uppercase, letter-spacing or grey — so writing that look here would invent
-   it, and a host on Stiler draws the name at body size.
+   and stand in the extracted region below. The marker is `margin: 0` there and nothing else, so a
+   host on Stiler draws the name at body size.
 
    The swap moves these sample pages, whatever it does on a host with Stiler: the stand-in for the
    panel grid above diverges from Stiler's by six recorded declarations
    (test/sample-css-known-divergences.txt), so a fact list here gains a 40px row gap, a 24px bottom
-   margin and a font shorthand it had none of, and loses the marker's uppercase and grey.
+   margin and a font shorthand it had none of.
 
    The dt, the dd's margin and the dd + dd gap below are the stand-in's own: Stiler has no rule for
    a dt or for dd + dd here, and zeroes a dd's browser indent in `.munin-explorer-detail`, __facts
