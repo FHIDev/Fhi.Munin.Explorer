@@ -10,7 +10,7 @@ public partial class VariableSearch
     private string? _sharedNamesReader;
     private HashSet<string> _sharedNames = [];
 
-    /// <summary>The code, when this row's name is on another row of the page and the Kode column is off.</summary>
+    /// <summary>The code, when another row of the page has this row's name and another code, and the Kode column is off.</summary>
     private string? CodeUnderName(VariableSummary v) =>
         !ColumnVisible(ResultColumn.Code)
         && !string.IsNullOrWhiteSpace(v.Code)
@@ -34,9 +34,14 @@ public partial class VariableSearch
             _sharedNamesReader = Reader;
             _sharedNames = _result is null
                 ? []
-                : [.. _result.Items.GroupBy(ShownName, StringComparer.Ordinal).Where(g => g.Count() > 1).Select(g => g.Key)];
+                : [.. _result.Items.GroupBy(ShownName, StringComparer.Ordinal).Where(HasTwoCodes).Select(g => g.Key)];
         }
 
         return _sharedNames;
     }
+
+    // One variable has a row per datasamling, so a name repeated under a single code is one variable twice,
+    // and its Datasamling column already tells those rows apart.
+    private static bool HasTwoCodes(IEnumerable<VariableSummary> rows) =>
+        rows.Select(v => v.Code).Where(c => !string.IsNullOrWhiteSpace(c)).Distinct(StringComparer.Ordinal).Skip(1).Any();
 }

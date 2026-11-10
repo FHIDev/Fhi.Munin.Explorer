@@ -938,10 +938,12 @@ public sealed partial class VariableSearch : ComponentBase
     // opens. The w13lk rule applies, so a blank PreferredTerm is named by its code.
     private string ExpandLabel(VariableSummary v)
     {
-        var name = T.NamedFor(v.PreferredTerm, v.PreferredTermEn, v.Code, Reader).Text;
+        var named = T.NamedFor(v.PreferredTerm, v.PreferredTermEn, v.Code, Reader);
+        var name = named.Text;
 
-        // The label replaces the button's text, so a code drawn under the name has to be in it too.
-        if (CodeUnderName(v) is { } code)
+        // The label replaces the button's text, so a code drawn under the name has to be in it too,
+        // unless a blank name is already named by that code.
+        if (named.Named && CodeUnderName(v) is { } code)
         {
             name = $"{name}, {code}";
         }

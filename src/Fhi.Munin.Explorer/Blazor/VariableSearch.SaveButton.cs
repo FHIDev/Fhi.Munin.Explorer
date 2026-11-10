@@ -91,8 +91,8 @@ public partial class VariableSearch
         // shows sighted readers — one control in two states, not two controls.
         builder.AddAttribute(4, "aria-pressed", saved ? "true" : "false");
 
-        // Our words, then Munin's name span (lang="no" where Norwegian), so each half is voiced in its own language
-        // (WCAG 3.1.2). Visible text first for speech input (2.5.3); a blank term adds nothing.
+        // Our words, then Munin's name span (lang="no" where Norwegian) and the code under a shared name, so each is
+        // voiced in its own language (WCAG 3.1.2). Visible text first for speech input (2.5.3); a blank term adds nothing.
         builder.AddAttribute(5, "aria-labelledby", $"{SaveButtonId(v)} {RowNameIds(v)}");
 
         builder.AddAttribute(6, "onclick", EventCallback.Factory.Create(this, () => ToggleSavedAsync(v)));

@@ -12,17 +12,24 @@ public class SharedNameRowsTest : ExplorerTestContext
 {
     private const string Shared = "Tiltak kodet via ICD-10";
 
-    private sealed class FakeClient(params VariableSummary[] rows) : EmptyMuninExplorerClient
+    // The same rows for every search, unless `bySearch` names that search.
+    private sealed class FakeClient(VariableSummary[] rows, Dictionary<string, VariableSummary[]>? bySearch = null)
+        : EmptyMuninExplorerClient
     {
+        public FakeClient(params VariableSummary[] rows) : this(rows, null) { }
+
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default,
             SortDirection direction = SortDirection.Ascending,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult(new Page<VariableSummary>
+            CancellationToken cancellationToken = default)
+        {
+            var items = search is not null && bySearch?.TryGetValue(search, out var found) == true ? found : rows;
+            return Task.FromResult(new Page<VariableSummary>
             {
-                Items = rows, TotalCount = rows.Length, PageNumber = 1, Size = 25, TotalPages = 1,
+                Items = items, TotalCount = items.Length, PageNumber = 1, Size = 25, TotalPages = 1,
             });
+        }
     }
 
     private static VariableSummary Variable(string name, string code) => new()
@@ -120,7 +127,7 @@ public class SharedNameRowsTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Rows_WhenTheKodeColumnIsOn_ThenTheCodeIsNotDrawnTwice()
+    public void Rows_WhenTheCodeColumnIsOn_ThenTheCodeIsNotDrawnTwice()
     {
         var cut = RenderTwoSharedOneUnique();
 
@@ -130,5 +137,72 @@ public class SharedNameRowsTest : ExplorerTestContext
 
         Assert.Empty(cut.FindAll("ul.munin-explorer-data-list .munin-explorer-list-code"));
         Assert.Equal($"Vis detaljer for {Shared}", AccessibleName.Of(Toggle(cut, 0)));
+    }
+
+    [Fact]
+    public void Rows_WhenOneVariableIsInTwoDatasamlinger_ThenNoCodeIsDrawn()
+    {
+        var id = Guid.NewGuid();
+        Services.AddSingleton<IMuninExplorerClient>(new FakeClient(
+            Variable(Shared, "V_PARKINSON.F7.NPR_PROSEDYRER_1") with { Id = id, RowKey = $"{id}:a", DatasamlingName = "Oppfølging" },
+            Variable(Shared, "V_PARKINSON.F7.NPR_PROSEDYRER_1") with { Id = id, RowKey = $"{id}:b", DatasamlingName = "Inklusjon" }));
+        var cut = Render<VariableSearch>();
+
+        Assert.Empty(cut.FindAll("ul.munin-explorer-data-list .munin-explorer-list-code"));
+        Assert.Equal($"Vis detaljer for {Shared}", AccessibleName.Of(Toggle(cut, 1)));
+    }
+
+    [Fact]
+    public void Rows_WhenANewSearchHasNoSharedName_ThenTheCodesGo()
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new FakeClient(
+            [Variable(Shared, "V_PARKINSON.F7.NPR_PROSEDYRER_1"), Variable(Shared, "V_PARKINSON.F7.NPR_PROSEDYRER_2")],
+            new() { ["dato"] = [Variable("Diagnosedato", "V_PARKINSON.F1.DIAGNOSEDATO"), Variable("Dødsdato", "V_PARKINSON.F9.DODSDATO")] }));
+        var cut = Render<VariableSearch>();
+        Assert.Equal(2, cut.FindAll("ul.munin-explorer-data-list .munin-explorer-list-code").Count);
+
+        cut.Find(".searchbox__freetext").Change("dato");
+        cut.Find("form").Submit();
+
+        cut.WaitForAssertion(() => Assert.Equal("Vis detaljer for Diagnosedato", AccessibleName.Of(Toggle(cut, 0))));
+        Assert.Empty(cut.FindAll("ul.munin-explorer-data-list .munin-explorer-list-code"));
+    }
+
+    [Fact]
+    public void Rows_WhenOnlyTheEnglishNamesAreShared_ThenAnEnglishReaderSeesTheCodesAndANorwegianOneDoesNot()
+    {
+        var rows = new[]
+        {
+            Variable("Tiltak kodet via ICD-10", "V_A") with { PreferredTermEn = "Procedure code" },
+            Variable("Tiltak kodet via NCSP", "V_B") with { PreferredTermEn = "Procedure code" },
+        };
+        Services.AddSingleton<IMuninExplorerClient>(new FakeClient(rows));
+        var cut = Render<VariableSearch>(p => p.Add(c => c.Language, "en"));
+
+        Assert.Equal("V_A", Toggle(cut, 0).QuerySelector(".munin-explorer-list-code")!.TextContent);
+
+        cut.Render(b => b.Add(c => c.Language, "no"));
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("ul.munin-explorer-data-list .munin-explorer-list-code")));
+    }
+
+    [Fact]
+    public void Rows_WhenASharedRowIsOpen_ThenItsCollapseLabelNamesTheCode()
+    {
+        var cut = RenderTwoSharedOneUnique();
+
+        Toggle(cut, 0).Click();
+
+        Assert.Equal($"Skjul detaljer for {Shared}, V_PARKINSON.F7.NPR_PROSEDYRER_1", AccessibleName.Of(Toggle(cut, 0)));
+    }
+
+    [Fact]
+    public void Rows_WhenTwoBlankNamesHaveCodes_ThenEachShowsItsCodeAndIsNamedByItOnce()
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new FakeClient(Variable("", "V_A"), Variable("", "V_B")));
+        var cut = Render<VariableSearch>();
+
+        Assert.Equal("V_A", Toggle(cut, 0).QuerySelector(".munin-explorer-list-code")!.TextContent);
+        Assert.Equal("Vis detaljer for V_A", AccessibleName.Of(Toggle(cut, 0)));
     }
 }

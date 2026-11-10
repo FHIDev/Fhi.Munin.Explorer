@@ -49,7 +49,7 @@ public partial class VariableSearch
     };
 
     // No aria-labelledby on the name button: it is named by ExpandLabel, one aria-label in the
-    // reader's language around Munin's name, as Kelda's chevron is. The two-language
+    // reader's language around Munin's name and any code under it, as Kelda's chevron is. The two-language
     // aria-labelledby rule lives on PanelSaveButton, the one control here that still needs it.
 
     /// <summary>What the panel's status line says: that it is loading, or why it is empty.</summary>
