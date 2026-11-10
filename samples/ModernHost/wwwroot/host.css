@@ -212,6 +212,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   color: var(--dark);
   background-color: #fff;
   border: 1px solid var(--grey40);
+  border-color: rgb(114, 113, 150);
   border-radius: 8px;
   outline: none;
   font: normal 1rem/160% var(--font);
@@ -423,7 +424,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .infobox__datasources-block .editor-content > p { margin: 0; }
 .illustration { content: ""; display: inline-block; position: relative; flex-shrink: 0; height: 7.75rem; width: 7.75rem; }
 .illustration_brand-sign { background: url(../img/illustrations/brand/illustration_brand_sign.svg) center/4rem no-repeat; }
-.hd-button-square.button-square--tertiary { border: 1px solid var(--grey40); background-color: #fff; }
+.hd-button-square.button-square--tertiary { border: 1px solid var(--grey40); }
 
 /* components/_datasourcecard.scss — the shape the results had until `Fhi.Metadata-zs56s`, when
    they took the shape of helsedata's variable-page rows instead (`munin-explorer-data-list`, far
@@ -1536,11 +1537,23 @@ button.munin-explorer-dataitem-main__name[aria-expanded="true"] .munin-explorer-
   flex: 0 0 10rem;
 }
 
-/* Stiler's row collapse, verbatim: at 1280px and below it hides the column header and stacks each
-   row's cells. After the column shares on purpose, so `> *` wins over them. (Fhi.Metadata-e0qbl) */
+/* Stiler's row collapse, verbatim: at 1280px and below the column header is hidden for the eye only, and
+   back while focus is in it; each row's cells stack. After the column shares, so `> *` wins over them. */
 @media (max-width: 1280px) {
   .munin-explorer-data-list__header {
-    display: none !important;
+    position: absolute;
+    left: -10000px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+  .munin-explorer-data-list__header:focus-within {
+    position: static;
+    left: auto;
+    width: auto;
+    height: auto;
+    overflow: visible;
   }
   .munin-explorer-dataitem-main {
     align-items: flex-start;
@@ -1691,6 +1704,13 @@ table.munin-explorer-data-list > tbody > :where(tr) > th[scope=row] > button > .
   display: block;
   font-size: 0.75rem;
   white-space: nowrap;
+}
+
+/* Stiler 0.1.208's rule, mirrored ahead of the markup: nothing draws a code in a search row's name yet. Once
+   Fhi.Metadata-l9l2n.161 does, it wraps there rather than hold the name at its width over the next column. */
+.munin-explorer-dataitem-main__name .munin-explorer-list-code {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .munin-explorer-list-head {
@@ -1960,9 +1980,9 @@ table.munin-explorer-data-list tbody th {
   margin-top: 0;
 }
 
-/* "Alle metadatafelt": Stiler does not know these three names yet (Fhi.Metadata-35w0p.21), so this
-   stand-in is their whole styling. Denser than `munin-explorer-page__fields` on purpose — it repeats
-   every field the sections above showed, so it reads as a reference table, not top to bottom. */
+/* "Alle metadatafelt", its three names as Stiler draws them (Fhi.Metadata-35w0p.21). Denser than
+   `munin-explorer-page__fields` on purpose — it repeats every field the sections above showed, so it
+   reads as a reference table, not top to bottom. */
 .munin-explorer-complete-record__lead {
   margin: 0 0 8px;
   max-width: 45ch;
@@ -2221,11 +2241,19 @@ table.munin-explorer-data-list tbody th {
   overflow-wrap: anywhere;
 }
 
-.munin-explorer-kilde__access > p:has(a) {
+.munin-explorer-kilde__access > p {
+  margin: 0;
+}
+
+.munin-explorer-kilde__access > p:nth-child(even) {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
+}
+
+.munin-explorer-kilde__access > p:nth-child(odd):not(:first-child) {
+  margin-top: 16px;
 }
 
 /* At phone width the registry's «Søk om tilgang hos registeret» and an icon are wider than the box's column, and the
@@ -2235,7 +2263,6 @@ table.munin-explorer-data-list tbody th {
     height: auto;
     min-height: 2.75rem;
     white-space: normal;
-    overflow-wrap: anywhere;
   }
 }
 
@@ -2353,14 +2380,13 @@ table.munin-explorer-data-list tbody th {
 /* ---- the fact lists on a detail page ----
 
    `munin-explorer-page__fields` and `munin-explorer-page__language` are Stiler's own since 0.1.75
-   and stand in the extracted region below. The marker is `margin: 0` there and nothing else — none
-   of the panel marker's uppercase, letter-spacing or grey — so writing that look here would invent
-   it, and a host on Stiler draws the name at body size until `Fhi.Metadata-4ozhj` lands.
+   and stand in the extracted region below. The marker is `margin: 0` there and nothing else, so a
+   host on Stiler draws the name at body size.
 
    The swap moves these sample pages, whatever it does on a host with Stiler: the stand-in for the
    panel grid above diverges from Stiler's by six recorded declarations
    (test/sample-css-known-divergences.txt), so a fact list here gains a 40px row gap, a 24px bottom
-   margin and a font shorthand it had none of, and loses the marker's uppercase and grey.
+   margin and a font shorthand it had none of.
 
    The dt, the dd's margin and the dd + dd gap below are the stand-in's own: Stiler has no rule for
    a dt or for dd + dd here, and zeroes a dd's browser indent in `.munin-explorer-detail`, __facts
@@ -2824,25 +2850,6 @@ table.munin-explorer-data-list tbody th {
    same specificity, so source order is what would settle any property they both set. */
 .munin-explorer-kilder .munin-explorer-kilder__count--zero {
   color: var(--grey60);
-}
-
-/* ---- the proportion bar under a non-zero variable count ----
-   No longer emitted (Fhi.Metadata-l9l2n.155); kept while Stiler ships it, until Fhi.Metadata-l9l2n.156.
-   Stiler's rules as merged by Fhi.Metadata-35w0p.68. A block under the digits, not beside them, so
-   the column does not widen; the fill's width is inline from the component, never set here. */
-.munin-explorer-kilder .munin-explorer-kilder__bar {
-  background-color: var(--grey40);
-  display: block;
-  height: 6px;
-  margin-top: 4px;
-  width: 100%;
-}
-
-.munin-explorer-kilder .munin-explorer-kilder__bar-fill {
-  background-color: var(--primary);
-  display: block;
-  height: 100%;
-  margin-left: auto;
 }
 
 /* The checkbox column, in front of the eight. It is only ever rendered by a host that wired
@@ -4035,6 +4042,26 @@ table.munin-explorer-data-list tbody th {
 }
 }
 
+/* In forced colours the switch's own fills vanish, so track and thumb take system colours. */
+@media (forced-colors: active) {
+  .munin-explorer .munin-explorer-switch__track,
+  .munin-explorer .munin-explorer-switch:focus-visible .munin-explorer-switch__track {
+    background: Canvas;
+    border-color: ButtonText;
+  }
+  .munin-explorer .munin-explorer-switch__thumb,
+  .munin-explorer .munin-explorer-switch:focus-visible .munin-explorer-switch__thumb {
+    background: ButtonText;
+  }
+  .munin-explorer .munin-explorer-switch[aria-checked=true] .munin-explorer-switch__track {
+    background: Highlight;
+    border-color: Highlight;
+  }
+  .munin-explorer .munin-explorer-switch[aria-checked=true] .munin-explorer-switch__thumb {
+    background: HighlightText;
+  }
+}
+
 .munin-explorer-hierarchy > p:empty {
   display: none;
 }
@@ -4358,10 +4385,10 @@ table.munin-explorer-data-list tbody th {
   }
 }
 
-/* From 480px an open menu is a disclosure in the page: its panel takes a line of its own under the row
-   of buttons and pushes the list down, so it never lies over a row (WCAG 2.5.8, Fhi.Metadata-mhqx0.8).
+/* Above 479.98px, the script's phone query, an open menu is a disclosure in the page: its panel takes a line
+   of its own under the buttons and pushes the list down, so it never lies over a row (WCAG 2.5.8, Fhi.Metadata-mhqx0.8).
    `display: contents` makes the button and the panel items of the row itself; `--end` moves to the button. */
-@media (min-width: 480px) {
+@media (width > 479.98px) {
   .munin-explorer-list-menu {
     display: contents;
   }
@@ -4373,7 +4400,7 @@ table.munin-explorer-data-list tbody th {
   /* Contained, so the open panel's own width never widens the row that sizes itself to its buttons:
      the buttons stay where they were when a menu opens under them. */
   .munin-explorer-list-menu > .munin-explorer-list-menu__panel {
-    border: 1px solid rgb(214, 213, 222);
+    border: 1px solid rgb(230, 230, 237);
     box-shadow: none;
     contain: inline-size;
     flex-basis: 100%;
@@ -4392,14 +4419,14 @@ table.munin-explorer-data-list tbody th {
 
 /* Under 768px the toolbar stacks its buttons in one column as wide as the widest (d86tj): the open panel
    spans that column (Fhi.Metadata-mhqx0.8). */
-@media (min-width: 480px) and (max-width: 767px) {
+@media (width > 479.98px) and (max-width: 767px) {
   .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer-list-menu > .munin-explorer-list-menu__panel {
     grid-column: 1 / -1;
   }
 }
 
 /* A short open, as a reader who asked for less motion does not get. */
-@media (min-width: 480px) and (prefers-reduced-motion: no-preference) {
+@media (width > 479.98px) and (prefers-reduced-motion: no-preference) {
   .munin-explorer-list-menu > .munin-explorer-list-menu__panel {
     interpolate-size: allow-keywords;
     overflow: hidden;
@@ -4439,7 +4466,7 @@ table.munin-explorer-data-list tbody th {
 .munin-explorer-list-menu__close {
   background: rgb(255, 255, 255);
   border: 0;
-  border-top: 1px solid rgb(214, 213, 222);
+  border-top: 1px solid rgb(230, 230, 237);
   color: rgb(38, 32, 69);
   cursor: pointer;
   font: inherit;

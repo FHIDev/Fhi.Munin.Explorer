@@ -101,6 +101,11 @@ that line.
   something, run it and compare its scope against the sentence it supports. A command narrower
   than the claim is worse than no command: the reader accepts the claim on a reproduction that
   never covered it.
+- **A mirrored rule's comment is a claim about the markup.** A sample stylesheet rule copied from Stiler ahead of
+  the component (a pin bump that carries a rule for markup another branch adds) must not describe that markup as
+  there: grep `src/` for the class in the position the selector names. When nothing emits it, the comment says the
+  rule waits for the markup and names the bead that adds it. A present-tense comment over markup no code emits is
+  **Important**.
 - **A changelog fragment is a claim to a host developer.** It is copied into `CHANGELOG.md`
   verbatim, so it must describe what the released package actually does — including any floor it
   imposes (a `Fhi.Helsedata.Stiler` version, a render mode, a required registration call).
