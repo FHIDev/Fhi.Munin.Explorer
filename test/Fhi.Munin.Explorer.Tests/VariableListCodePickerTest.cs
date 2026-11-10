@@ -87,11 +87,11 @@ public class VariableListCodePickerTest : ExplorerTestContext
         DesiredDataFreeText = "bare siste registrerte",
     };
 
-    private IRenderedComponent<VariableListView> OpenedRow(ListClient client)
+    private IRenderedComponent<VariableListView> OpenedRow(ListClient client, string language = "no")
     {
         Services.AddSingleton<IMuninExplorerClient>(client);
         Services.AddScoped<VariableListState>();
-        var cut = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true));
+        var cut = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true).Add(c => c.Language, language));
         cut.WaitForElement("table.munin-explorer-data-list tbody tr.munin-explorer-data-list__item th[scope=row] button")
             .Click(new MouseEventArgs { Detail = 1 });
         cut.WaitForElement("[role=tablist]");
@@ -172,16 +172,48 @@ public class VariableListCodePickerTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Row_WhenTheItemHasChosenCodes_ThenTheOpenedRowNamesThemAndTheCellKeepsOnlyItsTextarea()
+    public void Row_WhenTheItemHasChosenCodes_ThenTheCellShowsThemInTheirOwnBoxBeforeItsTextarea()
     {
         var item = Item() with { DesiredDataCodes = [new DesiredCodeView { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", KodeverkName = "Sivilstand", Kind = "kode", Code = "2", Name = "Gift" }] };
         var cut = OpenedRow(new ListClient(item, Sivilstand));
 
-        // The textarea stays the cell's direct child: Stiler sizes it by «td > textarea».
+        // Stiler's narrow grid spans the box over the cell and keeps the textarea, still a direct child, in column 2.
         var cell = cut.Find("td.munin-explorer-dataitem-main__desiredData");
-        Assert.NotNull(cell.QuerySelector(":scope > textarea"));
-        Assert.DoesNotContain("Gift", cell.TextContent);
+        Assert.Equal(["SPAN", "SPAN", "DIV", "TEXTAREA"], cell.Children.Select(c => c.TagName));
+        Assert.All(cell.Children.Take(2), span => Assert.Contains("screenreader-only", span.ClassList));
+        Assert.Contains("munin-explorer-dataitem-main__desiredCodes", cell.Children[2].ClassList);
+        Assert.Contains("Sivilstand: 2 Gift", System.Text.RegularExpressions.Regex.Replace(cell.Children[2].TextContent, @"\s+", " "));
         Assert.Contains("Sivilstand: 2 Gift", System.Text.RegularExpressions.Regex.Replace(cut.Find("[id^='munin-explorer-list-panel-'][role=region]").TextContent, @"\s+", " "));
+    }
+
+    [Fact]
+    public void Row_WhenTheItemHasNoChosenCodes_ThenTheCellIsItsTextareaAlone()
+    {
+        var cut = OpenedRow(new ListClient(Item(), Sivilstand));
+
+        var cell = cut.Find("td.munin-explorer-dataitem-main__desiredData");
+        Assert.Equal(["SPAN", "SPAN", "TEXTAREA"], cell.Children.Select(c => c.TagName));
+    }
+
+    [Theory]
+    [InlineData("no", "Ønskede data", "Velg fra kodelisten", "Andre ønsker til dataene (valgfritt)")]
+    [InlineData("en", "Desired data", "Choose from the code list", "Other wishes for the data (optional)")]
+    public void Row_WhenOpened_ThenDesiredDataIsAGroupWithThePickerFirstAndTheNoteAfterIt(
+        string language, string heading, string open, string note)
+    {
+        var cut = OpenedRow(new ListClient(Item(), Sivilstand), language);
+
+        var button = OpenButton(cut)!;
+        var group = button.Closest("[role=group]")!;
+        var textarea = group.QuerySelector("textarea")!;
+        var all = group.QuerySelectorAll("*").ToList();
+
+        Assert.Equal(heading, cut.Find($"#{group.GetAttribute("aria-labelledby")}").TextContent);
+        Assert.Equal(open, button.TextContent);
+        Assert.True(all.IndexOf(button) < all.IndexOf(textarea));
+        Assert.True(all.IndexOf(group.QuerySelector($"#{button.GetAttribute("aria-controls")}")!) < all.IndexOf(textarea));
+        Assert.Equal(note, group.QuerySelector($"label[for='{textarea.Id}']")!.TextContent);
+        Assert.Equal(note, AccessibleName.Of(textarea));
     }
 
     [Fact]
@@ -191,7 +223,14 @@ public class VariableListCodePickerTest : ExplorerTestContext
         var cut = OpenedRow(new ListClient(item, Sivilstand with { HasCodeValues = false }));
 
         Assert.Null(OpenButton(cut));
-        Assert.Contains("Sivilstand: 2 Gift", System.Text.RegularExpressions.Regex.Replace(cut.Find("[id^='munin-explorer-list-panel-'][role=region]").TextContent, @"\s+", " "));
+        var panel = cut.Find("[id^='munin-explorer-list-panel-'][role=region]");
+        Assert.Contains("Sivilstand: 2 Gift", System.Text.RegularExpressions.Regex.Replace(panel.TextContent, @"\s+", " "));
+        // Without a picker the stored codes and the note are what is left of the group, in that order.
+        var group = panel.QuerySelector("[role=group]")!;
+        var all = group.QuerySelectorAll("*").ToList();
+        var summary = all.FindIndex(e => e.TextContent.StartsWith("Sivilstand:", StringComparison.Ordinal));
+        Assert.True(summary >= 0);
+        Assert.True(summary < all.IndexOf(group.QuerySelector("textarea")!));
     }
 
     [Fact]
@@ -199,7 +238,8 @@ public class VariableListCodePickerTest : ExplorerTestContext
     {
         var item = Item() with { DesiredDataCodes = [new DesiredCodeView { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", KodeverkName = "Sivilstand", Kind = "kode", Code = "1", Name = "Ugift" }] };
         var cut = OpenedRow(new ListClient(item, Sivilstand));
-        static bool Shown(IRenderedComponent<VariableListView> c) => c.FindAll("div.caption > div").Any(d => d.TextContent.Contains("Sivilstand:", StringComparison.Ordinal));
+        // The panel's own summary: the row's cell shows the codes whether or not the picker is open.
+        static bool Shown(IRenderedComponent<VariableListView> c) => c.FindAll("[role=group] div.caption > div").Any(d => d.TextContent.Contains("Sivilstand:", StringComparison.Ordinal));
         Assert.True(Shown(cut));
 
         OpenButton(cut)!.Click(new MouseEventArgs { Detail = 1 });

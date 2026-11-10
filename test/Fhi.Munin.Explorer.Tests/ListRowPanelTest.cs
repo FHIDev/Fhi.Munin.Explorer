@@ -108,10 +108,12 @@ public class ListRowPanelTest : ExplorerTestContext
             Guid id, Guid variableId, string? freeText, CancellationToken cancellationToken = default)
         {
             DesiredDataWritten.Add((variableId, freeText));
-            return Task.FromResult(new DesiredDataResult(DesiredDataOutcome.Saved));
+            return Task.FromResult(DesiredDataAnswer);
         }
 
         public bool DetailMissing { get; init; }
+
+        public DesiredDataResult DesiredDataAnswer { get; init; } = new(DesiredDataOutcome.Saved);
 
         /// <summary>Held until the test releases it, as a browser's fetch is never instant.</summary>
         public TaskCompletionSource? DetailGate { get; init; }
@@ -1098,12 +1100,38 @@ public class ListRowPanelTest : ExplorerTestContext
 
         NameButton(cut, "Databaseversjon").Click();
         cut.WaitForElement("[role=tablist]");
-        var label = cut.FindAll("[role=tabpanel] label").Single(l => l.TextContent.Trim() == "Ønskede data");
+        var label = cut.FindAll("[role=tabpanel] label").Single(l => l.TextContent.Trim() == "Andre ønsker til dataene (valgfritt)");
         cut.Find($"#{label.GetAttribute("for")}").Change("C76\r\n  C77 \n\nC78");
 
         cut.WaitForAssertion(() => Assert.Equal(
             "C76, C77, C78", cut.Find("td.munin-explorer-dataitem-main__desiredData textarea").GetAttribute("value")));
         Assert.Equal([(DatabaseVersion.VariableId, (string?)"C76, C77, C78")], client.DesiredDataWritten);
+    }
+
+    [Theory]
+    [InlineData("no", "Andre ønsker til dataene kan ikke overstige 500 tegn. Teksten er ikke lagret.")]
+    [InlineData("en", "Other wishes for the data must be 500 characters or fewer. Your text has not been saved.")]
+    public void DesiredDataTooLong_WhenTheNoteIsTooLong_ThenItNamesTheNote(string language, string expected) =>
+        Assert.Equal(expected, Texts.For(language).DesiredDataTooLong(500));
+
+    [Fact]
+    public void DesiredData_WhenTheDataTabsNoteIsRefused_ThenItIsDescribedByTheRefusal()
+    {
+        var client = new PanelClient(DatabaseVersion) { DesiredDataAnswer = new(DesiredDataOutcome.Refused, 500, 612) };
+        var cut = RenderView(client);
+
+        NameButton(cut, "Databaseversjon").Click();
+        cut.WaitForElement("[role=tablist]");
+        var label = cut.FindAll("[role=tabpanel] label").Single(l => l.TextContent.Trim() == "Andre ønsker til dataene (valgfritt)");
+        cut.Find($"#{label.GetAttribute("for")}").Change(new string('x', 612));
+
+        cut.WaitForAssertion(() =>
+        {
+            var field = cut.Find($"#{label.GetAttribute("for")}");
+            Assert.Equal("true", field.GetAttribute("aria-invalid"));
+            Assert.Contains("Andre ønsker til dataene kan ikke overstige 500 tegn",
+                            cut.Find($"#{field.GetAttribute("aria-describedby")}").TextContent, StringComparison.Ordinal);
+        });
     }
 
     [Fact]
@@ -1114,13 +1142,15 @@ public class ListRowPanelTest : ExplorerTestContext
 
         NameButton(cut, "Databaseversjon").Click();
         cut.WaitForElement("[role=tablist]");
-        var label = cut.FindAll("[role=tabpanel] label").Single(l => l.TextContent.Trim() == "Ønskede data");
+        var label = cut.FindAll("[role=tabpanel] label").Single(l => l.TextContent.Trim() == "Andre ønsker til dataene (valgfritt)");
         var field = cut.Find($"#{label.GetAttribute("for")}");
 
+        // The note sits in the group «Ønskede data» names; with nothing refused it is described by nothing.
         Assert.Equal("C76", field.GetAttribute("value"));
-        Assert.Contains(
-            "Angi hvilke kodeverdier du ønsker å søke om",
-            cut.Find($"#{field.GetAttribute("aria-describedby")!.Split(' ')[0]}").TextContent);
+        var group = field.Closest("[role=group]")!;
+        Assert.Equal("Ønskede data", cut.Find($"#{group.GetAttribute("aria-labelledby")}").TextContent);
+        Assert.Null(field.GetAttribute("aria-describedby"));
+        Assert.DoesNotContain("Angi hvilke kodeverdier", cut.Markup, StringComparison.Ordinal);
 
         field.Change("  C76 og C77  ");
 

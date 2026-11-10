@@ -47,8 +47,11 @@
                                value="@state.Query" @oninput="e => QueryChanged(e, link)"
                                @onkeydown="e => SearchKeyAsync(e, link)" />
                     </div>
+                }
 
-                    @if (state.Searched is not null && state.Hits.Count > 0)
+                @* One scroll area for the hits and the tree together, so «Lagre» under it stays in reach. *@
+                <div class="munin-explorer-codetree-scroll">
+                    @if (state.IsLarge && state.Searched is not null && state.Hits.Count > 0)
                     {
                         var activeHit = ActivePath(state, HitsSection);
                         @if (state.Hits.Count < state.HitTotal)
@@ -67,34 +70,50 @@
                             }
                         </ul>
                     }
-                }
 
-                var active = ActivePath(state, TreeSection);
-                <p class="headline headline-xxs margin--none" id="@Id("tree")">@T.PickerTreeHeading</p>
-                <ul class="munin-explorer-codetree" role="tree" aria-labelledby="@Id("tree")" aria-multiselectable="true"
-                    @onkeydown="e => TreeKeyAsync(e, link, TreeSection)">
-                    @foreach (var hit in top.Codes)
+                    @{ var active = ActivePath(state, TreeSection); }
+                    <p class="headline headline-xxs margin--none" id="@Id("tree")">@T.PickerTreeHeading</p>
+                    <ul class="munin-explorer-codetree" role="tree" aria-labelledby="@Id("tree")" aria-multiselectable="true"
+                        @onkeydown="e => TreeKeyAsync(e, link, TreeSection)">
+                        @foreach (var hit in top.Codes)
+                        {
+                            @TreeRow(link, state, TreeSection, hit, 1, active, null)
+                        }
+                    </ul>
+                    @if (top.Codes.Count < top.Total)
                     {
-                        @TreeRow(link, state, TreeSection, hit, 1, active, null)
+                        <p class="caption">@T.PickerShowingLevel(top.Codes.Count, top.Total)</p>
                     }
-                </ul>
-                @if (top.Codes.Count < top.Total)
-                {
-                    <p class="caption">@T.PickerShowingLevel(top.Codes.Count, top.Total)</p>
-                }
+                </div>
             }
         }
     </div>
 
+    @* Right under the tree, so a long «Valgt» never pushes them out of reach. *@
+    <div class="munin-explorer-page__actions">
+        <button class="hd-button-square button-square--primary" type="button" aria-disabled="@(_saving ? "true" : "false")" @onclick="SaveAsync">@T.PickerSave</button>
+        <button class="hd-button-square button-square--ghost" type="button" @onclick="CancelAsync">@T.PickerCancel</button>
+    </div>
+
+    @* Present from the first render, so a late answer (a search, a refusal) is a change a screen reader reads. *@
+    <p class="caption" role="status" aria-live="polite" aria-atomic="true">@_status</p>
+    <p class="caption" role="alert" aria-atomic="true">@_alert</p>
+
     @if (_choices.Count > 0)
     {
         <p class="form-element__label margin--none" id="@Id("chosen")">@(_union is { } codes ? T.PickerSelectedCodes(codes) : T.PickerChosen)</p>
-        <ul class="munin-explorer-data-list" aria-labelledby="@Id("chosen")">
-            @foreach (var choice in _choices)
+        <ul class="munin-explorer-data-list" id="@Id("chosen-list")" aria-labelledby="@Id("chosen")">
+            @foreach (var choice in ShownChoices)
             {
                 <li @key="choice.Value">@SummaryLine(choice)</li>
             }
         </ul>
+        @* Its label says what it does next, so it carries no aria-expanded beside it. *@
+        @if (ShowAllChosen || AnyFolded)
+        {
+            <button class="hd-button-reset" type="button" aria-controls="@Id("chosen-list")"
+                    @onclick="() => _showAllChosen = !ShowAllChosen">@(ShowAllChosen ? T.PickerShowFewerChosen : T.PickerShowAllChosen(_choices.Count))</button>
+        }
     }
 
     <p class="caption" tabindex="-1" @ref="_counter">@T.PickerChoiceCount(_choices.Count, MaxChoices)</p>
@@ -103,14 +122,6 @@
         <p class="caption">@T.PickerFull(MaxChoices)</p>
     }
 
-    @* Present from the first render, so a late answer (a search, a refusal) is a change a screen reader reads. *@
-    <p class="caption" role="status" aria-live="polite" aria-atomic="true">@_status</p>
-    <p class="caption" role="alert" aria-atomic="true">@_alert</p>
-
-    <div class="munin-explorer-page__actions">
-        <button class="hd-button-square button-square--primary" type="button" aria-disabled="@(_saving ? "true" : "false")" @onclick="SaveAsync">@T.PickerSave</button>
-        <button class="hd-button-square button-square--ghost" type="button" @onclick="CancelAsync">@T.PickerCancel</button>
-    </div>
 </div>
 
 @code {

@@ -925,6 +925,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-codes` | handle |
   | `munin-explorer-codes__table` | handle |
   | `munin-explorer-codetree` | handle |
+  | `munin-explorer-codetree-scroll` | handle |
   | `munin-explorer-codetree__box` | handle |
   | `munin-explorer-codetree__code` | handle |
   | `munin-explorer-codetree__count` | handle |
@@ -973,6 +974,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-dataitem-main` | handle |
   | `munin-explorer-dataitem-main__column` | handle |
   | `munin-explorer-dataitem-main__column__text` | handle |
+  | `munin-explorer-dataitem-main__desiredCodes` | handle |
   | `munin-explorer-dataitem-main__desiredData` | handle |
   | `munin-explorer-dataitem-main__expand-icon` | handle |
   | `munin-explorer-dataitem-main__name` | handle |
@@ -1073,8 +1075,6 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-kodeverk` | handle |
   | `munin-explorer-kodeverk__item` | handle |
   | `munin-explorer-kodeverk__name` | handle |
-  | `munin-explorer-kodeverk__reference` | handle |
-  | `munin-explorer-lead` | handle |
   | `munin-explorer-list-code` | meaning |
   | `munin-explorer-list-create` | meaning |
   | `munin-explorer-list-create__field` | meaning |
