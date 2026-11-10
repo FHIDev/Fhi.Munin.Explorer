@@ -17,7 +17,10 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { TREE_SEARCH, EMPTY_SEARCH, LONG_NAME_SEARCH, LONG_NAME, SAVE_ALL_SEARCH, SAVE_ALL_CONFIRM_SEARCH, treeFilters } from './tree-fixture.mjs';
+import {
+  TREE_SEARCH, EMPTY_SEARCH, LONG_NAME_SEARCH, LONG_NAME, SAVE_ALL_SEARCH, SAVE_ALL_CONFIRM_SEARCH, SHARED_NAME_SEARCH,
+  SHARED_NAME, treeFilters,
+} from './tree-fixture.mjs';
 import * as detailTree from './hierarchy-fixture.mjs';
 import * as statisticsFixture from './statistics-fixture.mjs';
 
@@ -360,6 +363,12 @@ function serve(url, request, response) {
   if (search === LONG_NAME_SEARCH && path === '/api/explorer/variables') {
     const page = JSON.parse(bodies.get(variablesRoute));
     page.items[0].preferredTerm = LONG_NAME;
+    response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(page));
+    return;
+  }
+  if (search === SHARED_NAME_SEARCH && path === '/api/explorer/variables') {
+    const page = JSON.parse(bodies.get(variablesRoute));
+    page.items.forEach(item => { item.preferredTerm = SHARED_NAME; });
     response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(page));
     return;
   }

@@ -93,7 +93,7 @@ public partial class VariableSearch
 
         // Our words, then Munin's name span (lang="no" where Norwegian), so each half is voiced in its own language
         // (WCAG 3.1.2). Visible text first for speech input (2.5.3); a blank term adds nothing.
-        builder.AddAttribute(5, "aria-labelledby", $"{SaveButtonId(v)} {RowHeadingId(v)}");
+        builder.AddAttribute(5, "aria-labelledby", $"{SaveButtonId(v)} {RowNameIds(v)}");
 
         builder.AddAttribute(6, "onclick", EventCallback.Factory.Create(this, () => ToggleSavedAsync(v)));
 
@@ -127,7 +127,7 @@ public partial class VariableSearch
         builder.AddAttribute(6, "id", RowSaveButtonId(v));
         builder.AddAttribute(7, "tabindex", "-1");
         builder.AddAttribute(8, "aria-pressed", saved ? "true" : "false");
-        builder.AddAttribute(9, "aria-labelledby", $"{RowSaveButtonId(v)} {RowHeadingId(v)}");
+        builder.AddAttribute(9, "aria-labelledby", $"{RowSaveButtonId(v)} {RowNameIds(v)}");
         builder.AddAttribute(10, "onclick", EventCallback.Factory.Create(this, () => ToggleSavedAsync(v)));
 
         // Saving is not a request to read the variable, so the row around it must not open the panel.

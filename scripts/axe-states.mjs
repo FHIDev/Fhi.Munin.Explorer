@@ -24,7 +24,9 @@ import {
   loadTreeFixture, panel as filterPanel, tree as kildeTree, boxes as treeBoxes, chips as filterChips,
   until as untilTrue,
 } from './tree-states.mjs';
-import { names as treeNames, LONG_NAME_SEARCH, LONG_NAME, SAVE_ALL_SEARCH, SAVE_ALL_CONFIRM_SEARCH } from './tree-fixture.mjs';
+import {
+  names as treeNames, LONG_NAME_SEARCH, LONG_NAME, SAVE_ALL_SEARCH, SAVE_ALL_CONFIRM_SEARCH, SHARED_NAME_SEARCH,
+} from './tree-fixture.mjs';
 import {
   STATISTICS_SEARCH, SUPPRESSED_SEARCH, STATISTICS_NAME, SUPPRESSED_NAME, LONG_LABEL,
 } from './statistics-fixture.mjs';
@@ -453,6 +455,20 @@ export const states = {
     await page
       .locator('.munin-explorer-detail[aria-busy="false"]')
       .first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+  },
+
+  // Every row under one name, so each draws its code under it; the first carries the stub's 41-character
+  // code, the widest a row has to hold (Fhi.Metadata-l9l2n.161).
+  'variables-shared-name': async page => {
+    const box = page.locator('input.searchbox__freetext').first();
+    await box.waitFor({ state: 'visible', timeout: findTimeout });
+    await box.fill(SHARED_NAME_SEARCH);
+    await press(page, 'Søk');
+
+    await page
+      .locator('ul.munin-explorer-data-list[aria-busy="false"] .munin-explorer-list-code')
+      .nth(1)
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
