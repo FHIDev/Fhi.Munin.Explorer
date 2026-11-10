@@ -338,7 +338,7 @@ reflow "" "/::variable-kilde-hierarchy" "/::variable-kilde-hierarchy-icons-off"
 reflow "" "/::variable-detail" "/::variable-detail-about" "/::variable-whole" "/::explorer-search-code"
 # The drawer heading's unbroken name (Fhi.Metadata-yaco2).
 reflow "" "/::variable-detail-long-name"
-# Rows sharing a name, each with its code under the name, the first one 41 characters (Fhi.Metadata-l9l2n.161).
+# Rows sharing an unbroken name, each with its code under it, of 41 and 59 characters (Fhi.Metadata-l9l2n.161).
 reflow "" "/::variables-shared-name"
 # The Data tab's coverage bar and frequency list, and the long label wrapping in it (Fhi.Metadata-9mxmw).
 reflow "" "/::variable-statistics" "/::variable-statistics-suppressed"

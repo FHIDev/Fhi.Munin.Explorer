@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
   TREE_SEARCH, EMPTY_SEARCH, LONG_NAME_SEARCH, LONG_NAME, SAVE_ALL_SEARCH, SAVE_ALL_CONFIRM_SEARCH, SHARED_NAME_SEARCH,
-  SHARED_NAME, treeFilters,
+  SHARED_NAME, SHARED_LONG_CODE, treeFilters,
 } from './tree-fixture.mjs';
 import * as detailTree from './hierarchy-fixture.mjs';
 import * as statisticsFixture from './statistics-fixture.mjs';
@@ -369,6 +369,7 @@ function serve(url, request, response) {
   if (search === SHARED_NAME_SEARCH && path === '/api/explorer/variables') {
     const page = JSON.parse(bodies.get(variablesRoute));
     page.items.forEach(item => { item.preferredTerm = SHARED_NAME; });
+    page.items[1].code = SHARED_LONG_CODE;
     response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(page));
     return;
   }

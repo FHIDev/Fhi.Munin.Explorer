@@ -458,8 +458,8 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
-  // Every row under one name with no break in it, so each draws its code under it; the first carries the stub's
-  // 41-character code. Name and code both have to shrink with the column (Fhi.Metadata-l9l2n.161).
+  // Every row under one name with no break in it, so each draws its code under it: the stub's 41-character code
+  // and a 59-character one. Name and code both have to shrink with the column (Fhi.Metadata-l9l2n.161).
   'variables-shared-name': async page => {
     const box = page.locator('input.searchbox__freetext').first();
     await box.waitFor({ state: 'visible', timeout: findTimeout });

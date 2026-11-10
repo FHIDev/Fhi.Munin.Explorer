@@ -13,6 +13,8 @@ export const LONG_NAME = 'Antall_tidligere_fødsler_og_dødfødsler_etter_22_ful
 // Every row under the unbroken name, the long code on the first, so each draws its code under it (Fhi.Metadata-l9l2n.161).
 export const SHARED_NAME_SEARCH = 'browser-shared-name';
 export const SHARED_NAME = LONG_NAME;
+// The second row's code, one unbroken run after the dots: a real Fraktur code (Fhi.Metadata-l9l2n.161).
+export const SHARED_LONG_CODE = 'V_FRAKTUR.F8.OSTEOPOROSEBEHANDLINGMEDIKAMENTKALSIUMDVITAMIN';
 export const names = {
   kilde: 'Prøvekilde', delkilde: 'Delkilde', first: 'Samling A', second: 'Samling B',
   direct: 'Direkte samling', offered: 'Felles gruppe', excluded: 'Kun i treet',
