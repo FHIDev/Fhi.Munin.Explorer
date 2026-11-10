@@ -7,10 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
 
-/// <summary>
-/// Rows whose names repeat on one page carry their code under the name, so the reader can tell them
-/// apart; a unique name is drawn as before (Fhi.Metadata-l9l2n.161).
-/// </summary>
+// Same-named rows on a page carry their code under the name; a unique name is drawn as before (Fhi.Metadata-l9l2n.161).
 public class SharedNameRowsTest : ExplorerTestContext
 {
     private const string Shared = "Tiltak kodet via ICD-10";
