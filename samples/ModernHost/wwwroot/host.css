@@ -1706,7 +1706,7 @@ table.munin-explorer-data-list > tbody > :where(tr) > th[scope=row] > button > .
   white-space: nowrap;
 }
 
-/* A search row's code under a shared name wraps, or a long one holds the name at its width, over the next column and out of a phone's card (Fhi.Metadata-l9l2n.161). */
+/* A search row's code under a shared name wraps; unwrapped, a long one holds the name at its width, over the next column and out of a phone's card (Fhi.Metadata-l9l2n.161). */
 .munin-explorer-dataitem-main__name .munin-explorer-list-code {
   white-space: normal;
   overflow-wrap: anywhere;
@@ -4385,8 +4385,8 @@ table.munin-explorer-data-list tbody th {
   }
 }
 
-/* From 480px an open menu is a disclosure in the page: its panel takes a line of its own under the row
-   of buttons and pushes the list down, so it never lies over a row (WCAG 2.5.8, Fhi.Metadata-mhqx0.8).
+/* Above 479.98px, the script's phone query, an open menu is a disclosure in the page: its panel takes a line
+   of its own under the buttons and pushes the list down, so it never lies over a row (WCAG 2.5.8, Fhi.Metadata-mhqx0.8).
    `display: contents` makes the button and the panel items of the row itself; `--end` moves to the button. */
 @media (width > 479.98px) {
   .munin-explorer-list-menu {
