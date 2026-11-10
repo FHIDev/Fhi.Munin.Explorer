@@ -1,6 +1,6 @@
 # AGENTS.md: FHIDev/Fhi.Munin.Explorer
 
-<!-- team-doc:begin sha256=52fcdb52ace1090af91e8c18c94cf6019c52e7b801d0356f38081fcc1e077d58 source=FHIDev/Fhi.Munin.DevInfra/docs/team/working-together.md -->
+<!-- team-doc:begin sha256=aa17ced5c7d696a340d8eee78ab260002a7db3eeda5e26b524b90565e1bab771 source=FHIDev/Fhi.Munin.DevInfra/docs/team/working-together.md -->
 ## The team's rules, in short
 
 Full text: FHIDev/Fhi.Munin.DevInfra `docs/team/working-together.md`. This block is a synced copy; edit the
@@ -28,7 +28,7 @@ canonical doc, not this block.
   (DevInfra `docs/review-risk-tiers.md`); who approves and who merges is each owner's own arrangement, in their
   lanes file. Never touch someone else's PR or branch.
 - **Work hours** are each owner's, set on Varde. Outside them messages wait in the inbox; where Varde's relay runs,
-  it wakes no session (only a stop) and wakes each one once when the hours open.
+  it wakes a session only for a stop or the owner's codeword to their coordinator, and wakes each once when hours open.
 - **Never print the environment** or a secret, never roll, deploy or touch prod yourself, and do not work around a
   permission denial: report it.
 <!-- team-doc:end -->
