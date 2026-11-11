@@ -1230,6 +1230,37 @@ public class UrlStateComponentTest : ExplorerTestContext
         Assert.Null(cut.FindComponent<KildeSearch>().Instance.SelectedDatasamlingId);
     }
 
+    // Every form a host's link may take opens the same datasamling, and keeps it open (Fhi.Metadata-l9l2n.173).
+    [Theory]
+    [InlineData("id", "id")]
+    [InlineData("id", "K_ALS.INKLUSJON")]
+    [InlineData("als", "id")]
+    [InlineData("als", "K_ALS.INKLUSJON")]
+    [InlineData("k_als", "id")]
+    [InlineData("k_als", "K_ALS.INKLUSJON")]
+    [InlineData("K_ALS", "k_als.inklusjon")]
+    [InlineData("ALS", "K_ALS.INKLUSJON")]
+    public void Kilder_WhenALinkNamesTheKildeAndTheDatasamlingInAnyForm_ThenThatDatasamlingOpensAndStaysOpen(
+        string kildeForm, string datasamlingForm)
+    {
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var kildeValue = kildeForm == "id" ? kilde.ToString() : kildeForm;
+        var datasamlingValue = datasamlingForm == "id" ? datasamling.ToString() : datasamlingForm;
+        var cut = RenderCoded(new OneKildeClient(kilde, datasamling, code: "K_ALS", datasamlingCode: "K_ALS.INKLUSJON"),
+                              $"http://localhost/kilder?kilde={kildeValue}&datasamling={datasamlingValue}");
+
+        cut.WaitForAssertion(() =>
+        {
+            var search = cut.FindComponent<KildeSearch>().Instance;
+            Assert.Equal(kilde, search.SelectedKildeId);
+            Assert.Equal(datasamling, search.SelectedDatasamlingId);
+        });
+        // Settled: the kilde's short form confirmed and written, and the datasamling still open in the form it came in.
+        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde=als&datasamling={datasamlingValue}", Mirrored()));
+        Assert.Equal(datasamling, cut.FindComponent<KildeSearch>().Instance.SelectedDatasamlingId);
+    }
+
     [Fact]
     public void Kilder_WhenALinkCarriesADatasamlingAndNoKilde_ThenItIsDroppedFromTheAddress()
     {
