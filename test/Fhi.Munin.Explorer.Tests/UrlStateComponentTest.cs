@@ -1240,6 +1240,9 @@ public class UrlStateComponentTest : ExplorerTestContext
     [InlineData("k_als", "K_ALS.INKLUSJON")]
     [InlineData("K_ALS", "k_als.inklusjon")]
     [InlineData("ALS", "K_ALS.INKLUSJON")]
+    [InlineData("als", "ALS.INKLUSJON")]
+    [InlineData("k_als", "als.inklusjon")]
+    [InlineData("id", "ALS.INKLUSJON")]
     public void Kilder_WhenALinkNamesTheKildeAndTheDatasamlingInAnyForm_ThenThatDatasamlingOpensAndStaysOpen(
         string kildeForm, string datasamlingForm)
     {
@@ -1259,6 +1262,17 @@ public class UrlStateComponentTest : ExplorerTestContext
         // Settled: the kilde's short form confirmed and written, and the datasamling still open in the form it came in.
         cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde=als&datasamling={datasamlingValue}", Mirrored()));
         Assert.Equal(datasamling, cut.FindComponent<KildeSearch>().Instance.SelectedDatasamlingId);
+    }
+
+    [Fact]
+    public void Kilder_WhenTheDatasamlingCodeRepeatsThePrefixInside_ThenTheNotFoundViewAndTheAddressKeepsWhatWasTyped()
+    {
+        var kilde = Guid.NewGuid();
+        var cut = RenderCoded(new OneKildeClient(kilde, Guid.NewGuid(), code: "K_ALS", datasamlingCode: "K_ALS.INKLUSJON"),
+                              "http://localhost/kilder?kilde=als&datasamling=K_ALS.K_INKLUSJON");
+
+        cut.WaitForAssertion(() => Assert.Equal(Guid.Empty, cut.FindComponent<KildeSearch>().Instance.SelectedDatasamlingId));
+        cut.WaitForAssertion(() => Assert.Equal("/kilder?kilde=als&datasamling=K_ALS.K_INKLUSJON", Mirrored()));
     }
 
     [Fact]

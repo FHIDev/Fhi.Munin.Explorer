@@ -382,15 +382,15 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         _selectedDatasamlingId = _selectedKildeId is { } open && open != Guid.Empty ? id ?? Guid.Empty : null;
     }
 
-    // Codes compare folded, as Munin keeps them unique; a datasamling may sit under a delkilde at any depth.
+    // Codes compare folded and with or without «K_», as a kilde code does; a datasamling may sit under a delkilde at any depth.
     internal static KildeDatasamling? DatasamlingByCode(KildeDetail detail, string code)
     {
         static IEnumerable<KildeDatasamling> Under(KildeDelkilde delkilde) =>
             delkilde.Datasamlinger.Concat(delkilde.Children.SelectMany(Under));
 
-        var wanted = KildeCodes.Canonical(code);
+        var wanted = KildeCodes.DatasamlingKey(code);
         return detail.Datasamlinger.Concat(detail.Delkilder.SelectMany(Under))
-            .FirstOrDefault(d => d.Code is { } stored && KildeCodes.Canonical(stored) == wanted);
+            .FirstOrDefault(d => d.Code is { } stored && KildeCodes.DatasamlingKey(stored) == wanted);
     }
 
     /// <summary>The kilde key when it is a code rather than an id, else null.</summary>
@@ -631,7 +631,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
         // A datasamling code already resolved under the open kilde is that datasamling, as for a kilde code below.
         if (datasamlingCode is not null && _datasamlingCode is { } known
-            && KildeCodes.Canonical(known.Code) == KildeCodes.Canonical(datasamlingCode)
+            && KildeCodes.DatasamlingKey(known.Code) == KildeCodes.DatasamlingKey(datasamlingCode)
             && _selectedKildeId is { } openKilde && known.Kilde == openKilde
             && (arrived.Kilde == openKilde || (code is not null && _codes.IsAliasOf(openKilde, code))))
         {

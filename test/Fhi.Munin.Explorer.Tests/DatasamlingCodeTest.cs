@@ -24,8 +24,17 @@ public class DatasamlingCodeTest
     [InlineData("K_KREG.SVULST_ØRE")]
     [InlineData("k_kreg.svulst_øre")]
     [InlineData("K_KREG.SVULST_OERE")]
+    [InlineData("KREG.SVULST_ØRE")]
+    [InlineData("kreg.svulst_oere")]
     public void DatasamlingByCode_WhenTheCodeIsUnderANestedDelkilde_ThenItIsFoundFolded(string linked) =>
         Assert.Equal(Deep, KildeExplorer.DatasamlingByCode(Kilde, linked)?.Id);
+
+    // «K_» is taken off the start of the whole code only (Robin, 2026-11-11): a second one is part of the code.
+    [Theory]
+    [InlineData("K_KREG.K_SVULST_ØRE")]
+    [InlineData("KREG.K_SVULST_ØRE")]
+    public void DatasamlingByCode_WhenThePrefixIsRepeatedInsideTheCode_ThenNull(string linked) =>
+        Assert.Null(KildeExplorer.DatasamlingByCode(Kilde, linked));
 
     [Fact]
     public void DatasamlingByCode_WhenNoRowCarriesTheCode_ThenNull() =>
