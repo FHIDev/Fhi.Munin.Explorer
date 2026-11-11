@@ -1309,6 +1309,19 @@ services.AddMuninExplorer(o => o.ApiBaseUrl = "https://explorer.munin.skytest.fh
 accepted only for a loopback host such as `localhost`, `127.0.0.1` or `::1`, and anything else stops the host at
 startup.
 
+Features a host may want on in one environment before another are switched under `MuninExplorer:Features`,
+each one off by default, so an environment's appsettings decides and production needs nothing:
+
+```json
+"MuninExplorer": { "Features": { "CodePicker": true } }
+```
+
+Both `AddMuninExplorer` overloads read these keys from the host's configuration (the delegate overload from the
+registered `IConfiguration`, and nothing else from the section). `options.Features.<Name>` set in the delegate wins
+over the key. Today there is one: `CodePicker`, the code picker under «Ønskede data» in a saved list; with it off, «Ønskede data» is
+one free-text field and codes saved through Munin show read-only. A new feature gets its own entry, off by
+default, and the entry is removed once the feature is on for every host.
+
 Leave the provider out entirely and calls are anonymous, which is all public metadata browsing
 needs — and all the browsing components ever do; `VariableListView` is the one that does not,
 because the lists it reads and writes are the signed-in user's own. The variable-list methods

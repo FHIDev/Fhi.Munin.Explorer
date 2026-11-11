@@ -643,8 +643,10 @@ public partial class VariableListViewTest : ExplorerTestContext
         }
     }
 
-    private IRenderedComponent<VariableListView> RenderView(ListClient client, bool signedIn = true, string? language = null)
+    private IRenderedComponent<VariableListView> RenderView(
+        ListClient client, bool signedIn = true, string? language = null, bool picker = true)
     {
+        Services.AddSingleton(new CodePickerSwitch(picker));
         Services.AddSingleton<IMuninExplorerClient>(client);
         Services.AddScoped<VariableListState>();
         return Render<VariableListView>(p =>
@@ -4101,6 +4103,17 @@ public partial class VariableListViewTest : ExplorerTestContext
 
         Assert.Equal($"{column} {note} Alder ved diagnose", AccessibleName.Of(DesiredDataFields(cut)[0]));
         Assert.Equal(note, DesiredDataFields(cut)[0].GetAttribute("placeholder"));
+    }
+
+    [Theory]
+    [InlineData(null, "Ønskede data")]
+    [InlineData("en", "Desired data")]
+    public void View_WhenThePickerIsOff_ThenTheFieldIsNamedByTheColumnAndTheVariableWithNoPlaceholder(string? language, string column)
+    {
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")), language: language, picker: false);
+
+        Assert.Equal($"{column} Alder ved diagnose", AccessibleName.Of(DesiredDataFields(cut)[0]));
+        Assert.False(DesiredDataFields(cut)[0].HasAttribute("placeholder"));
     }
 
     [Fact]

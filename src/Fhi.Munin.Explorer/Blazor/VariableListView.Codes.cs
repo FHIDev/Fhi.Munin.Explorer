@@ -1,6 +1,7 @@
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
@@ -19,8 +20,11 @@ public sealed partial class VariableListView
     private bool _focusPickerButton;
 
     // Only by item: the codes write has no variable route, and a list from an older API has no item ids.
-    private static bool CanPickCodes(VariableListItem item, VariableDetail detail) =>
-        item.ItemId is not null && detail.KodeverkLinks.Any(link => link.HasCodeValues);
+    private bool CanPickCodes(VariableListItem item, VariableDetail detail) =>
+        PickerOffered && item.ItemId is not null && detail.KodeverkLinks.Any(link => link.HasCodeValues);
+
+    // A host that never called AddMuninExplorer has no switch, and so no picker.
+    private bool PickerOffered => ServiceProvider.GetService<CodePickerSwitch>()?.On == true;
 
     private bool IsPicking(VariableListItem item) => _picking == VariableDatasamlingKey.Of(item);
 

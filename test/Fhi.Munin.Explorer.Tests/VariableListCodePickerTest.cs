@@ -87,8 +87,9 @@ public class VariableListCodePickerTest : ExplorerTestContext
         DesiredDataFreeText = "bare siste registrerte",
     };
 
-    private IRenderedComponent<VariableListView> OpenedRow(ListClient client, string language = "no")
+    private IRenderedComponent<VariableListView> OpenedRow(ListClient client, string language = "no", bool picker = true)
     {
+        Services.AddSingleton(new CodePickerSwitch(picker));
         Services.AddSingleton<IMuninExplorerClient>(client);
         Services.AddScoped<VariableListState>();
         var cut = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true).Add(c => c.Language, language));
@@ -214,6 +215,36 @@ public class VariableListCodePickerTest : ExplorerTestContext
         Assert.True(all.IndexOf(group.QuerySelector($"#{button.GetAttribute("aria-controls")}")!) < all.IndexOf(textarea));
         Assert.Equal(note, group.QuerySelector($"label[for='{textarea.Id}']")!.TextContent);
         Assert.Equal(note, AccessibleName.Of(textarea));
+    }
+
+    // The host option is off by default (Fhi.Metadata-l9l2n.170): no picker, and the v2.18 field with its hint.
+    [Theory]
+    [InlineData("no", "Ønskede data", "Angi hvilke kodeverdier du ønsker å søke om")]
+    [InlineData("en", "Desired data", "Say which code values you want to apply for")]
+    public void Row_WhenThePickerIsOff_ThenDesiredDataIsOneLabelledFieldWithItsHint(string language, string label, string hint)
+    {
+        var cut = OpenedRow(new ListClient(Item(), Sivilstand), language, picker: false);
+
+        Assert.Null(OpenButton(cut));
+        var panel = cut.Find("[id^='munin-explorer-list-panel-'][role=region]");
+        Assert.Empty(panel.QuerySelectorAll("[role=group]"));
+        var textarea = panel.QuerySelector("textarea[id$='-desired']") ?? panel.QuerySelectorAll("textarea").First();
+        Assert.Equal(label, panel.QuerySelector($"label[for='{textarea.Id}']")!.TextContent);
+        Assert.Equal(label, AccessibleName.Of(textarea));
+        Assert.Equal(hint, cut.Find($"#{textarea.GetAttribute("aria-describedby")}").TextContent);
+    }
+
+    [Fact]
+    public void Row_WhenThePickerIsOff_ThenCodesSavedThroughMuninStillShowReadOnly()
+    {
+        var item = Item() with { DesiredDataCodes = [new DesiredCodeView { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", KodeverkName = "Sivilstand", Kind = "kode", Code = "2", Name = "Gift" }] };
+        var cut = OpenedRow(new ListClient(item, Sivilstand), picker: false);
+
+        Assert.Null(OpenButton(cut));
+        var panel = cut.Find("[id^='munin-explorer-list-panel-'][role=region]");
+        Assert.Contains("Sivilstand: 2 Gift", System.Text.RegularExpressions.Regex.Replace(panel.TextContent, @"\s+", " "));
+        var cell = cut.Find("td.munin-explorer-dataitem-main__desiredData");
+        Assert.NotNull(cell.QuerySelector(".munin-explorer-dataitem-main__desiredCodes"));
     }
 
     [Fact]

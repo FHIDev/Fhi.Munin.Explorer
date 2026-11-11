@@ -117,7 +117,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// so our words and Munin's Norwegian name keep their own languages (WCAG 3.1.2).
     /// </summary>
     private string DesiredDataLabelledBy(VariableListItem item) =>
-        $"{DesiredDataLabelId(item)} {DesiredDataNoteLabelId(item)} {RowNameId(item)}";
+        PickerOffered
+            ? $"{DesiredDataLabelId(item)} {DesiredDataNoteLabelId(item)} {RowNameId(item)}"
+            : $"{DesiredDataLabelId(item)} {RowNameId(item)}";
 
     private Page<VariableListItem>? _page;
     private Guid? _shownList;
@@ -312,7 +314,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// nothing saying why (WCAG 3.3.1). The field points at this region, so the two are read together.
     /// </summary>
     private string? DesiredDataRefusalMessage =>
-        _desiredDataRefusal is { } refusal ? T.DesiredDataTooLong(refusal.MaxLength) : null;
+        _desiredDataRefusal is { } refusal
+            ? PickerOffered ? T.DesiredDataTooLong(refusal.MaxLength) : T.DesiredDataFieldTooLong(refusal.MaxLength)
+            : null;
 
     private IReadOnlyList<VariableList> Lists => State?.Lists ?? [];
 

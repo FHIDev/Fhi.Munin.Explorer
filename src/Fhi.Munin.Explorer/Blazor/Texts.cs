@@ -365,8 +365,11 @@ internal sealed record Texts(
     string FieldStatistics,
     string FlagYes,
     string FlagNo,
-    // (maxLength) — "Andre ønsker til dataene kan ikke overstige 500 tegn."
+    // (maxLength) — "Andre ønsker til dataene kan ikke overstige 500 tegn."; the field alone, without the picker, says
+    // "Ønskede data kan ikke overstige 500 tegn." and carries the hint below.
     Func<int, string> DesiredDataTooLong,
+    Func<int, string> DesiredDataFieldTooLong,
+    string DesiredDataHint,
     // The free text beside the picked codes, in the opened row and the list's column; and the "Mine notater" tab.
     string DesiredDataNote,
     string TabNotes,
@@ -1434,6 +1437,9 @@ internal sealed record Texts(
         FlagNo: "Nei",
         DesiredDataTooLong: maxLength =>
             $"Andre ønsker til dataene kan ikke overstige {maxLength} tegn. Teksten er ikke lagret.",
+        DesiredDataFieldTooLong: maxLength =>
+            $"Ønskede data kan ikke overstige {maxLength} tegn. Teksten er ikke lagret.",
+        DesiredDataHint: "Angi hvilke kodeverdier du ønsker å søke om",
         DesiredDataNote: "Andre ønsker til dataene (valgfritt)",
         TabNotes: "Mine notater",
         NotesLabel: "Egne notater",
@@ -2048,6 +2054,9 @@ internal sealed record Texts(
         FlagNo: "No",
         DesiredDataTooLong: maxLength =>
             $"Other wishes for the data must be {maxLength} characters or fewer. Your text has not been saved.",
+        DesiredDataFieldTooLong: maxLength =>
+            $"Desired data must be {maxLength} characters or fewer. Your text has not been saved.",
+        DesiredDataHint: "Say which code values you want to apply for",
         DesiredDataNote: "Other wishes for the data (optional)",
         TabNotes: "My notes",
         NotesLabel: "Your notes",
