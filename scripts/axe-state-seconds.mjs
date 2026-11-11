@@ -1,7 +1,9 @@
 // Median CI seconds per axe state, all widths, from the shard logs of five runs on 2026-10-22/23. scan-shard.mjs packs
 // the shards by them (Fhi.Metadata-w6v38); a state missing here costs DEFAULT_SECONDS, and shard 1 is charged
-// REFLOW_SECONDS for the 320px reflow it alone measures. Remeasure when one moves.
+// REFLOW_SECONDS for the 320px reflow and PICKER_OFF_SECONDS for the code-picker-off pass it alone runs. Remeasure when one moves.
 export const REFLOW_SECONDS = 29;
+// The host restart and list-row-picker-off at three widths: 10.5 s in #747's shard 1 (Fhi.Metadata-l9l2n.174).
+export const PICKER_OFF_SECONDS = 11;
 export const DEFAULT_SECONDS = 8;
 
 export const stateSeconds = {
