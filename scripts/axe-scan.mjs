@@ -5,18 +5,20 @@
 //
 // A target is a URL, or `URL::state` to drive the loaded page into a named state from
 // `axe-states.mjs` first: what a reader reaches by pressing is invisible to the plain form.
-import { readFileSync } from 'node:fs';
+import { appendFileSync, readFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 
 import { launchOptions } from './browser-launch.mjs';
 import AxeBuilder from '@axe-core/playwright';
 import { states, wideOnlyStates } from './axe-states.mjs';
+import { criteriaOf, pageOf } from './axe-pages.mjs';
 import { describeShard, packByCost, parseShard } from './scan-shard.mjs';
 import { DEFAULT_SECONDS, PICKER_OFF_SECONDS, REFLOW_SECONDS, stateSeconds } from './axe-state-seconds.mjs';
 import { scrollPast } from './reader-scroll.mjs';
 
 const targets = process.argv.slice(2);
 const settleMs = Number(process.env.ACCESSIBILITY_SETTLE_MS ?? 4000);
+const resultsFile = process.env.AXE_RESULTS_FILE || null;
 // WCAG 2.2 AA, the level helsedata's accessibility statement is written against (Fhi.Metadata-mhqx0).
 const tags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
@@ -271,12 +273,19 @@ try {
       }
 
       let pageViolations = results.violations.length;
+      const found = results.violations.map(v => ({ rule: v.id, criteria: criteriaOf(v.tags) }));
       for (const root of roots) {
         console.log(`    explorer root lang="${root.lang ?? ''}", ${root.norwegian} element(s) marked Norwegian inside it`);
         if (root.lang !== 'no' && root.lang !== 'en') {
           pageViolations += 1;
+          found.push({ rule: 'explorer-root-lang', criteria: ['3.1.1'] });
           console.log(`\n  [serious] explorer-root-lang — the explorer root carries lang="${root.lang ?? ''}", not "no" or "en"`);
         }
+      }
+
+      // One line per scan for a caller that reports per page (the devbox's push to Varde, DevInfra-og3.42).
+      if (resultsFile) {
+        appendFileSync(resultsFile, `${JSON.stringify({ page: pageOf(url, state), state, width, violations: found })}\n`);
       }
 
       violationCount += pageViolations;

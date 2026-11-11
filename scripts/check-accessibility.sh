@@ -10,6 +10,7 @@
 #
 # Usage:  ./scripts/check-accessibility.sh   (SCAN_SHARD=k/n runs the k-th of n slices of the axe states, as
 #         CI does with 4, and the 320px reflow and the code-picker-off pass in slice 1 only; unset runs everything)
+#         AXE_RESULTS_FILE=<path> also appends one JSON line per axe scan, with its Varde page key (DevInfra-og3.42).
 # Needs:  dotnet, node (for npx), and a Chrome/Chromium on PATH.
 
 set -euo pipefail
@@ -264,7 +265,7 @@ else
 fi
 
 echo "==> checking browser state preparation"
-node --test "$ROOT/scripts/test-axe-states.mjs" "$ROOT/scripts/test-scan-shard.mjs" || {
+node --test "$ROOT/scripts/test-axe-states.mjs" "$ROOT/scripts/test-scan-shard.mjs" "$ROOT/scripts/test-axe-pages.mjs" || {
   echo "the state-preparation tests failed - TOOLING failure, so nothing was scanned." >&2
   exit 2
 }
