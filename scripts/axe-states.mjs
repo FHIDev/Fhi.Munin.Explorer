@@ -91,6 +91,21 @@ async function press(scope, name) {
   await button.click();
 }
 
+// The click returns before the server's render, so wait for the toggle to say it is open, then for the first row.
+async function openAdvancedSearch(page) {
+  await rowsArePresent(page, 'button.munin-explorer-dataitem-main__name');
+  const toggle = page.getByRole('button', { name: 'Avansert søk', exact: true });
+  await toggle.click();
+  await page.waitForFunction(el => el.getAttribute('aria-expanded') === 'true', await toggle.elementHandle(), { timeout: findTimeout });
+  await page.getByRole('combobox', { name: 'Betingelse 1 Felt', exact: true }).waitFor({ state: 'visible', timeout: findTimeout });
+}
+
+/** Choose a row's field, and wait for the value control that field draws. */
+async function chooseConditionField(page, row, field, drawn) {
+  await page.getByRole('combobox', { name: `Betingelse ${row} Felt`, exact: true }).selectOption(field);
+  await page.getByLabel(drawn, { exact: true }).first().waitFor({ state: 'visible', timeout: findTimeout });
+}
+
 /** Press the wide screen's «Skjul filtre», once the list it sits beside has rows. */
 async function collapseFilters(page, row) {
   await rowsArePresent(page, row);
@@ -233,6 +248,38 @@ export const states = {
     }
     console.log(`    variables-facets: ${chipCount} .munin-explorer-filters__chip "${chipText}", `
       + `.munin-explorer-breadcrumb [role=${await trail.getAttribute('role')}] crumbs ${JSON.stringify(crumbs)}`);
+  },
+
+  // Avansert søk's form with one row per field type, the range row refused so its alert is drawn: the rows only
+  // exist behind the press, and each control's name is its row's legend plus its label (Fhi.Metadata-ipok2.2).
+  'variables-advanced-form': async page => {
+    await openAdvancedSearch(page);
+    for (let row = 2; row <= 4; row++) {
+      await press(page, 'Legg til betingelse');
+      await page.getByRole('combobox', { name: `Betingelse ${row} Felt`, exact: true })
+        .waitFor({ state: 'visible', timeout: findTimeout });
+    }
+    await chooseConditionField(page, 2, 'gyldigFra', 'Betingelse 2 Til');
+    await chooseConditionField(page, 3, 'tilgangsniva', 'Betingelse 3 Verdi');
+    await chooseConditionField(page, 4, 'personidentifikasjon', 'Betingelse 4 Verdi');
+    await page.getByLabel('Betingelse 2 Fra', { exact: true }).fill('2010-01-01');
+    await page.getByLabel('Betingelse 2 Fra', { exact: true }).dispatchEvent('change');
+    await press(page, 'Vis treff');
+    await page.locator('[role=alert] .infobox').first().waitFor({ state: 'visible', timeout: findTimeout });
+  },
+
+  // The chip row with a condition beside a facet value, and «Endre avansert søk» before the clear-all.
+  'variables-advanced-chips': async page => {
+    await openAdvancedSearch(page);
+    const value = page.getByLabel('Betingelse 1 Verdi', { exact: true });
+    await value.fill('blodtrykk');
+    await value.dispatchEvent('change');
+    await press(page, 'Vis treff');
+    await page.locator('.munin-explorer-filters__chip', { hasText: 'Navn inneholder «blodtrykk»' })
+      .waitFor({ state: 'visible', timeout: findTimeout });
+    await page.getByRole('button', { name: 'Endre avansert søk', exact: true })
+      .waitFor({ state: 'visible', timeout: findTimeout });
+    await rowsArePresent(page, 'button.munin-explorer-dataitem-main__name');
   },
 
   // A long facet at rest, capped, and the control that lifts the cap pressed twice. The only state
