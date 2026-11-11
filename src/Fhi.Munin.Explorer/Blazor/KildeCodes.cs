@@ -53,4 +53,14 @@ internal static class KildeCodes
     public static string Canonical(string code) =>
         code.Trim().Replace("Æ", "AE").Replace("æ", "ae").Replace("Ø", "OE").Replace("ø", "oe")
             .Replace("Å", "AA").Replace("å", "aa").ToUpperInvariant();
+
+    /// <summary>
+    /// A datasamling code as a link may write it, folded and without «K_», so K_KREG.CRC, KREG.CRC and kreg.crc compare
+    /// equal, as a kilde code is taken with or without «K_» (Fhi.Metadata-l9l2n.173).
+    /// </summary>
+    public static string DatasamlingKey(string code)
+    {
+        var folded = Canonical(code);
+        return folded.StartsWith(Prefix, StringComparison.Ordinal) && folded.Length > Prefix.Length ? folded[Prefix.Length..] : folded;
+    }
 }
