@@ -496,7 +496,12 @@ public class GeometryScanGuardTest
         Assert.Contains("/::list-row-picker-off\"", source, StringComparison.Ordinal);
         Assert.Contains("[ \"$off_status\" -ne 0 ]", source, StringComparison.Ordinal);
         Assert.Contains("for width in 320 1279; do", source, StringComparison.Ordinal);
-        Assert.Contains("AXE_VIEWPORT_WIDTH=1440 AXE_VIEWPORT_HEIGHT=900 \\\n  node \"$ROOT/scripts/axe-scan.mjs\" \"${BASE}/::list-row-picker-off\"", source, StringComparison.Ordinal);
+        // An unmeasured verdict (exit 3) must not be hidden by the off pass failing to run.
+        Assert.True(source.LastIndexOf("exit 3", StringComparison.Ordinal)
+            < source.IndexOf("if [ \"$off_status\" -eq 2 ]", StringComparison.Ordinal));
+        var pass = source[source.IndexOf("picker_off_pass() {", StringComparison.Ordinal)..];
+        Assert.DoesNotContain("exit ", pass[..pass.IndexOf("\n}\n", StringComparison.Ordinal)], StringComparison.Ordinal);
+        Assert.Contains("AXE_VIEWPORT_WIDTH=1440 AXE_VIEWPORT_HEIGHT=900 \\\n    node \"$ROOT/scripts/axe-scan.mjs\" \"${BASE}/::list-row-picker-off\"", source, StringComparison.Ordinal);
     }
 }
 
