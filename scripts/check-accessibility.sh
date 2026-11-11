@@ -9,7 +9,7 @@
 # alone on purpose — read that before adding a state, and before quoting this one either.
 #
 # Usage:  ./scripts/check-accessibility.sh   (SCAN_SHARD=k/n runs the k-th of n slices of the axe states, as
-#         CI does with 4, and the 320px reflow in slice 1 only; unset runs everything)
+#         CI does with 4, and the 320px reflow and the code-picker-off pass in slice 1 only; unset runs everything)
 # Needs:  dotnet, node (for npx), and a Chrome/Chromium on PATH.
 
 set -euo pipefail
@@ -348,15 +348,13 @@ if [ -z "${SCAN_SHARD:-}" ] || [ "${SCAN_SHARD%%/*}" = 1 ]; then
 else
   echo "==> code picker off: scanned in shard 1/${SCAN_SHARD#*/}, not this one (${SCAN_SHARD})"
 fi
-# 2 is the scanner or the host saying it could not run, as for the main scan above.
-if [ "$off_status" -eq 2 ]; then
-  exit 2
-fi
 
 # Anything non-zero is a finding, except the one code that means the step never ran.
 findings=0
 [ "$scan_status" -ne 0 ] && findings=1
-[ "$off_status" -ne 0 ] && findings=1
+if [ "$off_status" -ne 0 ] && [ "$off_status" -ne 2 ]; then
+  findings=1
+fi
 if [ "$reflow_status" -ne 0 ] && [ "$reflow_status" -ne 2 ]; then
   findings=1
 fi
@@ -379,6 +377,14 @@ fi
 # 2 from the geometry step is the scanner saying it could not run. Said after the guidance above
 # rather than in place of it, because axe has already decided by this point and exiting 2 over a
 # violation it found would report a page defect as a broken toolchain.
+if [ "$off_status" -eq 2 ]; then
+  echo "the code-picker-off pass could not run - TOOLING failure, so that state was not scanned." >&2
+
+  if [ "$findings" -eq 0 ]; then
+    exit 2
+  fi
+fi
+
 if [ "$reflow_status" -eq 2 ]; then
   echo "the 320px measurement could not run - TOOLING failure, so nothing was measured there." >&2
 

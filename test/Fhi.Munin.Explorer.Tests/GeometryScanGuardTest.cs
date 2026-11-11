@@ -475,6 +475,16 @@ public class GeometryScanGuardTest
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
             found);
     }
+
+    // The off pass is the only browser scan of the shape a host ships by default; deleting it leaves every other check green.
+    [Fact]
+    public void AccessibilityGate_WhenItRuns_ThenItAlsoScansTheOpenedRowWithTheCodePickerOff()
+    {
+        var source = File.ReadAllText(Repo.In("scripts", "check-accessibility.sh"));
+
+        Assert.Contains("MuninExplorer__Features__CodePicker=false ASPNETCORE_ENVIRONMENT", source, StringComparison.Ordinal);
+        Assert.Contains("::list-row-picker-off\"", source, StringComparison.Ordinal);
+    }
 }
 
 /// <summary>
@@ -506,4 +516,5 @@ internal sealed class NodeFactAttribute : FactAttribute
         .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
         .SelectMany(dir => new[] { Path.Combine(dir, "node"), Path.Combine(dir, "node.exe") })
         .FirstOrDefault(File.Exists);
+
 }
