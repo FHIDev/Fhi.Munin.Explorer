@@ -31,6 +31,29 @@ public sealed class MuninExplorerOptions
     /// href to drop that link. Null gives no kilde an application through the host.
     /// </summary>
     public Blazor.KildeAccessLinks? AccessLinks { get; set; } = Blazor.KildeAccessLinks.Helsedata;
+
+    /// <summary>
+    /// Features a host may turn on in one environment before another, each off by default
+    /// (configuration section <c>MuninExplorer:Features</c>).
+    /// </summary>
+    public MuninExplorerFeatures Features { get; } = new();
+}
+
+/// <summary>
+/// Features a host turns on per environment, each off by default. A feature left null here is read from the host's
+/// configuration key <c>MuninExplorer:Features:&lt;name&gt;</c> (<c>true</c> turns it on; absent or any other value is
+/// off), whichever <c>AddMuninExplorer</c> overload the host calls, so an environment's appsettings can turn it on without
+/// a code change. The configuration overload reads the key when it is called, the delegate overload when the first
+/// component needs it; either way a change takes a restart. A value set here wins over the key. An entry is removed once its feature is on for every host.
+/// </summary>
+public sealed class MuninExplorerFeatures
+{
+    /// <summary>
+    /// The code picker («Velg fra kodelisten») under «Ønskede data» in a signed-in reader's saved list; key
+    /// <c>MuninExplorer:Features:CodePicker</c>. Off: «Ønskede data» is one free-text field, and codes already saved
+    /// through Munin are still shown, read-only.
+    /// </summary>
+    public bool? CodePicker { get; set; }
 }
 
 /// <summary>The one call a host makes to use the explorer components.</summary>
@@ -38,6 +61,9 @@ public static class ServiceCollectionExtensions
 {
     /// <summary>A backstop past the longest limit a call asks <see cref="RequestTimeoutHandler"/> for, so the handler's fires.</summary>
     private static readonly TimeSpan RequestCeiling = MuninExplorerClient.ExportTimeout + TimeSpan.FromSeconds(10);
+
+    private static bool FeatureOn(IConfiguration? configuration, string feature) =>
+        bool.TryParse(configuration?[$"MuninExplorer:Features:{feature}"], out var on) && on;
 
     /// <summary>How long to spend reaching the host before giving up on it.</summary>
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(5);
@@ -126,6 +152,10 @@ public static class ServiceCollectionExtensions
             services.TryAddSingleton(accessLinks);
         }
 
+        var codePicker = options.Features.CodePicker;
+        services.TryAddSingleton(provider => new Blazor.CodePickerSwitch(
+            codePicker ?? FeatureOn(provider.GetService<IConfiguration>(), nameof(MuninExplorerFeatures.CodePicker))));
+
         services.AddHttpClient<IMuninExplorerClient, MuninExplorerClient>(client =>
         {
             // Trailing slash so relative routes ("api/explorer/...") resolve against the
@@ -157,8 +187,9 @@ public static class ServiceCollectionExtensions
 
     /// <summary>
     /// Reads <c>MuninExplorer:ApiBaseUrl</c> from configuration
-    /// (environment variable <c>MuninExplorer__ApiBaseUrl</c>), and <c>MuninExplorer:AccessLinks</c> for
-    /// <see cref="MuninExplorerOptions.AccessLinks"/>.
+    /// (environment variable <c>MuninExplorer__ApiBaseUrl</c>), <c>MuninExplorer:AccessLinks</c> for
+    /// <see cref="MuninExplorerOptions.AccessLinks"/>, and <c>MuninExplorer:Features</c> for
+    /// <see cref="MuninExplorerOptions.Features"/>.
     /// </summary>
     public static IServiceCollection AddMuninExplorer(
         this IServiceCollection services,
@@ -185,6 +216,7 @@ public static class ServiceCollectionExtensions
         {
             o.ApiBaseUrl = string.IsNullOrWhiteSpace(fromConfiguration) ? developmentFallback : fromConfiguration;
             o.AccessLinks = accessLinks;
+            o.Features.CodePicker = FeatureOn(configuration, nameof(MuninExplorerFeatures.CodePicker));
         });
     }
 

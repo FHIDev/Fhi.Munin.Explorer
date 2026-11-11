@@ -1356,6 +1356,23 @@ already is the component's type; they carry ids, page numbers and the like, neve
 response body or anything the reader typed — the user's access token reaches the wire through `BearerTokenHandler`'s
 `Authorization` header, which no exception message here repeats.
 
+### Turning features on per environment
+
+Features a host may want on in one environment before another are switched under `MuninExplorer:Features`,
+each one off by default, so an environment's appsettings decides and production needs nothing:
+
+```json
+"MuninExplorer": { "Features": { "CodePicker": true } }
+```
+
+Both `AddMuninExplorer` overloads read these keys from the host's configuration (the delegate overload from the
+registered `IConfiguration`, and nothing else from the section). The configuration overload reads them when it is
+called, the delegate overload when the first component needs them; either way a change takes a restart. `true` turns a feature on; absent or any other value is off. `options.Features.<Name>` set in
+the delegate wins over the key. The sample hosts turn `CodePicker` on in `appsettings.Development.json`, which is what
+the browser gates run. Today there is one: `CodePicker`, the code picker under «Ønskede data» in a saved list; with it off, «Ønskede data» is
+one free-text field and codes saved through Munin show read-only. A new feature gets its own entry, off by
+default, and the entry is removed once the feature is on for every host.
+
 ### A legacy Blazor Server host on .NET 10
 
 A host on `AddServerSideBlazor()`, `blazor.server.js` and the `<component>` tag helper, as helsedata's is, needs one

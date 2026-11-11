@@ -355,7 +355,10 @@ else if (State?.IsAuthenticated == true)
                                        column 2; it stays a direct child, which Stiler sizes by «td > textarea». *@
                                     <td class="munin-explorer-dataitem-main__desiredData" data-label="@T.FieldDesiredData">
                                         <span class="screenreader-only" id="@DesiredDataLabelId(item)">@T.FieldDesiredData</span>
-                                        <span class="screenreader-only" id="@DesiredDataNoteLabelId(item)">@T.DesiredDataNote</span>
+                                        @if (PickerOffered)
+                                        {
+                                            <span class="screenreader-only" id="@DesiredDataNoteLabelId(item)">@T.DesiredDataNote</span>
+                                        }
                                         @if (CodesOf(item).Count > 0)
                                         {
                                             <div class="munin-explorer-dataitem-main__desiredCodes">@DesiredCodeSummary.For(T, CodesOf(item), "no")</div>
@@ -363,7 +366,7 @@ else if (State?.IsAuthenticated == true)
                                         @* One line to start, so the row stays low; Stiler lets it grow to four, then scroll. *@
                                         <textarea class="textarea__field"
                                                   rows="1"
-                                                  placeholder="@T.DesiredDataNote"
+                                                  placeholder="@(PickerOffered ? T.DesiredDataNote : null)"
                                                   value="@DesiredDataOf(item)"
                                                   aria-labelledby="@DesiredDataLabelledBy(item)"
                                                   aria-invalid="@DesiredDataInvalid(item)"
@@ -943,9 +946,26 @@ else if (State?.IsAuthenticated == true)
         }
     </div>;
 
-    // The same value as the row's column: one draft, one save, one refusal for both fields.
-    // The picks first and the free text as an optional note after them (Fhi.Metadata-9huq2.19).
-    private RenderFragment RowDesiredDataField(VariableListItem item, VariableDetail detail) => @<div class="margin-bottom" role="group" aria-labelledby="@RowDesiredDataHeadingId(item)">
+    // The same value as the row's column: one draft, one save, one refusal for both fields. With the picker offered,
+    // the picks come first and the free text after them as an optional note (Fhi.Metadata-9huq2.19, -l9l2n.170).
+    private RenderFragment RowDesiredDataField(VariableListItem item, VariableDetail detail) =>
+        PickerOffered ? RowDesiredDataWithPicker(item, detail) : RowDesiredDataAlone(item);
+
+    // Without the picker: one labelled free text with its hint; codes saved through Munin shown read-only.
+    private RenderFragment RowDesiredDataAlone(VariableListItem item) => @<div class="margin-bottom">
+        <div><label class="form-element__label" for="@RowDesiredDataId(item)">@T.FieldDesiredData</label></div>
+        <p class="caption" id="@RowDesiredDataHintId(item)">@T.DesiredDataHint</p>
+        @DesiredCodeSummary.For(T, CodesOf(item), "no")
+        <textarea id="@RowDesiredDataId(item)"
+                  class="textarea__field"
+                  rows="4"
+                  value="@DesiredDataOf(item)"
+                  aria-invalid="@DesiredDataInvalid(item)"
+                  aria-describedby="@RowDesiredDataAloneDescribedBy(item)"
+                  @onchange="e => SaveDesiredDataAsync(item, e.Value?.ToString())"></textarea>
+    </div>;
+
+    private RenderFragment RowDesiredDataWithPicker(VariableListItem item, VariableDetail detail) => @<div class="margin-bottom" role="group" aria-labelledby="@RowDesiredDataHeadingId(item)">
         <div><span class="form-element__label" id="@RowDesiredDataHeadingId(item)">@T.FieldDesiredData</span></div>
         @* Stored codes show whether or not the picker is offered now (a link may have lost its values since). *@
         @if (!IsPicking(item))

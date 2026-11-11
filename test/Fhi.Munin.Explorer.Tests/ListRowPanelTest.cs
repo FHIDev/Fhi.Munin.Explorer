@@ -245,8 +245,9 @@ public class ListRowPanelTest : ExplorerTestContext
     }
 
     private IRenderedComponent<VariableListView> RenderView(
-        PanelClient client, Func<VariableListItem, string>? variableHref = null, string? language = null)
+        PanelClient client, Func<VariableListItem, string>? variableHref = null, string? language = null, bool picker = true)
     {
+        Services.AddSingleton(new CodePickerSwitch(picker));
         Services.AddSingleton<IMuninExplorerClient>(client);
         Services.AddScoped<VariableListState>();
 
@@ -1131,6 +1132,26 @@ public class ListRowPanelTest : ExplorerTestContext
             Assert.Equal("true", field.GetAttribute("aria-invalid"));
             Assert.Contains("Andre ønsker til dataene kan ikke overstige 500 tegn",
                             cut.Find($"#{field.GetAttribute("aria-describedby")}").TextContent, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public void DesiredData_WhenThePickerIsOffAndTheFieldIsRefused_ThenTheRefusalNamesDesiredDataBesideTheHint()
+    {
+        var client = new PanelClient(DatabaseVersion) { DesiredDataAnswer = new(DesiredDataOutcome.Refused, 500, 612) };
+        var cut = RenderView(client, picker: false);
+
+        NameButton(cut, "Databaseversjon").Click();
+        cut.WaitForElement("[role=tablist]");
+        var label = cut.FindAll("[role=tabpanel] label").Single(l => l.TextContent.Trim() == "Ønskede data");
+        cut.Find($"#{label.GetAttribute("for")}").Change(new string('x', 612));
+
+        cut.WaitForAssertion(() =>
+        {
+            var field = cut.Find($"#{label.GetAttribute("for")}");
+            var ids = field.GetAttribute("aria-describedby")!.Split(' ');
+            Assert.Equal("Angi hvilke kodeverdier du ønsker å søke om", cut.Find($"#{ids[0]}").TextContent);
+            Assert.Contains("Ønskede data kan ikke overstige 500 tegn", cut.Find($"#{ids[1]}").TextContent, StringComparison.Ordinal);
         });
     }
 

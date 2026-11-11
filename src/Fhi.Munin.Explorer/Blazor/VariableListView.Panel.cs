@@ -278,6 +278,11 @@ public sealed partial class VariableListView
 
     private string RowDesiredDataHeadingId(VariableListItem item) => $"{RowDesiredDataId(item)}-heading";
 
+    private string RowDesiredDataHintId(VariableListItem item) => $"{RowDesiredDataId(item)}-hint";
+
+    private string RowDesiredDataAloneDescribedBy(VariableListItem item) =>
+        DesiredDataDescribedBy(item) is { } refusal ? $"{RowDesiredDataHintId(item)} {refusal}" : RowDesiredDataHintId(item);
+
     private string RowNotesId(VariableListItem item) =>
         $"munin-explorer-list-panel-notes-{_instance}-{ItemSuffix(item)}";
 
