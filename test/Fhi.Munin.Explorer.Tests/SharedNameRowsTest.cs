@@ -27,7 +27,11 @@ public class SharedNameRowsTest : ExplorerTestContext
             var items = search is not null && bySearch?.TryGetValue(search, out var found) == true ? found : rows;
             return Task.FromResult(new Page<VariableSummary>
             {
-                Items = items, TotalCount = items.Length, PageNumber = 1, Size = 25, TotalPages = 1,
+                Items = items,
+                TotalCount = items.Length,
+                PageNumber = 1,
+                Size = 25,
+                TotalPages = 1,
             });
         }
     }
