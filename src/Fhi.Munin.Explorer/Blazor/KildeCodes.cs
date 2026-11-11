@@ -2,7 +2,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
 /// A kilde's code as a link carries it (Fhi.Metadata-9huq2.12): <c>?kilde=dar</c> for K_DAR, the same in every environment,
-/// where an id is not. The API resolves it with or without «K_», in any case and with the reader's ÆØÅ.
+/// where an id is not. The API resolves it with or without «K_», in any case and with the reader's ÆØÅ. A datasamling's
+/// code is checked and folded here too (Fhi.Metadata-l9l2n.171), and matched in the explorer itself.
 /// </summary>
 internal static class KildeCodes
 {
@@ -35,4 +36,21 @@ internal static class KildeCodes
         return !string.IsNullOrEmpty(trimmed) && trimmed.Length <= MaxLength
             && trimmed.All(c => char.IsLetterOrDigit(c) || c is '_' or '-');
     }
+
+    /// <summary>
+    /// Whether <paramref name="value"/> could be a datasamling code: as <see cref="IsLinkCode"/>, and «.» as well, which
+    /// datasamling codes carry (K_ALS.INKLUSJON).
+    /// </summary>
+    public static bool IsDatasamlingLinkCode(string? value)
+    {
+        var trimmed = value?.Trim();
+
+        return !string.IsNullOrEmpty(trimmed) && trimmed.Length <= MaxLength
+            && trimmed.All(c => char.IsLetterOrDigit(c) || c is '_' or '-' or '.');
+    }
+
+    /// <summary>A code folded as Munin compares catalogue codes: ÆØÅ as AE, OE and AA, then upper case.</summary>
+    public static string Canonical(string code) =>
+        code.Trim().Replace("Æ", "AE").Replace("æ", "ae").Replace("Ø", "OE").Replace("ø", "oe")
+            .Replace("Å", "AA").Replace("å", "aa").ToUpperInvariant();
 }

@@ -243,6 +243,23 @@ public class MuninExplorerClientTest
         Assert.Empty(await WithStatus(HttpStatusCode.NotFound).GetKildePropertyMetadataAsync());
     }
 
+    // A datasamling link by code finds nothing unless "code" reaches the contract (Fhi.Metadata-l9l2n.171).
+    [Fact]
+    public async Task GetKildeAsync_WhenADatasamlingCarriesItsCode_ThenTheCodeIsReadAtEveryDepth()
+    {
+        var kilde = await WithJson("""
+            {"id":"6f1b4c55-0000-0000-0000-000000000001","code":"K_KREG","preferredTerm":"Kreftregisteret",
+             "datasamlinger":[{"id":"6f1b4c55-0000-0000-0000-000000000002","code":"K_KREG.HOVED","name":"Hoved","variableCount":1}],
+             "delkilder":[{"id":"6f1b4c55-0000-0000-0000-000000000003","name":"Del","datasamlinger":[],
+               "children":[{"id":"6f1b4c55-0000-0000-0000-000000000004","name":"Under",
+                 "datasamlinger":[{"id":"6f1b4c55-0000-0000-0000-000000000005","code":"K_KREG.SVULST","name":"Svulst","variableCount":2}],
+                 "children":[]}]}]}
+            """).GetKildeAsync(Guid.NewGuid());
+
+        Assert.Equal("K_KREG.HOVED", kilde!.Datasamlinger.Single().Code);
+        Assert.Equal("K_KREG.SVULST", kilde.Delkilder.Single().Children.Single().Datasamlinger.Single().Code);
+    }
+
     [Fact]
     public async Task GetKildeAsync_WhenTheKildeHasDelkilder_ThenTheDelkildeTreeAndItsDatasamlingerAreRead()
     {

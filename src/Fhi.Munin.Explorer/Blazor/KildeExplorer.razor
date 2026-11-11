@@ -26,7 +26,7 @@
 @* A code link (?kilde=dar) mounts the search only once the API has named the kilde. (Fhi.Metadata-9huq2.12) *@
 <CascadingValue Name="@KildeCodeBook.CascadeName" Value="@_codes" IsFixed="true">
 <CascadingValue Name="@DetailToc.PageAddressName" Value="@PageAddress">
-    @if (_pendingCode is null)
+    @if (_pendingCode is null && _pendingDatasamlingCode is null)
     {
     <KildeSearch @key="_arrival"
                  HeadingLevel="@HeadingLevel"

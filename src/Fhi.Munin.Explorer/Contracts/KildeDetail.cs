@@ -95,6 +95,12 @@ public sealed record KildeDetail
 public sealed record KildeDatasamling
 {
     [JsonPropertyName("id")] public Guid Id { get; init; }
+
+    /// <summary>
+    /// The datasamling's code, the same in every environment, which a link can name it by
+    /// (<c>?kilde=kreg&amp;datasamling=&lt;code&gt;</c>); null from a Munin that does not send it yet.
+    /// </summary>
+    [JsonPropertyName("code")] public string? Code { get; init; }
     [JsonPropertyName("name")] public string Name { get; init; } = "";
 
     /// <summary>The name in English; null when Munin has none, so the reader is shown <see cref="Name"/>.</summary>
