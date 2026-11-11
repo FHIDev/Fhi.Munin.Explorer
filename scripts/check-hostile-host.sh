@@ -467,7 +467,7 @@ if [ "$tab_stop_status" -eq 3 ]; then
   exit 3
 fi
 
-# After the exit-3 verdicts above and before exit 1, as the pass's own TOOLING was deferred for.
+# The off pass's TOOLING failure is reported here, after the exit-3 verdicts above and before exit 1.
 if [ "$off_status" -eq 2 ]; then
   echo "the code-picker-off pass could not run - TOOLING failure, so that state was not measured." >&2
   exit 2
