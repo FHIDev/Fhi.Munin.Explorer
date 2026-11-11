@@ -37,6 +37,13 @@ public class DatasamlingCodeTest
     public void DatasamlingByCode_WhenThePrefixIsRepeatedInsideTheCode_ThenNull(string linked) =>
         Assert.Null(KildeExplorer.DatasamlingByCode(Kilde, linked));
 
+    [Theory]
+    [InlineData("K_", "K_")]
+    [InlineData("k_kreg.crc", "KREG.CRC")]
+    [InlineData("KREG.K_CRC", "KREG.K_CRC")]
+    public void DatasamlingKey_WhenACodeIsFolded_ThenOnlyALeadingPrefixWithMoreAfterItIsDropped(string code, string key) =>
+        Assert.Equal(key, KildeCodes.DatasamlingKey(code));
+
     [Fact]
     public void DatasamlingByCode_WhenTheLinkIsTheBarePrefixAndARowHasNoCode_ThenNull() =>
         Assert.Null(KildeExplorer.DatasamlingByCode(
