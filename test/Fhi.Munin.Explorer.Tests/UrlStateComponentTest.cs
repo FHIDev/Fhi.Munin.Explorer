@@ -627,7 +627,8 @@ public class UrlStateComponentTest : ExplorerTestContext
     /// </remarks>
     private sealed class OneKildeClient(
         Guid id, Guid? datasamling = null, bool expandable = false, string code = "", bool resolves = true,
-        TaskCompletionSource<Guid?>? held = null, Queue<TaskCompletionSource<Guid?>>? lookups = null)
+        TaskCompletionSource<Guid?>? held = null, Queue<TaskCompletionSource<Guid?>>? lookups = null,
+        string? datasamlingCode = null)
         : EmptyMuninExplorerClient
     {
         public int DetailFetches { get; private set; }
@@ -651,7 +652,9 @@ public class UrlStateComponentTest : ExplorerTestContext
                 Id = id,
                 Code = code,
                 PreferredTerm = "Als registeret",
-                Datasamlinger = expandable ? [new() { Name = "Inklusjon", VariableCount = 12 }] : [],
+                Datasamlinger = datasamling is { } coded && datasamlingCode is not null
+                    ? [new() { Id = coded, Code = datasamlingCode, Name = "Inklusjon", VariableCount = 12 }]
+                    : expandable ? [new() { Name = "Inklusjon", VariableCount = 12 }] : [],
             });
         }
 
@@ -1105,6 +1108,44 @@ public class UrlStateComponentTest : ExplorerTestContext
 
         Assert.NotEmpty(cut.FindAll(".munin-explorer-datasamling"));
         Assert.Equal($"/kilder?kilde={kilde}&datasamling={datasamling}", Mirrored());
+    }
+
+    // Helsedata links to a datasamling by its code, the same link in test and prod (Fhi.Metadata-l9l2n.171).
+    [Theory]
+    [InlineData("K_ALS.INKLUSJON")]
+    [InlineData("k_als.inklusjon")]
+    public void Kilder_WhenALinkNamesTheDatasamlingByItsCode_ThenItOpensAndTheAddressKeepsTheCode(string linked)
+    {
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var cut = RenderCoded(new OneKildeClient(kilde, datasamling, datasamlingCode: "K_ALS.INKLUSJON"),
+                              $"http://localhost/kilder?kilde={kilde}&datasamling={linked}");
+
+        cut.WaitForAssertion(() => Assert.Equal(datasamling, cut.FindComponent<KildeSearch>().Instance.SelectedDatasamlingId));
+        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={kilde}&datasamling={linked}", Mirrored()));
+    }
+
+    [Fact]
+    public void Kilder_WhenBothKeysAreCodes_ThenTheKildeAndThenItsDatasamlingOpen()
+    {
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var cut = RenderCoded(new OneKildeClient(kilde, datasamling, code: "K_ALS", datasamlingCode: "K_ALS.INKLUSJON"),
+                              "http://localhost/kilder?kilde=als&datasamling=K_ALS.INKLUSJON");
+
+        cut.WaitForAssertion(() => Assert.Equal(datasamling, cut.FindComponent<KildeSearch>().Instance.SelectedDatasamlingId));
+        cut.WaitForAssertion(() => Assert.Equal("/kilder?kilde=als&datasamling=K_ALS.INKLUSJON", Mirrored()));
+    }
+
+    [Fact]
+    public void Kilder_WhenTheDatasamlingCodeNamesNone_ThenTheNotFoundViewAndTheAddressKeepsWhatWasTyped()
+    {
+        // Also what a Munin without the code field gives: no row carries one, so a code link finds nothing.
+        var kilde = Guid.NewGuid();
+        var cut = RenderCoded(new OneKildeClient(kilde, Guid.NewGuid()), $"http://localhost/kilder?kilde={kilde}&datasamling=K_ALS.UKJENT");
+
+        cut.WaitForAssertion(() => Assert.Equal(Guid.Empty, cut.FindComponent<KildeSearch>().Instance.SelectedDatasamlingId));
+        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={kilde}&datasamling=K_ALS.UKJENT", Mirrored()));
     }
 
     [Fact]

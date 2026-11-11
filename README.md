@@ -1444,7 +1444,9 @@ A link opens at most twenty rows by itself, the rows its marks open counted amon
 
 `?datasamling=` is read beside `?kilde=` and never instead of it: a datasamling opens in place of
 the kilde it belongs to, and the kilde is the way back out, so one named on its own is dropped on
-the first render. Each datasamling in the hierarchy carries a link of its own —
+the first render. Either key may be a code instead of an id (`?kilde=kreg&datasamling=<code>`), which is the same
+link in every environment: the datasamling's code is looked up among the kilde's own, folded as Munin
+folds codes, and the address keeps whichever form the reader followed. Each datasamling in the hierarchy carries a link of its own —
 `munin-explorer-hierarchy__open`, a plain `<a href>`, so middle-click and Ctrl+click open a tab and
 the address can be pasted into a fresh one. It is written in the node's own `<li>`, **after** the
 `<details>` and never inside the `<summary>`: a link in a summary is nested interactive content,
