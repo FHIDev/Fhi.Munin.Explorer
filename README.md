@@ -683,9 +683,11 @@ These are not style preferences — each one is a host that breaks otherwise.
     them anyway. The class is still the hook, and the `:focus-visible` outline under it is still
     the host's, for the reason the kilder box gives.
     `munin-explorer-list-code` is a saved-list row's variable code, under its name since the code
-    column went (`Fhi.Metadata-b2w2z`). Undrawn, it runs on after the name at the name's size, so
+    column went (`Fhi.Metadata-b2w2z`), and a search row's, under a name another row on the page
+    shares with a different code (`Fhi.Metadata-l9l2n.161`). Undrawn, it runs on after the name at the name's size, so
     a host owes it `display: block`; Stiler also sets it small and grey, and lets it break in the
-    cards, where a code too long for the card would otherwise be cut off.
+    cards and in a search row's name cell, where a long code would otherwise be cut off or run
+    over the next column.
     `munin-explorer-list-head` is the saved-list view's top row: the name block and the action row,
     side by side (`Fhi.Metadata-fc7ie`). Undrawn, the actions stand under the name, which reads
     well enough; a host owes it a wrapping flex row and one rule line under the pair.
@@ -1461,7 +1463,10 @@ A link opens at most twenty rows by itself, the rows its marks open counted amon
 
 `?datasamling=` is read beside `?kilde=` and never instead of it: a datasamling opens in place of
 the kilde it belongs to, and the kilde is the way back out, so one named on its own is dropped on
-the first render. Each datasamling in the hierarchy carries a link of its own —
+the first render. Either key may be a code instead of an id (`?kilde=kreg&datasamling=<code>`), which is the same
+link in every environment: the datasamling's code is looked up among the kilde's own, folded as Munin
+folds codes, and the address keeps the datasamling in the form the reader followed. The kilde key is
+written as its short code (`?kilde=kreg`) once the API confirms it, whichever form it arrived in. Each datasamling in the hierarchy carries a link of its own —
 `munin-explorer-hierarchy__open`, a plain `<a href>`, so middle-click and Ctrl+click open a tab and
 the address can be pasted into a fresh one. It is written in the node's own `<li>`, **after** the
 `<details>` and never inside the `<summary>`: a link in a summary is nested interactive content,

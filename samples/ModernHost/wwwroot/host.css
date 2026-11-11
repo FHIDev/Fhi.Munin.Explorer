@@ -1706,8 +1706,8 @@ table.munin-explorer-data-list > tbody > :where(tr) > th[scope=row] > button > .
   white-space: nowrap;
 }
 
-/* Stiler 0.1.208's rule, mirrored ahead of the markup: nothing draws a code in a search row's name yet. Once
-   Fhi.Metadata-l9l2n.161 does, it wraps there rather than hold the name at its width over the next column. */
+/* Stiler 0.1.208's rule: a search row's code under a shared name wraps, rather than stay on one line past the
+   name column and over the next one (Fhi.Metadata-l9l2n.161). */
 .munin-explorer-dataitem-main__name .munin-explorer-list-code {
   white-space: normal;
   overflow-wrap: anywhere;

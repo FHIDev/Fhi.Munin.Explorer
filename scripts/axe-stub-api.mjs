@@ -17,7 +17,10 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { TREE_SEARCH, EMPTY_SEARCH, LONG_NAME_SEARCH, LONG_NAME, SAVE_ALL_SEARCH, SAVE_ALL_CONFIRM_SEARCH, treeFilters } from './tree-fixture.mjs';
+import {
+  TREE_SEARCH, EMPTY_SEARCH, LONG_NAME_SEARCH, LONG_NAME, SAVE_ALL_SEARCH, SAVE_ALL_CONFIRM_SEARCH, SHARED_NAME_SEARCH,
+  SHARED_NAME, SHARED_LONG_CODE, treeFilters,
+} from './tree-fixture.mjs';
 import * as detailTree from './hierarchy-fixture.mjs';
 import * as statisticsFixture from './statistics-fixture.mjs';
 
@@ -159,6 +162,11 @@ const variables = JSON.parse(bodies.get(variablesRoute));
 // array leaves nothing lengthened and nothing to see.
 if (!Array.isArray(variables.items) || typeof variables.items[0]?.code !== 'string') {
   console.error('stub: variables.json carries no first row with a code to lengthen');
+  process.exit(2);
+}
+// The shared-name story gives the second row its long code (Fhi.Metadata-l9l2n.161).
+if (typeof variables.items[1]?.code !== 'string') {
+  console.error('stub: variables.json carries no second row for the shared-name story to give a code');
   process.exit(2);
 }
 
@@ -360,6 +368,13 @@ function serve(url, request, response) {
   if (search === LONG_NAME_SEARCH && path === '/api/explorer/variables') {
     const page = JSON.parse(bodies.get(variablesRoute));
     page.items[0].preferredTerm = LONG_NAME;
+    response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(page));
+    return;
+  }
+  if (search === SHARED_NAME_SEARCH && path === '/api/explorer/variables') {
+    const page = JSON.parse(bodies.get(variablesRoute));
+    page.items.forEach(item => { item.preferredTerm = SHARED_NAME; });
+    page.items[1].code = SHARED_LONG_CODE;
     response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(page));
     return;
   }

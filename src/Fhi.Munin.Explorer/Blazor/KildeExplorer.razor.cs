@@ -263,6 +263,12 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     private string? _pendingCode;
     private string? _missingCode;
 
+    // A datasamling named by its code (Fhi.Metadata-l9l2n.171): waiting for the kilde to be read, the one it opened, or
+    // the code that named none, written back as the reader typed it.
+    private string? _pendingDatasamlingCode;
+    private (Guid Kilde, Guid Id, string Code)? _datasamlingCode;
+    private string? _missingDatasamlingCode;
+
     // Every arrival takes a number; only the lookup of the latest one may land, though two may ask for the same code.
     private int _arrivalGeneration;
 
@@ -314,6 +320,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         (_selectedKildeId, _selectedDatasamlingId, _order, _direction) = Read(_mirror);
         (_search, _facets, _ticked, _marked, _expanded, _columns) = ReadList(_mirror);
         _pendingCode = LinkCode(_mirror);
+        _pendingDatasamlingCode = DatasamlingLinkCode(_mirror);
 
         Navigation.LocationChanged += Moved;
         _codes.Learned += CodeLearned;
@@ -321,10 +328,69 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
     protected override async Task OnInitializedAsync()
     {
+        var generation = _arrivalGeneration;
         if (_pendingCode is { } code)
         {
-            await ResolveCodeAsync(code);
+            if (!await ResolveCodeAsync(code))
+            {
+                return;
+            }
+
+            generation = _arrivalGeneration;
         }
+
+        if (_pendingDatasamlingCode is { } datasamling)
+        {
+            await ResolveDatasamlingCodeAsync(datasamling, generation);
+        }
+    }
+
+    /// <summary>The datasamling key when it is a code rather than an id, beside a kilde key, else null.</summary>
+    private static string? DatasamlingLinkCode(UrlMirror mirror) =>
+        mirror.Value(QueryKey) is not null
+        && mirror.Value(DatasamlingQueryKey) is { } value && !Guid.TryParse(value, out _)
+        && KildeCodes.IsDatasamlingLinkCode(value)
+            ? value.Trim()
+            : null;
+
+    /// <summary>Open the datasamling of the open kilde that <paramref name="code"/> names, or the not-found view.</summary>
+    // generation is the arrival's, taken before any await of its own, so a superseded chain cannot clear a newer one.
+    private async Task ResolveDatasamlingCodeAsync(string code, int generation)
+    {
+        Guid? id = null;
+        if (_selectedKildeId is { } kilde && kilde != Guid.Empty)
+        {
+            try
+            {
+                id = (await Client.GetKildeAsync(kilde)) is { } detail ? DatasamlingByCode(detail, code)?.Id : null;
+            }
+            catch (Exception ex)
+            {
+                // As for a kilde code: unreachable or throttled reads as not found.
+                Log?.LogWarning(ex, "could not resolve the datasamling code in the address for kilde {KildeId}", kilde);
+            }
+        }
+
+        if (generation != _arrivalGeneration || _pendingDatasamlingCode != code)
+        {
+            return;
+        }
+
+        _pendingDatasamlingCode = null;
+        _datasamlingCode = id is { } found && _selectedKildeId is { } under ? (under, found, code) : null;
+        _missingDatasamlingCode = id is null ? code : null;
+        _selectedDatasamlingId = _selectedKildeId is { } open && open != Guid.Empty ? id ?? Guid.Empty : null;
+    }
+
+    // Codes compare folded, as Munin keeps them unique; a datasamling may sit under a delkilde at any depth.
+    internal static KildeDatasamling? DatasamlingByCode(KildeDetail detail, string code)
+    {
+        static IEnumerable<KildeDatasamling> Under(KildeDelkilde delkilde) =>
+            delkilde.Datasamlinger.Concat(delkilde.Children.SelectMany(Under));
+
+        var wanted = KildeCodes.Canonical(code);
+        return detail.Datasamlinger.Concat(detail.Delkilder.SelectMany(Under))
+            .FirstOrDefault(d => d.Code is { } stored && KildeCodes.Canonical(stored) == wanted);
     }
 
     /// <summary>The kilde key when it is a code rather than an id, else null.</summary>
@@ -334,7 +400,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
             : null;
 
     /// <summary>Open the kilde <paramref name="code"/> names, or the not-found view when it names none.</summary>
-    private async Task ResolveCodeAsync(string code)
+    private async Task<bool> ResolveCodeAsync(string code)
     {
         var generation = ++_arrivalGeneration;
         Guid? id;
@@ -351,7 +417,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
         if (generation != _arrivalGeneration || _pendingCode != code)
         {
-            return;
+            return false;
         }
 
         _pendingCode = null;
@@ -363,6 +429,8 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
             // The code the reader followed works, so the address keeps it until the short form is confirmed too.
             _codes.Verify(found, code);
         }
+
+        return true;
     }
 
     // Writes the short form only once the API has said it opens this kilde: a host on the default resolver, or a Munin
@@ -559,6 +627,17 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         var arrived = Read(mirror);
         var list = ReadList(mirror);
         var code = LinkCode(mirror);
+        var datasamlingCode = DatasamlingLinkCode(mirror);
+
+        // A datasamling code already resolved under the open kilde is that datasamling, as for a kilde code below.
+        if (datasamlingCode is not null && _datasamlingCode is { } known
+            && KildeCodes.Canonical(known.Code) == KildeCodes.Canonical(datasamlingCode)
+            && _selectedKildeId is { } openKilde && known.Kilde == openKilde
+            && (arrived.Kilde == openKilde || (code is not null && _codes.IsAliasOf(openKilde, code))))
+        {
+            arrived = (arrived.Kilde, known.Id, arrived.Order, arrived.Direction);
+            datasamlingCode = null;
+        }
 
         // A code already resolved to the open kilde is that kilde: a section jump or a host parameter keeps the view.
         if (code is not null && _pendingCode is null && _selectedKildeId is { } current
@@ -577,7 +656,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         // Forward, has the list under it; one a link or a host parameter made has something else.
         var pushedFromList = e.HistoryEntryState == UrlMirror.OpenedFromList && (arrived.Item1 is not null || code is not null);
 
-        if (code is null && _pendingCode is null
+        if (code is null && _pendingCode is null && datasamlingCode is null && _pendingDatasamlingCode is null
             && arrived == (_selectedKildeId, _selectedDatasamlingId, _order, _direction)
             && list.Query() == List.Query())
         {
@@ -604,14 +683,31 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         _pushedListQuery = _detailPushed ? Query(null, null) : null;
         _pendingCode = code;
         _missingCode = null;
+        _pendingDatasamlingCode = datasamlingCode;
+        _missingDatasamlingCode = null;
 
         StateHasChanged();
 
-        if (code is not null)
+        if (code is not null || datasamlingCode is not null)
         {
+            var generation = _arrivalGeneration;
             _ = InvokeAsync(async () =>
             {
-                await ResolveCodeAsync(code);
+                if (code is not null)
+                {
+                    if (!await ResolveCodeAsync(code))
+                    {
+                        return;
+                    }
+
+                    generation = _arrivalGeneration;
+                }
+
+                if (datasamlingCode is not null)
+                {
+                    await ResolveDatasamlingCodeAsync(datasamlingCode, generation);
+                }
+
                 _mirroredSelection = (_selectedKildeId, _selectedDatasamlingId);
                 StateHasChanged();
             });
@@ -639,7 +735,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         // Until the code names a kilde, the address keeps what the reader followed.
-        if (_pendingCode is not null)
+        if (_pendingCode is not null || _pendingDatasamlingCode is not null)
         {
             return;
         }
@@ -696,7 +792,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
                 ? QueryKey + "=" + Uri.EscapeDataString(KildeValue(id))
                 : "",
             kilde is not null && datasamling is { } open
-                ? DatasamlingQueryKey + "=" + Uri.EscapeDataString(open.ToString())
+                ? DatasamlingQueryKey + "=" + Uri.EscapeDataString(DatasamlingValue(open))
                 : "",
             _order == KildeSortOrder.Standard
                 ? ""
@@ -709,6 +805,13 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
         return string.Join("&", owned.Where(pair => pair.Length != 0));
     }
+
+    // The datasamling as the reader named it: the code they followed for the one it opened, a code that named none as
+    // typed, else the id.
+    private string DatasamlingValue(Guid id) =>
+        id == Guid.Empty && _missingDatasamlingCode is { } missing ? missing
+        : _datasamlingCode is { } known && known.Id == id ? known.Code
+        : id.ToString();
 
     /// <summary>
     /// How the address names a kilde: its short code where the code is known (<c>dar</c> for K_DAR), else its id. A code
