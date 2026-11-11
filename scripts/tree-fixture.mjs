@@ -10,7 +10,7 @@ export const SAVE_ALL_SEARCH = 'browser-save-all';
 // Between 200 and the API's 2000, so the press asks before it saves.
 export const SAVE_ALL_CONFIRM_SEARCH = 'browser-save-all-confirm';
 export const LONG_NAME = 'Antall_tidligere_fødsler_og_dødfødsler_etter_22_fullgåtte_uker';
-// Every row under the unbroken name, the long code on the first, so each draws its code under it (Fhi.Metadata-l9l2n.161).
+// Every row under the unbroken name, so each draws its code under it: the stub's 41-character code on the first (Fhi.Metadata-l9l2n.161).
 export const SHARED_NAME_SEARCH = 'browser-shared-name';
 export const SHARED_NAME = LONG_NAME;
 // The second row's code, one unbroken run after the dots: a real Fraktur code (Fhi.Metadata-l9l2n.161).
