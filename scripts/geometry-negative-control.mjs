@@ -133,6 +133,12 @@ const cases = [
   },
   {
     assertion: 'the component stays inside the box the host gave it',
+    defect: "a phone's bottom-sheet menu item running past the viewport",
+    path: '/', state: 'list-actions-menu', width: 320,
+    apply: css('.munin-explorer-list-menu__panel--sheet .munin-explorer-list-menu__item { min-width: 400px !important; }'),
+  },
+  {
+    assertion: 'the component stays inside the box the host gave it',
     defect: 'a scroll box that clips its content instead of scrolling it',
     path: '/kilder', state: 'kilder-list', width: 1024,
     setup: css('.munin-explorer-kilder { min-width: 1600px; }'),

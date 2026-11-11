@@ -109,7 +109,8 @@ export const assertions = [
     // with `overflow: hidden` or `overflow-y: auto` absorbs a too-wide child, so the document
     // stops scrolling sideways while the content is still clipped and unreachable. The filter
     // panel is exactly such an ancestor above 1024px. Nothing here names a component or a class:
-    // it asks every visible element under the mount to be within the mount's own content box.
+    // it asks every visible element under the mount to be within the mount's own content box, or
+    // within the viewport for what sits in an open popover.
     //
     // The tolerance is 1px for subpixel rounding — a 1487.98px child of a 1488px box is not a
     // defect, and reporting it as one would make this file the boy who cried overflow.
@@ -130,9 +131,12 @@ export const assertions = [
         // Invisible ancestors retain descendant rectangles. The bounds check measures painted
         // content; document overflow is checked independently even when its cause is transparent.
         if (!el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) continue;
+        // An open popover is in the top layer and placed against the viewport, so it and its
+        // contents answer to the viewport; a fixed element outside one is still skipped. (Fhi.Metadata-l9l2n.168)
+        const inPopover = el.closest(':popover-open') !== null;
         const style = getComputedStyle(el);
         // Deliberately out of the flow, placed against the viewport rather than the mount.
-        if (style.position === 'fixed') continue;
+        if (!inPopover && style.position === 'fixed') continue;
         // Entirely to the left of the viewport: the visually-hidden idiom, and Stiler's own
         // `.screenreader-only` is `position: absolute; left: -10000px`. Off-canvas on purpose is
         // not overflow, and there is no way to overflow a container by being at -9875.
@@ -140,9 +144,11 @@ export const assertions = [
         // Inside a scroll region the reader can reach, the box to fit is that region's scrollable
         // extent — see the note above. The region itself is not exempt.
         const scroller = nearestReachableScroller(el);
-        const bounds = scroller === null ? box : scrollableBounds(scroller);
+        const bounds = scroller !== null ? scrollableBounds(scroller)
+          : inPopover ? { left: 0, right: window.innerWidth } : box;
         if (r.right > bounds.right + tolerance || r.left < bounds.left - tolerance) {
-          const whose = scroller === null ? "the mount's" : `${describe(scroller)}'s scrollable`;
+          const whose = scroller !== null ? `${describe(scroller)}'s scrollable`
+            : inPopover ? "the viewport's" : "the mount's";
           return `${describe(el)} spans ${Math.round(r.left)}..${Math.round(r.right)}, ` +
             `outside ${whose} ${Math.round(bounds.left)}..${Math.round(bounds.right)}`;
         }
