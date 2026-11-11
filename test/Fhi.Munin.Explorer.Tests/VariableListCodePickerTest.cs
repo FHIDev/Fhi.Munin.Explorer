@@ -233,7 +233,7 @@ public class VariableListCodePickerTest : ExplorerTestContext
         Assert.Null(OpenButton(cut));
         var panel = cut.Find("[id^='munin-explorer-list-panel-'][role=region]");
         Assert.Empty(panel.QuerySelectorAll("[role=group]"));
-        var textarea = panel.QuerySelector("textarea[id$='-desired']") ?? panel.QuerySelectorAll("textarea").First();
+        var textarea = panel.QuerySelectorAll("textarea").Single(t => panel.QuerySelector($"label[for='{t.Id}']")?.TextContent == label);
         Assert.Equal(label, panel.QuerySelector($"label[for='{textarea.Id}']")!.TextContent);
         Assert.Equal(label, AccessibleName.Of(textarea));
         Assert.Equal(hint, cut.Find($"#{textarea.GetAttribute("aria-describedby")}").TextContent);
