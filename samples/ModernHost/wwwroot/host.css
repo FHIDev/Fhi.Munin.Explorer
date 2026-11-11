@@ -1806,6 +1806,11 @@ table.munin-explorer-data-list > tbody > :where(tr) > th[scope=row] > button > .
   width: 28%;
 }
 
+/* The chosen codes above the note in the list's cell (Fhi.Metadata-9huq2.19). */
+table.munin-explorer-data-list .munin-explorer-dataitem-main__desiredData > .munin-explorer-dataitem-main__desiredCodes {
+  margin-bottom: 4px;
+}
+
 /* Stiler's own: one line to start, growing to four, then scrolling. Without field-sizing it stays one line. */
 table.munin-explorer-data-list .munin-explorer-dataitem-main__desiredData > textarea {
   field-sizing: content;
@@ -2418,13 +2423,6 @@ table.munin-explorer-data-list tbody th {
   color: #51547b;
 }
 
-/* ---- the sentence that opens a detail block ----
-   Stiler's own complete-record lead declaration, so the lead sentences read as that one does.
-   Stiler's rule for this name is Fhi.Metadata-3z2s3. */
-.munin-explorer-lead {
-  margin: 0 0 8px;
-}
-
 /* ---- the host's lede under the explorer title ----
    Stiler's declarations for it; its grid row is with the explorer grid's, at 1024px and up.
    Stiler's rule for this name is Fhi.Metadata-35w0p.66. */
@@ -2976,13 +2974,13 @@ table.munin-explorer-data-list tbody th {
 
 /* ---- the Data tab's kodeverk ----
 
-   All five names below are ours, and every one is a handle: there was no kodeverk section
-   anywhere to read a shape back off, because helsedata's variable page has no such panel at all.
-   Rules for them reached Stiler 0.1.13 with the rest of the prefix; the sample supplies what a
+   The kodeverk and codes names below are ours, and every one is a handle: there was no kodeverk
+   section anywhere to read a shape back off, because helsedata's variable page has no such panel at
+   all. Rules for them reached Stiler 0.1.13 with the rest of the prefix; the sample supplies what a
    host would — the arrangement, nothing more.
 
-   The list is a plain <ul> with its bullets off, because the group heading above it already says
-   these are kodeverk of one kind and a bullet per line adds nothing. */
+   Each link is a plain <ul> of one item with its bullet off, under its own heading «kind: reference»,
+   which already says what the line is. */
 .munin-explorer-kodeverk {
   list-style: none;
   padding: 0;
@@ -3024,13 +3022,6 @@ table.munin-explorer-data-list tbody th {
 }
 
 .munin-explorer-kodeverk__name > ul:has(> li > span) > li > span:first-child {
-  font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
-}
-
-/* The reference is the thing a reader can look the kodeverk up by, so it is set in a monospace
-   face — a run of digits like 2336 or a dotted OID reads as an identifier rather than as prose. */
-.munin-explorer-kodeverk__reference {
-  margin: 2px 0 8px;
   font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
 }
 
@@ -3076,6 +3067,14 @@ table.munin-explorer-data-list tbody th {
 }
 .munin-explorer-codetree__group {
   padding-inline-start: 1.25rem;
+}
+/* The search hits and the tree scroll together in one box, so «Lagre» and «Avbryt» under it stay in view. The 2px
+   keeps a focus ring from being cut at the box's edge. */
+.munin-explorer-codetree-scroll {
+  max-height: 60vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px;
 }
 .munin-explorer-codetree__row {
   display: grid;
@@ -5782,6 +5781,13 @@ table.munin-explorer-data-list tbody th {
   .munin-explorer-list-scroll table.munin-explorer-data-list > :where(thead, tbody) > :where(tr) > td:not([data-label]) > .munin-explorer-detail {
     max-width: none;
     position: static;
+  }
+  /* The chosen codes span the cell under the data-label, and the note keeps the value column. */
+  .munin-explorer-list-scroll table.munin-explorer-data-list .munin-explorer-dataitem-main__desiredData > .munin-explorer-dataitem-main__desiredCodes {
+    grid-column: 1 / -1;
+  }
+  .munin-explorer-list-scroll table.munin-explorer-data-list .munin-explorer-dataitem-main__desiredData > textarea {
+    grid-column: 2;
   }
 }
 

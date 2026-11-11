@@ -108,13 +108,16 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private string DesiredDataLabelId(VariableListItem item) =>
         $"munin-explorer-list-desired-data-label-{_instance}-{ItemSuffix(item)}";
 
+    private string DesiredDataNoteLabelId(VariableListItem item) =>
+        $"munin-explorer-list-desired-data-note-{_instance}-{ItemSuffix(item)}";
+
     /// <summary>
-    /// The annotation field's name: the column's word, then the row's, so forty fields do not all just
-    /// say "Ønskede data" (WCAG 4.1.2). Two elements rather than one <c>aria-label</c>, so our word and
-    /// Munin's Norwegian name keep their own languages (WCAG 3.1.2).
+    /// The annotation field's name: the column's word (its visible label, WCAG 2.5.3), the note's label, then the
+    /// row's, so forty fields do not all say "Ønskede data" (WCAG 4.1.2). Elements rather than one <c>aria-label</c>,
+    /// so our words and Munin's Norwegian name keep their own languages (WCAG 3.1.2).
     /// </summary>
     private string DesiredDataLabelledBy(VariableListItem item) =>
-        $"{DesiredDataLabelId(item)} {RowNameId(item)}";
+        $"{DesiredDataLabelId(item)} {DesiredDataNoteLabelId(item)} {RowNameId(item)}";
 
     private Page<VariableListItem>? _page;
     private Guid? _shownList;

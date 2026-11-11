@@ -108,8 +108,8 @@ internal enum PanelTab
 /// full list.
 /// </para>
 /// <para>
-/// The panel's Data tab adds handles too — <c>munin-explorer-kodeverk</c> with its <c>__item</c>,
-/// <c>__name</c> and <c>__reference</c> parts, and <c>munin-explorer-codes</c> with its
+/// The panel's Data tab adds handles too — <c>munin-explorer-kodeverk</c> with its <c>__item</c>
+/// and <c>__name</c> parts, and <c>munin-explorer-codes</c> with its
 /// <c>__table</c>. The code list is a real <c>&lt;table&gt;</c>, because an element degrades to its
 /// own browser default, which for a table is aligned columns, where a class name Stiler has never
 /// heard of degrades to nothing at all.

@@ -108,18 +108,12 @@ internal sealed record Texts(
     string FieldDataCollection,
     string FieldVariableGroup,
     string FieldDescription,
-    // The Data tab's kodeverk section, Runa's words throughout. The reference is labelled
-    // rather than left to stand on its own, and a link the API resolved no name for says so
-    // instead of letting the reference impersonate the name.
-    string FieldKodeverkReference,
+    // The Data tab's kodeverk section: a link the API resolved no name for says so instead of
+    // letting the reference impersonate the name.
     string KodeverkUnnamed,
     // The whole Data tab when neither section has anything, since each section on its own draws
     // nothing then.
     string NoKodeverkOrStatistics,
-    // The sentence opening the kodeverk block, one per kind of kodeverk the variable carries.
-    string KodeverkLeadKildekodeverk,
-    string KodeverkLeadAdministrativt,
-    string KodeverkLeadHelsefaglig,
     string ShowCodes,
     string HideCodes,
     // The control on an unnamed kildekodeverk whose codes do not all fit inline. Runa's wording
@@ -360,10 +354,9 @@ internal sealed record Texts(
     // (count) — "fra 3 datakilder", the distinct kilder the whole list draws from. Off the
     // membership walk rather than my/lists, so the surface saying it waits for that walk.
     Func<int, string> ListKildeCount,
-    // "Ønskede data" — the reader's own note about what they want out of a variable. The heading
-    // names the column and, in every row, the field itself. Only the length refusal earns a
-    // sentence of its own: the API names the ceiling, so the reader can be told what to shorten
-    // to rather than only that something went wrong.
+    // "Ønskede data" — what the reader wants of a variable: codes picked, then an optional note; it
+    // names the column and the opened row's group. The length refusal has a sentence of its own: the
+    // API names the ceiling, so the reader can be told what to shorten to.
     string FieldDesiredData,
     string DesiredDataError,
     // The saved list's two coverage columns, worded as Kelda's share columns are: Kodeverk stays
@@ -372,10 +365,10 @@ internal sealed record Texts(
     string FieldStatistics,
     string FlagYes,
     string FlagNo,
-    // (maxLength) — "Ønskede data kan ikke overstige 500 tegn."
+    // (maxLength) — "Andre ønsker til dataene kan ikke overstige 500 tegn."
     Func<int, string> DesiredDataTooLong,
-    // An opened list row: the hint over its "Ønskede data" field, and the "Mine notater" tab.
-    string DesiredDataHint,
+    // The free text beside the picked codes, in the opened row and the list's column; and the "Mine notater" tab.
+    string DesiredDataNote,
     string TabNotes,
     string NotesLabel,
     // (maxLength) — the API's refusal of notes that are too long.
@@ -878,6 +871,8 @@ internal sealed record Texts(
     string PickerChosen,
     Func<string, string> PickerRemove,
     Func<int, int, string> PickerChoiceCount,
+    Func<int, string> PickerShowAllChosen,
+    string PickerShowFewerChosen,
     Func<int, string> PickerCodeCount,
     Func<int, string> PickerFull,
     string PickerLoading,
@@ -1142,24 +1137,6 @@ internal sealed record Texts(
         _ => type
     };
 
-    /// <summary>The kodeverk lead: a sentence per kind the links carry, in payload order, or null if none has one.</summary>
-    public string? KodeverkLead(IEnumerable<string> kinds)
-    {
-        var sentences = kinds
-            .Select(kind => kind switch
-            {
-                _ when Is(kind, "Kildekodeverk") => KodeverkLeadKildekodeverk,
-                _ when Is(kind, "AdministrativtKodeverk") => KodeverkLeadAdministrativt,
-                _ when Is(kind, "HelsefagligKodeverk") => KodeverkLeadHelsefaglig,
-                _ => null
-            })
-            .OfType<string>()
-            .Distinct()
-            .ToList();
-
-        return sentences.Count == 0 ? null : string.Join(" ", sentences);
-    }
-
     private static bool Is(string value, string token) =>
         string.Equals(value, token, StringComparison.OrdinalIgnoreCase);
 
@@ -1270,12 +1247,8 @@ internal sealed record Texts(
         FieldDataCollection: "Datasamling",
         FieldVariableGroup: "Variabelgruppe",
         FieldDescription: "Beskrivelse",
-        FieldKodeverkReference: "Referanse",
         KodeverkUnnamed: "Ukjent navn",
         NoKodeverkOrStatistics: "Ingen kodeverk eller statistikk registrert",
-        KodeverkLeadKildekodeverk: "Kildekodeverket er verdiene slik de er registrert i kildesystemet.",
-        KodeverkLeadAdministrativt: "Administrative kodeverk er nasjonale kodeverk.",
-        KodeverkLeadHelsefaglig: "Helsefaglige kodeverk er nasjonale kliniske kodeverk og terminologier.",
         ShowCodes: "Vis koder",
         HideCodes: "Skjul koder",
         ShowAllCodes: count => $"Vis alle ({count})",
@@ -1460,8 +1433,8 @@ internal sealed record Texts(
         FlagYes: "Ja",
         FlagNo: "Nei",
         DesiredDataTooLong: maxLength =>
-            $"Ønskede data kan ikke overstige {maxLength} tegn. Teksten er ikke lagret.",
-        DesiredDataHint: "Angi hvilke kodeverdier du ønsker å søke om",
+            $"Andre ønsker til dataene kan ikke overstige {maxLength} tegn. Teksten er ikke lagret.",
+        DesiredDataNote: "Andre ønsker til dataene (valgfritt)",
         TabNotes: "Mine notater",
         NotesLabel: "Egne notater",
         NotesTooLong: maxLength => $"Notatene kan ikke overstige {maxLength} tegn. Teksten er ikke lagret.",
@@ -1814,6 +1787,8 @@ internal sealed record Texts(
         PickerChosen: "Valgt",
         PickerRemove: choice => $"Fjern {choice}",
         PickerChoiceCount: (count, max) => $"{count} av {max} valg",
+        PickerShowAllChosen: count => $"Vis alle {count} valgte",
+        PickerShowFewerChosen: "Vis færre",
         PickerCodeCount: count => count == 1 ? "1 kode" : $"{count} koder",
         PickerFull: max => $"Du har valgt {max}, som er det meste én variabel kan ha.",
         PickerLoading: "Henter koder …",
@@ -1886,12 +1861,8 @@ internal sealed record Texts(
         FieldDataCollection: "Data collection",
         FieldVariableGroup: "Variable group",
         FieldDescription: "Description",
-        FieldKodeverkReference: "Reference",
         KodeverkUnnamed: "Unnamed",
         NoKodeverkOrStatistics: "No code systems or statistics registered",
-        KodeverkLeadKildekodeverk: "The source code system holds the values as they are recorded in the source system.",
-        KodeverkLeadAdministrativt: "Administrative code systems are national code systems.",
-        KodeverkLeadHelsefaglig: "Clinical code systems are national clinical code systems and terminologies.",
         ShowCodes: "Show codes",
         HideCodes: "Hide codes",
         ShowAllCodes: count => $"Show all ({count})",
@@ -2076,8 +2047,8 @@ internal sealed record Texts(
         FlagYes: "Yes",
         FlagNo: "No",
         DesiredDataTooLong: maxLength =>
-            $"Desired data must be {maxLength} characters or fewer. Your text has not been saved.",
-        DesiredDataHint: "Say which code values you want to apply for",
+            $"Other wishes for the data must be {maxLength} characters or fewer. Your text has not been saved.",
+        DesiredDataNote: "Other wishes for the data (optional)",
         TabNotes: "My notes",
         NotesLabel: "Your notes",
         NotesTooLong: maxLength => $"Notes must be {maxLength} characters or fewer. Your text has not been saved.",
@@ -2425,6 +2396,8 @@ internal sealed record Texts(
         PickerChosen: "Chosen",
         PickerRemove: choice => $"Remove {choice}",
         PickerChoiceCount: (count, max) => $"{count} of {max} choices",
+        PickerShowAllChosen: count => $"Show all {count} chosen",
+        PickerShowFewerChosen: "Show fewer",
         PickerCodeCount: count => count == 1 ? "1 code" : $"{count} codes",
         PickerFull: max => $"You have chosen {max}, the most one variable can have.",
         PickerLoading: "Fetching codes …",
