@@ -25,7 +25,7 @@
 //                       still the composition we ship, and because a pin fails with a much more
 //                       useful message than the invariant that would also have caught it.
 //
-// Ten of the eighteen below are invariants. If that ratio ever inverts, this file has become a
+// Ten of the twenty below are invariants. If that ratio ever inverts, this file has become a
 // changelog.
 //
 // A pin may also declare `states: [...]` — the states from axe-states.mjs whose page can contain
@@ -722,6 +722,33 @@ export const assertions = [
           `wider than its 47em measure of ${measure.toFixed(1)}px`;
       }
       return null;
+    },
+  },
+
+  {
+    name: 'a shared name and its code stay inside their own column',
+    kind: 'pin',
+    states: ['variables-shared-name'],
+    // At the column widths a name or code that cannot shrink paints over the Kilde cell and still
+    // fits the mount, so the box checks above never see it (Fhi.Metadata-l9l2n.161).
+    body: () => {
+      const rows = [...document.querySelectorAll('ul.munin-explorer-data-list > li')];
+      let measured = 0;
+      for (const row of rows) {
+        const cell = row.querySelector('[role=rowheader]')?.getBoundingClientRect();
+        if (!cell || cell.width === 0) continue;
+        for (const part of row.querySelectorAll('[role=rowheader] .munin-explorer-dataitem-main__column__text, [role=rowheader] .munin-explorer-list-code')) {
+          const box = part.getBoundingClientRect();
+          if (box.width === 0) continue;
+          measured++;
+          // The box can stay in the cell while its unbroken text paints past it, so read the text's width too.
+          const right = box.left + Math.max(box.width, part.scrollWidth);
+          if (right <= cell.right + 0.5 && box.left >= cell.left - 0.5) continue;
+          return `at ${Math.round(window.innerWidth)}px "${part.textContent.trim().slice(0, 40)}" spans ` +
+            `${Math.round(box.left)}..${Math.round(right)}, outside its column's ${Math.round(cell.left)}..${Math.round(cell.right)}`;
+        }
+      }
+      return measured === 0 ? 'no name or code in a result row was measured' : null;
     },
   },
 ];

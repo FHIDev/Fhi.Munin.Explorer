@@ -938,7 +938,15 @@ public sealed partial class VariableSearch : ComponentBase
     // opens. The w13lk rule applies, so a blank PreferredTerm is named by its code.
     private string ExpandLabel(VariableSummary v)
     {
-        var name = T.NamedFor(v.PreferredTerm, v.PreferredTermEn, v.Code, Reader).Text;
+        var named = T.NamedFor(v.PreferredTerm, v.PreferredTermEn, v.Code, Reader);
+        var name = named.Text;
+
+        // The label replaces the button's text, so a code drawn under the name has to be in it too,
+        // unless a blank name is already named by that code.
+        if (named.Named && CodeUnderName(v) is { } code)
+        {
+            name = $"{name}, {code}";
+        }
 
         return IsSelected(v) ? T.CollapseVariableDetail(name) : T.ExpandVariableDetail(name);
     }
@@ -988,17 +996,39 @@ public sealed partial class VariableSearch : ComponentBase
         builder.AddAttribute(14, "aria-hidden", "true");
         builder.CloseElement();
 
-        builder.OpenElement(15, "span");
-        builder.AddAttribute(16, "class", "munin-explorer-dataitem-main__column__text");
+        // A span stacks the name and its code: as the button's flex item it is a block, and both spans
+        // inside are blocks of their own. min-width: 0 is what Stiler gives the name span, which this
+        // one replaces as the flex item; without it an unbroken name cannot shrink with its column.
+        var code = CodeUnderName(v);
+        if (code is not null)
+        {
+            builder.OpenElement(15, "span");
+            builder.AddAttribute(16, "style", "min-width: 0");
+        }
+
+        builder.OpenElement(17, "span");
+        builder.AddAttribute(18, "class", "munin-explorer-dataitem-main__column__text");
         // The save button in the open panel borrows these words for its name, so this id is on
         // the span holding the name alone and is written nowhere else (WCAG 4.1.1).
-        builder.AddAttribute(17, "id", RowHeadingId(v));
+        builder.AddAttribute(19, "id", RowHeadingId(v));
         // Munin's English name where the reader reads English and it has one; the Norwegian is marked.
         var shown = ReaderLanguage.Pick(v.PreferredTerm, v.PreferredTermEn, Reader);
-        builder.AddAttribute(18, "lang", shown.Norwegian ? "no" : null);
+        builder.AddAttribute(20, "lang", shown.Norwegian ? "no" : null);
         // No title: Stiler wraps the name since 0.1.88, so a tooltip would repeat what is on screen.
-        builder.AddContent(19, shown.Text);
+        builder.AddContent(21, shown.Text);
         builder.CloseElement();
+
+        if (code is not null)
+        {
+            // Not lang="no": a code is an identifier, not Norwegian to pronounce (Fhi.Metadata-e1qeo).
+            builder.OpenElement(22, "span");
+            builder.AddAttribute(23, "class", "munin-explorer-list-code");
+            builder.AddAttribute(24, "id", RowCodeId(v));
+            builder.AddContent(25, code);
+            builder.CloseElement();
+
+            builder.CloseElement();
+        }
 
         builder.CloseElement();
 

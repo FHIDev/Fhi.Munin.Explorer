@@ -88,6 +88,7 @@ TARGETS=(
   "/::variables-facets"
   "/::variable-detail"
   "/::variable-detail-about"
+  "/::variables-shared-name"
   "/::variable-statistics"
   "/::variable-statistics-suppressed"
   "/kilder::kilde-drilldown"

@@ -817,7 +817,7 @@ else if (State?.IsAuthenticated == true)
 }
 
 @code {
-    // The code under the name rather than a column of its own: it was the widest, and still reads and copies whole.
+    // The code under the name rather than a column of its own: it was the widest, and copies whole where it wraps.
     private RenderFragment CodeUnderName(VariableListItem item) => __builder =>
     {
         if (!string.IsNullOrWhiteSpace(item.VariableCode))

@@ -683,9 +683,11 @@ These are not style preferences — each one is a host that breaks otherwise.
     them anyway. The class is still the hook, and the `:focus-visible` outline under it is still
     the host's, for the reason the kilder box gives.
     `munin-explorer-list-code` is a saved-list row's variable code, under its name since the code
-    column went (`Fhi.Metadata-b2w2z`). Undrawn, it runs on after the name at the name's size, so
+    column went (`Fhi.Metadata-b2w2z`), and a search row's, under a name another row on the page
+    shares with a different code (`Fhi.Metadata-l9l2n.161`). Undrawn, it runs on after the name at the name's size, so
     a host owes it `display: block`; Stiler also sets it small and grey, and lets it break in the
-    cards, where a code too long for the card would otherwise be cut off.
+    cards and in a search row's name cell, where a long code would otherwise be cut off or run
+    over the next column.
     `munin-explorer-list-head` is the saved-list view's top row: the name block and the action row,
     side by side (`Fhi.Metadata-fc7ie`). Undrawn, the actions stand under the name, which reads
     well enough; a host owes it a wrapping flex row and one rule line under the pair.
