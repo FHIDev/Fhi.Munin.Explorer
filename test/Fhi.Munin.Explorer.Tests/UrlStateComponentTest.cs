@@ -628,7 +628,7 @@ public class UrlStateComponentTest : ExplorerTestContext
     private sealed class OneKildeClient(
         Guid id, Guid? datasamling = null, bool expandable = false, string code = "", bool resolves = true,
         TaskCompletionSource<Guid?>? held = null, Queue<TaskCompletionSource<Guid?>>? lookups = null,
-        string? datasamlingCode = null)
+        string? datasamlingCode = null, (Guid Id, string Code)? second = null)
         : EmptyMuninExplorerClient
     {
         public int DetailFetches { get; private set; }
@@ -653,7 +653,10 @@ public class UrlStateComponentTest : ExplorerTestContext
                 Code = code,
                 PreferredTerm = "Als registeret",
                 Datasamlinger = datasamling is { } coded && datasamlingCode is not null
-                    ? [new() { Id = coded, Code = datasamlingCode, Name = "Inklusjon", VariableCount = 12 }]
+                    ? second is { } other
+                        ? [new() { Id = coded, Code = datasamlingCode, Name = "Inklusjon", VariableCount = 12 },
+                           new() { Id = other.Id, Code = other.Code, Name = "Oppfølging", VariableCount = 3 }]
+                        : [new() { Id = coded, Code = datasamlingCode, Name = "Inklusjon", VariableCount = 12 }]
                     : expandable ? [new() { Name = "Inklusjon", VariableCount = 12 }] : [],
             });
         }
@@ -1154,13 +1157,50 @@ public class UrlStateComponentTest : ExplorerTestContext
     {
         var kilde = Guid.NewGuid();
         var datasamling = Guid.NewGuid();
-        var cut = RenderCoded(new OneKildeClient(kilde, datasamling, datasamlingCode: "K_ALS.INKLUSJON"), "http://localhost/kilder");
+        var client = new OneKildeClient(kilde, datasamling, datasamlingCode: "K_ALS.INKLUSJON");
+        var cut = RenderCoded(client, "http://localhost/kilder");
+        var before = Mirrored();
 
         Navigation.NavigateTo($"http://localhost/kilder?kilde={kilde}&datasamling=k_als.inklusjon");
 
         cut.WaitForAssertion(() => Assert.Equal(datasamling, cut.FindComponent<KildeSearch>().Instance.SelectedDatasamlingId));
-        // The browser already shows the address it navigated to; nothing rewrites it to the id.
-        Assert.DoesNotContain(datasamling.ToString(), Mirrored(), StringComparison.Ordinal);
+        // The browser already shows the address it navigated to: nothing is written over it, neither the id nor a dropped key.
+        Assert.Equal(before, Mirrored());
+        Assert.Equal(1, client.DetailFetches);
+    }
+
+    [Fact]
+    public void Kilder_WhenBackLeadsToAnotherDatasamlingCodeOfTheSameKilde_ThenThatOneOpens()
+    {
+        // A resolved code must not stand in for a different one under the same kilde.
+        var kilde = Guid.NewGuid();
+        var inklusjon = Guid.NewGuid();
+        var oppfolging = Guid.NewGuid();
+        var cut = RenderCoded(
+            new OneKildeClient(kilde, inklusjon, datasamlingCode: "K_ALS.INKLUSJON", second: (oppfolging, "K_ALS.OPPFOLGING")),
+            $"http://localhost/kilder?kilde={kilde}&datasamling=K_ALS.INKLUSJON");
+        cut.WaitForAssertion(() => Assert.Equal(inklusjon, cut.FindComponent<KildeSearch>().Instance.SelectedDatasamlingId));
+
+        Navigation.NavigateTo($"http://localhost/kilder?kilde={kilde}&datasamling=K_ALS.OPPFOLGING");
+
+        cut.WaitForAssertion(() => Assert.Equal(oppfolging, cut.FindComponent<KildeSearch>().Instance.SelectedDatasamlingId));
+    }
+
+    [Fact]
+    public void Kilder_WhenAHostParameterIsAddedToALinkWhereBothKeysAreCodes_ThenTheViewIsKeptWithoutAnotherLookup()
+    {
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var client = new OneKildeClient(kilde, datasamling, code: "K_ALS", datasamlingCode: "K_ALS.INKLUSJON");
+        var cut = RenderCoded(client, "http://localhost/kilder?kilde=als&datasamling=K_ALS.INKLUSJON");
+        cut.WaitForAssertion(() => Assert.Equal(datasamling, cut.FindComponent<KildeSearch>().Instance.SelectedDatasamlingId));
+        var fetches = client.DetailFetches;
+
+        Navigation.NavigateTo("http://localhost/kilder?kilde=als&datasamling=K_ALS.INKLUSJON&utm_source=x");
+
+        cut.WaitForAssertion(() => Assert.Equal("/kilder?utm_source=x&kilde=als&datasamling=K_ALS.INKLUSJON", Mirrored()));
+        Assert.Equal(datasamling, cut.FindComponent<KildeSearch>().Instance.SelectedDatasamlingId);
+        Assert.Equal(fetches, client.DetailFetches);
     }
 
     [Fact]
