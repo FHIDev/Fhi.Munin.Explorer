@@ -51,6 +51,10 @@ HOST_PROJECT="$ROOT/samples/ModernHost/ModernHost.csproj"
 # Each is another page load and settle, about ten seconds, and none carries the risk the
 # targets below do. Add one here and in axe-states.mjs when that stops being true.
 #
+# The code picker is on for every state above (the sample turns MuninExplorer:Features:CodePicker on in Development),
+# and off, the shape a host ships by default, in one more: list-row-picker-off, scanned after them on the host
+# restarted with the switch overridden, in shard 1 only (Fhi.Metadata-l9l2n.172).
+#
 # /utforsker is the only page in either sample that mounts the composed VariableExplorer, so it is
 # the only place the page-level tablist and the reader's list panel are scanned at all.
 #
@@ -313,9 +317,46 @@ else
   reflow_status=0
 fi
 
+# The samples turn the code picker on in Development, so everything above sees it on. The shape a host ships by default
+# is scanned once more with it off, on a host restarted with the switch overridden, in shard 1 only. (Fhi.Metadata-l9l2n.172)
+off_status=0
+if [ -z "${SCAN_SHARD:-}" ] || [ "${SCAN_SHARD%%/*}" = 1 ]; then
+  echo
+  echo "==> the opened row with the code picker off"
+  kill "$host_pid" 2>/dev/null || true
+  wait "$host_pid" 2>/dev/null || true
+  MuninExplorer__ApiBaseUrl="$STUB_BASE" MuninExplorer__Features__CodePicker=false ASPNETCORE_ENVIRONMENT=Development \
+    dotnet "$HOST_DLL" --urls "$BASE" --contentRoot "$ROOT/samples/ModernHost" \
+    >/tmp/accessibility-host-off.log 2>&1 &
+  host_pid=$!
+  for _ in $(seq 1 60); do
+    curl -fsS -o /dev/null --max-time 2 "$BASE/" 2>/dev/null && break
+    kill -0 "$host_pid" 2>/dev/null || break
+    sleep 2
+  done
+  if ! curl -fsS -o /dev/null --max-time 5 "$BASE/" 2>/dev/null; then
+    echo "the host with the code picker off never answered - TOOLING failure." >&2
+    tail -30 /tmp/accessibility-host-off.log >&2
+    off_status=2
+  else
+    set +e
+    SCAN_SHARD= AXE_EXTRA_WIDTHS="${AXE_EXTRA_WIDTHS-375,320}" AXE_KNOWN_VIOLATIONS="$ROOT/test/axe-known-violations.txt" \
+      node "$ROOT/scripts/axe-scan.mjs" "${BASE}/utforsker::list-row-picker-off"
+    off_status=$?
+    set -e
+  fi
+else
+  echo "==> code picker off: scanned in shard 1/${SCAN_SHARD#*/}, not this one (${SCAN_SHARD})"
+fi
+# 2 is the scanner or the host saying it could not run, as for the main scan above.
+if [ "$off_status" -eq 2 ]; then
+  exit 2
+fi
+
 # Anything non-zero is a finding, except the one code that means the step never ran.
 findings=0
 [ "$scan_status" -ne 0 ] && findings=1
+[ "$off_status" -ne 0 ] && findings=1
 if [ "$reflow_status" -ne 0 ] && [ "$reflow_status" -ne 2 ]; then
   findings=1
 fi
