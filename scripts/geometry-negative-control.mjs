@@ -350,6 +350,20 @@ const cases = [
     apply: dropMediaRules('.munin-explorer-list-scroll table.munin-explorer-data-list'),
   },
   {
+    assertion: 'a shared name and its code stay inside their own column',
+    defect: 'the span around name and code without its min-width: 0, wider than its column at 1440',
+    path: '/', state: 'variables-shared-name', width: 1440,
+    apply: page => page.evaluate(() => document.querySelectorAll('[role=rowheader] button > span[style]')
+      .forEach(span => { span.style.minWidth = 'auto'; })),
+  },
+  {
+    assertion: 'a shared name and its code stay inside their own column',
+    defect: 'a Stiler before 0.1.208: the code on one line, painting over the next column at 1440',
+    path: '/', state: 'variables-shared-name', width: 1440,
+    apply: css(`.munin-explorer-dataitem-main__name .munin-explorer-list-code
+                { white-space: nowrap !important; overflow-wrap: normal !important; }`),
+  },
+  {
     assertion: 'no page shell class inside a tab panel',
     defect: 'a nested view wearing the page shell class',
     path: '/', state: 'explorer-tabs', width: 1440,
