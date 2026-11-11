@@ -2841,7 +2841,7 @@ export const assertions = [
 ];
 
 // WCAG 2.1.1 and 2.4.3 (Fhi.Metadata-mhqx0.11, mhqx0.15): where a key press leaves focus. bUnit records a FocusAsync
-// call but has no document.activeElement; this reads it after a real key. Each control disables focus(); Enter saving stops the submit.
+// call but has no document.activeElement; this reads it after a real key. Each control but Enter's disables focus(); Enter's stops the submit.
 function focused(page) {
   return page.evaluate(() => {
     const el = document.activeElement;
@@ -2851,14 +2851,14 @@ function focused(page) {
   });
 }
 
-// Opens «Gi nytt navn» from «Flere valg» on the visible list and puts focus in the field.
+// Opens «Gi nytt navn» from «Flere valg» and clicks into the field: a click focuses natively, also under noFocusMoves.
 async function openRenameForm(page) {
   const panel = page.locator('[role=tabpanel]:not([hidden])').first();
   const field = panel.locator('input[id^="munin-explorer-rename-list-"]');
   await panel.locator('button[id^="munin-explorer-list-menu-toggle-"]').click();
   await panel.locator('button[id^="munin-explorer-rename-toggle-"]').click();
   await field.waitFor({ state: 'visible', timeout: findTimeout });
-  await field.focus();
+  await field.click();
   return { panel, field };
 }
 
