@@ -336,6 +336,14 @@ defect we ship becomes helsedata's to answer for, on their domain.
   failure at all while the test silently stops exercising its own premise.
 - When a fix is applied to N sibling call sites, the tests widen with it. One test on the
   originally-reported site leaves the other N-1 free to regress silently.
+- **Every filter in a new predicate is a leg of its own.** For each `.Where`, guard, cache-key part or
+  `&&` operand the diff adds to a rule, name the test that fails with that one piece deleted. A piece no
+  test fails without is **Important**, and so is a PR body that says each condition was mutated when one
+  was not: a blank-code filter inside a distinct-code count survived three rounds that way.
+- **A layout fix needs an assertion that fails at every width where the defect shows.** When the defect
+  paints over a neighbouring cell while staying inside the mount (a name or code over the next column at
+  desktop widths), no box or overflow check sees it. Ask for an assertion that compares the content with
+  its own cell, scoped to the state, and a mutation that fails at those widths. Missing: **Important**.
 - **A new contract member needs a payload that carries it, with a non-null value.**
   `ContractCoverageTest` rejects unmapped keys, never absent ones, so a member whose fixture lacks
   the key passes with a wrong wire name or type. Check the diff's fixtures carry each new key; if
