@@ -39,6 +39,14 @@ export function pageOf(url, state) {
   return PATH_PAGES[new URL(url).pathname.replace(/\/+$/, '') || '/'] ?? null;
 }
 
+/** One results line: what a scan of one state at one width found, under the page it belongs to. */
+export function resultLine(url, state, width, violations) {
+  return { page: pageOf(url, state), state, width, violations };
+}
+
+/** The line axe-scan writes last, and only when it reached its own verdict. */
+export const scanFinishedLine = { scan: 'finished' };
+
 /** The WCAG success criteria an axe violation's tags name: wcag143 is 1.4.3; level tags like wcag2aa are not criteria. */
 export function criteriaOf(tags) {
   return [...new Set(tags.map(tag => /^wcag(\d)(\d)(\d{1,2})$/.exec(tag)).filter(Boolean).map(([, a, b, c]) => `${a}.${b}.${c}`))].sort();

@@ -11,7 +11,7 @@ import { chromium } from 'playwright';
 import { launchOptions } from './browser-launch.mjs';
 import AxeBuilder from '@axe-core/playwright';
 import { states, wideOnlyStates } from './axe-states.mjs';
-import { criteriaOf, pageOf } from './axe-pages.mjs';
+import { criteriaOf, resultLine, scanFinishedLine } from './axe-pages.mjs';
 import { describeShard, packByCost, parseShard } from './scan-shard.mjs';
 import { DEFAULT_SECONDS, PICKER_OFF_SECONDS, REFLOW_SECONDS, stateSeconds } from './axe-state-seconds.mjs';
 import { scrollPast } from './reader-scroll.mjs';
@@ -278,14 +278,14 @@ try {
         console.log(`    explorer root lang="${root.lang ?? ''}", ${root.norwegian} element(s) marked Norwegian inside it`);
         if (root.lang !== 'no' && root.lang !== 'en') {
           pageViolations += 1;
-          found.push({ rule: 'explorer-root-lang', criteria: ['3.1.1'] });
+          found.push({ rule: 'explorer-root-lang', criteria: ['3.1.2'] });
           console.log(`\n  [serious] explorer-root-lang — the explorer root carries lang="${root.lang ?? ''}", not "no" or "en"`);
         }
       }
 
       // One line per scan for a caller that reports per page (the devbox's push to Varde, DevInfra-og3.42).
       if (resultsFile) {
-        appendFileSync(resultsFile, `${JSON.stringify({ page: pageOf(url, state), state, width, violations: found })}\n`);
+        appendFileSync(resultsFile, `${JSON.stringify(resultLine(url, state, width, found))}\n`);
       }
 
       violationCount += pageViolations;
@@ -329,4 +329,5 @@ for (const k of stale) {
   console.log(`\n  stale line in test/axe-known-violations.txt, delete it: ${k.line}`);
 }
 
+if (resultsFile) appendFileSync(resultsFile, `${JSON.stringify(scanFinishedLine)}\n`);
 process.exit(violationCount > 0 || stale.length > 0 ? 1 : 0);
