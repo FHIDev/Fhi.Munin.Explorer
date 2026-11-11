@@ -724,4 +724,27 @@ export const assertions = [
       return null;
     },
   },
+
+  {
+    name: 'a shared name and its code stay inside their own column',
+    kind: 'pin',
+    states: ['variables-shared-name'],
+    // At the column widths a name or code that cannot shrink paints over the Kilde cell and still
+    // fits the mount, so the box checks above never see it (Fhi.Metadata-l9l2n.161).
+    body: () => {
+      const rows = [...document.querySelectorAll('ul.munin-explorer-data-list > li')];
+      if (rows.length === 0) return 'no result rows were measured';
+      for (const row of rows) {
+        const cell = row.querySelector('[role=rowheader]')?.getBoundingClientRect();
+        if (!cell || cell.width === 0) continue;
+        for (const part of row.querySelectorAll('[role=rowheader] .munin-explorer-dataitem-main__column__text, [role=rowheader] .munin-explorer-list-code')) {
+          const box = part.getBoundingClientRect();
+          if (box.width === 0 || (box.right <= cell.right + 0.5 && box.left >= cell.left - 0.5)) continue;
+          return `at ${Math.round(window.innerWidth)}px "${part.textContent.trim().slice(0, 40)}" spans ` +
+            `${Math.round(box.left)}..${Math.round(box.right)}, outside its column's ${Math.round(cell.left)}..${Math.round(cell.right)}`;
+        }
+      }
+      return null;
+    },
+  },
 ];

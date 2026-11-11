@@ -164,6 +164,11 @@ if (!Array.isArray(variables.items) || typeof variables.items[0]?.code !== 'stri
   console.error('stub: variables.json carries no first row with a code to lengthen');
   process.exit(2);
 }
+// The shared-name story gives the second row its long code (Fhi.Metadata-l9l2n.161).
+if (typeof variables.items[1]?.code !== 'string') {
+  console.error('stub: variables.json carries no second row for the shared-name story to give a code');
+  process.exit(2);
+}
 
 variables.items[0].code = longCode;
 bodies.set(variablesRoute, JSON.stringify(variables));
