@@ -1265,6 +1265,24 @@ public class UrlStateComponentTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Kilder_WhenBackSpellsTheOpenDatasamlingWithoutThePrefix_ThenTheViewIsKeptWithoutAnotherLookup()
+    {
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var client = new OneKildeClient(kilde, datasamling, datasamlingCode: "K_ALS.INKLUSJON");
+        var cut = RenderCoded(client, $"http://localhost/kilder?kilde={kilde}&datasamling=K_ALS.INKLUSJON");
+        cut.WaitForAssertion(() => Assert.Equal(datasamling, cut.FindComponent<KildeSearch>().Instance.SelectedDatasamlingId));
+        var fetches = client.DetailFetches;
+        var arrival = cut.FindComponent<KildeSearch>().Instance;
+
+        Navigation.NavigateTo($"http://localhost/kilder?kilde={kilde}&datasamling=ALS.INKLUSJON");
+
+        cut.WaitForAssertion(() => Assert.Equal(datasamling, cut.FindComponent<KildeSearch>().Instance.SelectedDatasamlingId));
+        Assert.Same(arrival, cut.FindComponent<KildeSearch>().Instance);
+        Assert.Equal(fetches, client.DetailFetches);
+    }
+
+    [Fact]
     public void Kilder_WhenTheDatasamlingCodeRepeatsThePrefixInside_ThenTheNotFoundViewAndTheAddressKeepsWhatWasTyped()
     {
         var kilde = Guid.NewGuid();

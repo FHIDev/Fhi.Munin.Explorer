@@ -388,9 +388,12 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         static IEnumerable<KildeDatasamling> Under(KildeDelkilde delkilde) =>
             delkilde.Datasamlinger.Concat(delkilde.Children.SelectMany(Under));
 
+        // The code as written first, so a link to K_X.Y never opens a sibling stored as X.Y.
+        var all = detail.Datasamlinger.Concat(detail.Delkilder.SelectMany(Under)).Where(d => !string.IsNullOrWhiteSpace(d.Code)).ToList();
+        var exact = KildeCodes.Canonical(code);
         var wanted = KildeCodes.DatasamlingKey(code);
-        return detail.Datasamlinger.Concat(detail.Delkilder.SelectMany(Under))
-            .FirstOrDefault(d => d.Code is { } stored && KildeCodes.DatasamlingKey(stored) == wanted);
+        return all.FirstOrDefault(d => KildeCodes.Canonical(d.Code!) == exact)
+            ?? all.FirstOrDefault(d => KildeCodes.DatasamlingKey(d.Code!) == wanted);
     }
 
     /// <summary>The kilde key when it is a code rather than an id, else null.</summary>

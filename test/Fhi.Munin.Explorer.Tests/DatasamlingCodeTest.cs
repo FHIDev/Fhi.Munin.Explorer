@@ -3,7 +3,8 @@ using Fhi.Munin.Explorer.Contracts;
 
 namespace Fhi.Munin.Explorer.Tests;
 
-// A datasamling link's code is matched as Munin keeps codes unique: folded ÆØÅ, any case, at any delkilde depth.
+// A datasamling link's code is matched as Munin keeps codes unique: folded ÆØÅ, any case, with or without a leading «K_»,
+// at any delkilde depth.
 public class DatasamlingCodeTest
 {
     private static readonly Guid Deep = Guid.NewGuid();
@@ -29,12 +30,31 @@ public class DatasamlingCodeTest
     public void DatasamlingByCode_WhenTheCodeIsUnderANestedDelkilde_ThenItIsFoundFolded(string linked) =>
         Assert.Equal(Deep, KildeExplorer.DatasamlingByCode(Kilde, linked)?.Id);
 
-    // «K_» is taken off the start of the whole code only (Robin, 2026-11-11): a second one is part of the code.
+    // «K_» is taken off the start of the whole code only: a second one is part of the code.
     [Theory]
     [InlineData("K_KREG.K_SVULST_ØRE")]
     [InlineData("KREG.K_SVULST_ØRE")]
     public void DatasamlingByCode_WhenThePrefixIsRepeatedInsideTheCode_ThenNull(string linked) =>
         Assert.Null(KildeExplorer.DatasamlingByCode(Kilde, linked));
+
+    [Fact]
+    public void DatasamlingByCode_WhenTheLinkIsTheBarePrefixAndARowHasNoCode_ThenNull() =>
+        Assert.Null(KildeExplorer.DatasamlingByCode(
+            new KildeDetail { Datasamlinger = [new() { Id = Guid.NewGuid(), Code = "" }] }, "K_"));
+
+    [Fact]
+    public void DatasamlingByCode_WhenTwoRowsDifferOnlyByThePrefix_ThenTheCodeAsWrittenWins()
+    {
+        var withPrefix = Guid.NewGuid();
+        var without = Guid.NewGuid();
+        var kilde = new KildeDetail
+        {
+            Datasamlinger = [new() { Id = without, Code = "KREG.CRC" }, new() { Id = withPrefix, Code = "K_KREG.CRC" }],
+        };
+
+        Assert.Equal(withPrefix, KildeExplorer.DatasamlingByCode(kilde, "k_kreg.crc")?.Id);
+        Assert.Equal(without, KildeExplorer.DatasamlingByCode(kilde, "KREG.CRC")?.Id);
+    }
 
     [Fact]
     public void DatasamlingByCode_WhenNoRowCarriesTheCode_ThenNull() =>
