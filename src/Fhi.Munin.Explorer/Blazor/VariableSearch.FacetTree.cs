@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Components.Web;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
-/// <summary>The facet panel's value lists: nested checkboxes, and the branches that open and shut them.</summary>
+// The facet panel's value lists: nested checkboxes, the disclosures that open and shut their branches, and which are open.
 public partial class VariableSearch
 {
     /// <summary>A facet's values as a nested list of checkboxes, keyed so a reorder never moves a box.</summary>
@@ -293,6 +293,41 @@ public partial class VariableSearch
             if (value.Children.Count > 0 && _expandedBranches.Add(value.Key))
             {
                 OpenBranches(value.Children);
+            }
+        }
+    }
+
+    private bool _chosenBranchesOpened;
+
+    /// <summary>Open the branches standing between the top of each facet tree (Kilde, Variabelgruppe, Filter) and what the address chose.</summary>
+    /// <remarks>
+    /// Arriving from the Kildeutforsker with a kilde chosen left it under a shut kildetype heading, out of sight
+    /// (#6756). Once per mount (VariableExplorer remounts on each arrival), so a branch the reader shuts stays shut.
+    /// </remarks>
+    private void OpenBranchesToChosenOnce()
+    {
+        if (_chosenBranchesOpened || _facets is not { } facets)
+        {
+            return;
+        }
+
+        _chosenBranchesOpened = true;
+        // Every hierarchical facet the same way, so a filter or a variabelgruppe chosen on a shared link is in
+        // sight as a kilde is (Fhi.Metadata-l9l2n.159); every other branch stays shut.
+        HashSet<string> walked = [];
+        OpenChosenBranches(KildeGroup(facets).Values, walked);
+        OpenChosenBranches(VariabelgruppeGroup(facets).Values, walked);
+        OpenChosenBranches(SavedFilterGroup(facets).Values, walked);
+    }
+
+    private void OpenChosenBranches(IReadOnlyList<FacetValue> values, HashSet<string> walked)
+    {
+        foreach (var value in values)
+        {
+            if (value.ChosenBelow > 0 && value.Children.Count > 0 && walked.Add(value.Key))
+            {
+                _expandedBranches.Add(value.Key);
+                OpenChosenBranches(value.Children, walked);
             }
         }
     }

@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Components.Web;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
-/// <summary>The dataperiode facet's two native date fields, and what a typed date has to be before it filters.</summary>
+// The dataperiode facet's two native date fields, and what a typed date has to be before it filters.
 public partial class VariableSearch
 {
     // The API matches overlapping periods, so catalogue dates must not constrain the search interval.
