@@ -495,6 +495,8 @@ public class GeometryScanGuardTest
         Assert.Contains("MuninExplorer__Features__CodePicker=false ASPNETCORE_ENVIRONMENT", source, StringComparison.Ordinal);
         Assert.Contains("/::list-row-picker-off\"", source, StringComparison.Ordinal);
         Assert.Contains("[ \"$off_status\" -ne 0 ]", source, StringComparison.Ordinal);
+        Assert.Contains("for width in 320 1279; do", source, StringComparison.Ordinal);
+        Assert.Contains("AXE_VIEWPORT_WIDTH=1440 AXE_VIEWPORT_HEIGHT=900 \\\n  node \"$ROOT/scripts/axe-scan.mjs\" \"${BASE}/::list-row-picker-off\"", source, StringComparison.Ordinal);
     }
 }
 

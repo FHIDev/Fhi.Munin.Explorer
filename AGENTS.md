@@ -528,6 +528,13 @@ it. One exception is left, and it is kept on purpose: under real Stiler the clos
 hangs 2px off the left edge on the kilder states, and `Fhi.Metadata-abmom`'s close reason records
 why that stays.
 
+**Both gates also see the code picker off.** The samples turn `MuninExplorer:Features:CodePicker` on
+in Development, so every state above sees it on. The shape a host ships by default is the state
+`list-row-picker-off`, scanned on a second host start with `MuninExplorer__Features__CodePicker=false`:
+by `check-accessibility.sh` with axe at 1280, 375 and 320 in shard 1, and by `check-hostile-host.sh`
+against real Stiler with geometry at the six widths, 320 and 1279 and axe at 1440
+(`Fhi.Metadata-l9l2n.172`, `Fhi.Metadata-l9l2n.174`).
+
 **It scans states, not only pages.** A page in its default state is not the page a reader uses,
 and for a while the default state was the whole of this check: the level lines shipped at 1.16:1
 against WCAG 1.4.11's 3:1, invisible on a desktop, with this job green — because the lines only
