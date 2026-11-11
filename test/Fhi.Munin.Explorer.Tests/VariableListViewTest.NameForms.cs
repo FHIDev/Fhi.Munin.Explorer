@@ -79,7 +79,7 @@ public partial class VariableListViewTest
     [Fact]
     public async Task Rename_WhenTheMenuShutsTheForm_ThenTheFieldIsEmptyWhenItOpensAgain()
     {
-        // Now that Enter saves, a name shut away and shown again would be one key from being saved unseen.
+        // A name shut away must not come back, where one Enter would save it unseen.
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
         RenameField(cut).Change("Hjertet mitt");
         await cut.InvokeAsync(() => cut.Find("button[id^='munin-explorer-rename-toggle-']").Click());
@@ -98,6 +98,7 @@ public partial class VariableListViewTest
 
         var first = cut.InvokeAsync(() => RenameForm(cut).Submit());
         await cut.WaitForAssertionAsync(() => Assert.Equal("Lagrer …", RenameForm(cut).QuerySelector("button[type='submit']")!.TextContent.Trim()));
+        Assert.Equal("true", RenameForm(cut).QuerySelector("button[type='submit']")!.GetAttribute("aria-busy"));
         var toggle = cut.Find("button[id^='munin-explorer-rename-toggle-']");
         Assert.Equal("true", toggle.GetAttribute("aria-disabled"));
         await cut.InvokeAsync(() => toggle.Click());

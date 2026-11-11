@@ -1,12 +1,10 @@
 using Bunit;
-using Fhi.Munin.Explorer.Blazor;
-using Microsoft.AspNetCore.Components.Web;
 
 namespace Fhi.Munin.Explorer.Tests;
 
 public partial class VariableListViewTest
 {
-    // Held out: the menu's rename item folded the form away under a rename still out, as the «Ny liste» toggle never does.
+    // The menu's rename item must not fold the form away under a rename still out, as the «Ny liste» toggle never does.
     [Fact]
     public async Task Menu_WhenGiNyttNavnIsChosenWhileARenameIsOut_ThenTheFormStaysAndTheRenameLands()
     {

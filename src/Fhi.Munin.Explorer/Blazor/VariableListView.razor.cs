@@ -174,7 +174,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     private bool _renaming;
 
-    // A rename is out: a second Enter or press does nothing, and nothing shuts the form under it.
+    // A rename is out: a second Enter or press does nothing, and neither «Avbryt», Esc nor the menu shuts the form.
     private bool _renameInFlight;
     private bool _confirmingDelete;
     private ListActionFailure _actionFailure;
