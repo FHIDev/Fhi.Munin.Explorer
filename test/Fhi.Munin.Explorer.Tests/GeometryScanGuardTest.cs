@@ -485,6 +485,17 @@ public class GeometryScanGuardTest
         Assert.Contains("MuninExplorer__Features__CodePicker=false ASPNETCORE_ENVIRONMENT", source, StringComparison.Ordinal);
         Assert.Contains("::list-row-picker-off\"", source, StringComparison.Ordinal);
     }
+
+    // The same against helsedata's real stylesheet, which ModernHost's stand-in cannot speak for (Fhi.Metadata-l9l2n.174).
+    [Fact]
+    public void HostileHostGate_WhenItRuns_ThenItAlsoMeasuresTheOpenedRowWithTheCodePickerOff()
+    {
+        var source = File.ReadAllText(Repo.In("scripts", "check-hostile-host.sh"));
+
+        Assert.Contains("MuninExplorer__Features__CodePicker=false ASPNETCORE_ENVIRONMENT", source, StringComparison.Ordinal);
+        Assert.Contains("/::list-row-picker-off\"", source, StringComparison.Ordinal);
+        Assert.Contains("[ \"$off_status\" -ne 0 ]", source, StringComparison.Ordinal);
+    }
 }
 
 /// <summary>

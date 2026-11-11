@@ -12,7 +12,7 @@ import { launchOptions } from './browser-launch.mjs';
 import AxeBuilder from '@axe-core/playwright';
 import { states, wideOnlyStates } from './axe-states.mjs';
 import { describeShard, packByCost, parseShard } from './scan-shard.mjs';
-import { DEFAULT_SECONDS, REFLOW_SECONDS, stateSeconds } from './axe-state-seconds.mjs';
+import { DEFAULT_SECONDS, PICKER_OFF_SECONDS, REFLOW_SECONDS, stateSeconds } from './axe-state-seconds.mjs';
 import { scrollPast } from './reader-scroll.mjs';
 
 const targets = process.argv.slice(2);
@@ -94,7 +94,7 @@ try {
   console.error(`${err.message} - TOOLING failure.`);
   process.exit(2);
 }
-const shardOf = packByCost(plan.map(({ state }) => stateSeconds[state] ?? DEFAULT_SECONDS), shard.count, REFLOW_SECONDS);
+const shardOf = packByCost(plan.map(({ state }) => stateSeconds[state] ?? DEFAULT_SECONDS), shard.count, REFLOW_SECONDS + PICKER_OFF_SECONDS);
 const owned = plan.filter((_, i) => shardOf[i] === shard.index);
 if (owned.length === 0) {
   console.error('this shard has no page state to scan - TOOLING failure: fewer states than shards, or the measured times in axe-state-seconds.mjs left it none.');

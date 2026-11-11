@@ -18,7 +18,8 @@
 #     /kilder, as of Fhi.Metadata-fih3y;
 #   - widths other than the six in GEOMETRY_WIDTHS, 320 and 767, and any height at all — nothing here
 #     asks about vertical layout. At 320 some assertions are left out in some states, by name;
-#   - whether it LOOKS right. Boxes in the right places can still be the wrong design.
+#   - whether it LOOKS right. Boxes in the right places can still be the wrong design;
+#   - the code picker off, except in list-row-picker-off at the end: the sample turns it on in Development.
 #
 # Exits: 0 measured and correct; 1 measured and wrong; 3 not measured, because a geometry assertion
 #        stopped firing against the defect it exists for; 2 could not measure at all (TOOLING).
@@ -397,6 +398,45 @@ set -e
 
 [ "$axe_status" -eq 2 ] && exit 2
 
+# The sample turns the code picker on in Development, so everything above sees it on. The shape a host ships by default
+# is measured once more with it off, against Stiler: geometry at the six widths and at 320, then axe (Fhi.Metadata-l9l2n.174).
+echo
+echo "==> the opened row with the code picker off"
+kill "$host_pid" 2>/dev/null || true
+wait "$host_pid" 2>/dev/null || true
+MuninExplorer__ApiBaseUrl="$STUB_BASE" MuninExplorer__Features__CodePicker=false ASPNETCORE_ENVIRONMENT=Development \
+  dotnet "$HOST_DLL" --urls "$BASE" --contentRoot "$ROOT/samples/HostileHost" \
+  >/tmp/hostile-host-off.log 2>&1 &
+host_pid=$!
+for _ in $(seq 1 90); do
+  curl -fsS -o /dev/null --max-time 2 "$BASE/" 2>/dev/null && break
+  kill -0 "$host_pid" 2>/dev/null || break
+  sleep 2
+done
+if ! curl -fsS -o /dev/null --max-time 5 "$BASE/" 2>/dev/null; then
+  echo "the host with the code picker off never answered - TOOLING failure." >&2
+  tail -30 /tmp/hostile-host-off.log >&2
+  exit 2
+fi
+off_status=0
+set +e
+GEOMETRY_EXCEPT= ACCESSIBILITY_SETTLE_MS="$SETTLE_MS" node "$ROOT/scripts/geometry-scan.mjs" "${BASE}/::list-row-picker-off"
+status=$?
+[ "$status" -eq 2 ] && exit 2
+[ "$status" -ne 0 ] && off_status=1
+GEOMETRY_ASSERTIONS= GEOMETRY_WIDTHS=320 GEOMETRY_EXCEPT= ACCESSIBILITY_SETTLE_MS="$SETTLE_MS" \
+  node "$ROOT/scripts/geometry-scan.mjs" "${BASE}/::list-row-picker-off"
+status=$?
+[ "$status" -eq 2 ] && exit 2
+[ "$status" -ne 0 ] && off_status=1
+AXE_EXTRA_WIDTHS= AXE_KNOWN_VIOLATIONS= \
+ACCESSIBILITY_SETTLE_MS="$SETTLE_MS" AXE_VIEWPORT_WIDTH=1440 AXE_VIEWPORT_HEIGHT=900 \
+  node "$ROOT/scripts/axe-scan.mjs" "${BASE}/::list-row-picker-off"
+status=$?
+[ "$status" -eq 2 ] && exit 2
+[ "$status" -ne 0 ] && off_status=1
+set -e
+
 echo
 if [ "$control_status" -ne 0 ] || [ "$toolbar_status" -eq 3 ]; then
   cat >&2 <<'EOF'
@@ -418,7 +458,7 @@ if [ "$tab_stop_status" -eq 3 ]; then
   exit 3
 fi
 
-if [ "$geometry_status" -ne 0 ] || [ "$reflow_status" -ne 0 ] || [ "$axe_status" -ne 0 ] || [ "$tab_stop_status" -ne 0 ] || [ "$toolbar_status" -ne 0 ]; then
+if [ "$geometry_status" -ne 0 ] || [ "$reflow_status" -ne 0 ] || [ "$axe_status" -ne 0 ] || [ "$tab_stop_status" -ne 0 ] || [ "$toolbar_status" -ne 0 ] || [ "$off_status" -ne 0 ]; then
   cat >&2 <<'EOF'
 The component does not render correctly inside helsedata's stylesheet and chrome.
 
