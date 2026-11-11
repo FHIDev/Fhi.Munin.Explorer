@@ -799,6 +799,16 @@ public class DesiredCodePickerTest : ExplorerTestContext
         JSInterop.VerifyFocusAsyncInvoke();
     }
 
+    // Munin names no Kildekodeverk yet (Fhi.Metadata-9huq2.22): a tab without a name shows the list's reference, never blank.
+    [Fact]
+    public void Tabs_WhenACodeListHasNoName_ThenItsTabShowsTheReferenceBesideANamedOne()
+    {
+        var unnamed = Sivilstand with { KodeverkReference = "3788", DisplayName = null };
+        var cut = Picker(new Saves(), [Sivilstand, unnamed, Icd10]);
+
+        Assert.Equal(["Sivilstand", "3788", "ICD-10"], cut.FindAll("[role=tab]").Select(t => t.TextContent.Trim()));
+    }
+
     [Fact]
     public void Tabs_WhenOneCodeListIsNamedTwice_ThenItHasOneTabAndNoTablist()
     {
