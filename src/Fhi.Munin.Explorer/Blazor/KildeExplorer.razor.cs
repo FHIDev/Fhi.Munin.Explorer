@@ -266,7 +266,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     // A datasamling named by its code (Fhi.Metadata-l9l2n.171): waiting for the kilde to be read, the one it opened, or
     // the code that named none, written back as the reader typed it.
     private string? _pendingDatasamlingCode;
-    private (Guid Id, string Code)? _datasamlingCode;
+    private (Guid Kilde, Guid Id, string Code)? _datasamlingCode;
     private string? _missingDatasamlingCode;
 
     // Every arrival takes a number; only the lookup of the latest one may land, though two may ask for the same code.
@@ -328,14 +328,20 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
     protected override async Task OnInitializedAsync()
     {
+        var generation = _arrivalGeneration;
         if (_pendingCode is { } code)
         {
-            await ResolveCodeAsync(code);
+            if (!await ResolveCodeAsync(code))
+            {
+                return;
+            }
+
+            generation = _arrivalGeneration;
         }
 
         if (_pendingDatasamlingCode is { } datasamling)
         {
-            await ResolveDatasamlingCodeAsync(datasamling);
+            await ResolveDatasamlingCodeAsync(datasamling, generation);
         }
     }
 
@@ -348,9 +354,9 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
             : null;
 
     /// <summary>Open the datasamling of the open kilde that <paramref name="code"/> names, or the not-found view.</summary>
-    private async Task ResolveDatasamlingCodeAsync(string code)
+    // generation is the arrival's, taken before any await of its own, so a superseded chain cannot clear a newer one.
+    private async Task ResolveDatasamlingCodeAsync(string code, int generation)
     {
-        var generation = _arrivalGeneration;
         Guid? id = null;
         if (_selectedKildeId is { } kilde && kilde != Guid.Empty)
         {
@@ -371,7 +377,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         }
 
         _pendingDatasamlingCode = null;
-        _datasamlingCode = id is { } found ? (found, code) : null;
+        _datasamlingCode = id is { } found && _selectedKildeId is { } under ? (under, found, code) : null;
         _missingDatasamlingCode = id is null ? code : null;
         _selectedDatasamlingId = _selectedKildeId is { } open && open != Guid.Empty ? id ?? Guid.Empty : null;
     }
@@ -394,7 +400,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
             : null;
 
     /// <summary>Open the kilde <paramref name="code"/> names, or the not-found view when it names none.</summary>
-    private async Task ResolveCodeAsync(string code)
+    private async Task<bool> ResolveCodeAsync(string code)
     {
         var generation = ++_arrivalGeneration;
         Guid? id;
@@ -411,7 +417,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
         if (generation != _arrivalGeneration || _pendingCode != code)
         {
-            return;
+            return false;
         }
 
         _pendingCode = null;
@@ -423,6 +429,8 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
             // The code the reader followed works, so the address keeps it until the short form is confirmed too.
             _codes.Verify(found, code);
         }
+
+        return true;
     }
 
     // Writes the short form only once the API has said it opens this kilde: a host on the default resolver, or a Munin
@@ -624,7 +632,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         // A datasamling code already resolved under the open kilde is that datasamling, as for a kilde code below.
         if (datasamlingCode is not null && _datasamlingCode is { } known
             && KildeCodes.Canonical(known.Code) == KildeCodes.Canonical(datasamlingCode)
-            && _selectedKildeId is { } openKilde
+            && _selectedKildeId is { } openKilde && known.Kilde == openKilde
             && (arrived.Kilde == openKilde || (code is not null && _codes.IsAliasOf(openKilde, code))))
         {
             arrived = (arrived.Kilde, known.Id, arrived.Order, arrived.Direction);
@@ -682,16 +690,22 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
         if (code is not null || datasamlingCode is not null)
         {
+            var generation = _arrivalGeneration;
             _ = InvokeAsync(async () =>
             {
                 if (code is not null)
                 {
-                    await ResolveCodeAsync(code);
+                    if (!await ResolveCodeAsync(code))
+                    {
+                        return;
+                    }
+
+                    generation = _arrivalGeneration;
                 }
 
                 if (datasamlingCode is not null)
                 {
-                    await ResolveDatasamlingCodeAsync(datasamlingCode);
+                    await ResolveDatasamlingCodeAsync(datasamlingCode, generation);
                 }
 
                 _mirroredSelection = (_selectedKildeId, _selectedDatasamlingId);
@@ -792,15 +806,17 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         return string.Join("&", owned.Where(pair => pair.Length != 0));
     }
 
-    /// <summary>
-    /// How the address names a kilde: its short code where the code is known (<c>dar</c> for K_DAR), else its id. A code
-    /// that named nothing is written back as the reader typed it.
-    /// </summary>
+    // The datasamling as the reader named it: the code they followed for the one it opened, a code that named none as
+    // typed, else the id.
     private string DatasamlingValue(Guid id) =>
         id == Guid.Empty && _missingDatasamlingCode is { } missing ? missing
         : _datasamlingCode is { } known && known.Id == id ? known.Code
         : id.ToString();
 
+    /// <summary>
+    /// How the address names a kilde: its short code where the code is known (<c>dar</c> for K_DAR), else its id. A code
+    /// that named nothing is written back as the reader typed it.
+    /// </summary>
     private string KildeValue(Guid id) =>
         id == Guid.Empty && _missingCode is { } missing
             ? missing

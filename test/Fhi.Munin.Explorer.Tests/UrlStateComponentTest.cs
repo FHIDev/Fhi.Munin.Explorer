@@ -1140,12 +1140,54 @@ public class UrlStateComponentTest : ExplorerTestContext
     [Fact]
     public void Kilder_WhenTheDatasamlingCodeNamesNone_ThenTheNotFoundViewAndTheAddressKeepsWhatWasTyped()
     {
-        // Also what a Munin without the code field gives: no row carries one, so a code link finds nothing.
+        // The kilde's one datasamling has another code; a Munin without the field sends null, which matches nothing either.
         var kilde = Guid.NewGuid();
-        var cut = RenderCoded(new OneKildeClient(kilde, Guid.NewGuid()), $"http://localhost/kilder?kilde={kilde}&datasamling=K_ALS.UKJENT");
+        var cut = RenderCoded(new OneKildeClient(kilde, Guid.NewGuid(), datasamlingCode: "K_ALS.INKLUSJON"),
+                              $"http://localhost/kilder?kilde={kilde}&datasamling=K_ALS.UKJENT");
 
         cut.WaitForAssertion(() => Assert.Equal(Guid.Empty, cut.FindComponent<KildeSearch>().Instance.SelectedDatasamlingId));
         cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={kilde}&datasamling=K_ALS.UKJENT", Mirrored()));
+    }
+
+    [Fact]
+    public void Kilder_WhenANavigationArrivesWithADatasamlingCode_ThenItOpensWithoutAReload()
+    {
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var cut = RenderCoded(new OneKildeClient(kilde, datasamling, datasamlingCode: "K_ALS.INKLUSJON"), "http://localhost/kilder");
+
+        Navigation.NavigateTo($"http://localhost/kilder?kilde={kilde}&datasamling=k_als.inklusjon");
+
+        cut.WaitForAssertion(() => Assert.Equal(datasamling, cut.FindComponent<KildeSearch>().Instance.SelectedDatasamlingId));
+        // The browser already shows the address it navigated to; nothing rewrites it to the id.
+        Assert.DoesNotContain(datasamling.ToString(), Mirrored(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Kilder_WhenAHostParameterIsAddedToAResolvedDatasamlingCode_ThenTheViewIsKept()
+    {
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var client = new OneKildeClient(kilde, datasamling, datasamlingCode: "K_ALS.INKLUSJON");
+        var cut = RenderCoded(client, $"http://localhost/kilder?kilde={kilde}&datasamling=K_ALS.INKLUSJON");
+        cut.WaitForAssertion(() => Assert.Equal(datasamling, cut.FindComponent<KildeSearch>().Instance.SelectedDatasamlingId));
+        var fetches = client.DetailFetches;
+
+        Navigation.NavigateTo($"http://localhost/kilder?kilde={kilde}&datasamling=K_ALS.INKLUSJON&utm_source=x");
+
+        cut.WaitForAssertion(() => Assert.Equal($"/kilder?utm_source=x&kilde={kilde}&datasamling=K_ALS.INKLUSJON", Mirrored()));
+        Assert.Equal(datasamling, cut.FindComponent<KildeSearch>().Instance.SelectedDatasamlingId);
+        Assert.Equal(fetches, client.DetailFetches);
+    }
+
+    [Fact]
+    public void Kilder_WhenTheKildeCodeNamesNoneBesideADatasamlingCode_ThenTheKildeIsNotFoundAndNoDatasamlingOpens()
+    {
+        var cut = RenderCoded(new OneKildeClient(Guid.NewGuid(), Guid.NewGuid(), code: "K_ALS", datasamlingCode: "K_ALS.INKLUSJON"),
+                              "http://localhost/kilder?kilde=ukjent&datasamling=K_ALS.INKLUSJON");
+
+        cut.WaitForAssertion(() => Assert.Equal(Guid.Empty, cut.FindComponent<KildeSearch>().Instance.SelectedKildeId));
+        Assert.Null(cut.FindComponent<KildeSearch>().Instance.SelectedDatasamlingId);
     }
 
     [Fact]

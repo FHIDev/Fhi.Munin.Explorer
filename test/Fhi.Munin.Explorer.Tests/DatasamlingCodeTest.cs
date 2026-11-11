@@ -35,6 +35,7 @@ public class DatasamlingCodeTest
     [InlineData("K_ALS.INKLUSJON", true)]
     [InlineData("K_ALS INKLUSJON", false)]
     [InlineData("", false)]
-    public void IsDatasamlingLinkCode_WhenTheValueHasADot_ThenItIsACode(string value, bool code) =>
+    [InlineData("K_ALS.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", false)]
+    public void IsDatasamlingLinkCode_WhenTheValueIsChecked_ThenLettersDigitsUnderscoreHyphenAndDotUpToTheLimitPass(string value, bool code) =>
         Assert.Equal(code, KildeCodes.IsDatasamlingLinkCode(value));
 }

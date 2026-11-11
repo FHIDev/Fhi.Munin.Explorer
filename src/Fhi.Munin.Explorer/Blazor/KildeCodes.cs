@@ -2,7 +2,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
 /// A kilde's code as a link carries it (Fhi.Metadata-9huq2.12): <c>?kilde=dar</c> for K_DAR, the same in every environment,
-/// where an id is not. The API resolves it with or without «K_», in any case and with the reader's ÆØÅ.
+/// where an id is not. The API resolves it with or without «K_», in any case and with the reader's ÆØÅ. A datasamling's
+/// code is checked and folded here too (Fhi.Metadata-l9l2n.171), and matched in the explorer itself.
 /// </summary>
 internal static class KildeCodes
 {
