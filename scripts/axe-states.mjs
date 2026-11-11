@@ -971,6 +971,19 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
+  // The opened row with the code picker switched off, the shape a host ships by default (Fhi.Metadata-l9l2n.172): one
+  // labelled field and its hint. Fails as tooling if the picker is there, since then this scans the wrong shape.
+  'list-row-picker-off': async page => {
+    await states['list-row-panel'](page);
+
+    const panel = page.locator('[role=tabpanel]:not([hidden]) .munin-explorer-detail').first();
+    await panel.getByRole('textbox', { name: 'Ønskede data', exact: true })
+      .waitFor({ state: 'visible', timeout: findTimeout });
+    if (await panel.getByRole('button', { name: 'Velg fra kodelisten', exact: true }).count() > 0) {
+      throw new Error('the code picker is offered: list-row-picker-off needs MuninExplorer__Features__CodePicker=false');
+    }
+  },
+
   // The opened row's code picker on «Ønskede data»: the first code's branch opened and one code under it ticked, so a
   // nested level, a half-ticked parent and the summary are all scanned (Fhi.Metadata-9huq2.14).
   'list-row-picker': async page => {
