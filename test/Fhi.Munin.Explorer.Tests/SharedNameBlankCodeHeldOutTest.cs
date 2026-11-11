@@ -19,7 +19,11 @@ public class SharedNameBlankCodeHeldOutTest : ExplorerTestContext
             CancellationToken cancellationToken = default) =>
             Task.FromResult(new Page<VariableSummary>
             {
-                Items = rows, TotalCount = rows.Length, PageNumber = 1, Size = 25, TotalPages = 1,
+                Items = rows,
+                TotalCount = rows.Length,
+                PageNumber = 1,
+                Size = 25,
+                TotalPages = 1,
             });
     }
 
