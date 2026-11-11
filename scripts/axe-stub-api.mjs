@@ -40,6 +40,7 @@ const routes = [
   [/^\/api\/explorer\/kilder\/b37d66c3-d2a4-4e58-b13e-12f96d38e9f3$/, 'kilde-med-delkilder.json'],
   [/^\/api\/explorer\/variables\/[^/]+\/kodeverk\/[^/]+\/[^/]+\/codes$/, 'kodeverk-codes.json'],
   [/^\/api\/explorer\/variables\/[^/]+\/timeline$/, 'timeline.json'],
+  [/^\/api\/explorer\/variables\/vilkar$/, 'vilkar.json'],
   [/^\/api\/explorer\/variables\/[^/]+$/, 'variable.json'],
   [/^\/api\/explorer\/variables$/, 'variables.json'],
   [/^\/api\/explorer\/filters$/, 'filters.json'],

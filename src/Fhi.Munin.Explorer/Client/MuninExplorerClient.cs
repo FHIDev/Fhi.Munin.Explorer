@@ -143,6 +143,9 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         await GetOrNullAsync<IReadOnlyList<PropertyMetadataEntry>>(
             "api/explorer/kilder/egenskaper", cancellationToken) ?? [];
 
+    public async Task<IReadOnlyList<ConditionField>> GetConditionFieldsAsync(CancellationToken cancellationToken = default) =>
+        await GetOrNullAsync<IReadOnlyList<ConditionField>>("api/explorer/variables/vilkar", cancellationToken) ?? [];
+
     public Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default) =>
         GetOrNullAsync<KildeDetail>($"api/explorer/kilder/{id}", cancellationToken);
 

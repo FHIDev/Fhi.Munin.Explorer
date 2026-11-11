@@ -1791,6 +1791,8 @@ public partial class VariableSearch
             chips.AddRange(
                 UnfacetedHierarchyChips(removable, level => !walked.Contains(FacetGroupOf(level))));
 
+            chips.AddRange(ConditionChips());
+
             return chips;
         }
     }
@@ -2049,7 +2051,16 @@ public partial class VariableSearch
     /// </remarks>
     private async Task EnsureCategoryWordsAsync()
     {
-        if (_vocabularyAsked || _facets is not { DataCategories.Count: > 0 })
+        if (_facets is { DataCategories.Count: > 0 })
+        {
+            await LoadVocabularyAsync();
+        }
+    }
+
+    /// <summary>Fetch the vocabulary once, whoever needs it first: the datakategorier or avansert søk's tilgangsnivå.</summary>
+    private async Task LoadVocabularyAsync()
+    {
+        if (_vocabularyAsked)
         {
             return;
         }

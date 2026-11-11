@@ -79,6 +79,7 @@ internal static class ActiveFilters
     /// <param name="chips">The ticked values, in the order the panel lists them.</param>
     /// <param name="clearAllLabel">The clear-all's word — the panel's own "Fjern alle filtre".</param>
     /// <param name="clearAll">Clears every value in one write of the same state.</param>
+    /// <param name="edit">A second action before the clear-all, as its label and its press; null for none.</param>
     /// <remarks>
     /// Nothing at all when <paramref name="chips"/> is empty, heading and clear-all included: a row
     /// saying "Aktive filtre" over no chips, beside a button that would clear nothing, is furniture
@@ -89,7 +90,8 @@ internal static class ActiveFilters
         string heading,
         IReadOnlyList<Chip> chips,
         string clearAllLabel,
-        Func<Task> clearAll) => builder =>
+        Func<Task> clearAll,
+        (string Label, Func<Task> Press)? edit = null) => builder =>
     {
         if (chips.Count == 0)
         {
@@ -134,6 +136,16 @@ internal static class ActiveFilters
             builder.AddContent(16, "×");
             builder.CloseElement();
 
+            builder.CloseElement();
+        }
+
+        if (edit is { } action)
+        {
+            builder.OpenElement(22, "button");
+            builder.AddAttribute(23, "class", "hd-button-square button-square--ghost");
+            builder.AddAttribute(24, "type", "button");
+            builder.AddAttribute(25, "onclick", EventCallback.Factory.Create(receiver, action.Press));
+            builder.AddContent(26, action.Label);
             builder.CloseElement();
         }
 

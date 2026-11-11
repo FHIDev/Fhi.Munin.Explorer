@@ -140,6 +140,18 @@ public interface IMuninExplorerClient
         string? language = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// The fields an avansert søk condition can test (<see cref="VariableFilter.Conditions"/>), each with its type, its
+    /// operators and, for a code list, its codes. Empty against an API that predates avansert søk.
+    /// </summary>
+    /// <remarks>
+    /// The default answers empty rather than throwing, so a host's own implementation that predates this member
+    /// gets an explorer with no avansert søk instead of one that fails.
+    /// </remarks>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    Task<IReadOnlyList<ConditionField>> GetConditionFieldsAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<ConditionField>>([]);
+
     /// <summary>List all kilder with summary metadata.</summary>
     /// <remarks>Not paged — the API returns the full list in one array.</remarks>
     /// <param name="search">Case-insensitive substring match on name, code or short name.</param>

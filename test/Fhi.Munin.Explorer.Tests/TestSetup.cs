@@ -17,6 +17,10 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </remarks>
 internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
 {
+    /// <summary>As the interface's own default: an API with no avansert søk fields.</summary>
+    public virtual Task<IReadOnlyList<ConditionField>> GetConditionFieldsAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<ConditionField>>([]);
+
     /// <summary>As the interface's own default: no kilde by code, so a code link shows the not-found view.</summary>
     public virtual Task<Guid?> FindKildeIdByCodeAsync(string code, CancellationToken cancellationToken = default) =>
         Task.FromResult<Guid?>(null);

@@ -36,6 +36,8 @@ public partial class VariableSearch
 
         try
         {
+            await PrepareLinkedConditionsAsync();
+
             // Not SearchAsync: that is what a person pressing the search button does, and it starts
             // by throwing away the page number because a new search renumbers everything. Restoring
             // a shared link is the opposite — the page is the part worth keeping.
@@ -51,6 +53,12 @@ public partial class VariableSearch
             // asked for, and the host holds the link's number until it is told otherwise.
             await NotifySearchChangedAsync();
             await NotifyPageChangedAsync();
+
+            // A host mirroring the filter into its address would otherwise keep the conditions it dropped.
+            if (_conditionsDropped)
+            {
+                await RaiseAsync(FilterChanged, _filter, Log);
+            }
 
             await OpenInitialSelectionAsync();
 

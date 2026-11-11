@@ -136,7 +136,24 @@ public sealed record VariableFilter
     /// </remarks>
     public bool OrTreeTicks { get; init; }
 
+    /// <summary>
+    /// Avansert søk conditions, all of which must hold, on top of every facet. At most
+    /// <see cref="SearchCondition.MaxCount"/>, which is all the API accepts.
+    /// </summary>
+    /// <remarks>
+    /// Written as the API's repeated <c>vilkar</c>, so the list, the facet counts and an export all narrow by them.
+    /// Each counts once in <see cref="ActiveCount"/>. <see cref="Parse"/> checks only their shape: whether the API
+    /// takes one is <see cref="ConditionField.Accepts"/>, against the fields
+    /// <see cref="IMuninExplorerClient.GetConditionFieldsAsync"/> lists.
+    /// </remarks>
+    public IReadOnlyList<SearchCondition> Conditions { get; init; } = [];
+
     private const string TreeTicksKey = "treeTicks";
+
+    private const string ConditionsKey = "vilkar";
+
+    // Field and operator tokens on top of the longest text value the API takes.
+    private const int MaxConditionLength = SearchCondition.MaxTextLength + 100;
 
     private int TreeLevelsTicked =>
         (KildeIds.Count > 0 ? 1 : 0) + (DelkildeIds.Count > 0 ? 1 : 0) + (DatasamlingIds.Count > 0 ? 1 : 0)
@@ -179,7 +196,7 @@ public sealed record VariableFilter
     [
         "kildeIds", "kildeType", "delkildeIds", "datasamlingIds", "variabelgruppeIds", "variabelgruppeScopes", "filterIds",
         "datatypes", "helsefagligKodeverkReferanser", "administrativtKodeverkOids", "instrumentIds",
-        "datakategorier", "harKildekodeverk", "dataFrom", "dataTo", "includeHistorical", TreeTicksKey
+        "datakategorier", "harKildekodeverk", "dataFrom", "dataTo", "includeHistorical", TreeTicksKey, ConditionsKey
     ], StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
@@ -278,6 +295,12 @@ public sealed record VariableFilter
         if (OrTreeTicks && TreeLevelsTicked > 1)
         {
             yield return (TreeTicksKey, "or");
+        }
+
+        // Capped here as well as in Parse: one over the API's limit is a 400 for the whole search.
+        foreach (var pair in Repeat(ConditionsKey, Conditions.Take(SearchCondition.MaxCount).ToList()))
+        {
+            yield return pair;
         }
     }
 
@@ -386,6 +409,7 @@ public sealed record VariableFilter
                    filterIds = [], instrumentIds = [];
         List<string> dataTypes = [], helsefagligKodeverk = [], administrativtKodeverk = [], categories = [];
         List<VariabelgruppeScope> variabelgruppeScopes = [];
+        List<SearchCondition> conditions = [];
         string? kildeType = null;
         bool? hasKildekodeverk = null;
         DateOnly? dataFrom = null, dataTo = null;
@@ -419,6 +443,19 @@ public sealed record VariableFilter
 
         foreach (var (_, name, value) in QueryPairs.Split(queryString, MaxParameters))
         {
+            // Ahead of the length check below: a condition carries its field and operator beside a value that may
+            // itself be as long as MaxValueLength.
+            if (string.Equals(name, ConditionsKey, StringComparison.OrdinalIgnoreCase))
+            {
+                if (conditions.Count < SearchCondition.MaxCount && value is { Length: <= MaxConditionLength }
+                    && SearchCondition.TryParse(value, out var condition))
+                {
+                    conditions.Add(condition);
+                }
+
+                continue;
+            }
+
             if (string.IsNullOrWhiteSpace(value) || value.Length > MaxValueLength)
             {
                 continue;
@@ -448,7 +485,8 @@ public sealed record VariableFilter
             DataFrom = dataFrom,
             DataTo = dataTo,
             IncludeHistorical = includeHistorical,
-            OrTreeTicks = orTreeTicks
+            OrTreeTicks = orTreeTicks,
+            Conditions = conditions
         };
     }
 

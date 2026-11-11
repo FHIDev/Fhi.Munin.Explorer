@@ -439,6 +439,7 @@ public partial class VariableSearch
     {
         await MoveFocusAsync();
         await FocusResultTabAsync();
+        await FocusAdvancedSearchAsync();
         if (!_disposed && _title.Wanted(TitleTemplate) && ServiceProvider.GetService<IJSRuntime>() is { } titleJs)
         {
             var titled = _interop ??= new ExplorerInterop(titleJs);
