@@ -946,12 +946,12 @@ else if (State?.IsAuthenticated == true)
         }
     </div>;
 
-    // The same value as the row's column: one draft, one save, one refusal for both fields.
-    // The picks first and the free text as an optional note after them (Fhi.Metadata-9huq2.19).
+    // The same value as the row's column: one draft, one save, one refusal for both fields. With the picker offered,
+    // the picks come first and the free text after them as an optional note (Fhi.Metadata-9huq2.19, -l9l2n.170).
     private RenderFragment RowDesiredDataField(VariableListItem item, VariableDetail detail) =>
         PickerOffered ? RowDesiredDataWithPicker(item, detail) : RowDesiredDataAlone(item);
 
-    // Without the picker, the v2.18 field: one labelled free text with its hint; codes saved through Munin shown read-only.
+    // Without the picker: one labelled free text with its hint; codes saved through Munin shown read-only.
     private RenderFragment RowDesiredDataAlone(VariableListItem item) => @<div class="margin-bottom">
         <div><label class="form-element__label" for="@RowDesiredDataId(item)">@T.FieldDesiredData</label></div>
         <p class="caption" id="@RowDesiredDataHintId(item)">@T.DesiredDataHint</p>

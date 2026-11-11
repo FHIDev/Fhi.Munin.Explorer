@@ -87,9 +87,14 @@ public class VariableListCodePickerTest : ExplorerTestContext
         DesiredDataFreeText = "bare siste registrerte",
     };
 
-    private IRenderedComponent<VariableListView> OpenedRow(ListClient client, string language = "no", bool picker = true)
+    // picker null registers no switch, as for a host that never called AddMuninExplorer.
+    private IRenderedComponent<VariableListView> OpenedRow(ListClient client, string language = "no", bool? picker = true)
     {
-        Services.AddSingleton(new CodePickerSwitch(picker));
+        if (picker is { } on)
+        {
+            Services.AddSingleton(new CodePickerSwitch(on));
+        }
+
         Services.AddSingleton<IMuninExplorerClient>(client);
         Services.AddScoped<VariableListState>();
         var cut = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true).Add(c => c.Language, language));
@@ -233,6 +238,10 @@ public class VariableListCodePickerTest : ExplorerTestContext
         Assert.Equal(label, AccessibleName.Of(textarea));
         Assert.Equal(hint, cut.Find($"#{textarea.GetAttribute("aria-describedby")}").TextContent);
     }
+
+    [Fact]
+    public void Row_WhenNoSwitchIsRegistered_ThenThereIsNoPicker() =>
+        Assert.Null(OpenButton(OpenedRow(new ListClient(Item(), Sivilstand), picker: null)));
 
     [Fact]
     public void Row_WhenThePickerIsOff_ThenCodesSavedThroughMuninStillShowReadOnly()

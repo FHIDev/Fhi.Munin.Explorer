@@ -36,17 +36,17 @@ public class CodePickerOptionTest
     }
 
     [Fact]
-    public void Options_WhenNotSet_ThenThePickerIsOff() => Assert.False(OnFromOptions());
+    public void AddMuninExplorer_WhenTheOptionIsNotSet_ThenThePickerIsOff() => Assert.False(OnFromOptions());
 
     [Fact]
-    public void Options_WhenEnabled_ThenThePickerIsOn() => Assert.True(OnFromOptions(o => o.Features.CodePicker = true));
+    public void AddMuninExplorer_WhenTheOptionIsSet_ThenThePickerIsOn() => Assert.True(OnFromOptions(o => o.Features.CodePicker = true));
 
     // helsedata calls the delegate overload and switches per environment in appsettings, as it does eIDAS.
     [Theory]
     [InlineData(null, false)]
     [InlineData("false", false)]
     [InlineData("true", true)]
-    public void DelegateOverload_WhenTheHostsConfigurationHasTheKey_ThenThePickerFollowsIt(string? value, bool on)
+    public void AddMuninExplorer_WhenTheDelegateOverloadsHostHasTheKey_ThenThePickerFollowsIt(string? value, bool on)
     {
         var settings = new Dictionary<string, string?>();
         if (value is not null)
@@ -58,7 +58,7 @@ public class CodePickerOptionTest
     }
 
     [Fact]
-    public void DelegateOverload_WhenTheDelegateSetsIt_ThenItWinsOverTheKey()
+    public void AddMuninExplorer_WhenTheDelegateSetsTheFeature_ThenItWinsOverTheKey()
     {
         var settings = new Dictionary<string, string?> { ["MuninExplorer:Features:CodePicker"] = "true" };
 
@@ -66,7 +66,7 @@ public class CodePickerOptionTest
     }
 
     [Fact]
-    public void DelegateOverload_WhenTheHostsSectionHasAnEmptyApiBaseUrl_ThenTheDelegatesUrlStands()
+    public void AddMuninExplorer_WhenTheHostsSectionHasAnEmptyApiBaseUrl_ThenTheDelegatesUrlStands()
     {
         var settings = new Dictionary<string, string?> { ["MuninExplorer:ApiBaseUrl"] = "", ["MuninExplorer:Features:CodePicker"] = "true" };
         var client = ViaDelegate(settings).GetRequiredService<IHttpClientFactory>().CreateClient(nameof(IMuninExplorerClient));
@@ -80,7 +80,7 @@ public class CodePickerOptionTest
     [InlineData("true", true)]
     [InlineData("True", true)]
     [InlineData("yes", false)]
-    public void ConfigurationOverload_WhenTheSectionHasTheKey_ThenThePickerFollowsIt(string? value, bool on)
+    public void AddMuninExplorer_WhenTheConfigurationOverloadsSectionHasTheKey_ThenThePickerFollowsIt(string? value, bool on)
     {
         var settings = new Dictionary<string, string?>();
         if (value is not null)

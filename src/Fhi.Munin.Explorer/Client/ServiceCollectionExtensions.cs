@@ -41,9 +41,10 @@ public sealed class MuninExplorerOptions
 
 /// <summary>
 /// Features a host turns on per environment, each off by default. A feature left null here is read from the host's
-/// configuration key <c>MuninExplorer:Features:&lt;name&gt;</c> (<c>true</c> or <c>false</c>; off when absent),
-/// whichever <c>AddMuninExplorer</c> overload the host calls, so an environment's appsettings can turn it on without a
-/// code change; a value set here wins over the key. An entry is removed once its feature is on for every host.
+/// configuration key <c>MuninExplorer:Features:&lt;name&gt;</c> (<c>true</c> turns it on; absent or any other value is
+/// off), whichever <c>AddMuninExplorer</c> overload the host calls, so an environment's appsettings can turn it on without
+/// a code change. The key is read once, when the first component needs it, so a change takes a restart. A value set here
+/// wins over the key. An entry is removed once its feature is on for every host.
 /// </summary>
 public sealed class MuninExplorerFeatures
 {

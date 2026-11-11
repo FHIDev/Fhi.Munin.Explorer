@@ -1317,8 +1317,10 @@ each one off by default, so an environment's appsettings decides and production 
 ```
 
 Both `AddMuninExplorer` overloads read these keys from the host's configuration (the delegate overload from the
-registered `IConfiguration`, and nothing else from the section). `options.Features.<Name>` set in the delegate wins
-over the key. Today there is one: `CodePicker`, the code picker under «Ønskede data» in a saved list; with it off, «Ønskede data» is
+registered `IConfiguration`, and nothing else from the section), once, when the first component needs them, so a
+change takes a restart. `true` turns a feature on; absent or any other value is off. `options.Features.<Name>` set in
+the delegate wins over the key. The sample hosts turn `CodePicker` on in `appsettings.Development.json`, which is what
+the browser gates run. Today there is one: `CodePicker`, the code picker under «Ønskede data» in a saved list; with it off, «Ønskede data» is
 one free-text field and codes saved through Munin show read-only. A new feature gets its own entry, off by
 default, and the entry is removed once the feature is on for every host.
 
