@@ -2908,6 +2908,41 @@ function keyboardFocusAssertions() {
       },
     },
     {
+      // Fhi.Metadata-mhqx0.16: the rename form shuts on Escape back to «Flere valg», and Enter in its field saves.
+      name: 'Escape shuts the rename form onto «Flere valg», and Enter in its field saves the name',
+      kind: 'invariant',
+      states: ['explorer-list-tab'],
+      stage: () => ({}),
+      async measure(page) {
+        const panel = page.locator('[role=tabpanel]:not([hidden])').first();
+        const field = panel.locator('input[id^="munin-explorer-rename-list-"]');
+        const open = async () => {
+          await panel.locator('button[id^="munin-explorer-list-menu-toggle-"]').click();
+          await panel.locator('button[id^="munin-explorer-rename-toggle-"]').click();
+          await field.waitFor({ state: 'visible', timeout: findTimeout });
+          await field.focus();
+        };
+        await open();
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(PRESS_SETTLE_MS);
+        if (await field.count() !== 0) return 'Escape in the rename field left the form open';
+        const now = await focused(page);
+        if (!now.id.startsWith('munin-explorer-list-menu-toggle-')) return `Escape left focus on «${now.text || now.id || 'body'}», not «Flere valg»`;
+
+        await open();
+        await field.fill('Navn fra Enter');
+        await page.keyboard.press('Enter');
+        await page.waitForTimeout(PRESS_SETTLE_MS);
+        const heading = ((await panel.locator('.munin-explorer-page__header > h2').first().textContent()) || '').trim();
+        if (heading !== 'Navn fra Enter') return `Enter in the rename field did not save the name: the heading reads «${heading}»`;
+        return null;
+      },
+      // A host whose Enter never reaches the form: the submit stopped before Blazor's document listener.
+      async control(page) {
+        await page.evaluate(() => window.addEventListener('submit', e => { e.preventDefault(); e.stopImmediatePropagation(); }, true));
+      },
+    },
+    {
       name: '«Fjern» leaves focus on the next row, the previous one, then the list menu, and says so',
       kind: 'invariant',
       states: ['explorer-list-tab'],
