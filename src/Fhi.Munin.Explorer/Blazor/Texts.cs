@@ -385,6 +385,7 @@ internal sealed record Texts(
     // button twice and cannot tell the disclosure from the thing it discloses.
     string RenameList,
     string SaveListName,
+    string SavingListName,
     string DeleteList,
     string ConfirmDeleteList,
     string ConfirmDeleteYes,
@@ -1448,6 +1449,7 @@ internal sealed record Texts(
         RenameListName: "Nytt navn på listen",
         RenameList: "Gi nytt navn",
         SaveListName: "Lagre navnet",
+        SavingListName: "Lagrer …",
         DeleteList: "Slett listen",
         ConfirmDeleteList: "Slett denne listen? Det kan ikke angres.",
         ConfirmDeleteYes: "Ja, slett listen",
@@ -2065,6 +2067,7 @@ internal sealed record Texts(
         RenameListName: "New name for the list",
         RenameList: "Rename",
         SaveListName: "Save the name",
+        SavingListName: "Saving …",
         DeleteList: "Delete the list",
         ConfirmDeleteList: "Delete this list? It cannot be undone.",
         ConfirmDeleteYes: "Yes, delete the list",

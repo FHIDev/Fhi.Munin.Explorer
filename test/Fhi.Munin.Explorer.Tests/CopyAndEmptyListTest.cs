@@ -385,6 +385,27 @@ public class CopyAndEmptyListTest : ExplorerTestContext
         Assert.Equal("submit", Button(cut, "Kopier listen").GetAttribute("type"));
     }
 
+    [Fact]
+    public async Task Copy_WhenEnterAndThePressComeWhileTheCopyIsOut_ThenOneCopyIsMade()
+    {
+        var hold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new ListsClient(Items(3)) { HoldCreate = hold };
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+        Button(cut, "Kopier liste").Click();
+        Labelled(cut, "Navn på kopien").Change("Kopi til prosjektet");
+
+        var first = cut.InvokeAsync(() => Labelled(cut, "Navn på kopien").Closest("form")!.Submit());
+        cut.WaitForAssertion(() => Assert.Equal(1, client.WriteCalls));
+        await cut.InvokeAsync(() => Labelled(cut, "Navn på kopien").Closest("form")!.Submit());
+        await cut.InvokeAsync(() => Button(cut, "Kopier listen").Click());
+        await cut.InvokeAsync(hold.SetResult);
+        await first;
+
+        cut.WaitForAssertion(() => Assert.Equal("Kopi til prosjektet", Heading(cut)));
+        Assert.Equal(["Kopi til prosjektet"], client.Created);
+    }
+
     // -----------------------------------------------------------------------
     // Fhi.Metadata-d07al.2: an item whose datasamling is not chosen is copied as one, not resolved by guessing
 

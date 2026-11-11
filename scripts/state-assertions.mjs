@@ -2929,16 +2929,19 @@ function keyboardFocusAssertions() {
         const now = await focused(page);
         if (!now.id.startsWith('munin-explorer-list-menu-toggle-')) return `Escape left focus on «${now.text || now.id || 'body'}», not «Flere valg»`;
 
+        // A name of its own per call, so the control's run cannot find the measure's name already saved.
+        const name = `Navn fra Enter ${Date.now()}`;
         await open();
-        await field.fill('Navn fra Enter');
+        await field.fill(name);
         await page.keyboard.press('Enter');
         await page.waitForTimeout(PRESS_SETTLE_MS);
-        const heading = ((await panel.locator('.munin-explorer-page__header > h2').first().textContent()) || '').trim();
-        if (heading !== 'Navn fra Enter') return `Enter in the rename field did not save the name: the heading reads «${heading}»`;
+        const heading = ((await panel.locator('[id^="munin-explorer-list-heading-"]').first().textContent({ timeout: findTimeout })) || '').trim();
+        if (heading !== name) return `Enter in the rename field did not save the name: the heading reads «${heading}»`;
         return null;
       },
-      // A host whose Enter never reaches the form: the submit stopped before Blazor's document listener.
+      // Both halves broken: focus() does nothing, and the submit is stopped before Blazor's document listener.
       async control(page) {
+        await noFocusMoves(page);
         await page.evaluate(() => window.addEventListener('submit', e => { e.preventDefault(); e.stopImmediatePropagation(); }, true));
       },
     },

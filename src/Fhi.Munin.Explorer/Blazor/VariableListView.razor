@@ -152,7 +152,7 @@ else if (State?.IsAuthenticated == true)
                     <button class="hd-button-square button-square--secondary margin-top margin-right"
                             type="submit"
                             aria-disabled="@AriaDisabled(_renameName.Trim().Length > 0 && !_renameInFlight)"
-                            aria-busy="@(_renameInFlight ? "true" : null)">@T.SaveListName</button>
+                            aria-busy="@(_renameInFlight ? "true" : null)">@(_renameInFlight ? T.SavingListName : T.SaveListName)</button>
                     <button class="hd-button-square button-square--ghost-blue margin-top"
                             type="button"
                             aria-disabled="@AriaDisabled(!_renameInFlight)"
@@ -732,6 +732,7 @@ else if (State?.IsAuthenticated == true)
                             type="button"
                             id="@RenameToggleId"
                             aria-expanded="@Expanded(_renaming)"
+                            aria-disabled="@(_renameInFlight ? "true" : null)"
                             @onclick="ChooseRenamingFromMenu">@T.RenameList</button>
 
                     @* The reason is visible on the row and wired by aria-describedby rather than a title

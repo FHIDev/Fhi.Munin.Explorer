@@ -16,7 +16,7 @@ public partial class VariableListViewTest
         cut.Find(RenameInput).Closest("form")!;
 
     [Fact]
-    public async Task Rename_WhenAvbrytIsPressed_ThenTheFormClosesAndFocusGoesToTheMenuToggle()
+    public async Task Rename_WhenCancelIsPressed_ThenTheFormClosesAndFocusGoesToTheMenuToggle()
     {
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
         var cut = RenderView(client);
@@ -44,7 +44,7 @@ public partial class VariableListViewTest
     }
 
     [Fact]
-    public async Task Rename_WhenReopenedAfterAvbryt_ThenTheFieldIsEmpty()
+    public async Task Rename_WhenReopenedAfterEscape_ThenTheFieldIsEmpty()
     {
         // A cancelled name left in the field would be saved by the next Enter without the reader retyping it.
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
@@ -74,6 +74,40 @@ public partial class VariableListViewTest
         cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(RenameInput)));
         Assert.Equal(1, client.RenameCalls);
         Assert.Equal("Hjertet mitt", client.LastRenamedTo);
+    }
+
+    [Fact]
+    public async Task Rename_WhenTheMenuShutsTheForm_ThenTheFieldIsEmptyWhenItOpensAgain()
+    {
+        // Now that Enter saves, a name shut away and shown again would be one key from being saved unseen.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+        RenameField(cut).Change("Hjertet mitt");
+        await cut.InvokeAsync(() => cut.Find("button[id^='munin-explorer-rename-toggle-']").Click());
+
+        Assert.Empty(cut.FindAll(RenameInput));
+        Assert.Equal("", RenameField(cut).GetAttribute("value") ?? "");
+    }
+
+    [Fact]
+    public async Task Rename_WhileTheCallIsOut_ThenTheMenuItemIsRefusedAndTheButtonSaysSo()
+    {
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { DuringRename = () => gate.Task };
+        var cut = RenderView(client);
+        RenameField(cut).Change("Hjertet mitt");
+
+        var first = cut.InvokeAsync(() => RenameForm(cut).Submit());
+        await cut.WaitForAssertionAsync(() => Assert.Equal("Lagrer …", RenameForm(cut).QuerySelector("button[type='submit']")!.TextContent.Trim()));
+        var toggle = cut.Find("button[id^='munin-explorer-rename-toggle-']");
+        Assert.Equal("true", toggle.GetAttribute("aria-disabled"));
+        await cut.InvokeAsync(() => toggle.Click());
+
+        Assert.Single(cut.FindAll(RenameInput));
+        await cut.InvokeAsync(gate.SetResult);
+        await first;
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(RenameInput)));
+        Assert.Equal(1, client.RenameCalls);
+        Assert.Null(cut.Find("button[id^='munin-explorer-rename-toggle-']").GetAttribute("aria-disabled"));
     }
 
     [Fact]

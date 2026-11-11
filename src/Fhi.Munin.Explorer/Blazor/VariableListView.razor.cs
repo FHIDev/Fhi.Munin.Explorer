@@ -174,7 +174,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     private bool _renaming;
 
-    // A rename is out: a second Enter or press does nothing, and the form cannot be shut under it.
+    // A rename is out: a second Enter or press does nothing, and nothing shuts the form under it.
     private bool _renameInFlight;
     private bool _confirmingDelete;
     private ListActionFailure _actionFailure;
@@ -526,7 +526,21 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
     }
 
-    private void ToggleRenamingFromControl(MouseEventArgs released) => Toggle(released, ref _renaming);
+    // Inert while a rename is out, as creating is. A shut form forgets its name, so no later Enter saves it unseen.
+    private void ToggleRenamingFromControl(MouseEventArgs released)
+    {
+        if (_renameInFlight)
+        {
+            return;
+        }
+
+        Toggle(released, ref _renaming);
+
+        if (!_renaming)
+        {
+            _renameName = "";
+        }
+    }
 
     private void CancelRenaming()
     {
