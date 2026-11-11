@@ -109,7 +109,8 @@ export const assertions = [
     // with `overflow: hidden` or `overflow-y: auto` absorbs a too-wide child, so the document
     // stops scrolling sideways while the content is still clipped and unreachable. The filter
     // panel is exactly such an ancestor above 1024px. Nothing here names a component or a class:
-    // it asks every visible element under the mount to be within the mount's own content box.
+    // it asks every visible element under the mount to be within the mount's own content box, or
+    // within the viewport for what sits in an open popover.
     //
     // The tolerance is 1px for subpixel rounding — a 1487.98px child of a 1488px box is not a
     // defect, and reporting it as one would make this file the boy who cried overflow.
