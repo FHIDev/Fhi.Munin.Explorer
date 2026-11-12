@@ -1454,6 +1454,7 @@
   "datasamlinger": [
     {
       "id": "36da9c5f-9e8d-4b28-b4f4-64dbd4e47bdd",
+      "code": "K_ALS.F1",
       "name": "Inklusjon",
       "nameEn": null,
       "kortNavn": "ALS",
@@ -1486,6 +1487,7 @@
     },
     {
       "id": "e441cf5f-fa2c-43da-afea-2576aa28c379",
+      "code": "K_ALS.F2",
       "name": "Oppfølgingskonsultasjon",
       "nameEn": null,
       "kortNavn": "ALS",
@@ -1518,6 +1520,7 @@
     },
     {
       "id": "084ebb57-fc6f-41c4-8755-50fd23b6c083",
+      "code": "K_ALS.F4",
       "name": "KomplikasjonBehandling",
       "nameEn": null,
       "kortNavn": "ALS",
@@ -1550,6 +1553,7 @@
     },
     {
       "id": "16cbe98e-217c-451f-a9a3-413203098075",
+      "code": "K_ALS.F9",
       "name": "Automatisk eProm etter tre måneder",
       "nameEn": null,
       "kortNavn": "ALS",
@@ -1582,6 +1586,7 @@
     },
     {
       "id": "eb0f1463-4748-4b45-a8f9-39530a6e65a4",
+      "code": null,
       "name": "Pasientsvar kommunalt tilbud",
       "nameEn": null,
       "kortNavn": "ALS",
@@ -1614,6 +1619,7 @@
     },
     {
       "id": "6430a851-358a-45c0-a252-565312955f40",
+      "code": null,
       "name": "Pasientsvar symptomer",
       "nameEn": null,
       "kortNavn": "ALS",
@@ -1646,6 +1652,7 @@
     },
     {
       "id": "91c1b0ce-e4d5-4bb6-bfa1-515cd6cb05ee",
+      "code": null,
       "name": "Samtykkeskjema",
       "nameEn": null,
       "kortNavn": "ALS",
@@ -1678,6 +1685,7 @@
     },
     {
       "id": "9190f534-9b61-427c-b9cc-fd9959ec589e",
+      "code": null,
       "name": "Tverrfaglighet",
       "nameEn": null,
       "kortNavn": "ALS",
@@ -1710,6 +1718,7 @@
     },
     {
       "id": "375edec8-3cf3-4f9f-9e63-ecc8285aa7d9",
+      "code": null,
       "name": "Utredning",
       "nameEn": null,
       "kortNavn": "ALS",
