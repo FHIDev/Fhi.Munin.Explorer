@@ -550,14 +550,17 @@ public class AdvancedSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void RemoveDraft_WhenAMiddleRowGoes_ThenFocusGoesToTheRowTakingItsPlace()
+    public void RemoveDraft_WhenAnEarlierRowGoes_ThenFocusGoesToTheRowTakingItsPlace()
     {
+        // Focus starts on row 3, the last added, so only the removal can move it to what was row 2.
         var cut = OpenWithRows(3);
+        var second = Key(FieldList(Rows(cut)[1]));
 
-        Button(cut, "Fjern betingelse 2").Click();
+        Button(cut, "Fjern betingelse 1").Click();
 
         cut.WaitForAssertion(() => Assert.Equal(2, Rows(cut).Count));
-        AssertFocusOn(cut, () => FieldList(Rows(cut)[1]));
+        Assert.Equal(second, Key(FieldList(Rows(cut)[0])));
+        AssertFocusOn(cut, () => FieldList(Rows(cut)[0]));
     }
 
     [Fact]
@@ -585,14 +588,16 @@ public class AdvancedSearchTest : ExplorerTestContext
     [Fact]
     public void ShowHits_WhenARowIsRefused_ThenFocusGoesToThatRowsFieldList()
     {
+        // Row 1 is refused while focus is on row 2, where adding it left it, so only the refusal can move it back.
         var cut = OpenWithRows(2);
-        Rows(cut)[0].QuerySelector("input[type=text]")!.Change("blodtrykk");
-        Rows(cut)[1].QuerySelector("select")!.Change("gyldigFra");
-        Rows(cut)[1].QuerySelectorAll("input[type=date]")[0].Change("2010-01-01");
+        Rows(cut)[0].QuerySelector("select")!.Change("gyldigFra");
+        Rows(cut)[0].QuerySelectorAll("input[type=date]")[0].Change("2010-01-01");
+        Rows(cut)[1].QuerySelector("input[type=text]")!.Change("blodtrykk");
+        AssertFocusOn(cut, () => FieldList(Rows(cut)[1]));
 
         Button(cut, "Vis treff").Click();
 
-        AssertFocusOn(cut, () => FieldList(Rows(cut)[1]));
+        AssertFocusOn(cut, () => FieldList(Rows(cut)[0]));
     }
 
     [Fact]
