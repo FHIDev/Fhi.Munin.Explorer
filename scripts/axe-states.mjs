@@ -85,6 +85,15 @@ async function foldMenu(page, toggle) {
   await page.waitForFunction(el => el.getAttribute('aria-expanded') === 'false', await toggle.elementHandle(), { timeout: findTimeout });
 }
 
+// On a desktop the next press opens its menu and shuts «Kolonner»; on a phone «Kolonner» is a sheet over an inert
+// page, so it is folded first, as a reader would. The click returns before the server's render: wait for it first.
+async function openThenFoldColumnsOnPhone(page) {
+  const columns = page.locator('[role=tabpanel]:not([hidden]) [id^="munin-explorer-columns-toggle-"]');
+  await columns.click();
+  await page.waitForFunction(el => el.getAttribute('aria-expanded') === 'true', await columns.elementHandle(), { timeout: findTimeout });
+  if (await page.evaluate(() => document.querySelector(':popover-open') !== null)) await foldMenu(page, columns);
+}
+
 async function press(scope, name) {
   const button = scope.getByRole('button', { name, exact: true }).first();
   await button.waitFor({ state: 'visible', timeout: findTimeout });
@@ -930,11 +939,7 @@ export const states = {
   // The picker opened, then a menu: one menu at a time, so opening «Flere valg» shuts «Kolonner» (Fhi.Metadata-mhqx0.8).
   'list-actions-and-columns': async page => {
     await states['explorer-list-tab'](page);
-    const columns = page.locator('[role=tabpanel]:not([hidden]) [id^="munin-explorer-columns-toggle-"]');
-    await columns.click();
-    // On a desktop the press opens the menu and shuts «Kolonner»; on a phone «Kolonner» is a sheet over an
-    // inert page, so it is folded first, as a reader would.
-    if (await page.evaluate(() => document.querySelector(':popover-open') !== null)) await foldMenu(page, columns);
+    await openThenFoldColumnsOnPhone(page);
     await press(page, 'Flere valg');
     await page.getByRole('button', { name: 'Tøm liste', exact: true })
       .waitFor({ state: 'visible', timeout: findTimeout });
@@ -951,11 +956,7 @@ export const states = {
   // As above: opening «Last ned» shuts «Kolonner» first.
   'list-download-and-columns': async page => {
     await states['explorer-list-tab'](page);
-    const columns = page.locator('[role=tabpanel]:not([hidden]) [id^="munin-explorer-columns-toggle-"]');
-    await columns.click();
-    // On a desktop the press opens the menu and shuts «Kolonner»; on a phone «Kolonner» is a sheet over an
-    // inert page, so it is folded first, as a reader would.
-    if (await page.evaluate(() => document.querySelector(':popover-open') !== null)) await foldMenu(page, columns);
+    await openThenFoldColumnsOnPhone(page);
     await press(page, 'Last ned');
     await page.getByRole('button', { name: 'Excel', exact: true })
       .waitFor({ state: 'visible', timeout: findTimeout });
