@@ -346,11 +346,12 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
 
         var cut = Render<VariableExplorer>(p => p.Add(c => c.IsAuthenticated, true));
         cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Variabelliste").Click();
-        cut.WaitForElement("th[scope=row] button").Click();
 
-        // The press has to come while the opening search is out; under load that search can start after it (l9l2n.175).
-        cut.WaitForAssertion(() => Assert.Equal("hjerte", Assert.Single(client.Searches).Search));
-        GroupButton(cut).Click();
+        // Found and pressed on the renderer's thread: a render between the two would replace the button (l9l2n.175).
+        cut.WaitForElement("th[scope=row] button");
+        await cut.InvokeAsync(() => cut.Find("th[scope=row] button").Click());
+        GroupButton(cut);
+        await cut.InvokeAsync(() => cut.FindAll("button").Single(IsDemografi).Click());
 
         await cut.InvokeAsync(gate.SetResult);
 
