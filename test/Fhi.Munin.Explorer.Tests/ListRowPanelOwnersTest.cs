@@ -341,16 +341,17 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
         var client = new OwnersClient { FirstSearchGate = gate };
         Services.AddSingleton<IMuninExplorerClient>(client);
         Services.AddScoped<VariableListState>();
+        // A held clock: the 500 ms slow-load notice would re-render the buttons from another thread while the search is held.
+        Services.AddSingleton<TimeProvider>(new ManualClock());
         this.SetRendererInfo(new RendererInfo("Server", true));
         Services.GetRequiredService<NavigationManager>().NavigateTo("/variabler?search=hjerte");
 
+        // Each found and pressed on the renderer's thread, so no render replaces it in between (Fhi.Metadata-l9l2n.175).
         var cut = Render<VariableExplorer>(p => p.Add(c => c.IsAuthenticated, true));
-        cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Variabelliste").Click();
-
-        // Found and pressed on the renderer's thread: a render between the two would replace the button (l9l2n.175).
+        await cut.InvokeAsync(() => cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Variabelliste").Click());
         cut.WaitForElement("th[scope=row] button");
         await cut.InvokeAsync(() => cut.Find("th[scope=row] button").Click());
-        GroupButton(cut);
+        GroupButton(cut); // waits until the variabelgruppe button is drawn
         await cut.InvokeAsync(() => cut.FindAll("button").Single(IsDemografi).Click());
 
         await cut.InvokeAsync(gate.SetResult);
