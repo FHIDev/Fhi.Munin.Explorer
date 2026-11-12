@@ -1471,6 +1471,7 @@
   "datasamlinger": [
     {
       "id": "3ca79c7e-f475-47cf-bae2-46b2de9865dc",
+      "code": "K_TR.TR1",
       "name": "Tromsø1 - Den første Tromsøundersøkelsen",
       "nameEn": "Tromsø1 - The First Tromsø Study",
       "kortNavn": "",
@@ -1501,6 +1502,7 @@
     },
     {
       "id": "515fa447-b65d-49eb-afcf-d17701d0902e",
+      "code": "K_TR.TR2",
       "name": "Tromsø2 - Den andre Tromsøundersøkelsen",
       "nameEn": "Tromsø2 - The Second Tromsø Study",
       "kortNavn": "",
@@ -1531,6 +1533,7 @@
     },
     {
       "id": "85fdc669-0511-4c3f-8acc-0f7fbf7f43fc",
+      "code": "K_TR.TR3",
       "name": "Tromsø3 - Den tredje Tromsøundersøkelsen",
       "nameEn": "Tromsø3 - The Third Tromsø Study",
       "kortNavn": "",
@@ -1600,6 +1603,7 @@
       "datasamlinger": [
         {
           "id": "f2c193fe-ccd9-43c8-8de7-4f00960431f2",
+          "code": "K_TR.TR4_1",
           "name": "Tromsø4 - Den fjerde Tromsøundersøkelsen - føste besøk",
           "nameEn": "Tromsø4 - The Fourth Tromsø Study - first visit",
           "kortNavn": "",
@@ -1629,6 +1633,7 @@
         },
         {
           "id": "08010ed0-ec9a-47be-87d9-a53f09847fa2",
+          "code": "K_TR.TR4_2",
           "name": "Tromsø4 - Den fjerde Tromsøundersøkelsen - andre besøk",
           "nameEn": "Tromsø4 - The Fourth Tromsø Study - second visit",
           "kortNavn": "",
@@ -1700,6 +1705,7 @@
       "datasamlinger": [
         {
           "id": "5c5e4aa3-aa3c-47ba-a1b7-55398d8ea7e1",
+          "code": "K_TR.TR5_1",
           "name": "Tromsø5 - Den femte Tromsøundersøkelsen - første besøk",
           "nameEn": "Tromsø5 - The Fifth Tromsø Study - first visit",
           "kortNavn": "",
@@ -1730,6 +1736,7 @@
         },
         {
           "id": "be0c142f-6fbc-4ef2-b95f-d662ee33e1a7",
+          "code": "K_TR.TR5_2",
           "name": "Tromsø5 - Den femte Tromsøundersøkelsen - andre besøk",
           "nameEn": "Tromsø5 - The Fifth Tromsø Study - second visit",
           "kortNavn": "",
@@ -1801,6 +1808,7 @@
       "datasamlinger": [
         {
           "id": "6acd1e12-1c1e-4342-9f90-7682aedbf585",
+          "code": "K_TR.TR6_1",
           "name": "Tromsø6 - Den sjette Tromsøundersøkelsen første besøk",
           "nameEn": "Tromsø6 - The Sixth Tromsø Study - first visit",
           "kortNavn": "",
@@ -1831,6 +1839,7 @@
         },
         {
           "id": "c0ab0929-0cb2-4191-901e-bbc824b2c0de",
+          "code": "K_TR.TR6_2",
           "name": "Tromsø6 - Den sjette Tromsøundersøkelsen - andre besøk",
           "nameEn": "Tromsø6 - The Sixth Tromsø Study - second visit",
           "kortNavn": "",
@@ -1902,6 +1911,7 @@
       "datasamlinger": [
         {
           "id": "4a6971d4-1c59-4693-a150-5cfde7a3fba4",
+          "code": "K_TR.TR7_1",
           "name": "Tromsø7 - Den sjuende Tromsøundersøkelsen - første besøk",
           "nameEn": "Tromsø7 - The Seventh Tromsø Study - first visit",
           "kortNavn": "",
@@ -1931,6 +1941,7 @@
         },
         {
           "id": "3b9a812b-c54c-4547-9c2c-af7eeee4b1da",
+          "code": "K_TR.TR7_2",
           "name": "Tromsø7 - Den sjuende Tromsøundersøkelsen - andre besøk",
           "nameEn": "Tromsø7 - The Seventh Tromsø Study - second visit",
           "kortNavn": "",
