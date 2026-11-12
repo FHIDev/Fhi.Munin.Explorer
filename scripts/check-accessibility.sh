@@ -10,6 +10,8 @@
 #
 # Usage:  ./scripts/check-accessibility.sh   (SCAN_SHARD=k/n runs the k-th of n slices of the axe states, as
 #         CI does with 4, and the 320px reflow and the code-picker-off pass in slice 1 only; unset runs everything)
+#         AXE_RESULTS_FILE=<path> also appends one JSON line per axe scan, with its Varde page key, and the completion
+#         lines a caller needs before trusting them (DevInfra-og3.42).
 # Needs:  dotnet, node (for npx), and a Chrome/Chromium on PATH.
 
 set -euo pipefail
@@ -264,7 +266,7 @@ else
 fi
 
 echo "==> checking browser state preparation"
-node --test "$ROOT/scripts/test-axe-states.mjs" "$ROOT/scripts/test-scan-shard.mjs" || {
+node --test "$ROOT/scripts/test-axe-states.mjs" "$ROOT/scripts/test-scan-shard.mjs" "$ROOT/scripts/test-axe-pages.mjs" || {
   echo "the state-preparation tests failed - TOOLING failure, so nothing was scanned." >&2
   exit 2
 }
@@ -320,7 +322,9 @@ fi
 # The samples turn the code picker on in Development, so everything above sees it on. The shape a host ships by default
 # is scanned once more with it off, on a host restarted with the switch overridden, in shard 1 only. (Fhi.Metadata-l9l2n.172)
 off_status=0
+axe_runs=1
 if [ -z "${SCAN_SHARD:-}" ] || [ "${SCAN_SHARD%%/*}" = 1 ]; then
+  axe_runs=2
   echo
   echo "==> the opened row with the code picker off"
   kill "$host_pid" 2>/dev/null || true
@@ -357,6 +361,12 @@ if [ "$off_status" -ne 0 ] && [ "$off_status" -ne 2 ]; then
 fi
 if [ "$reflow_status" -ne 0 ] && [ "$reflow_status" -ne 2 ]; then
   findings=1
+fi
+
+# Every axe pass this run made reached its verdict, so a caller reading AXE_RESULTS_FILE may trust its lines (DevInfra-og3.42).
+if [ -n "${AXE_RESULTS_FILE:-}" ] && [ "$scan_status" -le 1 ] && [ "$off_status" -le 1 ]; then
+  printf '{"gate":"finished","axeRuns":%s}\n' "$axe_runs" >> "$AXE_RESULTS_FILE" \
+    || { echo "could not write $AXE_RESULTS_FILE - TOOLING failure." >&2; exit 2; }
 fi
 
 echo
