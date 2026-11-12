@@ -294,19 +294,18 @@ export function observeContents(columnId) {
 }
 
 /**
- * Jumps once to the section `location.hash` names when it appears in `page`, the way the browser would have at load had it
- * been drawn: instantly, without moving focus, and not at all once the reader has scrolled, pressed a key or touched
- * the page. Gives up after ten seconds. Returns a function that stops waiting.
+ * Jumps once to the section `location.hash` names when it appears in `page`, as the browser would have at load: instantly,
+ * without moving focus, and never once the reader has scrolled or pressed. Gives up after ten seconds; returns a stop.
  */
 function followDeepLink(page, jumped) {
-  const id = location.hash.length > 1 ? decodeURIComponent(location.hash.slice(1)) : '';
-  if (deepLinkFollowed || id === '') {
-    return () => {};
+  let id = '';
+  try {
+    id = location.hash.length > 1 ? decodeURIComponent(location.hash.slice(1)) : '';
+  } catch {
+    // A malformed hash names no section.
   }
-  deepLinkFollowed = true;
-
-  const root = document.scrollingElement;
-  if ((root?.scrollTop ?? 0) > 0) {
+  const scrolled = () => (document.scrollingElement?.scrollTop ?? 0) > 0;
+  if (deepLinkFollowed || id === '' || scrolled()) {
     return () => {};
   }
 
@@ -316,15 +315,24 @@ function followDeepLink(page, jumped) {
     clearTimeout(timer);
     watcher?.disconnect();
     for (const gesture of ['wheel', 'touchstart', 'keydown']) {
-      window.removeEventListener(gesture, stop, { capture: true });
+      window.removeEventListener(gesture, give, { capture: true });
     }
   };
+  // Settled for this page load only once it jumped, the reader took over or the wait ran out, not when a re-render stopped it.
+  const give = () => {
+    deepLinkFollowed = true;
+    stop();
+  };
   const tryJump = () => {
+    if (scrolled()) {
+      give();
+      return true;
+    }
     const section = page.querySelector(`#${CSS.escape(id)}`);
     if (section === null) {
       return false;
     }
-    stop();
+    give();
     section.scrollIntoView({ block: 'start', behavior: 'instant' });
     jumped(id);
     return true;
@@ -333,9 +341,9 @@ function followDeepLink(page, jumped) {
   if (!tryJump()) {
     watcher = new MutationObserver(tryJump);
     watcher.observe(page, { childList: true, subtree: true });
-    timer = setTimeout(stop, 10_000);
+    timer = setTimeout(give, 10_000);
     for (const gesture of ['wheel', 'touchstart', 'keydown']) {
-      window.addEventListener(gesture, stop, { capture: true, passive: true });
+      window.addEventListener(gesture, give, { capture: true, passive: true });
     }
   }
   return stop;
