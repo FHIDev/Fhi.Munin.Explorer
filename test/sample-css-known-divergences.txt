@@ -577,6 +577,7 @@ invented-selector|@media (width < 1280px)|.munin-explorer-list-scroll table.muni
 # The picker's scroll area for the search hits and the tree (Fhi.Metadata-9huq2.19); Stiler's rule comes with
 # Fhi.Metadata-9huq2.16. This line goes when helsedata pins that Stiler.
 unstyled-name||.munin-explorer-codetree-scroll|
-# Fhi.Metadata-ipok2.2: avansert søk's single buttons, as wide as «Verdi»; its Stiler rule is Fhi.Metadata-ipok2.9.
-# Delete this line when HostileHost pins a Stiler that carries it.
-unstyled-name||.munin-explorer-advanced__action|
+# Fhi.Metadata-ipok2.2: avansert søk's box and its single buttons; their Stiler rules are Fhi.Metadata-ipok2.9.
+# Delete these two lines when HostileHost pins a Stiler that carries them.
+unstyled-name||.munin-explorer-advanced-search|
+unstyled-name||.munin-explorer-advanced-search__action|

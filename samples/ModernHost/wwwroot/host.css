@@ -3960,8 +3960,16 @@ table.munin-explorer-data-list tbody th {
   color: rgb(82, 30, 255);
 }
 
-/* Avansert søk's single buttons, as wide as the «Verdi» field's input__field--small (Fhi.Metadata-ipok2.2). */
-.munin-explorer-advanced__action {
+/* Avansert søk's box and its single buttons, as Stiler draws them (Fhi.Metadata-ipok2.9). */
+.munin-explorer-advanced-search {
+  background: rgb(255, 255, 255);
+  border: 1px solid rgb(230, 230, 237);
+  border-radius: 8px;
+  margin: 0 0 24px;
+  padding: 24px;
+}
+
+.munin-explorer-advanced-search__action {
   max-width: 100%;
   width: 12.75rem;
 }
