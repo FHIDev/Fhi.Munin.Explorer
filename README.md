@@ -1369,7 +1369,8 @@ Both `AddMuninExplorer` overloads read these keys from the host's configuration 
 registered `IConfiguration`, and nothing else from the section). The configuration overload reads them when it is
 called, the delegate overload when the first component needs them; either way a change takes a restart. `true` turns a feature on; absent or any other value is off. `options.Features.<Name>` set in
 the delegate wins over the key. The sample hosts turn both on in `appsettings.Development.json`, which is what
-the browser gates run. Today there are two:
+the browser gates run; `check-accessibility.sh` also scans an opened list row once with `CodePicker` off. Today there
+are two:
 
 - `CodePicker`, the code picker under «Ønskede data» in a saved list; with it off, «Ønskede data» is
   one free-text field and codes saved through Munin show read-only.
@@ -1471,10 +1472,12 @@ A link opens at most twenty rows by itself, the rows its marks open counted amon
 
 `?datasamling=` is read beside `?kilde=` and never instead of it: a datasamling opens in place of
 the kilde it belongs to, and the kilde is the way back out, so one named on its own is dropped on
-the first render. Either key may be a code instead of an id (`?kilde=kreg&datasamling=<code>`), which is the same
-link in every environment: the datasamling's code is looked up among the kilde's own, folded as Munin
-folds codes, and the address keeps the datasamling in the form the reader followed. The kilde key is
-written as its short code (`?kilde=kreg`) once the API confirms it, whichever form it arrived in. Each datasamling in the hierarchy carries a link of its own —
+the first render. Either key may be a code instead of an id (`?kilde=kreg&datasamling=<code>`),
+which is the same link in every environment: the datasamling's code is looked up among the kilde's own, folded as Munin
+folds codes and with or without its leading «K_» (`datasamling=KREG.CRC` opens K_KREG.CRC), and the
+address keeps the datasamling in the form the reader followed. The kilde key is written as its short
+code (`?kilde=kreg`) once the API confirms it, whichever form it arrived in.
+Each datasamling in the hierarchy carries a link of its own —
 `munin-explorer-hierarchy__open`, a plain `<a href>`, so middle-click and Ctrl+click open a tab and
 the address can be pasted into a fresh one. It is written in the node's own `<li>`, **after** the
 `<details>` and never inside the `<summary>`: a link in a summary is nested interactive content,

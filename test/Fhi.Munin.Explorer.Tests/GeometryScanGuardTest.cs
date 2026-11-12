@@ -475,6 +475,34 @@ public class GeometryScanGuardTest
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
             found);
     }
+
+    // The off pass is the only browser scan of the shape a host ships by default; deleting it leaves every other check green.
+    [Fact]
+    public void AccessibilityGate_WhenItRuns_ThenItAlsoScansTheOpenedRowWithTheCodePickerOff()
+    {
+        var source = File.ReadAllText(Repo.In("scripts", "check-accessibility.sh"));
+
+        Assert.Contains("MuninExplorer__Features__CodePicker=false ASPNETCORE_ENVIRONMENT", source, StringComparison.Ordinal);
+        Assert.Contains("::list-row-picker-off\"", source, StringComparison.Ordinal);
+    }
+
+    // The same against helsedata's real stylesheet, which ModernHost's stand-in cannot speak for (Fhi.Metadata-l9l2n.174).
+    [Fact]
+    public void HostileHostGate_WhenItRuns_ThenItAlsoMeasuresTheOpenedRowWithTheCodePickerOff()
+    {
+        var source = File.ReadAllText(Repo.In("scripts", "check-hostile-host.sh"));
+
+        Assert.Contains("MuninExplorer__Features__CodePicker=false ASPNETCORE_ENVIRONMENT", source, StringComparison.Ordinal);
+        Assert.Contains("/::list-row-picker-off\"", source, StringComparison.Ordinal);
+        Assert.Contains("[ \"$off_status\" -ne 0 ]", source, StringComparison.Ordinal);
+        Assert.Contains("for width in 320 1279; do", source, StringComparison.Ordinal);
+        // An unmeasured verdict (exit 3) must not be hidden by the off pass failing to run.
+        Assert.True(source.LastIndexOf("exit 3", StringComparison.Ordinal)
+            < source.IndexOf("if [ \"$off_status\" -eq 2 ]", StringComparison.Ordinal));
+        var pass = source[source.IndexOf("picker_off_pass() {", StringComparison.Ordinal)..];
+        Assert.DoesNotContain("exit ", pass[..pass.IndexOf("\n}\n", StringComparison.Ordinal)], StringComparison.Ordinal);
+        Assert.Contains("AXE_VIEWPORT_WIDTH=1440 AXE_VIEWPORT_HEIGHT=900 \\\n    node \"$ROOT/scripts/axe-scan.mjs\" \"${BASE}/::list-row-picker-off\"", source, StringComparison.Ordinal);
+    }
 }
 
 /// <summary>
@@ -506,4 +534,5 @@ internal sealed class NodeFactAttribute : FactAttribute
         .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
         .SelectMany(dir => new[] { Path.Combine(dir, "node"), Path.Combine(dir, "node.exe") })
         .FirstOrDefault(File.Exists);
+
 }

@@ -3,10 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace Fhi.Munin.Explorer.Contracts;
 
-/// <summary>
-/// One field an avansert søk condition can test, as <c>GET api/explorer/variables/vilkar</c> lists it: its type, the
-/// operators that type takes and, for a code list, the codes.
-/// </summary>
+/// <summary>One field an avansert søk condition can test, as <c>GET api/explorer/variables/vilkar</c> lists it.</summary>
 public sealed record ConditionField
 {
     /// <summary>Free text: <c>inneholder</c>, <c>erLik</c>, <c>begynnerMed</c>, <c>inneholderIkke</c>.</summary>
@@ -39,10 +36,8 @@ public sealed record ConditionField
     /// <summary>Whether this field is a code list, whose value is codes rather than text or a day.</summary>
     [JsonIgnore] public bool IsCodeList => Type is SingleChoiceType or MultipleChoiceType;
 
-    /// <summary>
-    /// Whether the API will take <paramref name="condition"/> for this field: the same field, an operator it lists,
-    /// and a value of the right shape. A condition this refuses would turn the whole search into a 400.
-    /// </summary>
+    /// <summary>Whether the API will take <paramref name="condition"/> for this field: the same field, an operator it
+    /// lists, and a value of the right shape. One the API refuses turns the whole search into a 400.</summary>
     public bool Accepts(SearchCondition condition)
     {
         if (!string.Equals(condition.Field, Field, StringComparison.OrdinalIgnoreCase)

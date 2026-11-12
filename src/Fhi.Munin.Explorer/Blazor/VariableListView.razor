@@ -84,7 +84,11 @@ else if (State?.IsAuthenticated == true)
             @if (_creating)
             {
                 @* Esc is heard here, which costs a message per key typed in the field: a list's name is short. *@
-                <div class="munin-explorer-list-create" @onkeydown="CloseCreatingOnEscape">
+                @* A form, so Enter in the field submits as the button does (Fhi.Metadata-mhqx0.16). *@
+                <form class="munin-explorer-list-create"
+                      @onkeydown="CloseCreatingOnEscape"
+                      @onsubmit="CreateListAsync"
+                      @onsubmit:preventDefault="true">
                     @* A real label, never a placeholder: no accessible name, and gone the moment the
                        reader types (WCAG 4.1.2, 3.3.2). The id is per-mount, or two mounts name one
                        field twice. onchange, never oninput — a round trip per keystroke on a circuit. *@
@@ -106,17 +110,16 @@ else if (State?.IsAuthenticated == true)
                            CreateListAsync refuses an empty name and a second press, so the press is inert.
                            Solid, as the form's action; the one primary is the button that opened it. *@
                         <button class="hd-button-square button-square--secondary"
-                                type="button"
+                                type="submit"
                                 aria-disabled="@AriaDisabled(_newName.Trim().Length > 0 && !_createInFlight)"
-                                aria-busy="@(_createInFlight ? "true" : null)"
-                                @onclick="CreateListAsync">@(_createInFlight ? T.CreatingList : T.CreateList)</button>
+                                aria-busy="@(_createInFlight ? "true" : null)">@(_createInFlight ? T.CreatingList : T.CreateList)</button>
 
                         <button class="hd-button-square button-square--ghost-blue"
                                 type="button"
                                 aria-disabled="@AriaDisabled(!_createInFlight)"
-                                @onclick="CancelCreating">@T.CancelNewList</button>
+                                @onclick="CancelCreating">@T.CancelNameForm</button>
                     </div>
-                </div>
+                </form>
             }
 
             @* In the DOM from the moment the form opens, so the sentence is announced when it arrives. *@
@@ -132,27 +135,35 @@ else if (State?.IsAuthenticated == true)
 
             @if (_renaming && _shownList is not null)
             {
-                <div>
+                @* Closed as the create form is, by «Avbryt» or Esc, back to «Flere valg» that opened it. *@
+                <form @onkeydown="CloseRenamingOnEscape"
+                      @onsubmit="RenameListAsync"
+                      @onsubmit:preventDefault="true">
                     <div class="input__container">
                         <label class="form-element__label" for="@RenameListNameId">@T.RenameListName</label>
                         <input type="text"
                                class="input__field input__field--small"
                                id="@RenameListNameId"
                                @ref="_renameField"
+                               readonly="@_renameInFlight"
                                @bind="_renameName"
                                @bind:event="onchange" />
                     </div>
-                    <button class="hd-button-square button-square--secondary margin-top"
+                    <button class="hd-button-square button-square--secondary margin-top margin-right"
+                            type="submit"
+                            aria-disabled="@AriaDisabled(_renameName.Trim().Length > 0 && !_renameInFlight)"
+                            aria-busy="@(_renameInFlight ? "true" : null)">@(_renameInFlight ? T.SavingListName : T.SaveListName)</button>
+                    <button class="hd-button-square button-square--ghost-blue margin-top"
                             type="button"
-                            aria-disabled="@AriaDisabled(_renameName.Trim().Length > 0)"
-                            @onclick="RenameListAsync">@T.SaveListName</button>
-                </div>
+                            aria-disabled="@AriaDisabled(!_renameInFlight)"
+                            @onclick="CancelRenaming">@T.CancelNameForm</button>
+                </form>
             }
 
             @* The same shape again, with the refusal the shared list's save gives a name in use. *@
             @if (_copying && _shownList is not null)
             {
-                <div>
+                <form @onsubmit="CopyListAsync" @onsubmit:preventDefault="true">
                     <label class="form-element__label" for="@CopyListNameId">@T.CopyListName</label>
                     <input type="text"
                            id="@CopyListNameId"
@@ -162,13 +173,12 @@ else if (State?.IsAuthenticated == true)
                            @bind="_copyName"
                            @bind:event="onchange" />
                     <button class="hd-button-square button-square--ghost-blue"
-                            type="button"
-                            aria-disabled="@AriaDisabled(!_copyInFlight)"
-                            @onclick="CopyListAsync">@T.CopyListSubmit</button>
+                            type="submit"
+                            aria-disabled="@AriaDisabled(!_copyInFlight)">@T.CopyListSubmit</button>
 
                     <p class="caption" id="@CopyNoteId">@T.CopyListLeavesDesiredData</p>
                     <p id="@CopyNameProblemId" role="alert">@CopyNameMessage</p>
-                </div>
+                </form>
             }
 
             @* Always in the DOM, empty when nothing is wrong — a role="alert" inserted and filled in the
@@ -722,6 +732,7 @@ else if (State?.IsAuthenticated == true)
                             type="button"
                             id="@RenameToggleId"
                             aria-expanded="@Expanded(_renaming)"
+                            aria-disabled="@(_renameInFlight ? "true" : null)"
                             @onclick="ChooseRenamingFromMenu">@T.RenameList</button>
 
                     @* The reason is visible on the row and wired by aria-describedby rather than a title

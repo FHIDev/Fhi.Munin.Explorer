@@ -55,12 +55,9 @@ public sealed class MuninExplorerFeatures
     /// </summary>
     public bool? CodePicker { get; set; }
 
-    /// <summary>
-    /// Avansert søk in the variable search: the «Avansert søk» control under the search field, its form, and its
-    /// conditions as chips beside the facets; key <c>MuninExplorer:Features:AdvancedSearch</c>. Off: none of them is
-    /// drawn, and conditions a link carries (<c>vilkar</c>) are dropped, so nothing narrows the list that the reader
-    /// can neither see nor remove.
-    /// </summary>
+    /// <summary>Avansert søk in the variable search; key <c>MuninExplorer:Features:AdvancedSearch</c>. Off, nothing
+    /// of it is drawn and a link's <c>vilkar</c> are dropped, so nothing narrows the list that the reader cannot
+    /// see or remove.</summary>
     public bool? AdvancedSearch { get; set; }
 }
 

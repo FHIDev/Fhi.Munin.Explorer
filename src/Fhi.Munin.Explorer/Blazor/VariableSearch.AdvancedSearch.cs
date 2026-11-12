@@ -51,11 +51,8 @@ public partial class VariableSearch
 
     private string DraftId(ConditionDraft draft, string part) => $"munin-explorer-condition-{_instance}-{draft.Key}-{part}";
 
-    /// <summary>Keep only the conditions this explorer can show and the API will take, before the first fetch.</summary>
-    /// <remarks>
-    /// Off, every condition goes: a link is public input, and a narrowing nobody can see or remove is worse than none.
-    /// On, a condition the API would refuse goes too, since one refusal is a 400 for the whole search.
-    /// </remarks>
+    /// <summary>Before the first fetch, drop the conditions a link carries that nobody could see (feature off) or that
+    /// the API would refuse (one refusal is a 400 for the whole search).</summary>
     private async Task PrepareLinkedConditionsAsync()
     {
         if (_filter.Conditions.Count == 0)

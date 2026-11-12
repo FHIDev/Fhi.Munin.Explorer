@@ -3,7 +3,8 @@ using Fhi.Munin.Explorer.Contracts;
 
 namespace Fhi.Munin.Explorer.Tests;
 
-// A datasamling link's code is matched as Munin keeps codes unique: folded ÆØÅ, any case, at any delkilde depth.
+// A datasamling link's code is matched as Munin keeps codes unique: folded ÆØÅ, any case, with or without a leading «K_»,
+// at any delkilde depth.
 public class DatasamlingCodeTest
 {
     private static readonly Guid Deep = Guid.NewGuid();
@@ -24,8 +25,43 @@ public class DatasamlingCodeTest
     [InlineData("K_KREG.SVULST_ØRE")]
     [InlineData("k_kreg.svulst_øre")]
     [InlineData("K_KREG.SVULST_OERE")]
+    [InlineData("KREG.SVULST_ØRE")]
+    [InlineData("kreg.svulst_oere")]
     public void DatasamlingByCode_WhenTheCodeIsUnderANestedDelkilde_ThenItIsFoundFolded(string linked) =>
         Assert.Equal(Deep, KildeExplorer.DatasamlingByCode(Kilde, linked)?.Id);
+
+    // «K_» is taken off the start of the whole code only: a second one is part of the code.
+    [Theory]
+    [InlineData("K_KREG.K_SVULST_ØRE")]
+    [InlineData("KREG.K_SVULST_ØRE")]
+    public void DatasamlingByCode_WhenThePrefixIsRepeatedInsideTheCode_ThenNull(string linked) =>
+        Assert.Null(KildeExplorer.DatasamlingByCode(Kilde, linked));
+
+    [Theory]
+    [InlineData("K_", "K_")]
+    [InlineData("k_kreg.crc", "KREG.CRC")]
+    [InlineData("KREG.K_CRC", "KREG.K_CRC")]
+    public void DatasamlingKey_WhenACodeIsFolded_ThenOnlyALeadingPrefixWithMoreAfterItIsDropped(string code, string key) =>
+        Assert.Equal(key, KildeCodes.DatasamlingKey(code));
+
+    [Fact]
+    public void DatasamlingByCode_WhenTheLinkIsTheBarePrefixAndARowHasNoCode_ThenNull() =>
+        Assert.Null(KildeExplorer.DatasamlingByCode(
+            new KildeDetail { Datasamlinger = [new() { Id = Guid.NewGuid(), Code = "" }] }, "K_"));
+
+    [Fact]
+    public void DatasamlingByCode_WhenTwoRowsDifferOnlyByThePrefix_ThenTheCodeAsWrittenWins()
+    {
+        var withPrefix = Guid.NewGuid();
+        var without = Guid.NewGuid();
+        var kilde = new KildeDetail
+        {
+            Datasamlinger = [new() { Id = without, Code = "KREG.CRC" }, new() { Id = withPrefix, Code = "K_KREG.CRC" }],
+        };
+
+        Assert.Equal(withPrefix, KildeExplorer.DatasamlingByCode(kilde, "k_kreg.crc")?.Id);
+        Assert.Equal(without, KildeExplorer.DatasamlingByCode(kilde, "KREG.CRC")?.Id);
+    }
 
     [Fact]
     public void DatasamlingByCode_WhenNoRowCarriesTheCode_ThenNull() =>

@@ -2,23 +2,9 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Fhi.Munin.Explorer.Contracts;
 
-/// <summary>One avansert søk condition: a field, an operator and a value, all of which must hold.</summary>
-/// <remarks>
-/// <para>
-/// On the wire it is the Explorer API's <c>vilkar=felt:operator:verdi</c>, repeated once per condition, and
-/// <see cref="VariableFilter.Conditions"/> carries it to every call the filter goes to. <see cref="Field"/> and
-/// <see cref="Operator"/> are the API's own tokens (<c>beskrivelse</c>, <c>inneholderIkke</c>), which
-/// <see cref="IMuninExplorerClient.GetConditionFieldsAsync"/> lists with the operators each field takes.
-/// </para>
-/// <para>
-/// The value is written as the API reads it: text as typed, a date as <c>yyyy-MM-dd</c>, a range as
-/// <c>yyyy-MM-dd..yyyy-MM-dd</c>, and codes comma-separated. <see cref="ConditionField.Accepts"/> says whether a
-/// condition is one the API will take.
-/// </para>
-/// </remarks>
-/// <param name="Field">The API's field token, for example <c>navn</c> or <c>gyldigFra</c>.</param>
-/// <param name="Operator">The API's operator token, for example <c>inneholder</c> or <c>erEnAv</c>.</param>
-/// <param name="Value">The value in the API's form; never contains a line break.</param>
+/// <summary>One avansert søk condition, the API's <c>vilkar=felt:operator:verdi</c>. The value is in the API's form,
+/// with no line break: text as typed, a day <c>yyyy-MM-dd</c>, a range <c>yyyy-MM-dd..yyyy-MM-dd</c>, codes
+/// comma-separated.</summary>
 public sealed record SearchCondition(string Field, string Operator, string Value)
 {
     /// <summary>The most conditions one search takes, which is all the API accepts.</summary>
@@ -33,10 +19,8 @@ public sealed record SearchCondition(string Field, string Operator, string Value
     /// <summary>The wire form, <c>felt:operator:verdi</c>.</summary>
     public override string ToString() => $"{Field}:{Operator}:{Value}";
 
-    /// <summary>
-    /// Read the wire form back: everything after the second colon is the value. False for a field or operator that
-    /// is blank or not a plain token, and for a blank value.
-    /// </summary>
+    /// <summary>Read the wire form back; everything after the second colon is the value. False for a blank value or a
+    /// field or operator that is not a plain token.</summary>
     public static bool TryParse(string? text, [NotNullWhen(true)] out SearchCondition? condition)
     {
         condition = null;

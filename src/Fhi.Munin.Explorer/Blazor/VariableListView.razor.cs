@@ -173,6 +173,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private bool _focusCreateToggle;
 
     private bool _renaming;
+
+    // A rename is out: a second Enter or press does nothing, and neither «Avbryt», Esc nor the menu shuts the form.
+    private bool _renameInFlight;
     private bool _confirmingDelete;
     private ListActionFailure _actionFailure;
     private bool _includeKodeverk;
@@ -523,7 +526,42 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
     }
 
-    private void ToggleRenamingFromControl(MouseEventArgs released) => Toggle(released, ref _renaming);
+    // Inert while a rename is out, as creating is. A shut form forgets its name, so no later Enter saves it unseen.
+    private void ToggleRenamingFromControl(MouseEventArgs released)
+    {
+        if (_renameInFlight)
+        {
+            return;
+        }
+
+        Toggle(released, ref _renaming);
+
+        if (!_renaming)
+        {
+            _renameName = "";
+        }
+    }
+
+    private void CancelRenaming()
+    {
+        if (!_renaming || _renameInFlight)
+        {
+            return;
+        }
+
+        _renaming = false;
+        _renameName = "";
+        _readerMoves++;
+        _menuFocus = MenuFocus.Toggle;
+    }
+
+    private void CloseRenamingOnEscape(KeyboardEventArgs pressed)
+    {
+        if (pressed.Key == "Escape")
+        {
+            CancelRenaming();
+        }
+    }
 
     private void ToggleConfirmingDeleteFromControl(MouseEventArgs released) =>
         Toggle(released, ref _confirmingDelete);
@@ -1474,6 +1512,25 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// patches its own copy and tells the other surfaces.
     /// </summary>
     private async Task RenameListAsync()
+    {
+        if (_renameInFlight)
+        {
+            return;
+        }
+
+        _renameInFlight = true;
+
+        try
+        {
+            await RenameListCoreAsync();
+        }
+        finally
+        {
+            _renameInFlight = false;
+        }
+    }
+
+    private async Task RenameListCoreAsync()
     {
         var name = _renameName.Trim();
 

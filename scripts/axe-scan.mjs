@@ -5,18 +5,20 @@
 //
 // A target is a URL, or `URL::state` to drive the loaded page into a named state from
 // `axe-states.mjs` first: what a reader reaches by pressing is invisible to the plain form.
-import { readFileSync } from 'node:fs';
+import { appendFileSync, readFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 
 import { launchOptions } from './browser-launch.mjs';
 import AxeBuilder from '@axe-core/playwright';
 import { states, wideOnlyStates } from './axe-states.mjs';
+import { criteriaOf, resultLine, scanFinishedLine } from './axe-pages.mjs';
 import { describeShard, packByCost, parseShard } from './scan-shard.mjs';
-import { DEFAULT_SECONDS, REFLOW_SECONDS, stateSeconds } from './axe-state-seconds.mjs';
+import { DEFAULT_SECONDS, PICKER_OFF_SECONDS, REFLOW_SECONDS, stateSeconds } from './axe-state-seconds.mjs';
 import { scrollPast } from './reader-scroll.mjs';
 
 const targets = process.argv.slice(2);
 const settleMs = Number(process.env.ACCESSIBILITY_SETTLE_MS ?? 4000);
+const resultsFile = process.env.AXE_RESULTS_FILE || null;
 // WCAG 2.2 AA, the level helsedata's accessibility statement is written against (Fhi.Metadata-mhqx0).
 const tags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
@@ -94,7 +96,7 @@ try {
   console.error(`${err.message} - TOOLING failure.`);
   process.exit(2);
 }
-const shardOf = packByCost(plan.map(({ state }) => stateSeconds[state] ?? DEFAULT_SECONDS), shard.count, REFLOW_SECONDS);
+const shardOf = packByCost(plan.map(({ state }) => stateSeconds[state] ?? DEFAULT_SECONDS), shard.count, REFLOW_SECONDS + PICKER_OFF_SECONDS);
 const owned = plan.filter((_, i) => shardOf[i] === shard.index);
 if (owned.length === 0) {
   console.error('this shard has no page state to scan - TOOLING failure: fewer states than shards, or the measured times in axe-state-seconds.mjs left it none.');
@@ -271,12 +273,19 @@ try {
       }
 
       let pageViolations = results.violations.length;
+      const found = results.violations.map(v => ({ rule: v.id, criteria: criteriaOf(v.tags) }));
       for (const root of roots) {
         console.log(`    explorer root lang="${root.lang ?? ''}", ${root.norwegian} element(s) marked Norwegian inside it`);
         if (root.lang !== 'no' && root.lang !== 'en') {
           pageViolations += 1;
+          found.push({ rule: 'explorer-root-lang', criteria: ['3.1.2'] });
           console.log(`\n  [serious] explorer-root-lang — the explorer root carries lang="${root.lang ?? ''}", not "no" or "en"`);
         }
+      }
+
+      // One line per scan for a caller that reports per page (the devbox's push to Varde, DevInfra-og3.42).
+      if (resultsFile) {
+        appendFileSync(resultsFile, `${JSON.stringify(resultLine(url, state, width, found))}\n`);
       }
 
       violationCount += pageViolations;
@@ -320,4 +329,11 @@ for (const k of stale) {
   console.log(`\n  stale line in test/axe-known-violations.txt, delete it: ${k.line}`);
 }
 
+try {
+  if (resultsFile) appendFileSync(resultsFile, `${JSON.stringify(scanFinishedLine)}\n`);
+} catch (err) {
+  console.error(`could not write ${resultsFile} - TOOLING failure.`);
+  console.error(String(err?.message ?? err));
+  process.exit(2);
+}
 process.exit(violationCount > 0 || stale.length > 0 ? 1 : 0);

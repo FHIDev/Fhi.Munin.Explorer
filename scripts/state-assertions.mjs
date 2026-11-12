@@ -2841,7 +2841,7 @@ export const assertions = [
 ];
 
 // WCAG 2.1.1 and 2.4.3 (Fhi.Metadata-mhqx0.11, mhqx0.15): where a key press leaves focus. bUnit records a FocusAsync
-// call but has no document.activeElement; this reads it after a real key. Each control disables focus().
+// call but has no document.activeElement; this reads it after a real key. Each control but Enter's disables focus(); Enter's stops the submit.
 function focused(page) {
   return page.evaluate(() => {
     const el = document.activeElement;
@@ -2849,6 +2849,17 @@ function focused(page) {
     return { id: el?.id || '', role: el?.getAttribute('role') || '', selected: el?.getAttribute('aria-selected') || '',
       text: (el?.textContent || '').trim(), row: ids[1] || '' };
   });
+}
+
+// Opens «Gi nytt navn» from «Flere valg» and clicks into the field: a click focuses natively, also under noFocusMoves.
+async function openRenameForm(page) {
+  const panel = page.locator('[role=tabpanel]:not([hidden])').first();
+  const field = panel.locator('input[id^="munin-explorer-rename-list-"]');
+  await panel.locator('button[id^="munin-explorer-list-menu-toggle-"]').click();
+  await panel.locator('button[id^="munin-explorer-rename-toggle-"]').click();
+  await field.waitFor({ state: 'visible', timeout: findTimeout });
+  await field.click();
+  return { panel, field };
 }
 
 async function noFocusMoves(page) {
@@ -2905,6 +2916,47 @@ function keyboardFocusAssertions() {
       },
       async control(page) {
         await noFocusMoves(page);
+      },
+    },
+    {
+      // Fhi.Metadata-mhqx0.16: Escape in the rename field shuts the form and puts focus back on «Flere valg».
+      name: 'Escape in the rename field shuts the form and puts focus back on «Flere valg»',
+      kind: 'invariant',
+      states: ['explorer-list-tab'],
+      stage: () => ({}),
+      async measure(page) {
+        const { field } = await openRenameForm(page);
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(PRESS_SETTLE_MS);
+        if (await field.count() !== 0) return 'Escape in the rename field left the form open';
+        const now = await focused(page);
+        if (!now.id.startsWith('munin-explorer-list-menu-toggle-')) return `Escape left focus on «${now.text || now.id || 'body'}», not «Flere valg»`;
+        return null;
+      },
+      async control(page) {
+        await noFocusMoves(page);
+      },
+    },
+    {
+      // Fhi.Metadata-mhqx0.16: Enter in the rename field saves the name, as «Lagre navnet» does.
+      name: 'Enter in the rename field saves the name',
+      kind: 'invariant',
+      states: ['explorer-list-tab'],
+      stage: () => ({}),
+      async measure(page) {
+        const { panel, field } = await openRenameForm(page);
+        // A name of its own per call, so the control's run cannot find the measure's name already saved.
+        const name = `Navn fra Enter ${Date.now()}`;
+        await field.fill(name);
+        await page.keyboard.press('Enter');
+        await page.waitForTimeout(PRESS_SETTLE_MS);
+        const heading = ((await panel.locator('[id^="munin-explorer-list-heading-"]').first().textContent({ timeout: findTimeout })) || '').trim();
+        if (heading !== name) return `Enter in the rename field did not save the name: the heading reads «${heading}»`;
+        return null;
+      },
+      // A host whose Enter never reaches the form: the submit stopped before Blazor's document listener.
+      async control(page) {
+        await page.evaluate(() => window.addEventListener('submit', e => { e.preventDefault(); e.stopImmediatePropagation(); }, true));
       },
     },
     {

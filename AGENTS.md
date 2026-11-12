@@ -528,6 +528,13 @@ it. One exception is left, and it is kept on purpose: under real Stiler the clos
 hangs 2px off the left edge on the kilder states, and `Fhi.Metadata-abmom`'s close reason records
 why that stays.
 
+**Both gates also see the code picker off.** The samples turn `MuninExplorer:Features:CodePicker` on
+in Development, so every state above sees it on. The shape a host ships by default is the state
+`list-row-picker-off`, scanned on a second host start with `MuninExplorer__Features__CodePicker=false`:
+by `check-accessibility.sh` with axe at 1280, 375 and 320 in shard 1, and by `check-hostile-host.sh`
+against real Stiler with geometry at the six widths, 320 and 1279 and axe at 1440
+(`Fhi.Metadata-l9l2n.172`, `Fhi.Metadata-l9l2n.174`).
+
 **It scans states, not only pages.** A page in its default state is not the page a reader uses,
 and for a while the default state was the whole of this check: the level lines shipped at 1.16:1
 against WCAG 1.4.11's 3:1, invisible on a desktop, with this job green — because the lines only
@@ -540,7 +547,8 @@ The lines are on at first render since `Fhi.Metadata-dfygj`, which is why that s
 unfolds and no longer presses the button — a press there would turn them off and hand this check
 back the blind spot it was written to close.
 The states it does **not** enter are listed above `TARGETS` in `check-accessibility.sh`, and that
-list is the honest bound on a green run — extend the two together, never one alone.
+list is the honest bound on a green run — extend the two together, never one alone, and give a new
+state its Varde page in `scripts/axe-pages.mjs`, or the gate stops as TOOLING.
 
 **And it scans data, not an empty shell.** The sample host reads `scripts/axe-stub-api.mjs`, which
 serves the contract-drift fixtures, because `runa.munin.skytest.fhi.no` is geo-filtered and a

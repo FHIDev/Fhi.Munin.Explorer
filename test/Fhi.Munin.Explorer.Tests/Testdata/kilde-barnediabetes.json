@@ -1452,6 +1452,7 @@
   "datasamlinger": [
     {
       "id": "243a3722-a40e-46f5-95c4-293a19f78ad0",
+      "code": "K_BDR.FRSTEGANGSREGISTRERING",
       "name": "Førstegangsregistrering",
       "nameEn": null,
       "kortNavn": "BDR",
@@ -1484,6 +1485,7 @@
     },
     {
       "id": "2ebfa0a0-2410-4457-888a-81cd8a593501",
+      "code": "K_BDR.RSKONTROLL",
       "name": "Årskontroll",
       "nameEn": null,
       "kortNavn": "BDR",
@@ -1516,6 +1518,7 @@
     },
     {
       "id": "3791e23c-b13c-4bcd-ac8d-47a6fc06dc84",
+      "code": "K_BDR.FAMILIEANAMNESE",
       "name": "FamilieAnamnese",
       "nameEn": null,
       "kortNavn": "BDR",
@@ -1548,6 +1551,7 @@
     },
     {
       "id": "d6cbd91d-461a-4485-8a52-d0d6c7da4403",
+      "code": "K_BDR.PASIENTSVARBARN",
       "name": "Pasientsvar barn",
       "nameEn": null,
       "kortNavn": "BDR",
@@ -1580,6 +1584,7 @@
     },
     {
       "id": "3bfea39c-b010-41cd-aa56-60dd117721ed",
+      "code": "K_BDR.PASIENTSVARFORESATTE",
       "name": "Pasientsvar foresatte",
       "nameEn": null,
       "kortNavn": "BDR",
@@ -1612,6 +1617,7 @@
     },
     {
       "id": "b156aec4-7d9a-4a07-8079-52d94f3b1a06",
+      "code": "",
       "name": "T1DAL undersøkelse",
       "nameEn": null,
       "kortNavn": "BDR",

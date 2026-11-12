@@ -489,6 +489,13 @@ function handle(request, response) {
     return;
   }
 
+  // A rename is answered and not kept: the view shows the name it sent, and the next load has the captured one.
+  if (request.method === 'PUT' && /^\/api\/explorer\/my\/lists\/[^/]+$/.test(url.pathname)) {
+    request.resume();
+    request.on('end', () => response.writeHead(204).end());
+    return;
+  }
+
   const holding = held.findIndex(one => one.path === url.pathname);
   if (holding < 0) {
     serve(url, request, response);

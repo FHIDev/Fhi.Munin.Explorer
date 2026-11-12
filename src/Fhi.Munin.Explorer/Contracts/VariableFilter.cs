@@ -136,16 +136,9 @@ public sealed record VariableFilter
     /// </remarks>
     public bool OrTreeTicks { get; init; }
 
-    /// <summary>
-    /// Avansert søk conditions, all of which must hold, on top of every facet. At most
-    /// <see cref="SearchCondition.MaxCount"/>, which is all the API accepts.
-    /// </summary>
-    /// <remarks>
-    /// Written as the API's repeated <c>vilkar</c>, so the list, the facet counts and an export all narrow by them.
-    /// Each counts once in <see cref="ActiveCount"/>. <see cref="Parse"/> checks only their shape: whether the API
-    /// takes one is <see cref="ConditionField.Accepts"/>, against the fields
-    /// <see cref="IMuninExplorerClient.GetConditionFieldsAsync"/> lists.
-    /// </remarks>
+    /// <summary>Avansert søk conditions, all of which must hold, on top of every facet; at most
+    /// <see cref="SearchCondition.MaxCount"/>. <see cref="Parse"/> checks only their shape; whether the API takes one
+    /// is <see cref="ConditionField.Accepts"/>.</summary>
     public IReadOnlyList<SearchCondition> Conditions { get; init; } = [];
 
     private const string TreeTicksKey = "treeTicks";
