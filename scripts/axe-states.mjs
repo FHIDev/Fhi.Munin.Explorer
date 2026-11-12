@@ -109,10 +109,13 @@ async function openAdvancedSearch(page) {
   await page.getByRole('combobox', { name: 'Betingelse 1 Felt', exact: true }).waitFor({ state: 'visible', timeout: findTimeout });
 }
 
+// By role, not getByLabel: that matches the <label for> text alone («Til»), never the legend-plus-label name.
+const conditionControl = (page, role, name) => page.getByRole(role, { name, exact: true });
+
 /** Choose a row's field, and wait for the value control that field draws. */
-async function chooseConditionField(page, row, field, drawn) {
+async function chooseConditionField(page, row, field, role, drawn) {
   await page.getByRole('combobox', { name: `Betingelse ${row} Felt`, exact: true }).selectOption(field);
-  await page.getByLabel(drawn, { exact: true }).first().waitFor({ state: 'visible', timeout: findTimeout });
+  await conditionControl(page, role, drawn).waitFor({ state: 'visible', timeout: findTimeout });
 }
 
 /** Press the wide screen's «Skjul filtre», once the list it sits beside has rows. */
@@ -268,11 +271,12 @@ export const states = {
       await page.getByRole('combobox', { name: `Betingelse ${row} Felt`, exact: true })
         .waitFor({ state: 'visible', timeout: findTimeout });
     }
-    await chooseConditionField(page, 2, 'gyldigFra', 'Betingelse 2 Til');
-    await chooseConditionField(page, 3, 'tilgangsniva', 'Betingelse 3 Verdi');
-    await chooseConditionField(page, 4, 'personidentifikasjon', 'Betingelse 4 Verdi');
-    await page.getByLabel('Betingelse 2 Fra', { exact: true }).fill('2010-01-01');
-    await page.getByLabel('Betingelse 2 Fra', { exact: true }).dispatchEvent('change');
+    await chooseConditionField(page, 2, 'gyldigFra', 'textbox', 'Betingelse 2 Til');
+    await chooseConditionField(page, 3, 'tilgangsniva', 'group', 'Betingelse 3 Verdi');
+    await chooseConditionField(page, 4, 'personidentifikasjon', 'group', 'Betingelse 4 Verdi');
+    const from = conditionControl(page, 'textbox', 'Betingelse 2 Fra');
+    await from.fill('2010-01-01');
+    await from.dispatchEvent('change');
     await press(page, 'Vis treff');
     await page.locator('[role=alert] .infobox').first().waitFor({ state: 'visible', timeout: findTimeout });
   },
@@ -280,7 +284,7 @@ export const states = {
   // The chip row with a condition beside a facet value, and «Endre avansert søk» before the clear-all.
   'variables-advanced-chips': async page => {
     await openAdvancedSearch(page);
-    const value = page.getByLabel('Betingelse 1 Verdi', { exact: true });
+    const value = conditionControl(page, 'textbox', 'Betingelse 1 Verdi');
     await value.fill('blodtrykk');
     await value.dispatchEvent('change');
     await press(page, 'Vis treff');
