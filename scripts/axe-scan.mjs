@@ -329,5 +329,11 @@ for (const k of stale) {
   console.log(`\n  stale line in test/axe-known-violations.txt, delete it: ${k.line}`);
 }
 
-if (resultsFile) appendFileSync(resultsFile, `${JSON.stringify(scanFinishedLine)}\n`);
+try {
+  if (resultsFile) appendFileSync(resultsFile, `${JSON.stringify(scanFinishedLine)}\n`);
+} catch (err) {
+  console.error(`could not write ${resultsFile} - TOOLING failure.`);
+  console.error(String(err?.message ?? err));
+  process.exit(2);
+}
 process.exit(violationCount > 0 || stale.length > 0 ? 1 : 0);

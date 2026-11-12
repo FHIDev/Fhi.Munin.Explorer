@@ -1,5 +1,6 @@
 // Keeps the state-to-page table whole: a state Varde cannot place would report on no page (DevInfra-og3.42).
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { states } from './axe-states.mjs';
 import { criteriaOf, pageOf, pageOfState, resultLine, scanFinishedLine } from './axe-pages.mjs';
@@ -27,4 +28,12 @@ test('ResultLine_WhenWritten_ThenItCarriesTheKeysTheDevboxReads', () => {
   assert.deepEqual(resultLine('http://localhost:5099/kilder', 'kilde-drilldown', 320, [{ rule: 'r', criteria: ['1.4.3'] }]),
     { page: 'explorer/kilde', state: 'kilde-drilldown', width: 320, violations: [{ rule: 'r', criteria: ['1.4.3'] }] });
   assert.deepEqual(scanFinishedLine, { scan: 'finished' });
+});
+
+// The completion lines are written in two other files; without them every devbox run reads as unknown, silently.
+test('CompletionLines_WhenTheScanAndTheGateFinish_ThenBothAreWritten', () => {
+  const scan = readFileSync(new URL('./axe-scan.mjs', import.meta.url), 'utf8');
+  const gate = readFileSync(new URL('./check-accessibility.sh', import.meta.url), 'utf8');
+  assert.match(scan, /appendFileSync\(resultsFile, `\$\{JSON\.stringify\(scanFinishedLine\)\}\\n`\)/);
+  assert.match(gate, /printf '\{"gate":"finished","axeRuns":%s\}\\n' "\$axe_runs" >> "\$AXE_RESULTS_FILE"/);
 });
