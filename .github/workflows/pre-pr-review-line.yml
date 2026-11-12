@@ -36,10 +36,6 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           ACTION: ${{ github.event.action }}
           UPDATED: ${{ github.event.pull_request.updated_at }}
-          CREATED: ${{ github.event.pull_request.created_at }}
-          # The three lines are required only of pull requests opened from this moment, so none already open turns
-          # red. Delete the cutoff, and the test on it below, once those have merged (DevInfra-0f5.2).
-          NEW_LINES_FROM: "2026-10-22T00:00:00Z"
         run: |
           # Carriage returns and trailing blanks go first: GitHub stores CRLF, and editors leave spaces.
           body=$(printf '%s' "$BODY" | tr -d '\r' | sed -E 's/[[:space:]]+$//')
@@ -109,10 +105,6 @@ jobs:
           echo "Pre-PR review line: present, in one of the four forms."
 
           # Testing, Risk and How to revert (DevInfra-0f5.2): one line each, filled in, the Risk tier as the label says.
-          if [[ "$CREATED" < "$NEW_LINES_FROM" ]]; then
-            echo "Opened before $NEW_LINES_FROM: Testing, Risk and How to revert are not required."
-            exit 0
-          fi
           for key in "Testing" "Risk" "How to revert"; do
             got=$(printf '%s\n' "$body" | grep -E "^${key}:" || true)
             if [ -z "$got" ]; then
