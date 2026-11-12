@@ -596,21 +596,9 @@ jobs:
         with:
           node-version: 26.13.0
 
-      # The credential the private feed needs. It goes in the environment and not in a build
-      # argument, which persists in image history — the same rule that makes a container build of
-      # this host pass it as a BuildKit secret.
-      #
-      # NOTHING IN NUGET READS THIS VARIABLE. It is read by the Azure Artifacts Credential
-      # Provider, a separate plugin, which a later step installs because a GitHub-hosted runner
-      # does not have one. Without the plugin the credential sits in the environment with nothing
-      # to consume it, the restore falls back to anonymous, and the feed answers NU1301 — which
-      # reads like a missing package rather than a missing plugin. This job spent its first real
-      # run failing exactly that way, and it passed locally throughout, because the developer
-      # machine had the provider installed for helsedata's own restore. A local success proves the
-      # PAT and the feed URL and says nothing at all about the runner.
-      #
-      # This step asks only whether the secret is there. The credential itself is handed over after the provider is installed, so
-      # nothing this job downloads ever runs with it in its environment (Fhi.Metadata-l9l2n.178).
+      # Only whether the secret is there. The credential is handed over after the provider is installed, so
+      # the download and unpacking below run without it, and no code fetched unchecked ever runs with it in
+      # its environment. From the hand-over on, later steps have it (Fhi.Metadata-l9l2n.178).
       - name: Check for helsedata's feed credential
         id: feed
         env:
@@ -640,8 +628,9 @@ jobs:
       - name: Install the Azure Artifacts credential provider
         if: steps.feed.outputs.have_pat == 'true'
         env:
-          # The release asset itself, by version and sha256 (GitHub's published digest for it), not the installer
-          # scripts: those fetch each other and pipe the tarball into tar unchecked. A new version is both lines.
+          # The release asset itself, by version and sha256 (GitHub's published digest for it), not
+          # the installer scripts: those fetch each other and pipe the tarball into tar unchecked.
+          # A new version changes both lines.
           CREDPROVIDER_URL: https://github.com/microsoft/artifacts-credprovider/releases/download/v2.0.4/Microsoft.linux-x64.NuGet.CredentialProvider.tar.gz
           CREDPROVIDER_SHA256: 2b7ae57379fbbe65c1cbb6c26346227b63e6992f8f5e07043e368d7bf1717286
         run: |
@@ -667,6 +656,19 @@ jobs:
           # SDK. An NU1301 AFTER this step is the PAT or the feed, never the plugin.
           echo "credential provider present at $plugin"
 
+      # The credential the private feed needs. It goes in the environment and not in a build
+      # argument, which persists in image history — the same rule that makes a container build of
+      # this host pass it as a BuildKit secret.
+      #
+      # NOTHING IN NUGET READS THIS VARIABLE. It is read by the Azure Artifacts Credential
+      # Provider, a separate plugin, which the step above installs because a GitHub-hosted runner
+      # does not have one. Without the plugin the credential sits in the environment with nothing
+      # to consume it, the restore falls back to anonymous, and the feed answers NU1301 — which
+      # reads like a missing package rather than a missing plugin. This job spent its first real
+      # run failing exactly that way, and it passed locally throughout, because the developer
+      # machine had the provider installed for helsedata's own restore. A local success proves the
+      # PAT and the feed URL and says nothing at all about the runner.
+      #
       # Written to the environment file rather than echoed, so the value never reaches a log.
       - name: Hand the credential provider helsedata's feed credential
         if: steps.feed.outputs.have_pat == 'true'
