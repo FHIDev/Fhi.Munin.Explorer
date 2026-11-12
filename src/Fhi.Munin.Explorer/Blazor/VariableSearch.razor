@@ -308,16 +308,18 @@ else
        facets and the results stay where they are while the reader builds the conditions. (Fhi.Metadata-ipok2.2) *@
     @if (AdvancedSearchOffered)
     {
-        <button class="hd-button-square button-square--ghost"
-                type="button"
-                aria-expanded="@(_advancedOpen ? "true" : "false")"
-                aria-controls="@AdvancedPanelId"
-                @ref="_advancedToggle"
-                @onclick="ToggleAdvancedSearchAsync">@AdvancedLabel</button>
+        <div>
+            <button class="hd-button-square button-square--ghost margin-bottom"
+                    type="button"
+                    aria-expanded="@(_advancedOpen ? "true" : "false")"
+                    aria-controls="@AdvancedPanelId"
+                    @ref="_advancedToggle"
+                    @onclick="ToggleAdvancedSearchAsync">@AdvancedLabel</button>
+        </div>
 
         @if (_advancedOpen)
         {
-            <fieldset class="form-fieldset" id="@AdvancedPanelId">
+            <fieldset class="form-fieldset form-group" id="@AdvancedPanelId">
                 <legend class="form-element__label">@T.AdvancedSearch</legend>
 
                 @if (_conditionFields is null)
@@ -345,31 +347,37 @@ else
                         <fieldset class="form-fieldset" @key="draft.Key" aria-describedby="@(draft.Error is null ? null : errorId)">
                             <legend class="form-element__label" id="@legendId">@T.ConditionLegend(number)</legend>
 
-                            <label class="caption" id="@DraftId(draft, "field-label")" for="@DraftId(draft, "field")">@T.ConditionField</label>
-                            <select id="@DraftId(draft, "field")"
-                                    aria-labelledby="@(legendId + " " + DraftId(draft, "field-label"))"
-                                    @ref="_draftFieldSelects[draft.Key]"
-                                    @onchange="change => ChooseField(draft, change)">
-                                @foreach (var option in _conditionFields)
-                                {
-                                    <option value="@option.Field" selected="@(option.Field == draft.Field)">@FieldName(option.Field)</option>
-                                }
-                            </select>
+                            <div class="form-element input__container">
+                                <label class="caption" id="@DraftId(draft, "field-label")" for="@DraftId(draft, "field")">@T.ConditionField</label>
+                                <select id="@DraftId(draft, "field")"
+                                        class="input__field"
+                                        aria-labelledby="@(legendId + " " + DraftId(draft, "field-label"))"
+                                        @ref="_draftFieldSelects[draft.Key]"
+                                        @onchange="change => ChooseField(draft, change)">
+                                    @foreach (var option in _conditionFields)
+                                    {
+                                        <option value="@option.Field" selected="@(option.Field == draft.Field)">@FieldName(option.Field)</option>
+                                    }
+                                </select>
+                            </div>
 
                             @if (field is not null)
                             {
-                                <label class="caption" id="@DraftId(draft, "operator-label")" for="@DraftId(draft, "operator")">@T.ConditionOperator</label>
-                                @* Keyed by the field, so a new field's operators arrive in a new element rather than
-                                   in one whose selected option the browser still holds. *@
-                                <select id="@DraftId(draft, "operator")"
-                                        @key="draft.Field"
-                                        aria-labelledby="@(legendId + " " + DraftId(draft, "operator-label"))"
-                                        @onchange="change => ChooseOperator(draft, change)">
-                                    @foreach (var op in field.Operators)
-                                    {
-                                        <option value="@op" selected="@(op == draft.Operator)">@OperatorName(op)</option>
-                                    }
-                                </select>
+                                <div class="form-element input__container">
+                                    <label class="caption" id="@DraftId(draft, "operator-label")" for="@DraftId(draft, "operator")">@T.ConditionOperator</label>
+                                    @* Keyed by the field, so a new field's operators arrive in a new element rather than
+                                       in one whose selected option the browser still holds. *@
+                                    <select id="@DraftId(draft, "operator")"
+                                            class="input__field"
+                                            @key="draft.Field"
+                                            aria-labelledby="@(legendId + " " + DraftId(draft, "operator-label"))"
+                                            @onchange="change => ChooseOperator(draft, change)">
+                                        @foreach (var op in field.Operators)
+                                        {
+                                            <option value="@op" selected="@(op == draft.Operator)">@OperatorName(op)</option>
+                                        }
+                                    </select>
+                                </div>
 
                                 @if (field.IsCodeList)
                                 {
@@ -391,43 +399,49 @@ else
                                 else if (field.Type == ConditionField.DateType)
                                 {
                                     var between = draft.Operator == ConditionField.BetweenOperator;
-                                    <label class="caption" id="@DraftId(draft, "from-label")" for="@DraftId(draft, "from")">@(between ? T.ConditionFrom : T.ConditionValue)</label>
-                                    <input id="@DraftId(draft, "from")"
-                                           class="input__field"
-                                           type="date"
-                                           autocomplete="off"
-                                           aria-labelledby="@(legendId + " " + DraftId(draft, "from-label"))"
-                                           aria-invalid="@(draft.Error is null ? null : "true")"
-                                           value="@draft.From"
-                                           @onchange="change => draft.From = change.Value as string ?? string.Empty" />
-                                    @if (between)
-                                    {
-                                        <label class="caption" id="@DraftId(draft, "to-label")" for="@DraftId(draft, "to")">@T.ConditionTo</label>
-                                        <input id="@DraftId(draft, "to")"
+                                    <div class="form-element input__container">
+                                        <label class="caption" id="@DraftId(draft, "from-label")" for="@DraftId(draft, "from")">@(between ? T.ConditionFrom : T.ConditionValue)</label>
+                                        <input id="@DraftId(draft, "from")"
                                                class="input__field"
                                                type="date"
                                                autocomplete="off"
-                                               aria-labelledby="@(legendId + " " + DraftId(draft, "to-label"))"
+                                               aria-labelledby="@(legendId + " " + DraftId(draft, "from-label"))"
                                                aria-invalid="@(draft.Error is null ? null : "true")"
-                                               value="@draft.To"
-                                               @onchange="change => draft.To = change.Value as string ?? string.Empty" />
+                                               value="@draft.From"
+                                               @onchange="change => draft.From = change.Value as string ?? string.Empty" />
+                                    </div>
+                                    @if (between)
+                                    {
+                                        <div class="form-element input__container">
+                                            <label class="caption" id="@DraftId(draft, "to-label")" for="@DraftId(draft, "to")">@T.ConditionTo</label>
+                                            <input id="@DraftId(draft, "to")"
+                                                   class="input__field"
+                                                   type="date"
+                                                   autocomplete="off"
+                                                   aria-labelledby="@(legendId + " " + DraftId(draft, "to-label"))"
+                                                   aria-invalid="@(draft.Error is null ? null : "true")"
+                                                   value="@draft.To"
+                                                   @onchange="change => draft.To = change.Value as string ?? string.Empty" />
+                                        </div>
                                     }
                                 }
                                 else
                                 {
-                                    <label class="caption" id="@DraftId(draft, "text-label")" for="@DraftId(draft, "text")">@T.ConditionValue</label>
-                                    <input id="@DraftId(draft, "text")"
-                                           class="input__field input__field--small"
-                                           type="text"
-                                           autocomplete="off"
-                                           maxlength="@SearchCondition.MaxTextLength"
-                                           aria-labelledby="@(legendId + " " + DraftId(draft, "text-label"))"
-                                           value="@draft.Text"
-                                           @onchange="change => draft.Text = change.Value as string ?? string.Empty" />
+                                    <div class="form-element input__container">
+                                        <label class="caption" id="@DraftId(draft, "text-label")" for="@DraftId(draft, "text")">@T.ConditionValue</label>
+                                        <input id="@DraftId(draft, "text")"
+                                               class="input__field input__field--small"
+                                               type="text"
+                                               autocomplete="off"
+                                               maxlength="@SearchCondition.MaxTextLength"
+                                               aria-labelledby="@(legendId + " " + DraftId(draft, "text-label"))"
+                                               value="@draft.Text"
+                                               @onchange="change => draft.Text = change.Value as string ?? string.Empty" />
+                                    </div>
                                 }
                             }
 
-                            <button class="hd-button-square button-square--ghost"
+                            <button class="hd-button-square button-square--ghost margin-bottom"
                                     type="button"
                                     @onclick="() => RemoveDraft(draft)">@T.RemoveCondition(number)</button>
 
@@ -443,17 +457,17 @@ else
 
                     @if (_drafts.Count < SearchCondition.MaxCount)
                     {
-                        <button class="hd-button-square button-square--ghost"
+                        <button class="hd-button-square button-square--ghost margin-bottom"
                                 type="button"
                                 @ref="_addConditionButton"
                                 @onclick="AddCondition">@T.AddCondition</button>
                     }
 
                     <div>
-                        <button class="hd-button-square button-square--ghost"
+                        <button class="hd-button-square button-square--ghost margin-right margin-bottom"
                                 type="button"
                                 @onclick="ResetConditions">@T.ResetConditions</button>
-                        <button class="hd-button-square button-square--primary"
+                        <button class="hd-button-square button-square--primary margin-bottom"
                                 type="button"
                                 @onclick="ShowConditionHitsAsync">@T.ShowConditionHits</button>
                     </div>

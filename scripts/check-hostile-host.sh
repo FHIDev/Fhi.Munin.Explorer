@@ -80,6 +80,9 @@ HOST_PROJECT="$ROOT/samples/HostileHost/HostileHost.csproj"
 # `kilde-drilldown`, `kilde-datasamling` and `variable-page` are the three detail pages whose fact
 # lists count their tracks against the container; `variable-page` presses a row's name, because a
 # `?variabelId=` load draws the drill-in's grid instead and measures nothing (Fhi.Metadata-2w7fx).
+#
+# `variables-advanced-form` and `variables-advanced-chips` are avansert søk: under real Stiler its
+# selects pushed the form 53px past 320, which the sample stylesheet never shows (Fhi.Metadata-ipok2.2).
 TARGETS=(
   "/::explorer-tabs"
   "/::explorer-list-tab"
@@ -120,6 +123,8 @@ TARGETS=(
   "/kilder::kilde-drilldown"
   "/kilder::kilde-datasamling"
   "/::variable-page"
+  "/::variables-advanced-form"
+  "/::variables-advanced-chips"
 )
 
 host_pid=""

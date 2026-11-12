@@ -396,11 +396,17 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .hd-button-square.margin-right { margin-right: 16px; }
 .hd-button-square.margin-bottom { margin-bottom: 16px; }
 
+/* Stiler's form rhythm for avansert søk: 16px between label-and-control pairs. Before `.form-fieldset`, as in
+   Stiler, whose `margin: 0` then wins over the group's 48px top margin (Fhi.Metadata-ipok2.2). */
+.form-group { margin-top: 48px; }
+.form-group .form-element { margin-bottom: 16px; }
+.input__container { display: flex; flex-direction: column; }
+
 /* components/_formelement.scss — the sort control is a fieldset so its legend can name the group. */
 .form-fieldset { border: none; margin: 0; padding: 0; }
 
 /* components/_input.scss as Stiler 0.1.208 compiles it, for avansert søk's condition fields and the rename
-   field: a bare input is a ~21px browser box, under WCAG 2.5.8's target size on a phone (Fhi.Metadata-ipok2.2). */
+   field. Its width: 100% is also what lets a condition's <select> shrink inside its fieldset (Fhi.Metadata-ipok2.2). */
 .input__field[type=email], .input__field[type=tel], .input__field[type=text], .input__field {
   color: rgb(38, 32, 69);
   font: normal 1.3125rem/160% var(--font);
