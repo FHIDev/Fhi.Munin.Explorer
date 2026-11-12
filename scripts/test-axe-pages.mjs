@@ -6,7 +6,7 @@ import { states } from './axe-states.mjs';
 import { criteriaOf, pageOf, pageOfState, resultLine, scanFinishedLine } from './axe-pages.mjs';
 
 test('AxePages_WhenAStateExists_ThenItNamesAPage', () => {
-  assert.deepEqual(Object.keys(states).filter(state => !pageOfState.has(state)), []);
+  assert.deepEqual(Object.keys(states).filter(state => !pageOfState.has(state)), [], 'give each of these its Varde page in scripts/axe-pages.mjs');
 });
 
 test('AxePages_WhenTheTableNamesAState_ThenTheStateExists', () => {
@@ -36,4 +36,7 @@ test('CompletionLines_WhenTheScanAndTheGateFinish_ThenBothAreWritten', () => {
   const gate = readFileSync(new URL('./check-accessibility.sh', import.meta.url), 'utf8');
   assert.match(scan, /appendFileSync\(resultsFile, `\$\{JSON\.stringify\(scanFinishedLine\)\}\\n`\)/);
   assert.match(gate, /printf '\{"gate":"finished","axeRuns":%s\}\\n' "\$axe_runs" >> "\$AXE_RESULTS_FILE"/);
+  // Only when both passes reached a verdict, and counting the picker-off pass where it runs.
+  assert.match(gate, /\[ "\$scan_status" -le 1 \] && \[ "\$off_status" -le 1 \]; then\n  printf '\{"gate"/);
+  assert.match(gate, /axe_runs=1\nif \[ -z "\$\{SCAN_SHARD:-\}" \] \|\| \[ "\$\{SCAN_SHARD%%\/\*\}" = 1 \]; then\n  axe_runs=2/);
 });

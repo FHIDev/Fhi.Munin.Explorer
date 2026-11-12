@@ -10,7 +10,8 @@
 #
 # Usage:  ./scripts/check-accessibility.sh   (SCAN_SHARD=k/n runs the k-th of n slices of the axe states, as
 #         CI does with 4, and the 320px reflow and the code-picker-off pass in slice 1 only; unset runs everything)
-#         AXE_RESULTS_FILE=<path> also appends one JSON line per axe scan, with its Varde page key (DevInfra-og3.42).
+#         AXE_RESULTS_FILE=<path> also appends one JSON line per axe scan, with its Varde page key, and the completion
+#         lines a caller needs before trusting them (DevInfra-og3.42).
 # Needs:  dotnet, node (for npx), and a Chrome/Chromium on PATH.
 
 set -euo pipefail
@@ -362,9 +363,10 @@ if [ "$reflow_status" -ne 0 ] && [ "$reflow_status" -ne 2 ]; then
   findings=1
 fi
 
-# Both axe passes reached their verdict, so a caller reading AXE_RESULTS_FILE may trust its lines (DevInfra-og3.42).
+# Every axe pass this run made reached its verdict, so a caller reading AXE_RESULTS_FILE may trust its lines (DevInfra-og3.42).
 if [ -n "${AXE_RESULTS_FILE:-}" ] && [ "$scan_status" -le 1 ] && [ "$off_status" -le 1 ]; then
-  printf '{"gate":"finished","axeRuns":%s}\n' "$axe_runs" >> "$AXE_RESULTS_FILE"
+  printf '{"gate":"finished","axeRuns":%s}\n' "$axe_runs" >> "$AXE_RESULTS_FILE" \
+    || { echo "could not write $AXE_RESULTS_FILE - TOOLING failure." >&2; exit 2; }
 fi
 
 echo

@@ -547,7 +547,8 @@ The lines are on at first render since `Fhi.Metadata-dfygj`, which is why that s
 unfolds and no longer presses the button — a press there would turn them off and hand this check
 back the blind spot it was written to close.
 The states it does **not** enter are listed above `TARGETS` in `check-accessibility.sh`, and that
-list is the honest bound on a green run — extend the two together, never one alone.
+list is the honest bound on a green run — extend the two together, never one alone, and give a new
+state its Varde page in `scripts/axe-pages.mjs`, or the gate stops as TOOLING.
 
 **And it scans data, not an empty shell.** The sample host reads `scripts/axe-stub-api.mjs`, which
 serves the contract-drift fixtures, because `runa.munin.skytest.fhi.no` is geo-filtered and a
