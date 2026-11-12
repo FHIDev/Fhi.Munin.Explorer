@@ -3966,7 +3966,11 @@ table.munin-explorer-data-list tbody th {
   border: 1px solid rgb(230, 230, 237);
   border-radius: 8px;
   margin: 0 0 24px;
-  padding: 24px;
+  padding: 24px 24px 15px;
+}
+
+.munin-explorer-advanced-search .form-fieldset .form-fieldset > .munin-explorer-advanced-search__action {
+  margin-top: 15px;
 }
 
 .munin-explorer-advanced-search__action {
