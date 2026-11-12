@@ -319,7 +319,8 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
     [Fact]
     public async Task AKildeThatArrivesLate_DoesNotTakeOverTheDatasamlingOpenedSince()
     {
-        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        // Continuations inline deliberately - see AnswerStalledCodes in VariableSearchTest.
+        var gate = new TaskCompletionSource();
         var client = new OwnersClient { KildeGate = gate };
         var cut = OpenRow(client);
 
@@ -341,7 +342,7 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
         var client = new OwnersClient { FirstSearchGate = gate };
         Services.AddSingleton<IMuninExplorerClient>(client);
         Services.AddScoped<VariableListState>();
-        // A held clock: the 500 ms slow-load notice would re-render the buttons from another thread while the search is held.
+        // A held clock: the slow-load notice would re-render the buttons from another thread while the search is held.
         Services.AddSingleton<TimeProvider>(new ManualClock());
         this.SetRendererInfo(new RendererInfo("Server", true));
         Services.GetRequiredService<NavigationManager>().NavigateTo("/variabler?search=hjerte");
