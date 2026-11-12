@@ -29,6 +29,14 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 2.20.0 — 2026-11-12
+
+### Fixed
+
+- **A link to a section of a kilde or variable page lands on it.** Opening an address with a section in it, such as `?kilde=kreg#munin-explorer-datacollections`, used to stay at the top of the page. The explorer renders without prerendering, so the section did not exist yet when the browser tried to jump to it. The explorer now jumps to the section once it is drawn, unless the reader has already scrolled or pressed a key. The jump is instant and does not move focus. (ADO 123780)
+- **A datasamling's code in a link may leave out «K_», as a kilde's code may.** `?kilde=kreg&datasamling=KREG.CRC` opens K_KREG.CRC, as `datasamling=K_KREG.CRC` and `datasamling=kreg.crc` do, in any case; the address keeps the form the reader followed. «K_» is taken off the start of the code only: `K_KREG.K_CRC` shows the not-found view. (Fhi.Metadata-l9l2n.173)
+- **The saved list's name fields submit on Enter, and the rename form can be shut.** Enter in «Navn på ny liste», «Nytt navn på listen» and «Navn på kopien» does what the button beside it does, once, also when pressed again while the call is out. The rename form has «Avbryt», and Escape in it shuts it as well; either puts focus back on «Flere valg». (Fhi.Metadata-mhqx0.16)
+
 ## 2.19.0 — 2026-11-11
 
 ### Added
