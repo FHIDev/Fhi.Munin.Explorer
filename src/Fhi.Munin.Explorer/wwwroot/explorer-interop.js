@@ -168,6 +168,8 @@ export function disconnectHeroFacts(barId) {
 
 // One scroll-spy per mounted contents column, keyed by the column's id, each holding its own undo.
 const spies = new Map();
+// Once per page load: a deep link's section is drawn after the browser's own jump at load found nothing (ADO 123780).
+let deepLinkFollowed = false;
 
 /** Marks the contents nav entry in `columnId` whose section the reader is in with
  * `aria-current="location"`, and no other. Calling it again for the same column replaces the spy. */
@@ -267,7 +269,14 @@ export function observeContents(columnId) {
     window.addEventListener(gesture, unpin, { capture: true, passive: true });
   }
 
+  const stopFollow = followDeepLink(page, (id) => {
+    spy.jump = id;
+    settleJump();
+    schedule();
+  });
+
   spies.set(columnId, () => {
+    stopFollow();
     cancelAnimationFrame(spy.frame);
     clearTimeout(spy.settle);
     rendered.disconnect();
@@ -282,6 +291,54 @@ export function observeContents(columnId) {
   });
 
   markCurrent(spy);
+}
+
+/**
+ * Jumps once to the section `location.hash` names when it appears in `page`, the way the browser would have at load had it
+ * been drawn: instantly, without moving focus, and not at all once the reader has scrolled, pressed a key or touched
+ * the page. Gives up after ten seconds. Returns a function that stops waiting.
+ */
+function followDeepLink(page, jumped) {
+  const id = location.hash.length > 1 ? decodeURIComponent(location.hash.slice(1)) : '';
+  if (deepLinkFollowed || id === '') {
+    return () => {};
+  }
+  deepLinkFollowed = true;
+
+  const root = document.scrollingElement;
+  if ((root?.scrollTop ?? 0) > 0) {
+    return () => {};
+  }
+
+  let timer = 0;
+  let watcher = null;
+  const stop = () => {
+    clearTimeout(timer);
+    watcher?.disconnect();
+    for (const gesture of ['wheel', 'touchstart', 'keydown']) {
+      window.removeEventListener(gesture, stop, { capture: true });
+    }
+  };
+  const tryJump = () => {
+    const section = page.querySelector(`#${CSS.escape(id)}`);
+    if (section === null) {
+      return false;
+    }
+    stop();
+    section.scrollIntoView({ block: 'start', behavior: 'instant' });
+    jumped(id);
+    return true;
+  };
+
+  if (!tryJump()) {
+    watcher = new MutationObserver(tryJump);
+    watcher.observe(page, { childList: true, subtree: true });
+    timer = setTimeout(stop, 10_000);
+    for (const gesture of ['wheel', 'touchstart', 'keydown']) {
+      window.addEventListener(gesture, stop, { capture: true, passive: true });
+    }
+  }
+  return stop;
 }
 
 /**

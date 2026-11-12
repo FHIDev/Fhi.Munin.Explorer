@@ -1,0 +1,2 @@
+category: Fixed
+- **A link to a section of a kilde or variable page lands on it.** Opening an address with a section in it, such as `?kilde=kreg#munin-explorer-datacollections`, used to stay at the top of the page. The explorer renders without prerendering, so the section did not exist yet when the browser tried to jump to it. The explorer now jumps to the section once it is drawn, unless the reader has already scrolled or pressed a key. The jump is instant and does not move focus. (ADO 123780)
