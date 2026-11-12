@@ -1586,7 +1586,7 @@
     },
     {
       "id": "eb0f1463-4748-4b45-a8f9-39530a6e65a4",
-      "code": null,
+      "code": "",
       "name": "Pasientsvar kommunalt tilbud",
       "nameEn": null,
       "kortNavn": "ALS",
@@ -1619,7 +1619,7 @@
     },
     {
       "id": "6430a851-358a-45c0-a252-565312955f40",
-      "code": null,
+      "code": "",
       "name": "Pasientsvar symptomer",
       "nameEn": null,
       "kortNavn": "ALS",
@@ -1652,7 +1652,7 @@
     },
     {
       "id": "91c1b0ce-e4d5-4bb6-bfa1-515cd6cb05ee",
-      "code": null,
+      "code": "",
       "name": "Samtykkeskjema",
       "nameEn": null,
       "kortNavn": "ALS",
@@ -1685,7 +1685,7 @@
     },
     {
       "id": "9190f534-9b61-427c-b9cc-fd9959ec589e",
-      "code": null,
+      "code": "",
       "name": "Tverrfaglighet",
       "nameEn": null,
       "kortNavn": "ALS",
@@ -1718,7 +1718,7 @@
     },
     {
       "id": "375edec8-3cf3-4f9f-9e63-ecc8285aa7d9",
-      "code": null,
+      "code": "",
       "name": "Utredning",
       "nameEn": null,
       "kortNavn": "ALS",
