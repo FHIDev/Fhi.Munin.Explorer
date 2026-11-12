@@ -29,6 +29,12 @@ public partial class VariableSearch
     // Null until asked for; empty when the API has none to offer or the call failed.
     private IReadOnlyList<ConditionField>? _conditionFields;
 
+    // A failure is not an answer: the next open asks again, and a link's conditions are not judged by it.
+    private bool _conditionFieldsFailed;
+
+    // Bumped on every open, so a slow fields answer from an earlier open adds no rows to a later one.
+    private int _advancedOpenings;
+
     private readonly List<ConditionDraft> _drafts = [];
     private int _nextDraftKey;
 
@@ -60,7 +66,14 @@ public partial class VariableSearch
             return;
         }
 
-        var kept = AdvancedSearchOffered ? await AcceptedAsync(_filter.Conditions) : [];
+        IReadOnlyList<SearchCondition> kept = [];
+        if (AdvancedSearchOffered)
+        {
+            var fields = await ConditionFieldsAsync();
+            kept = _conditionFieldsFailed
+                ? _filter.Conditions
+                : [.. _filter.Conditions.Where(condition => FieldOf(fields, condition.Field)?.Accepts(condition) == true)];
+        }
 
         if (kept.Count != _filter.Conditions.Count)
         {
@@ -74,15 +87,9 @@ public partial class VariableSearch
         }
     }
 
-    private async Task<IReadOnlyList<SearchCondition>> AcceptedAsync(IReadOnlyList<SearchCondition> conditions)
-    {
-        var fields = await ConditionFieldsAsync();
-        return [.. conditions.Where(condition => FieldOf(fields, condition.Field)?.Accepts(condition) == true)];
-    }
-
     private async Task<IReadOnlyList<ConditionField>> ConditionFieldsAsync()
     {
-        if (_conditionFields is { } known)
+        if (_conditionFields is { } known && !_conditionFieldsFailed)
         {
             return known;
         }
@@ -90,12 +97,14 @@ public partial class VariableSearch
         try
         {
             _conditionFields = await Client.GetConditionFieldsAsync();
+            _conditionFieldsFailed = false;
         }
         catch (Exception ex)
         {
             // Warning: the search still works without the form, and the form says it is unavailable.
             Log?.LogWarning(ex, "could not load the avansert søk fields");
             _conditionFields = [];
+            _conditionFieldsFailed = true;
         }
 
         return _conditionFields;
@@ -118,14 +127,19 @@ public partial class VariableSearch
         _advancedOpen = true;
         _drafts.Clear();
         _draftFieldSelects.Clear();
+        var opening = ++_advancedOpenings;
 
         var fields = await ConditionFieldsAsync();
-        if (fields.Count == 0)
+        if (fields.Count == 0 || opening != _advancedOpenings || !_advancedOpen)
         {
             return;
         }
 
         await LoadVocabularyAsync();
+        if (opening != _advancedOpenings || !_advancedOpen)
+        {
+            return;
+        }
 
         foreach (var condition in _filter.Conditions)
         {
@@ -228,6 +242,11 @@ public partial class VariableSearch
     private void RemoveDraft(ConditionDraft draft)
     {
         var index = _drafts.IndexOf(draft);
+        if (index < 0)
+        {
+            return;
+        }
+
         _drafts.RemoveAt(index);
         _draftFieldSelects.Remove(draft.Key);
 
@@ -325,25 +344,37 @@ public partial class VariableSearch
         return ConditionField.TryReadRange(range, out _, out _) ? (range, null) : (null, T.ConditionRangeInvalid);
     }
 
-    /// <summary>Open the form from the chip row; the chip row stays, so focus moves into the form.</summary>
-    private Task EditAdvancedSearchAsync() => OpenAdvancedSearchAsync();
+    /// <summary>Open the form from the chip row, or, when it is open already, keep its rows and move focus into it.</summary>
+    private Task EditAdvancedSearchAsync()
+    {
+        if (!_advancedOpen)
+        {
+            return OpenAdvancedSearchAsync();
+        }
+
+        _focusDraft = _drafts.FirstOrDefault()?.Key;
+        _focusAddCondition = _focusDraft is null;
+        return Task.CompletedTask;
+    }
 
     /// <summary>One chip per condition, after the facets', each removing only itself.</summary>
     private IEnumerable<ActiveFilters.Chip> ConditionChips()
     {
         var conditions = Pending.Conditions;
 
-        for (var index = 0; index < conditions.Count; index++)
+        foreach (var condition in conditions)
         {
-            var position = index;
-            var text = ConditionReading(conditions[index]);
-
+            var text = ConditionReading(condition);
             yield return new ActiveFilters.Chip(text, T.RemoveFilter(text), null, null,
-                () => RemoveFilterAsync(() => ApplyFilterAsync(Pending with
-                {
-                    Conditions = [.. Pending.Conditions.Where((_, i) => i != position)]
-                })));
+                () => RemoveFilterAsync(() => RemoveConditionAsync(condition)));
         }
+    }
+
+    // By value, not position: a second press of the same chip finds it gone and removes nothing more.
+    private Task RemoveConditionAsync(SearchCondition condition)
+    {
+        var conditions = Pending.Conditions.ToList();
+        return conditions.Remove(condition) ? ApplyFilterAsync(Pending with { Conditions = conditions }) : Task.CompletedTask;
     }
 
     // A token with no word here reads as itself, so a field the API adds later still shows.
@@ -357,16 +388,19 @@ public partial class VariableSearch
         var field = FieldName(condition.Field);
         var op = OperatorName(condition.Operator);
 
+        var known = _conditionFields is { } fields ? FieldOf(fields, condition.Field) : null;
+        var dated = known is null || known.Type == ConditionField.DateType;
+
         string value;
-        if (ConditionField.TryReadRange(condition.Value, out var from, out var to))
+        if (dated && ConditionField.TryReadRange(condition.Value, out var from, out var to))
         {
             value = $"{CatalogueDate.Day(from, Language)}–{CatalogueDate.Day(to, Language)}";
         }
-        else if (ConditionField.TryReadDay(condition.Value, out var day))
+        else if (dated && ConditionField.TryReadDay(condition.Value, out var day))
         {
             value = CatalogueDate.Day(day, Language);
         }
-        else if (_conditionFields is { } fields && FieldOf(fields, condition.Field) is { IsCodeList: true })
+        else if (known is { IsCodeList: true })
         {
             value = string.Join(", ", ConditionField.Codes(condition.Value).Select(code => CodeName(condition.Field, code)));
         }

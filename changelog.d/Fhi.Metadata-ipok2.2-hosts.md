@@ -4,11 +4,11 @@ category: Notes for hosts
   filter without them, so a host mirroring it into the address bar drops them too. It needs a Munin API with
   `GET api/explorer/variables/vilkar`; against an older one the form says avansert søk is unavailable. The form wears
   names Stiler already defines (`form-fieldset`, `form-element__label`, `caption`, `infobox`,
-  `hd-button-square` with `margin-bottom` and `margin-right`, `form-group` and `form-element input__container` around
-  each label and its control, `input__field` on its selects and its text and date fields, `input__field--small` on
+  `hd-button-square` with `margin-bottom` and `margin-right`, `form-group` on the form and `form-element
+  input__container` around each label and its control, `input__field` on its selects and its text and date fields, `input__field--small` on
   the text one) and the existing chip names, plus two names of its own: `munin-explorer-advanced-search` on the box
   around the form, which wants a white background, a 1px border, 8px radius, 24px padding (15px at the bottom) and
-  24px below it, so the toggle under it is not read as one of its buttons; and `munin-explorer-advanced-search__action`
+  24px below it, so the «Skjul filtre» toggle under it is not read as one of its buttons; and `munin-explorer-advanced-search__action`
   on «Fjern betingelse» and «Legg til betingelse», which wants `width: 12.75rem; max-width: 100%` so they line up with
   «Verdi», and 15px above «Fjern betingelse» inside a condition (Stiler: Fhi.Metadata-ipok2.9). A host with its own
   `IMuninExplorerClient` gets no fields until it implements `GetConditionFieldsAsync`.

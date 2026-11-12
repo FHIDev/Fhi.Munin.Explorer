@@ -278,17 +278,25 @@ export const states = {
     await from.fill('2010-01-01');
     await from.dispatchEvent('change');
     await press(page, 'Vis treff');
-    await page.locator('[role=alert] .infobox').first().waitFor({ state: 'visible', timeout: findTimeout });
+    await page.locator('[id^="munin-explorer-condition-"][id$="-error"] .infobox').first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
-  // The chip row with a condition beside a facet value, and «Endre avansert søk» before the clear-all.
+  // Two condition chips, one with every tilgangsnivå code so it wraps at 320, and «Endre avansert søk».
   'variables-advanced-chips': async page => {
     await openAdvancedSearch(page);
     const value = conditionControl(page, 'textbox', 'Betingelse 1 Verdi');
     await value.fill('blodtrykk');
     await value.dispatchEvent('change');
+    await press(page, 'Legg til betingelse');
+    await chooseConditionField(page, 2, 'tilgangsniva', 'group', 'Betingelse 2 Verdi');
+    for (const box of await conditionControl(page, 'group', 'Betingelse 2 Verdi').getByRole('checkbox').all()) {
+      await box.check();
+    }
     await press(page, 'Vis treff');
     await page.locator('.munin-explorer-filters__chip', { hasText: 'Navn inneholder «blodtrykk»' })
+      .waitFor({ state: 'visible', timeout: findTimeout });
+    await page.locator('.munin-explorer-filters__chip', { hasText: 'Tilgangsnivå' })
       .waitFor({ state: 'visible', timeout: findTimeout });
     await page.getByRole('button', { name: 'Endre avansert søk', exact: true })
       .waitFor({ state: 'visible', timeout: findTimeout });

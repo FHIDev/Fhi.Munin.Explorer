@@ -489,7 +489,7 @@ public sealed record VariableFilter
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Written out rather than left to the record's own equality, which would compare the eleven
+    /// Written out rather than left to the record's own equality, which would compare the twelve
     /// lists by reference: <c>filter with { KildeIds = [theSameId] }</c> would come back unequal to
     /// the filter it was copied from, so a caller asking "did anything actually change" — before a
     /// fetch, or before writing a URL — would be told yes every time.

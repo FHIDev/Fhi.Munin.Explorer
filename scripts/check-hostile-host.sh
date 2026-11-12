@@ -81,8 +81,8 @@ HOST_PROJECT="$ROOT/samples/HostileHost/HostileHost.csproj"
 # lists count their tracks against the container; `variable-page` presses a row's name, because a
 # `?variabelId=` load draws the drill-in's grid instead and measures nothing (Fhi.Metadata-2w7fx).
 #
-# `variables-advanced-form` and `variables-advanced-chips` are avansert søk: under real Stiler its
-# selects pushed the form 53px past 320, which the sample stylesheet never shows (Fhi.Metadata-ipok2.2).
+# `variables-advanced-form` and `variables-advanced-chips` are avansert søk: its selects must shrink inside a
+# 320 column under real Stiler, which the sample stylesheet cannot show (Fhi.Metadata-ipok2.2).
 TARGETS=(
   "/::explorer-tabs"
   "/::explorer-list-tab"
@@ -354,7 +354,7 @@ reflow "" "/::tree-collapsed" "/::tree-populated" "/::tree-empty-results" "/::tr
 reflow "" "/::filters-level-lines" "/::filters-node-icons-off"
 # The three detail pages' fact lists, one track at 320 (Fhi.Metadata-2w7fx).
 reflow "" "/kilder::kilde-drilldown" "/kilder::kilde-datasamling" "/::variable-page"
-# Avansert søk's selects once pushed its form 53px past 320 under Stiler (Fhi.Metadata-ipok2.2).
+# Avansert søk's form and its wrapping chips, whose selects must shrink inside 320 under Stiler (Fhi.Metadata-ipok2.2).
 reflow "" "/::variables-advanced-form" "/::variables-advanced-chips"
 # 767 is the widest width Stiler still draws the kilde cards at (Fhi.Metadata-n8ygv), 1279 the list's (Fhi.Metadata-b2w2z).
 REFLOW_WIDTH=767 reflow "" "/kilder::kilde-hierarchy-metadata"

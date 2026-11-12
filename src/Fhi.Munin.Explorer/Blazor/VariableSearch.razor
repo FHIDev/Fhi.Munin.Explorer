@@ -312,7 +312,7 @@ else
             <button class="hd-button-square button-square--ghost margin-bottom"
                     type="button"
                     aria-expanded="@(_advancedOpen ? "true" : "false")"
-                    aria-controls="@AdvancedPanelId"
+                    aria-controls="@(_advancedOpen ? AdvancedPanelId : null)"
                     @ref="_advancedToggle"
                     @onclick="ToggleAdvancedSearchAsync">@AdvancedLabel</button>
         </div>

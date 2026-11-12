@@ -5,6 +5,7 @@ using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -164,7 +165,7 @@ public class AdvancedSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public async Task GetConditionFieldsAsync_WhenTheApiPredatesAvansertSok_ThenTheListIsEmpty()
+    public async Task GetConditionFieldsAsync_WhenTheApiPredatesAdvancedSearch_ThenTheListIsEmpty()
     {
         var client = new MuninExplorerClient(new HttpClient(StubHttpHandler.Status(HttpStatusCode.NotFound))
         {
@@ -178,7 +179,7 @@ public class AdvancedSearchTest : ExplorerTestContext
     [InlineData(null, false)]
     [InlineData("false", false)]
     [InlineData("true", true)]
-    public void AddMuninExplorer_WhenTheDelegateOverloadsHostHasTheKey_ThenAvansertSokFollowsIt(string? value, bool on)
+    public void AddMuninExplorer_WhenTheDelegateOverloadsHostHasTheKey_ThenAdvancedSearchFollowsIt(string? value, bool on)
     {
         var services = new ServiceCollection();
         var settings = new Dictionary<string, string?>();
@@ -197,7 +198,7 @@ public class AdvancedSearchTest : ExplorerTestContext
     [InlineData(null, false)]
     [InlineData("true", true)]
     [InlineData("yes", false)]
-    public void AddMuninExplorer_WhenTheConfigurationOverloadsSectionHasTheKey_ThenAvansertSokFollowsIt(string? value, bool on)
+    public void AddMuninExplorer_WhenTheConfigurationOverloadsSectionHasTheKey_ThenAdvancedSearchFollowsIt(string? value, bool on)
     {
         var settings = new Dictionary<string, string?> { ["MuninExplorer:ApiBaseUrl"] = "https://explorer.munin.skytest.fhi.no" };
         if (value is not null)
@@ -213,7 +214,7 @@ public class AdvancedSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void AddMuninExplorer_WhenTheDelegateSetsAvansertSok_ThenItWinsOverTheKey()
+    public void AddMuninExplorer_WhenTheDelegateSetsAdvancedSearch_ThenItWinsOverTheKey()
     {
         var services = new ServiceCollection();
         services.AddSingleton<IConfiguration>(new ConfigurationBuilder()
@@ -405,7 +406,7 @@ public class AdvancedSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Form_WhenTheApiOffersNoFields_ThenItSaysAvansertSokIsUnavailable()
+    public void Form_WhenTheApiOffersNoFields_ThenItSaysAdvancedSearchIsUnavailable()
     {
         var client = new ConditionClient { Answer = [] };
         var cut = RenderWith(client);
@@ -481,5 +482,128 @@ public class AdvancedSearchTest : ExplorerTestContext
         Assert.Contains("Valid from before 2015-06-01", cut.Markup, StringComparison.Ordinal);
         Assert.Contains("Name is “BMI”", cut.Markup, StringComparison.Ordinal);
         Assert.Equal("Advanced search (2)", cut.FindAll("button[aria-expanded]").First(b => b.TextContent.StartsWith("Advanced", StringComparison.Ordinal)).TextContent);
+    }
+
+    // --- Focus: where a keyboard reader lands after each press ---
+
+    // bUnit writes an element's reference only into the render that created it, so each is noted while it shows.
+    private readonly Dictionary<string, string> _references = [];
+
+    private void Remember(IRenderedComponent<VariableSearch> cut)
+    {
+        foreach (var element in cut.FindAll("select, button"))
+        {
+            if (element.GetAttribute("blazor:elementReference") is { Length: > 0 } reference)
+            {
+                _references[Key(element)] = reference;
+            }
+        }
+    }
+
+    // A button with no id is known by its words, less the count «Avansert søk (1)» gains once a condition applies.
+    private static string Key(IElement element) => element.Id is { Length: > 0 } id
+        ? id
+        : $"{element.TagName}:{System.Text.RegularExpressions.Regex.Replace(element.TextContent.Trim(), @" \(\d+\)$", "")}";
+
+    private void AssertFocusOn(IRenderedComponent<VariableSearch> cut, Func<IElement> target) =>
+        cut.WaitForAssertion(() =>
+        {
+            Remember(cut);
+            var focused = (ElementReference)JSInterop.Invocations["Blazor._internal.domWrapper.focus"][^1].Arguments[0]!;
+            Assert.Equal(_references[Key(target())], focused.Id);
+        });
+
+    private static IElement FieldList(IElement row) => row.QuerySelector("select")!;
+
+    private IRenderedComponent<VariableSearch> OpenWithRows(int rows)
+    {
+        var cut = RenderWith(new ConditionClient());
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Remember(cut);
+        Toggle(cut)!.Click();
+        Remember(cut);
+        for (var row = 1; row < rows; row++)
+        {
+            Button(cut, "Legg til betingelse").Click();
+            Remember(cut);
+        }
+
+        cut.WaitForAssertion(() => Assert.Equal(rows, Rows(cut).Count));
+        Remember(cut);
+        return cut;
+    }
+
+    [Fact]
+    public void Open_WhenTheFormOpens_ThenFocusGoesToTheFirstRowsFieldList()
+    {
+        var cut = OpenWithRows(1);
+
+        AssertFocusOn(cut, () => FieldList(Rows(cut)[0]));
+    }
+
+    [Fact]
+    public void AddCondition_WhenARowIsAdded_ThenFocusGoesToItsFieldList()
+    {
+        var cut = OpenWithRows(2);
+
+        AssertFocusOn(cut, () => FieldList(Rows(cut)[1]));
+    }
+
+    [Fact]
+    public void RemoveDraft_WhenAMiddleRowGoes_ThenFocusGoesToTheRowTakingItsPlace()
+    {
+        var cut = OpenWithRows(3);
+
+        Button(cut, "Fjern betingelse 2").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(2, Rows(cut).Count));
+        AssertFocusOn(cut, () => FieldList(Rows(cut)[1]));
+    }
+
+    [Fact]
+    public void RemoveDraft_WhenTheLastRowGoes_ThenFocusGoesToTheRowBefore()
+    {
+        var cut = OpenWithRows(2);
+
+        Button(cut, "Fjern betingelse 2").Click();
+
+        cut.WaitForAssertion(() => Assert.Single(Rows(cut)));
+        AssertFocusOn(cut, () => FieldList(Rows(cut)[0]));
+    }
+
+    [Fact]
+    public void RemoveDraft_WhenTheOnlyRowGoes_ThenFocusGoesToTheAddButton()
+    {
+        var cut = OpenWithRows(1);
+
+        Button(cut, "Fjern betingelse 1").Click();
+
+        cut.WaitForAssertion(() => Assert.Empty(Rows(cut)));
+        AssertFocusOn(cut, () => Button(cut, "Legg til betingelse"));
+    }
+
+    [Fact]
+    public void ShowHits_WhenARowIsRefused_ThenFocusGoesToThatRowsFieldList()
+    {
+        var cut = OpenWithRows(2);
+        Rows(cut)[0].QuerySelector("input[type=text]")!.Change("blodtrykk");
+        Rows(cut)[1].QuerySelector("select")!.Change("gyldigFra");
+        Rows(cut)[1].QuerySelectorAll("input[type=date]")[0].Change("2010-01-01");
+
+        Button(cut, "Vis treff").Click();
+
+        AssertFocusOn(cut, () => FieldList(Rows(cut)[1]));
+    }
+
+    [Fact]
+    public void ShowHits_WhenTheRowsApply_ThenFocusReturnsToTheToggle()
+    {
+        var cut = OpenWithRows(1);
+        Rows(cut)[0].QuerySelector("input[type=text]")!.Change("blodtrykk");
+
+        Button(cut, "Vis treff").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("false", Toggle(cut)!.GetAttribute("aria-expanded")));
+        AssertFocusOn(cut, () => Toggle(cut)!);
     }
 }

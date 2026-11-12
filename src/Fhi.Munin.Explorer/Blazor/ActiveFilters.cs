@@ -141,21 +141,21 @@ internal static class ActiveFilters
 
         if (edit is { } action)
         {
-            builder.OpenElement(22, "button");
-            builder.AddAttribute(23, "class", "hd-button-square button-square--ghost");
-            builder.AddAttribute(24, "type", "button");
-            builder.AddAttribute(25, "onclick", EventCallback.Factory.Create(receiver, action.Press));
-            builder.AddContent(26, action.Label);
+            builder.OpenElement(17, "button");
+            builder.AddAttribute(18, "class", "hd-button-square button-square--ghost");
+            builder.AddAttribute(19, "type", "button");
+            builder.AddAttribute(20, "onclick", EventCallback.Factory.Create(receiver, action.Press));
+            builder.AddContent(21, action.Label);
             builder.CloseElement();
         }
 
         // Last, after the chips, so removing one moves nothing the reader is aiming at — the rule
         // the selection bar follows for the same reason.
-        builder.OpenElement(17, "button");
-        builder.AddAttribute(18, "class", "hd-button-square button-square--ghost");
-        builder.AddAttribute(19, "type", "button");
-        builder.AddAttribute(20, "onclick", EventCallback.Factory.Create(receiver, clearAll));
-        builder.AddContent(21, clearAllLabel);
+        builder.OpenElement(22, "button");
+        builder.AddAttribute(23, "class", "hd-button-square button-square--ghost");
+        builder.AddAttribute(24, "type", "button");
+        builder.AddAttribute(25, "onclick", EventCallback.Factory.Create(receiver, clearAll));
+        builder.AddContent(26, clearAllLabel);
         builder.CloseElement();
 
         builder.CloseElement();
