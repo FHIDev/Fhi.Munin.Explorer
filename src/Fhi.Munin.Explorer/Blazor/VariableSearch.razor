@@ -393,6 +393,7 @@ else
                                     var between = draft.Operator == ConditionField.BetweenOperator;
                                     <label class="caption" id="@DraftId(draft, "from-label")" for="@DraftId(draft, "from")">@(between ? T.ConditionFrom : T.ConditionValue)</label>
                                     <input id="@DraftId(draft, "from")"
+                                           class="input__field"
                                            type="date"
                                            autocomplete="off"
                                            aria-labelledby="@(legendId + " " + DraftId(draft, "from-label"))"
@@ -403,6 +404,7 @@ else
                                     {
                                         <label class="caption" id="@DraftId(draft, "to-label")" for="@DraftId(draft, "to")">@T.ConditionTo</label>
                                         <input id="@DraftId(draft, "to")"
+                                               class="input__field"
                                                type="date"
                                                autocomplete="off"
                                                aria-labelledby="@(legendId + " " + DraftId(draft, "to-label"))"
@@ -415,6 +417,7 @@ else
                                 {
                                     <label class="caption" id="@DraftId(draft, "text-label")" for="@DraftId(draft, "text")">@T.ConditionValue</label>
                                     <input id="@DraftId(draft, "text")"
+                                           class="input__field input__field--small"
                                            type="text"
                                            autocomplete="off"
                                            maxlength="@SearchCondition.MaxTextLength"
