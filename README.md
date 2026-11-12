@@ -921,6 +921,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-absent` | meaning |
   | `munin-explorer-access` | id |
   | `munin-explorer-accesscriteria` | id |
+  | `munin-explorer-advanced__action` | handle |
   | `munin-explorer-alert` | handle |
   | `munin-explorer-breadcrumb` | meaning |
   | `munin-explorer-codelists` | id |

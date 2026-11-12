@@ -354,6 +354,8 @@ reflow "" "/::tree-collapsed" "/::tree-populated" "/::tree-empty-results" "/::tr
 reflow "" "/::filters-level-lines" "/::filters-node-icons-off"
 # The three detail pages' fact lists, one track at 320 (Fhi.Metadata-2w7fx).
 reflow "" "/kilder::kilde-drilldown" "/kilder::kilde-datasamling" "/::variable-page"
+# Avansert søk's selects once pushed its form 53px past 320 under Stiler (Fhi.Metadata-ipok2.2).
+reflow "" "/::variables-advanced-form" "/::variables-advanced-chips"
 # 767 is the widest width Stiler still draws the kilde cards at (Fhi.Metadata-n8ygv), 1279 the list's (Fhi.Metadata-b2w2z).
 REFLOW_WIDTH=767 reflow "" "/kilder::kilde-hierarchy-metadata"
 REFLOW_WIDTH=1279 reflow "" "/::explorer-list-tab" "/::list-row-panel" "/::list-row-notes"

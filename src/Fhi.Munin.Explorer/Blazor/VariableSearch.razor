@@ -441,7 +441,7 @@ else
                                 }
                             }
 
-                            <button class="hd-button-square button-square--ghost margin-bottom"
+                            <button class="hd-button-square button-square--ghost margin-bottom munin-explorer-advanced__action"
                                     type="button"
                                     @onclick="() => RemoveDraft(draft)">@T.RemoveCondition(number)</button>
 
@@ -457,7 +457,7 @@ else
 
                     @if (_drafts.Count < SearchCondition.MaxCount)
                     {
-                        <button class="hd-button-square button-square--ghost margin-bottom"
+                        <button class="hd-button-square button-square--ghost margin-bottom munin-explorer-advanced__action"
                                 type="button"
                                 @ref="_addConditionButton"
                                 @onclick="AddCondition">@T.AddCondition</button>
