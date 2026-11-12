@@ -601,17 +601,19 @@ jobs:
       # this host pass it as a BuildKit secret.
       #
       # NOTHING IN NUGET READS THIS VARIABLE. It is read by the Azure Artifacts Credential
-      # Provider, a separate plugin, which the next step installs because a GitHub-hosted runner
+      # Provider, a separate plugin, which a later step installs because a GitHub-hosted runner
       # does not have one. Without the plugin the credential sits in the environment with nothing
       # to consume it, the restore falls back to anonymous, and the feed answers NU1301 — which
       # reads like a missing package rather than a missing plugin. This job spent its first real
       # run failing exactly that way, and it passed locally throughout, because the developer
       # machine had the provider installed for helsedata's own restore. A local success proves the
       # PAT and the feed URL and says nothing at all about the runner.
-      - name: Authenticate to helsedata's feed
+      #
+      # This step asks only whether the secret is there. The credential itself is handed over after the provider is installed, so
+      # nothing this job downloads ever runs with it in its environment (Fhi.Metadata-l9l2n.178).
+      - name: Check for helsedata's feed credential
         id: feed
         env:
-          FEED: https://pkgs.dev.azure.com/fhi/Fhi.Helsedata/_packaging/Fhi.Helsedata.no/nuget/v3/index.json
           PAT: ${{ secrets.AZURE_ARTIFACTS_PAT }}
         run: |
           if [ -z "$PAT" ]; then
@@ -619,8 +621,6 @@ jobs:
             echo "have_pat=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # Written to the environment file rather than echoed, so the value never reaches a log.
-          printf 'VSS_NUGET_EXTERNAL_FEED_ENDPOINTS={"endpointCredentials":[{"endpoint":"%s","username":"github","password":"%s"}]}\n' "$FEED" "$PAT" >> "$GITHUB_ENV"
           echo "have_pat=true" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-dotnet@v6
@@ -640,17 +640,20 @@ jobs:
       - name: Install the Azure Artifacts credential provider
         if: steps.feed.outputs.have_pat == 'true'
         env:
-          # Pinned, for the reason check-accessibility.sh pins Playwright: an unpinned installer
-          # resolves to whatever is newest on the day, which turns an unrelated PR red for a reason
-          # nobody changed. 2.0.4 publishes a linux-x64 asset and is what this was written against.
-          AZURE_ARTIFACTS_CREDENTIAL_PROVIDER_VERSION: 2.0.4
+          # The release asset itself, by version and sha256 (GitHub's published digest for it), not the installer
+          # scripts: those fetch each other and pipe the tarball into tar unchecked. A new version is both lines.
+          CREDPROVIDER_URL: https://github.com/microsoft/artifacts-credprovider/releases/download/v2.0.4/Microsoft.linux-x64.NuGet.CredentialProvider.tar.gz
+          CREDPROVIDER_SHA256: 2b7ae57379fbbe65c1cbb6c26346227b63e6992f8f5e07043e368d7bf1717286
         run: |
           set -euo pipefail
-          sh -c "$(curl -fsSL https://aka.ms/install-artifacts-credprovider.sh)"
+          archive="$RUNNER_TEMP/credprovider.tar.gz"
+          curl -fsSL --retry 3 -o "$archive" "$CREDPROVIDER_URL"
+          echo "$CREDPROVIDER_SHA256  $archive" | sha256sum -c -
+          mkdir -p "$HOME/.nuget"
+          tar -xzf "$archive" -C "$HOME/.nuget" plugins/netcore
 
-          # Asserted, not assumed. A failed download leaves `$(curl ...)` empty and `sh -c ""`
-          # exits 0, so without this the step passes having installed nothing — which is the
-          # shape of the bug it is here to prevent, one layer up.
+          # Asserted, not assumed: the archive could lay the plugin out under another name in a later version,
+          # and this file is what the restore needs.
           plugin="$HOME/.nuget/plugins/netcore/CredentialProvider.Microsoft/CredentialProvider.Microsoft.dll"
           if [ ! -f "$plugin" ]; then
             echo "::error::The credential provider did not install. The PAT is present and unusable;"
@@ -663,6 +666,15 @@ jobs:
           # entry for Microsoft.NETCore.App — so it does not need a runtime matching global.json's
           # SDK. An NU1301 AFTER this step is the PAT or the feed, never the plugin.
           echo "credential provider present at $plugin"
+
+      # Written to the environment file rather than echoed, so the value never reaches a log.
+      - name: Hand the credential provider helsedata's feed credential
+        if: steps.feed.outputs.have_pat == 'true'
+        env:
+          FEED: https://pkgs.dev.azure.com/fhi/Fhi.Helsedata/_packaging/Fhi.Helsedata.no/nuget/v3/index.json
+          PAT: ${{ secrets.AZURE_ARTIFACTS_PAT }}
+        run: |
+          printf 'VSS_NUGET_EXTERNAL_FEED_ENDPOINTS={"endpointCredentials":[{"endpoint":"%s","username":"github","password":"%s"}]}\n' "$FEED" "$PAT" >> "$GITHUB_ENV"
 
       # A cache slot of its OWN, and the prefix is the whole point. Every other job here keys on
       # `nuget-<os>-<hash>`, and this is the only job that restores Fhi.Helsedata.Stiler. Sharing
