@@ -319,7 +319,7 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
     [Fact]
     public async Task AKildeThatArrivesLate_DoesNotTakeOverTheDatasamlingOpenedSince()
     {
-        var gate = new TaskCompletionSource();
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var client = new OwnersClient { KildeGate = gate };
         var cut = OpenRow(client);
 
@@ -337,7 +337,7 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
     [Fact]
     public async Task InTheExplorer_AGroupPressedWhileTheSearchIsStillLoading_IsAppliedOnceItLands()
     {
-        var gate = new TaskCompletionSource();
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var client = new OwnersClient { FirstSearchGate = gate };
         Services.AddSingleton<IMuninExplorerClient>(client);
         Services.AddScoped<VariableListState>();
@@ -347,6 +347,9 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
         var cut = Render<VariableExplorer>(p => p.Add(c => c.IsAuthenticated, true));
         cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Variabelliste").Click();
         cut.WaitForElement("th[scope=row] button").Click();
+
+        // The press has to come while the opening search is out; under load that search can start after it (l9l2n.175).
+        cut.WaitForAssertion(() => Assert.Equal("hjerte", Assert.Single(client.Searches).Search));
         GroupButton(cut).Click();
 
         await cut.InvokeAsync(gate.SetResult);
