@@ -308,7 +308,7 @@ public class KildeSearchTest : ExplorerTestContext
 
             if (StallDetail)
             {
-                // Continuations inline deliberately - see AnswerStalledCodes in VariableExplorerTest.
+                // Continuations inline deliberately - see AnswerStalledCodes in VariableSearchTest.
                 var stall = new TaskCompletionSource<KildeDetail?>();
                 _stalls.Add(stall);
 
@@ -7227,7 +7227,7 @@ public class KildeSearchTest : ExplorerTestContext
 
             if (StallDatasamling)
             {
-                // Continuations inline deliberately - see AnswerStalledCodes in VariableExplorerTest.
+                // Continuations inline deliberately - see AnswerStalledCodes in VariableSearchTest.
                 var stall = new TaskCompletionSource<DatasamlingDetail?>();
                 _stalls.Add(stall);
 
