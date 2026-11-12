@@ -347,7 +347,7 @@ public class InstrumentTest : ExplorerTestContext
 
             if (Stall)
             {
-                // Continuations inline deliberately - see AnswerStalledCodes in VariableExplorerTest.
+                // Continuations inline deliberately - see AnswerStalledCodes in VariableSearchTest.
                 var stall = new TaskCompletionSource<InstrumentDetail?>();
                 _stalls.Add(stall);
 
