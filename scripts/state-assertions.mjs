@@ -1198,6 +1198,35 @@ export const assertions = [
     },
   },
   {
+    // ADO 123780: no prerender, so the section a deep link names is drawn after the browser's own jump found nothing.
+    name: 'a fresh load of a kilde address with #munin-explorer-datacollections ends at Datasamlinger',
+    kind: 'invariant',
+    states: ['kilde-hierarchy-collapsed'],
+    stage: () => ({}),
+    async measure(page) {
+      const address = page.url().split('#')[0];
+      if (!new URL(address).search.includes('kilde=')) return `the kilde page's address carries no ?kilde=: ${address}`;
+      await page.goto('about:blank');
+      await page.goto(`${address}#munin-explorer-datacollections`, { waitUntil: 'domcontentloaded' });
+      try {
+        await page.waitForFunction(() => {
+          const section = document.getElementById('munin-explorer-datacollections');
+          return section !== null && scrollY > 0 && Math.abs(section.getBoundingClientRect().top) < innerHeight / 3;
+        }, null, { timeout: findTimeout });
+      } catch {
+        return 'the page stayed where it loaded instead of ending at the Datasamlinger section';
+      }
+      return null;
+    },
+    // A jump that never happens: what the page did before the deep link was followed.
+    async control(page) {
+      await page.addInitScript(() => {
+        Element.prototype.scrollIntoView = function () {};
+        window.scrollBy = function () {};
+      });
+    },
+  },
+  {
     name: 'every contents-nav link resolves to this page rather than to the host base',
     // Nothing about one defect is encoded here: it asks what the BROWSER makes of each href and
     // requires this page's own address, whatever the attribute happens to say.
