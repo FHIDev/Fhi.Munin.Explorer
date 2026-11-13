@@ -4,7 +4,7 @@ namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
 /// What <see cref="Guard"/> assumes before any script runs: the bash, its PATH, its cleanup. None
-/// can go red on the ubuntu-latest runner; the box they are for is the developer's, where all
+/// can go red on the ubuntu-24.04 runner; the box they are for is the developer's, where all
 /// three were false at once (Fhi.Metadata-ze05p).
 /// </summary>
 [Collection(GuardScripts.Name)]

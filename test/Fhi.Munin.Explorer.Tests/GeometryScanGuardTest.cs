@@ -510,7 +510,7 @@ public class GeometryScanGuardTest
 /// with.
 /// </summary>
 /// <remarks>
-/// The same shape and the same reason as <see cref="ShellFactAttribute"/>: CI is ubuntu-latest and
+/// The same shape and the same reason as <see cref="ShellFactAttribute"/>: CI is ubuntu-24.04 and
 /// has node, so these always run where it matters, and a checkout without one is told why instead
 /// of being shown a Win32Exception.
 /// </remarks>
@@ -525,7 +525,7 @@ internal sealed class NodeFactAttribute : FactAttribute
         if (Node is null)
         {
             Skip = "No node on PATH, so scripts/geometry-scan.mjs cannot be run here. CI runs on "
-                   + "ubuntu-latest, where there always is one.";
+                   + "ubuntu-24.04, where there always is one.";
         }
     }
 

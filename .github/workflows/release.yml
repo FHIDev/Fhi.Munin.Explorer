@@ -24,7 +24,7 @@ concurrency:
 jobs:
   publish:
     name: publish to the internal feed
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # The fhi-munin App key lives in this environment, which only main and v* tags may use (DevInfra-cbq.16).
     environment: github-app
     timeout-minutes: 20
@@ -159,7 +159,7 @@ jobs:
         continue-on-error: true
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ vars.MUNIN_APP_ID }}
+          client-id: ${{ vars.MUNIN_APP_CLIENT_ID }}
           private-key: ${{ secrets.MUNIN_APP_PRIVATE_KEY }}
           owner: FHIDev
           repositories: Fhi.Munin.Explorer
