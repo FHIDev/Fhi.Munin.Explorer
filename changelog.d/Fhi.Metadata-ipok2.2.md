@@ -10,4 +10,5 @@ category: Added
   list, the facet counts, an export and the URL a host writes from `FilterChanged` all carry them, and a shared link
   restores the search. `SearchCondition` is one condition, `ConditionField` one field from the new
   `IMuninExplorerClient.GetConditionFieldsAsync` (`GET api/explorer/variables/vilkar`), whose default answers empty.
-  A condition a link carries that the API would refuse is dropped before the first search.
+  A condition a link carries that the API would refuse is dropped before the first search, and a repeated one is
+  kept once; when the fields cannot be loaded, the link's conditions are kept as they are.

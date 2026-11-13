@@ -2,8 +2,8 @@ using Microsoft.AspNetCore.Components;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
-/// The row of removable chips over a result list: one per ticked facet value, with a control that
-/// clears the lot.
+/// The row of removable chips over a result list: one per ticked facet value or search condition,
+/// with a control that clears the lot.
 /// </summary>
 /// <remarks>
 /// <para>

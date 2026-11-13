@@ -10,5 +10,7 @@ category: Notes for hosts
   around the form, which wants a white background, a 1px border, 8px radius, 24px padding (15px at the bottom) and
   24px below it, so the «Skjul filtre» toggle under it is not read as one of its buttons; and `munin-explorer-advanced-search__action`
   on «Fjern betingelse» and «Legg til betingelse», which wants `width: 12.75rem; max-width: 100%` so they line up with
-  «Verdi», and 15px above «Fjern betingelse» inside a condition (Stiler: Fhi.Metadata-ipok2.9). A host with its own
+  «Verdi», and 15px above «Fjern betingelse» inside a condition (Stiler: Fhi.Metadata-ipok2.9). A condition chip's
+  text can be long, so the shared chip rule wants a radius that keeps it inside the chip when it wraps (16px in
+  Stiler, the same bead). A host with its own
   `IMuninExplorerClient` gets no fields until it implements `GetConditionFieldsAsync`.
