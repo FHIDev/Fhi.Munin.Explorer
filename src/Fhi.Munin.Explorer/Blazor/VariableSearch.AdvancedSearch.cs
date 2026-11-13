@@ -76,10 +76,13 @@ public partial class VariableSearch
         if (AdvancedSearchOffered)
         {
             var fields = await ConditionFieldsAsync();
-            kept = _conditionFieldsFailed
-                ? [.. _filter.Conditions.Distinct(SameCondition.Instance)]
-                : [.. _filter.Conditions.Distinct(SameCondition.Instance)
-                    .Where(condition => FieldOf(fields, condition.Field)?.Accepts(condition) == true)];
+            var distinct = _filter.Conditions.Distinct(SameCondition.Instance);
+            var accepted = _conditionFieldsFailed
+                ? distinct
+                : distinct.Where(condition => FieldOf(fields, condition.Field)?.Accepts(condition) == true);
+
+            // A host's Filter is not capped as a link is, and the query sends only the first MaxCount.
+            kept = [.. accepted.Take(SearchCondition.MaxCount)];
         }
 
         if (kept.Count != _filter.Conditions.Count)

@@ -319,6 +319,23 @@ public class AdvancedSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Render_WhenTheHostsFilterHasMoreConditionsThanTheCap_ThenOnlyTheSearchedOnesAreKept()
+    {
+        VariableFilter? reported = null;
+        var client = new ConditionClient();
+        var conditions = Enumerable.Range(0, SearchCondition.MaxCount + 1).Select(i => Condition($"navn:inneholder:blod{i}")).ToList();
+        var cut = RenderWith(client, filter: new VariableFilter { Conditions = conditions }, changed: f => reported = f);
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(client.Searches));
+
+        var searched = conditions.Take(SearchCondition.MaxCount).ToList();
+        Assert.Equal(searched, client.Searches[0]!.Conditions);
+        Assert.Equal(searched, reported!.Conditions);
+        Assert.Equal($"Avansert søk ({SearchCondition.MaxCount})", Toggle(cut)!.TextContent);
+        Assert.DoesNotContain("«blod10»", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Render_WhenALinkCarriesConditions_ThenTheyAreSearchedChippedAndCountedOnTheToggle()
     {
         // A shared URL with conditions restores the same search (acceptance 4).
