@@ -148,6 +148,26 @@ public class AdvancedSearchTest : ExplorerTestContext
         string field, string op, string value, bool accepted) =>
         Assert.Equal(accepted, Field(field).Accepts(new SearchCondition(field, op, value)));
 
+    [Theory]
+    [InlineData("navn", "inneholder", "   ")]
+    [InlineData("tilgangsniva", "erEnAv", ",")]
+    [InlineData("tilgangsniva", "erEnAv", " , ")]
+    public void Accepts_WhenTheValueHoldsNothing_ThenItIsRefused(string field, string op, string value) =>
+        Assert.False(Field(field).Accepts(new SearchCondition(field, op, value)));
+
+    [Theory]
+    [InlineData(SearchCondition.MaxTextLength, true)]
+    [InlineData(SearchCondition.MaxTextLength + 1, false)]
+    public void Accepts_WhenATextIsAtOrPastItsCap_ThenOnlyTheCapPasses(int length, bool accepted) =>
+        Assert.Equal(accepted, Field("navn").Accepts(new SearchCondition("navn", "inneholder", new string('a', length))));
+
+    [Theory]
+    [InlineData(SearchCondition.MaxCodes, true)]
+    [InlineData(SearchCondition.MaxCodes + 1, false)]
+    public void Accepts_WhenTheCodesAreAtOrPastTheirCap_ThenOnlyTheCapPasses(int count, bool accepted) =>
+        Assert.Equal(accepted, Field("tilgangsniva").Accepts(
+            new SearchCondition("tilgangsniva", "erEnAv", string.Join(',', Enumerable.Repeat("apne-data", count)))));
+
     // --- The client and the switch ---
 
     [Fact]
