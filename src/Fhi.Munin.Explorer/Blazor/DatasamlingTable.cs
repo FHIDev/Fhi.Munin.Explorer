@@ -145,7 +145,7 @@ internal static class DatasamlingTable
         builder.CloseElement();
     }
 
-    /// <summary>One row's mark in a td (a control over the row, not its label), or nothing for an unmarked empty datasamling.</summary>
+    /// <summary>One row's mark in a td (a control over the row, not its label), or an empty td for an empty datasamling never marked on this mount.</summary>
     /// <remarks>
     /// <c>SetUpdatesAttributeName</c> for <see cref="ColumnPicker"/>'s reason: the browser ticks
     /// the box itself before any handler runs, so a render equal to the one before it leaves the

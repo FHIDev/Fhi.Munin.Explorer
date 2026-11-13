@@ -124,8 +124,8 @@ public sealed partial class KildeSearch
     /// </remarks>
     private readonly List<(Guid Kilde, Guid Datasamling)> _marked = [];
 
-    // Every pair marked on this mount: its box stays drawn at a variable count of 0, so unmarking it
-    // never pulls the control out from under the reader's focus (Fhi.Metadata-l9l2n.183).
+    // Every pair marked on this mount: its box stays drawn at a variable count of 0, the reset included, so
+    // unmarking never pulls the control from under the reader's focus. Kept to undo, not to offer (l9l2n.183).
     private readonly HashSet<(Guid Kilde, Guid Datasamling)> _boxed = [];
 
     /// <summary>Whether the column and its bar are drawn, which is whether the host wired the
