@@ -100,6 +100,24 @@ async function press(scope, name) {
   await button.click();
 }
 
+// The click returns before the server's render, so wait for the toggle to say it is open, then for the first row.
+async function openAdvancedSearch(page) {
+  await rowsArePresent(page, 'button.munin-explorer-dataitem-main__name');
+  const toggle = page.getByRole('button', { name: 'Avansert søk', exact: true });
+  await toggle.click();
+  await page.waitForFunction(el => el.getAttribute('aria-expanded') === 'true', await toggle.elementHandle(), { timeout: findTimeout });
+  await page.getByRole('combobox', { name: 'Betingelse 1 Felt', exact: true }).waitFor({ state: 'visible', timeout: findTimeout });
+}
+
+// By role, not getByLabel: that matches the <label for> text alone («Til»), never the legend-plus-label name.
+const conditionControl = (page, role, name) => page.getByRole(role, { name, exact: true });
+
+/** Choose a row's field, and wait for the value control that field draws. */
+async function chooseConditionField(page, row, field, role, drawn) {
+  await page.getByRole('combobox', { name: `Betingelse ${row} Felt`, exact: true }).selectOption(field);
+  await conditionControl(page, role, drawn).waitFor({ state: 'visible', timeout: findTimeout });
+}
+
 /** Press the wide screen's «Skjul filtre», once the list it sits beside has rows. */
 async function collapseFilters(page, row) {
   await rowsArePresent(page, row);
@@ -242,6 +260,47 @@ export const states = {
     }
     console.log(`    variables-facets: ${chipCount} .munin-explorer-filters__chip "${chipText}", `
       + `.munin-explorer-breadcrumb [role=${await trail.getAttribute('role')}] crumbs ${JSON.stringify(crumbs)}`);
+  },
+
+  // Avansert søk's form with one row per field type, the range row refused so its alert is drawn: the rows only
+  // exist behind the press, and each control's name is its row's legend plus its label (Fhi.Metadata-ipok2.2).
+  'variables-advanced-form': async page => {
+    await openAdvancedSearch(page);
+    for (let row = 2; row <= 4; row++) {
+      await press(page, 'Legg til betingelse');
+      await page.getByRole('combobox', { name: `Betingelse ${row} Felt`, exact: true })
+        .waitFor({ state: 'visible', timeout: findTimeout });
+    }
+    await chooseConditionField(page, 2, 'gyldigFra', 'textbox', 'Betingelse 2 Til');
+    await chooseConditionField(page, 3, 'tilgangsniva', 'group', 'Betingelse 3 Verdi');
+    await chooseConditionField(page, 4, 'personidentifikasjon', 'group', 'Betingelse 4 Verdi');
+    const from = conditionControl(page, 'textbox', 'Betingelse 2 Fra');
+    await from.fill('2010-01-01');
+    await from.dispatchEvent('change');
+    await press(page, 'Vis treff');
+    await page.locator('[id^="munin-explorer-condition-"][id$="-error"] .infobox').first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+  },
+
+  // Two condition chips, one with every tilgangsnivå code so it wraps at 320, and «Endre avansert søk».
+  'variables-advanced-chips': async page => {
+    await openAdvancedSearch(page);
+    const value = conditionControl(page, 'textbox', 'Betingelse 1 Verdi');
+    await value.fill('blodtrykk');
+    await value.dispatchEvent('change');
+    await press(page, 'Legg til betingelse');
+    await chooseConditionField(page, 2, 'tilgangsniva', 'group', 'Betingelse 2 Verdi');
+    for (const box of await conditionControl(page, 'group', 'Betingelse 2 Verdi').getByRole('checkbox').all()) {
+      await box.check();
+    }
+    await press(page, 'Vis treff');
+    await page.locator('.munin-explorer-filters__chip', { hasText: 'Navn inneholder «blodtrykk»' })
+      .waitFor({ state: 'visible', timeout: findTimeout });
+    await page.locator('.munin-explorer-filters__chip', { hasText: 'Tilgangsnivå' })
+      .waitFor({ state: 'visible', timeout: findTimeout });
+    await page.getByRole('button', { name: 'Endre avansert søk', exact: true })
+      .waitFor({ state: 'visible', timeout: findTimeout });
+    await rowsArePresent(page, 'button.munin-explorer-dataitem-main__name');
   },
 
   // A long facet at rest, capped, and the control that lifts the cap pressed twice. The only state

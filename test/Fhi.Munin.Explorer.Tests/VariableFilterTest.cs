@@ -288,7 +288,8 @@ public class VariableFilterTest
         DataFrom = new DateOnly(2010, 1, 1),
         DataTo = new DateOnly(2025, 6, 30),
         IncludeHistorical = true,
-        OrTreeTicks = true
+        OrTreeTicks = true,
+        Conditions = [new SearchCondition("navn", "inneholder", "blod")]
     };
 
     // -----------------------------------------------------------------------

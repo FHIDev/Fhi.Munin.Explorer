@@ -18,7 +18,8 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// <para>
 /// Every list is a logical OR within its own facet and an AND between facets, which is what the
 /// Explorer API does: two kilder means "either kilde", a kilde and a datatype means "both". The
-/// one exception is <see cref="OrTreeTicks"/>, which ORs the kilde tree's levels with each other.
+/// exceptions are <see cref="OrTreeTicks"/>, which ORs the kilde tree's levels with each other, and
+/// <see cref="Conditions"/>, which must all hold, with each other and with the facets.
 /// </para>
 /// <para>
 /// The property names are English, the domain terms are not — <c>kilde</c>, <c>delkilde</c>,
@@ -136,7 +137,17 @@ public sealed record VariableFilter
     /// </remarks>
     public bool OrTreeTicks { get; init; }
 
+    /// <summary>Avansert søk conditions, all of which must hold, on top of every facet; at most
+    /// <see cref="SearchCondition.MaxCount"/>. <see cref="Parse"/> checks only their shape; whether the API takes one
+    /// is <see cref="ConditionField.Accepts"/>.</summary>
+    public IReadOnlyList<SearchCondition> Conditions { get; init; } = [];
+
     private const string TreeTicksKey = "treeTicks";
+
+    private const string ConditionsKey = "vilkar";
+
+    // Field and operator tokens on top of the longest text value the API takes.
+    private const int MaxConditionLength = SearchCondition.MaxTextLength + 100;
 
     private int TreeLevelsTicked =>
         (KildeIds.Count > 0 ? 1 : 0) + (DelkildeIds.Count > 0 ? 1 : 0) + (DatasamlingIds.Count > 0 ? 1 : 0)
@@ -179,7 +190,7 @@ public sealed record VariableFilter
     [
         "kildeIds", "kildeType", "delkildeIds", "datasamlingIds", "variabelgruppeIds", "variabelgruppeScopes", "filterIds",
         "datatypes", "helsefagligKodeverkReferanser", "administrativtKodeverkOids", "instrumentIds",
-        "datakategorier", "harKildekodeverk", "dataFrom", "dataTo", "includeHistorical", TreeTicksKey
+        "datakategorier", "harKildekodeverk", "dataFrom", "dataTo", "includeHistorical", TreeTicksKey, ConditionsKey
     ], StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
@@ -278,6 +289,12 @@ public sealed record VariableFilter
         if (OrTreeTicks && TreeLevelsTicked > 1)
         {
             yield return (TreeTicksKey, "or");
+        }
+
+        // Capped here as well as in Parse: one over the API's limit is a 400 for the whole search.
+        foreach (var pair in Repeat(ConditionsKey, Conditions.Take(SearchCondition.MaxCount).ToList()))
+        {
+            yield return pair;
         }
     }
 
@@ -386,6 +403,7 @@ public sealed record VariableFilter
                    filterIds = [], instrumentIds = [];
         List<string> dataTypes = [], helsefagligKodeverk = [], administrativtKodeverk = [], categories = [];
         List<VariabelgruppeScope> variabelgruppeScopes = [];
+        List<SearchCondition> conditions = [];
         string? kildeType = null;
         bool? hasKildekodeverk = null;
         DateOnly? dataFrom = null, dataTo = null;
@@ -419,6 +437,19 @@ public sealed record VariableFilter
 
         foreach (var (_, name, value) in QueryPairs.Split(queryString, MaxParameters))
         {
+            // Ahead of the length check below: a condition carries its field and operator beside a value that may
+            // itself be as long as MaxValueLength.
+            if (string.Equals(name, ConditionsKey, StringComparison.OrdinalIgnoreCase))
+            {
+                if (conditions.Count < SearchCondition.MaxCount && value is { Length: <= MaxConditionLength }
+                    && SearchCondition.TryParse(value, out var condition))
+                {
+                    conditions.Add(condition);
+                }
+
+                continue;
+            }
+
             if (string.IsNullOrWhiteSpace(value) || value.Length > MaxValueLength)
             {
                 continue;
@@ -448,7 +479,8 @@ public sealed record VariableFilter
             DataFrom = dataFrom,
             DataTo = dataTo,
             IncludeHistorical = includeHistorical,
-            OrTreeTicks = orTreeTicks
+            OrTreeTicks = orTreeTicks,
+            Conditions = conditions
         };
     }
 
@@ -458,7 +490,7 @@ public sealed record VariableFilter
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Written out rather than left to the record's own equality, which would compare the eleven
+    /// Written out rather than left to the record's own equality, which would compare the twelve
     /// lists by reference: <c>filter with { KildeIds = [theSameId] }</c> would come back unequal to
     /// the filter it was copied from, so a caller asking "did anything actually change" — before a
     /// fetch, or before writing a URL — would be told yes every time.

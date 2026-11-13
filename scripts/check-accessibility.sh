@@ -92,6 +92,8 @@ TARGETS=(
   "/::tree-empty-results"
   "/::tree-no-match"
   "/::variables-facets"
+  "/::variables-advanced-form"
+  "/::variables-advanced-chips"
   "/::variable-detail"
   "/::variable-detail-about"
   "/::variables-shared-name"

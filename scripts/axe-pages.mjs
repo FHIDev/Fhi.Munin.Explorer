@@ -6,7 +6,8 @@ const PAGES = {
     'variables-list', 'utforsker-list', 'variables-facets', 'facet-cap', 'filters-level-lines', 'explorer-search-code',
     'filters-node-icons-off', 'variables-shared-name', 'variables-filters-collapsed', 'explorer-tabs',
     'explorer-save-all-confirm', 'explorer-save-all-too-many', 'explorer-saved-all', 'search-download-open',
-    'tree-collapsed', 'tree-populated', 'tree-empty-results', 'tree-no-match',
+    'tree-collapsed', 'tree-populated', 'tree-empty-results', 'tree-no-match', 'variables-advanced-form',
+    'variables-advanced-chips',
   ],
   'explorer/variabel': [
     'variable-detail', 'variable-detail-long-name', 'variable-statistics', 'variable-statistics-suppressed',

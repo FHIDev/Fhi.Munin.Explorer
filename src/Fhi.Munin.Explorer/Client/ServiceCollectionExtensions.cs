@@ -54,6 +54,11 @@ public sealed class MuninExplorerFeatures
     /// through Munin are still shown, read-only.
     /// </summary>
     public bool? CodePicker { get; set; }
+
+    /// <summary>Avansert søk in the variable search; key <c>MuninExplorer:Features:AdvancedSearch</c>. Off, nothing
+    /// of it is drawn and a link's <c>vilkar</c> are dropped, so nothing narrows the list that the reader cannot
+    /// see or remove.</summary>
+    public bool? AdvancedSearch { get; set; }
 }
 
 /// <summary>The one call a host makes to use the explorer components.</summary>
@@ -156,6 +161,10 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton(provider => new Blazor.CodePickerSwitch(
             codePicker ?? FeatureOn(provider.GetService<IConfiguration>(), nameof(MuninExplorerFeatures.CodePicker))));
 
+        var advancedSearch = options.Features.AdvancedSearch;
+        services.TryAddSingleton(provider => new Blazor.AdvancedSearchSwitch(
+            advancedSearch ?? FeatureOn(provider.GetService<IConfiguration>(), nameof(MuninExplorerFeatures.AdvancedSearch))));
+
         services.AddHttpClient<IMuninExplorerClient, MuninExplorerClient>(client =>
         {
             // Trailing slash so relative routes ("api/explorer/...") resolve against the
@@ -217,6 +226,7 @@ public static class ServiceCollectionExtensions
             o.ApiBaseUrl = string.IsNullOrWhiteSpace(fromConfiguration) ? developmentFallback : fromConfiguration;
             o.AccessLinks = accessLinks;
             o.Features.CodePicker = FeatureOn(configuration, nameof(MuninExplorerFeatures.CodePicker));
+            o.Features.AdvancedSearch = FeatureOn(configuration, nameof(MuninExplorerFeatures.AdvancedSearch));
         });
     }
 

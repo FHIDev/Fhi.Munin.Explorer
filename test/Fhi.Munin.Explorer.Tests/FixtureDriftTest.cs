@@ -109,6 +109,14 @@ public class FixtureDriftTest
     }
 
     [LiveApiFact]
+    public async Task ConditionFields_WhenComparedWithTheLiveApi_ThenTheCaptureIsStillCurrent()
+    {
+        using var api = LiveApiConnection.Open();
+
+        AssertFresh(Fixture.ConditionFields, await api.BodyOfAsync(client => client.GetConditionFieldsAsync()));
+    }
+
+    [LiveApiFact]
     public async Task KodeverkCodes_WhenComparedWithTheLiveApi_ThenTheCaptureIsStillCurrent()
     {
         using var api = LiveApiConnection.Open();
@@ -168,13 +176,14 @@ internal static class Fixture
     public const string Variable = "variable.json";
     public const string Timeline = "timeline.json";
     public const string KodeverkCodes = "kodeverk-codes.json";
+    public const string ConditionFields = "vilkar.json";
 
     /// <summary>The three KildeDetail captures, all comparable against one live kilde.</summary>
     public static readonly IReadOnlyList<string> KildeDetails =
         ["kilde.json", "kilde-med-delkilder.json", "kilde-barnediabetes.json"];
 
     public static readonly IReadOnlyList<string> CheckedLive =
-        [Variables, Filters, Kilder, Hierarchy, Datasamling, Variable, Timeline, KodeverkCodes, .. KildeDetails];
+        [Variables, Filters, Kilder, Hierarchy, Datasamling, Variable, Timeline, KodeverkCodes, ConditionFields, .. KildeDetails];
 
     /// <summary>Fixtures no anonymous caller can re-fetch, with the reason each is out of reach.</summary>
     /// <remarks>

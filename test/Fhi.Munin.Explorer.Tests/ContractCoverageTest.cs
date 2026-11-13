@@ -331,6 +331,10 @@ public class ContractCoverageTest
         Covers<IReadOnlyList<VariableVersion>>("timeline.json");
 
     [Fact]
+    public void ConditionFields_WhenReadFromARealResponse_ThenEveryFieldIsCovered() =>
+        Covers<IReadOnlyList<ConditionField>>("vilkar.json");
+
+    [Fact]
     public void MyLists_WhenReadFromTheDocumentedResponse_ThenEveryFieldIsCovered() =>
         // Weaker evidence than the fixtures above it, and worth saying so. Every my/lists endpoint
         // is authenticated, so this payload could not be captured from the anonymous test API the

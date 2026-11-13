@@ -74,6 +74,10 @@ public class ShapeDriftTest
         Assert.Empty(DriftIn<IReadOnlyList<VariableVersion>>(Load("timeline.json")));
 
     [Fact]
+    public void Between_WhenCapturedConditionFieldsAreUnchanged_ThenNothingDrifts() =>
+        Assert.Empty(DriftIn<IReadOnlyList<ConditionField>>(Load("vilkar.json")));
+
+    [Fact]
     public void Between_WhenTheApiHasNotCaughtUpWithTheContract_ThenNothingDrifts()
     {
         // An API older than the code reading it: the datakategori facet is taken away, so the

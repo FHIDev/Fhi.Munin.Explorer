@@ -921,6 +921,8 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-absent` | meaning |
   | `munin-explorer-access` | id |
   | `munin-explorer-accesscriteria` | id |
+  | `munin-explorer-advanced-search` | handle |
+  | `munin-explorer-advanced-search__action` | handle |
   | `munin-explorer-alert` | handle |
   | `munin-explorer-breadcrumb` | meaning |
   | `munin-explorer-codelists` | id |
@@ -1362,16 +1364,25 @@ Features a host may want on in one environment before another are switched under
 each one off by default, so an environment's appsettings decides and production needs nothing:
 
 ```json
-"MuninExplorer": { "Features": { "CodePicker": true } }
+"MuninExplorer": { "Features": { "CodePicker": true, "AdvancedSearch": true } }
 ```
 
 Both `AddMuninExplorer` overloads read these keys from the host's configuration (the delegate overload from the
 registered `IConfiguration`, and nothing else from the section). The configuration overload reads them when it is
 called, the delegate overload when the first component needs them; either way a change takes a restart. `true` turns a feature on; absent or any other value is off. `options.Features.<Name>` set in
-the delegate wins over the key. The sample hosts turn `CodePicker` on in `appsettings.Development.json`, which is what
-the browser gates run; `check-accessibility.sh` also scans an opened list row once with it off. Today there is one: `CodePicker`, the code picker under «Ønskede data» in a saved list; with it off, «Ønskede data» is
-one free-text field and codes saved through Munin show read-only. A new feature gets its own entry, off by
-default, and the entry is removed once the feature is on for every host.
+the delegate wins over the key. The sample hosts turn both on in `appsettings.Development.json`, which is what
+the browser gates run; `check-accessibility.sh` also scans an opened list row once with `CodePicker` off. Today there
+are two:
+
+- `CodePicker`, the code picker under «Ønskede data» in a saved list; with it off, «Ønskede data» is
+  one free-text field and codes saved through Munin show read-only.
+- `AdvancedSearch`, avansert søk in `VariableSearch`: the «Avansert søk» button under the search field, its form of
+  field, operator and value rows, and each condition as a chip beside the facet chips. The conditions travel in
+  `VariableFilter.Conditions`, written as the API's repeated `vilkar`, so a link with them restores the search. With
+  it off, none of that is drawn and conditions a link carries are dropped, and `FilterChanged` tells the host so its
+  address loses them too.
+
+A new feature gets its own entry, off by default, and the entry is removed once the feature is on for every host.
 
 ### A legacy Blazor Server host on .NET 10
 

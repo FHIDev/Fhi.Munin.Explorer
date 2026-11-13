@@ -1337,6 +1337,8 @@ public partial class VariableSearch
             chips.AddRange(
                 UnfacetedHierarchyChips(removable, level => !walked.Contains(FacetGroupOf(level))));
 
+            chips.AddRange(ConditionChips());
+
             return chips;
         }
     }
@@ -1574,7 +1576,7 @@ public partial class VariableSearch
         StateHasChanged();
     }
 
-    /// <summary>The catalogue's own words for the EHDS tokens the datakategori facet is made of.</summary>
+    /// <summary>The catalogue's own words for the datakategori facet's EHDS tokens and avansert søk's tilgangsnivå codes.</summary>
     /// <remarks>
     /// Fetched rather than transcribed into <see cref="Texts"/>, which would drift. Empty until it
     /// lands, and for good if it fails, which costs the choices their words and nothing else.
@@ -1582,8 +1584,8 @@ public partial class VariableSearch
     private IReadOnlyDictionary<string, PropertyMetadataEntry> _vocabulary =
         new Dictionary<string, PropertyMetadataEntry>(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Whether the vocabulary has been asked for, however that turned out.</summary>
-    private bool _vocabularyAsked;
+    /// <summary>The one fetch of the vocabulary, however it turned out; a second caller awaits the first.</summary>
+    private Task? _vocabularyLoad;
 
     /// <summary>The property key the datakategori tokens are defined under.</summary>
     private const string DataCategoryKey = "healthCategory";
@@ -1595,13 +1597,17 @@ public partial class VariableSearch
     /// </remarks>
     private async Task EnsureCategoryWordsAsync()
     {
-        if (_vocabularyAsked || _facets is not { DataCategories.Count: > 0 })
+        if (_facets is { DataCategories.Count: > 0 })
         {
-            return;
+            await LoadVocabularyAsync();
         }
+    }
 
-        _vocabularyAsked = true;
+    /// <summary>Fetch the vocabulary once, whoever needs it first: the datakategorier or avansert søk's tilgangsnivå.</summary>
+    private Task LoadVocabularyAsync() => _vocabularyLoad ??= FetchVocabularyAsync();
 
+    private async Task FetchVocabularyAsync()
+    {
         try
         {
             var entries = await Client.GetKildePropertyMetadataAsync();
@@ -1616,7 +1622,7 @@ public partial class VariableSearch
             // Warning, not Error: the panel is not broken without it — every choice still filters
             // and the reader sees the token rather than the word. Deliberately silent on screen,
             // so the log line is the only trace a degraded label leaves.
-            Log?.LogWarning(ex, "could not load the data-category vocabulary");
+            Log?.LogWarning(ex, "could not load the catalogue vocabulary");
         }
     }
 

@@ -396,8 +396,55 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .hd-button-square.margin-right { margin-right: 16px; }
 .hd-button-square.margin-bottom { margin-bottom: 16px; }
 
+/* Stiler's form rhythm for avansert søk: 16px between label-and-control pairs. Before `.form-fieldset`, as in
+   Stiler, whose `margin: 0` then wins over the group's 48px top margin (Fhi.Metadata-ipok2.2). */
+.form-group { margin-top: 48px; }
+.form-group .form-element { margin-bottom: 16px; }
+.input__container { display: flex; flex-direction: column; }
+
 /* components/_formelement.scss — the sort control is a fieldset so its legend can name the group. */
 .form-fieldset { border: none; margin: 0; padding: 0; }
+
+/* components/_input.scss as Stiler 0.1.208 compiles it, for avansert søk's condition fields and the rename
+   field. Its width: 100% is also what lets a condition's <select> shrink inside its fieldset (Fhi.Metadata-ipok2.2). */
+.input__field[type=email], .input__field[type=tel], .input__field[type=text], .input__field {
+  color: rgb(38, 32, 69);
+  font: normal 1.3125rem/160% var(--font);
+}
+@media all and (max-width: 2881px) {
+  .input__field[type=email], .input__field[type=tel], .input__field[type=text], .input__field {
+    font: normal 1.125rem/160% var(--font);
+  }
+}
+@media all and (max-width: 767px) {
+  .input__field[type=email], .input__field[type=tel], .input__field[type=text], .input__field {
+    font: normal 1rem/160% var(--font);
+  }
+}
+.input__field[type=email], .input__field[type=tel], .input__field[type=text], .input__field {
+  letter-spacing: 0;
+  text-align: left;
+  margin: 0;
+  padding: 16px;
+  background-color: rgb(255, 255, 255);
+  border: 1px solid rgb(187, 184, 201);
+  border-radius: 8px;
+  outline: none;
+  width: 100%;
+}
+@media all and (max-width: 767px) {
+  .input__field[type=email], .input__field[type=tel], .input__field[type=text], .input__field {
+    font-size: 0.875rem;
+  }
+}
+.input__field[type=email]:focus, .input__field[type=tel]:focus, .input__field[type=text]:focus, .input__field:focus {
+  border: 1px solid rgb(66, 139, 255);
+  outline: none;
+  box-shadow: 0 0 0 1px rgb(66, 139, 255);
+}
+.input__field--small[type=email], .input__field--small[type=tel], .input__field--small[type=text] {
+  width: 12.75rem;
+}
 
 /* components/_infobox.scss — the component's failure message. Only ever rendered when there
    is something to say; the always-present role="alert" container carries no class. */
@@ -3911,6 +3958,24 @@ table.munin-explorer-data-list tbody th {
 .munin-explorer-filters__active > .hd-button-square:hover {
   background: none;
   color: rgb(82, 30, 255);
+}
+
+/* Avansert søk's box and its single buttons, as Stiler draws them (Fhi.Metadata-ipok2.9). */
+.munin-explorer-advanced-search {
+  background: rgb(255, 255, 255);
+  border: 1px solid rgb(230, 230, 237);
+  border-radius: 8px;
+  margin: 0 0 24px;
+  padding: 24px 24px 15px;
+}
+
+.munin-explorer-advanced-search .form-fieldset .form-fieldset > .munin-explorer-advanced-search__action {
+  margin-top: 15px;
+}
+
+.munin-explorer-advanced-search__action {
+  max-width: 100%;
+  width: 12.75rem;
 }
 
 .munin-explorer .munin-explorer-filters__chip {
