@@ -237,7 +237,8 @@ public sealed partial class KildeSearch : ComponentBase
 
     /// <summary>
     /// Where one kilde's variables can be explored, given its id. Leave it unset and an opened
-    /// row's drawer ends at its datasamlinger.
+    /// row's drawer ends at its datasamlinger, as it does for a kilde the list reports with 0
+    /// variables: the link is not drawn and the delegate not called, since that list would be empty.
     /// </summary>
     /// <remarks>
     /// <para>

@@ -1393,8 +1393,8 @@ public class KildeSearchTest : ExplorerTestContext
     [Fact]
     public void ExpandedDrawer_WhenTheKildeHasNoVariables_ThenTheDrawerEndsAtItsDatasamlinger()
     {
-        // A kilde whose only datasamlinger were published without visible variables opens a drawer of
-        // «0 variabler» rows; a link onward would land on an empty variable list (Fhi.Metadata-l9l2n.184).
+        // A kilde the list reports with 0 variables, as one whose only datasamlinger were published
+        // without visible variables is: a link onward would land on an empty variable list (l9l2n.184).
         var panel = RenderDrawer(wireVariables: true, variables: 0).Find(".munin-explorer-kilder__expanded");
 
         Assert.Empty(panel.QuerySelectorAll("a"));
