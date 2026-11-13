@@ -906,10 +906,10 @@ else
                                             @DatasamlingTable.For(group.Rows, T, Language, Reader, MarksFor(kilde.Id))
                                         }
 
-                                        @* Beside the tables and never in one: DatasamlingTable is
-                                           shared with KildeView, and this is about the kilde rather
-                                           than about one level of it. *@
-                                        @if (KildeVariablesHref is { } variablesHref)
+                                        @* Beside the tables, never in one (DatasamlingTable is shared
+                                           with KildeView), and not at 0, where the list would be empty,
+                                           as VariablesBody holds too (Fhi.Metadata-l9l2n.184). *@
+                                        @if (kilde.TotalVariables > 0 && KildeVariablesHref is { } variablesHref)
                                         {
                                             <a class="hd-button-square button-square--ghost-blue"
                                                href="@variablesHref(kilde.Id)">@T.AllVariablesForKilde(RowName(kilde).Text)</a>

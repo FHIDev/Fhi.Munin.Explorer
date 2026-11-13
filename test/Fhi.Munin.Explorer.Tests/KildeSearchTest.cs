@@ -1331,9 +1331,9 @@ public class KildeSearchTest : ExplorerTestContext
     /// The kilde carries a fixed id rather than a fresh one, because what the supplied half asserts
     /// is the address the delegate produced for a named kilde — not that some address is there.
     /// </remarks>
-    private IRenderedComponent<KildeSearch> RenderDrawer(bool wireVariables, string language = "no")
+    private IRenderedComponent<KildeSearch> RenderDrawer(bool wireVariables, string language = "no", int variables = 42)
     {
-        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2) with { Id = DrawerKilde };
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2, variables: variables) with { Id = DrawerKilde };
 
         var cut = RenderWith(
             new FakeClient(als).Describing(DetailWithCollections(als)),
@@ -1388,6 +1388,17 @@ public class KildeSearchTest : ExplorerTestContext
         var link = Assert.Single(cut.Find(".munin-explorer-kilder__expanded").QuerySelectorAll("a"));
 
         Assert.Equal("Show all variables in Als registeret", link.TextContent.Trim());
+    }
+
+    [Fact]
+    public void ExpandedDrawer_WhenTheKildeHasNoVariables_ThenTheDrawerEndsAtItsDatasamlinger()
+    {
+        // A kilde whose only datasamlinger were published without visible variables opens a drawer of
+        // «0 variabler» rows; a link onward would land on an empty variable list (Fhi.Metadata-l9l2n.184).
+        var panel = RenderDrawer(wireVariables: true, variables: 0).Find(".munin-explorer-kilder__expanded");
+
+        Assert.Empty(panel.QuerySelectorAll("a"));
+        Assert.Equal(2, panel.QuerySelectorAll("table.munin-explorer-kilde__datasamlinger").Length);
     }
 
     [Fact]

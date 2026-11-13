@@ -617,8 +617,9 @@ public class UrlStateComponentTest : ExplorerTestContext
     /// A row in the kilde list. <paramref name="datasamlinger"/> is what decides whether it has a
     /// drawer at all — <c>KildeSearch.CanExpand</c> draws no toggle on a kilde with none.
     /// </summary>
+    // Twelve variables a datasamling, as the clients' details carry: a kilde at 0 draws no drawer link (l9l2n.184).
     private static KildeSummary Kilde(Guid id, string name, int datasamlinger = 0, string code = "") =>
-        new() { Id = id, Name = name, Code = code, DatasamlingCount = datasamlinger };
+        new() { Id = id, Name = name, Code = code, DatasamlingCount = datasamlinger, TotalVariables = 12 * datasamlinger };
 
     /// <summary>Answers with one kilde, so there is a row to open and a selection to hand over.</summary>
     /// <remarks>
@@ -2517,7 +2518,7 @@ public class UrlStateComponentTest : ExplorerTestContext
     private sealed class TwoDrawersClient : EmptyMuninExplorerClient
     {
         private static KildeSummary Row(Guid id, string name) =>
-            new() { Id = id, Name = name, Code = "", IsActive = true, DatasamlingCount = 2 };
+            new() { Id = id, Name = name, Code = "", IsActive = true, DatasamlingCount = 2, TotalVariables = 10 };
 
         public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
             string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>

@@ -1,0 +1,2 @@
+category: Fixed
+- **An opened kilde row with no variables no longer links to an empty variable list.** In the kildeutforsker, an expanded kilde row ends in «Vis alle variabler i <kilde>» («Show all variables in <kilde>») when the host gave a `VariableExplorerPath`. For a kilde the API reports with 0 variables, for example one whose only datasamlinger were published without visible variables, the link is no longer drawn, as the kilde's own view already did. The row still lists its datasamlinger.
