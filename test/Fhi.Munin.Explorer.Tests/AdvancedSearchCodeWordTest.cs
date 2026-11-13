@@ -13,11 +13,20 @@ public class AdvancedSearchCodeWordTest : ExplorerTestContext
 {
     private sealed class Client(string optionsJson) : EmptyMuninExplorerClient
     {
+        public TaskCompletionSource? HeldVocabulary { get; init; }
+
         public override Task<IReadOnlyList<ConditionField>> GetConditionFieldsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(JsonSerializer.Deserialize<IReadOnlyList<ConditionField>>(TestData.Read("vilkar.json"), MuninExplorerClient.Json)!);
 
-        public override Task<IReadOnlyList<PropertyMetadataEntry>> GetKildePropertyMetadataAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<PropertyMetadataEntry>>([new PropertyMetadataEntry { Key = AccessLevels.Key, OptionsJson = optionsJson }]);
+        public override async Task<IReadOnlyList<PropertyMetadataEntry>> GetKildePropertyMetadataAsync(CancellationToken cancellationToken = default)
+        {
+            if (HeldVocabulary is { } held)
+            {
+                await held.Task;
+            }
+
+            return [new PropertyMetadataEntry { Key = AccessLevels.Key, OptionsJson = optionsJson }];
+        }
     }
 
     private IElement CheckboxWord(string optionsJson, string code)
@@ -57,5 +66,25 @@ public class AdvancedSearchCodeWordTest : ExplorerTestContext
 
         Assert.Equal("apne-data", word.TextContent.Trim());
         Assert.Null(word.GetAttribute("lang"));
+    }
+
+    [Fact]
+    public async Task Open_WhenTheVocabularyIsStillLoadingForTheLink_ThenTheRowsWaitForItsWords()
+    {
+        var held = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Services.AddSingleton<IMuninExplorerClient>(
+            new Client("""[{"value":"apne-data","label":"Åpne data","labelEn":"Open data"}]""") { HeldVocabulary = held });
+        Services.AddSingleton(new AdvancedSearchSwitch(true));
+        var cut = Render<VariableSearch>(b => b
+            .Add(c => c.Language, "en")
+            .Add(c => c.Filter, VariableFilter.Parse("vilkar=tilgangsniva%3AerEnAv%3Aapne-data")));
+        cut.WaitForAssertion(() => Assert.NotNull(
+            cut.FindAll("button[aria-expanded]").FirstOrDefault(b => b.TextContent.StartsWith("Advanced", StringComparison.Ordinal))));
+
+        cut.FindAll("button[aria-expanded]").First(b => b.TextContent.StartsWith("Advanced", StringComparison.Ordinal)).Click();
+        Assert.Empty(cut.FindAll(".munin-explorer-advanced-search input[type=checkbox]"));
+        await cut.InvokeAsync(held.SetResult);
+
+        cut.WaitForAssertion(() => Assert.Contains(cut.FindAll(".munin-explorer-advanced-search label span"), span => span.TextContent.Trim() == "Open data"));
     }
 }

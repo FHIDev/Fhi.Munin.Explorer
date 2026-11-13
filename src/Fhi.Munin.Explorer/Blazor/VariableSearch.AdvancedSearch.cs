@@ -125,6 +125,7 @@ public partial class VariableSearch
     private async Task OpenAdvancedSearchAsync()
     {
         _advancedOpen = true;
+        _focusAddCondition = false;
         _drafts.Clear();
         _draftFieldSelects.Clear();
         var opening = ++_advancedOpenings;

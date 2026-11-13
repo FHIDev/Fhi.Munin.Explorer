@@ -27,10 +27,14 @@ public class AdvancedSearchTest : ExplorerTestContext
 
         public int FieldCalls { get; private set; }
 
+        public int FailFieldCalls { get; init; }
+
         public override Task<IReadOnlyList<ConditionField>> GetConditionFieldsAsync(CancellationToken cancellationToken = default)
         {
             FieldCalls++;
-            return Task.FromResult(Answer);
+            return FieldCalls <= FailFieldCalls
+                ? Task.FromException<IReadOnlyList<ConditionField>>(new HttpRequestException("503"))
+                : Task.FromResult(Answer);
         }
 
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
@@ -551,6 +555,25 @@ public class AdvancedSearchTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Equal(rows, Rows(cut).Count));
         Remember(cut);
         return cut;
+    }
+
+    [Fact]
+    public void Open_WhenEndreWasPressedWhileTheFieldsWereUnavailable_ThenTheNextOpeningKeepsFocusOnTheFirstRow()
+    {
+        var filter = new VariableFilter { Conditions = [Condition("navn:inneholder:a")] };
+        var cut = RenderWith(new ConditionClient { FailFieldCalls = 2 }, filter: filter);
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+        Button(cut, "Endre avansert søk").Click();
+        Toggle(cut)!.Click();
+
+        Toggle(cut)!.Click();
+        cut.WaitForAssertion(() => Assert.Single(Rows(cut)));
+        Remember(cut);
+        Rows(cut)[0].QuerySelector("input")!.Change("b");
+        Remember(cut);
+
+        AssertFocusOn(cut, () => FieldList(Rows(cut)[0]));
     }
 
     [Fact]
