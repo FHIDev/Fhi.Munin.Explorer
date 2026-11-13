@@ -278,8 +278,9 @@ public partial class VariableSearch
     {
         List<SearchCondition> conditions = [];
         ConditionDraft? firstRefused = null;
+        var opening = _advancedOpenings;
 
-        foreach (var draft in _drafts)
+        foreach (var draft in _drafts.ToList())
         {
             draft.Error = null;
 
@@ -288,7 +289,9 @@ public partial class VariableSearch
                 continue;
             }
 
-            var (value, error) = DraftValue(draft, field);
+            var (value, error) = await HoldsBadNativeDateAsync(draft, field)
+                ? (null, T.ConditionDateInvalid)
+                : DraftValue(draft, field);
             draft.Error = error;
             firstRefused ??= error is null ? null : draft;
 
@@ -296,6 +299,12 @@ public partial class VariableSearch
             {
                 conditions.Add(new SearchCondition(field.Field, draft.Operator, value));
             }
+        }
+
+        // The browser was asked between rows: a second press or a close may have landed meanwhile.
+        if (opening != _advancedOpenings || !_advancedOpen)
+        {
+            return;
         }
 
         if (firstRefused is not null)
@@ -307,6 +316,19 @@ public partial class VariableSearch
         _advancedOpen = false;
         _focusAdvancedToggle = true;
         await ApplyFilterAsync(Pending with { Conditions = conditions });
+    }
+
+    // A native date reports "" for a half-typed or impossible entry as well as for a cleared one.
+    private async Task<bool> HoldsBadNativeDateAsync(ConditionDraft draft, ConditionField field)
+    {
+        if (field.Type != ConditionField.DateType || _interop is not { } interop)
+        {
+            return false;
+        }
+
+        var between = string.Equals(draft.Operator, ConditionField.BetweenOperator, StringComparison.OrdinalIgnoreCase);
+        return (draft.From.Trim().Length == 0 && (await interop.ReadDateInputAsync(DraftId(draft, "from")))?.BadInput == true)
+            || (between && draft.To.Trim().Length == 0 && (await interop.ReadDateInputAsync(DraftId(draft, "to")))?.BadInput == true);
     }
 
     /// <summary>The value in the API's form, null for an empty row, or the reason the row cannot be read.</summary>
