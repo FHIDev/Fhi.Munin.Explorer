@@ -10,7 +10,9 @@ A rules file has one `<tier> <glob>` per line (# starts a comment). A file takes
 high, medium, low, that has a glob matching it, and medium when none does. A pull request takes the highest
 tier among its files, so it is low only when every file is. `**` crosses directories, `*` and `?` do not.
 A Dependabot bump that stays within a major version of 1 or more and touches only package manifests and
-lockfiles is low, whatever the rules say. The rules and examples files themselves are always high, so a pull request
+lockfiles is low, unless a high rule matches one of them: such a manifest keeps its high tier
+(DevInfra-0f5.36, Robin's choice of 13.11), so a repository marks a package that must keep its review by naming its
+manifest in a high rule. The rules and examples files themselves are always high, so a pull request
 cannot lower its own tier by editing them; this rule lives here, in DevInfra, where no caller's pull request reaches.
 """
 import argparse
@@ -84,7 +86,8 @@ def is_minor_dependency_bump(files, author, title):
 def pr_tier(files, rules, author="", title=""):
     """(tier, [(path, tier, glob)])."""
     decided = [(path, *file_tier(path, rules)) for path in files]
-    if is_minor_dependency_bump(files, author, title):
+    # The exception never lowers a manifest a high rule names (DevInfra-0f5.36): the bump then takes the rules' tier.
+    if is_minor_dependency_bump(files, author, title) and not any(tier == "high" for _, tier, _ in decided):
         return "low", decided
     if not decided:
         return "medium", decided
