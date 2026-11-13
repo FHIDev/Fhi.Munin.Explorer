@@ -291,7 +291,7 @@ public class VariableExplorerTest : ExplorerTestContext
         var client = new ExplorerClient(Variable("Alder ved diagnose", "V_BDR.ALDER"));
         Prepare(client);
 
-        // Only the two parameters BlazorComponentPage offers, in the way it offers them.
+        // Only Language and IsAuthenticated, the way BlazorComponentPage passes them.
         var cut = Render(builder =>
         {
             builder.OpenComponent(0, component!);
@@ -320,9 +320,9 @@ public class VariableExplorerTest : ExplorerTestContext
     [Fact]
     public void ShippedDefaultName_WhenItIsResolved_ThenItTakesOnlyWhatTheCmsCanOffer()
     {
-        // BlazorComponentPage offers Language, SkjemaId and IsAuthenticated and nothing else, and
-        // it drops any candidate the component does not declare. A required parameter outside that
-        // set would leave the CMS mounting an explorer that cannot work, with no error anywhere.
+        // BlazorComponentPage offers a fixed candidate list and drops any candidate the component
+        // does not declare. A required parameter outside that list would leave the CMS mounting an
+        // explorer that cannot work, with no error anywhere.
         var component = typeof(IMuninExplorerClient).Assembly.GetType(ShippedDefault, throwOnError: true)!;
 
         var declared = component

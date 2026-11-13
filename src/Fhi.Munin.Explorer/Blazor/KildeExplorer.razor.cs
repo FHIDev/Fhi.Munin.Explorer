@@ -219,13 +219,12 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// full URL is taken as given, for the host whose other explorer is in another application.
     /// </para>
     /// <para>
-    /// <b>A CMS host cannot set it, and null is the right answer there.</b> helsedata's
-    /// <c>BlazorComponentPage</c> offers a fixed candidate list — <c>Language</c>, <c>SkjemaId</c>,
-    /// <c>IsAuthenticated</c> — and drops every name outside it, so this parameter is reachable
-    /// only from a host that writes the mount itself. Defaulting it to a guess such as
+    /// <b>Null is a valid setup, and it draws neither.</b> helsedata's <c>BlazorComponentPage</c>
+    /// passes this from the page's «Variabelutforsker-side» reference, resolved in the reader's
+    /// content language so an English reader lands on the English variable explorer, and shows its
+    /// editor a hint in edit mode while that field is empty. Defaulting it to a guess such as
     /// <c>"variabler"</c> would be worse than leaving it null: the column and the link would both
-    /// be drawn, and both would land on a page that host may not have. Null draws neither, which is
-    /// the same page that mount renders today.
+    /// be drawn, and both would land on a page that host may not have.
     /// </para>
     /// </remarks>
     [Parameter] public string? VariableExplorerPath { get; set; }

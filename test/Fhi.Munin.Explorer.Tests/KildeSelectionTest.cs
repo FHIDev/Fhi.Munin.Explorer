@@ -1848,7 +1848,7 @@ public class KildeSelectionTest : ExplorerTestContext
     [Fact]
     public void Marks_WhenTheHostWiredOnlyTheKildeHandover_ThenNoDatasamlingCanBeMarked()
     {
-        // The state helsedata's own CMS mount is in until it passes VariableExplorerPath, and the
+        // The state a helsedata page is in while its «Variabelutforsker-side» field is empty, and the
         // state a host composing KildeSearch itself is in until it wires the second callback: a
         // checkbox whose press had nowhere to go would be a control that quietly does nothing.
         var (cut, _) = RenderSelectable(ThreeKilder());

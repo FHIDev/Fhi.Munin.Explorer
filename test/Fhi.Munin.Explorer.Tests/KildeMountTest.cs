@@ -221,9 +221,9 @@ public class KildeMountTest : ExplorerTestContext
     [Fact]
     public void KildeExplorer_WhenTheHostCanOnlySetLanguage_ThenTheListRendersAndNoHandoverIsOffered()
     {
-        // The CMS mount exactly: VariableExplorerPath is not in helsedata's candidate list and
-        // cannot be, so null has to be a page rather than a crash. No column is the safe answer —
-        // a button leading to a page that host may not have would be worse.
+        // A CMS page whose «Variabelutforsker-side» field is empty: helsedata then passes no
+        // VariableExplorerPath, so null has to be a page rather than a crash. No column is the safe
+        // answer — a button leading to a page that host may not have would be worse.
         var cut = MountByName("KildeExplorer", "http://localhost/kilder");
 
         Assert.Contains("Als registeret", cut.Markup, StringComparison.Ordinal);
