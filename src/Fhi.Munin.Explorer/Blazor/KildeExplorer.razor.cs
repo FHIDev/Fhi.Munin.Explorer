@@ -222,9 +222,9 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// <b>Null is a valid setup, and draws neither the selection column nor the links.</b>
     /// helsedata's <c>BlazorComponentPage</c> passes this from the page's «Variabelutforsker-side»
     /// reference, resolved in the reader's content language so an English reader lands on the English
-    /// variable explorer, and shows its editor a hint in edit mode while that field is empty. So defaulting it to a guess such as
-    /// <c>"variabler"</c> would be worse than leaving it null: the column and the link would both
-    /// be drawn, and both would land on a page that host may not have.
+    /// variable explorer, and shows its editor a hint in edit mode while that field is empty. So
+    /// defaulting it to a guess such as <c>"variabler"</c> would be worse than leaving it null: the
+    /// column and the link would both be drawn, and both would land on a page that host may not have.
     /// </para>
     /// </remarks>
     [Parameter] public string? VariableExplorerPath { get; set; }
