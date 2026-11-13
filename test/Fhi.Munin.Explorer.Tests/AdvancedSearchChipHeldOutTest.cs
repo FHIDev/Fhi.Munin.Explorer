@@ -53,6 +53,6 @@ public class AdvancedSearchChipHeldOutTest : ExplorerTestContext
 
         var last = client.Searches[^1]!.Conditions;
         Assert.Equal(["kode:begynnerMed:V_"], last.Select(c => c.ToString()).ToArray());
-        Assert.Contains("Kode begynner med V_", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains("Kode begynner med «V_»", cut.Markup, StringComparison.Ordinal);
     }
 }
