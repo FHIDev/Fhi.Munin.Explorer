@@ -323,7 +323,7 @@ else
                 <fieldset class="form-fieldset form-group" id="@AdvancedPanelId">
                     <legend class="form-element__label">@T.AdvancedSearch</legend>
 
-                    @if (_conditionFields is null)
+                    @if (_conditionFields is null || _advancedLoading)
                     {
                         <p class="caption" role="status">@T.Loading</p>
                     }

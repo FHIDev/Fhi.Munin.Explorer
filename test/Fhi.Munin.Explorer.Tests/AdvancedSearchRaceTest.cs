@@ -131,6 +131,37 @@ public class AdvancedSearchRaceTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Empty(client.Searches[^1]!.Conditions));
     }
 
+    [Fact]
+    public async Task Open_WhenAnEarlierOpeningsFieldsArriveFirst_ThenTheFormStillWaitsForItsOwn()
+    {
+        var client = new HeldClient { HoldFields = true };
+        var cut = RenderWith(client, "navn:inneholder:a");
+        Toggle(cut)!.Click();
+        Toggle(cut)!.Click();
+        Toggle(cut)!.Click();
+
+        var renders = cut.RenderCount;
+        await cut.InvokeAsync(() => client.ReleaseFields(0));
+        cut.WaitForState(() => cut.RenderCount > renders);
+
+        Assert.Empty(cut.FindAll(".munin-explorer-advanced-search button"));
+        await cut.InvokeAsync(() => client.ReleaseFields(1));
+        cut.WaitForAssertion(() => Assert.Single(Rows(cut)));
+    }
+
+    [Fact]
+    public void Open_WhenAChipRemovalIsQueuedBehindASearch_ThenTheRowsAreTheQueuedConditions()
+    {
+        var client = new HeldClient { HoldLaterSearches = true };
+        var cut = RenderWith(client, "navn:inneholder:a", "navn:inneholder:b", "navn:inneholder:c");
+
+        RemoveChip(cut, "a");
+        RemoveChip(cut, "b");
+        Toggle(cut)!.Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("c", Assert.Single(Rows(cut)).QuerySelector("input")!.GetAttribute("value")));
+    }
+
     private static void RemoveChip(IRenderedComponent<VariableSearch> cut, string value) =>
         cut.FindAll("button").Single(b => b.GetAttribute("aria-label") == $"Fjern filteret Navn inneholder «{value}»").Click();
 

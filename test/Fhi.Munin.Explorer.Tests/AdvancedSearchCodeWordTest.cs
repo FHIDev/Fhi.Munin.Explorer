@@ -83,6 +83,7 @@ public class AdvancedSearchCodeWordTest : ExplorerTestContext
 
         cut.FindAll("button[aria-expanded]").First(b => b.TextContent.StartsWith("Advanced", StringComparison.Ordinal)).Click();
         Assert.Empty(cut.FindAll(".munin-explorer-advanced-search input[type=checkbox]"));
+        Assert.Empty(cut.FindAll(".munin-explorer-advanced-search button"));
         await cut.InvokeAsync(held.SetResult);
 
         cut.WaitForAssertion(() => Assert.Contains(cut.FindAll(".munin-explorer-advanced-search label span"), span => span.TextContent.Trim() == "Open data"));

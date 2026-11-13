@@ -26,6 +26,9 @@ public partial class VariableSearch
 
     private bool _advancedOpen;
 
+    // Until an opening has its rows, «Vis treff» would apply none and «Legg til» add one the opening then follows.
+    private bool _advancedLoading;
+
     // Null until asked for; empty when the API has none to offer or the call failed.
     private IReadOnlyList<ConditionField>? _conditionFields;
 
@@ -129,7 +132,23 @@ public partial class VariableSearch
         _drafts.Clear();
         _draftFieldSelects.Clear();
         var opening = ++_advancedOpenings;
+        _advancedLoading = true;
 
+        try
+        {
+            await FillDraftsAsync(opening);
+        }
+        finally
+        {
+            if (opening == _advancedOpenings)
+            {
+                _advancedLoading = false;
+            }
+        }
+    }
+
+    private async Task FillDraftsAsync(int opening)
+    {
         var fields = await ConditionFieldsAsync();
         if (fields.Count == 0 || opening != _advancedOpenings || !_advancedOpen)
         {
@@ -142,7 +161,7 @@ public partial class VariableSearch
             return;
         }
 
-        foreach (var condition in _filter.Conditions)
+        foreach (var condition in Pending.Conditions)
         {
             if (FieldOf(fields, condition.Field) is { } field)
             {
