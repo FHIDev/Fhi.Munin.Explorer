@@ -2,6 +2,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -34,6 +35,8 @@ public partial class VariableSearch
 
     // A failure is not an answer: the next open asks again, and a link's conditions are not judged by it.
     private bool _conditionFieldsFailed;
+
+    private Task<IReadOnlyList<ConditionField>>? _conditionFieldsLoad;
 
     // Bumped on every open, so a slow fields answer from an earlier open adds no rows to a later one.
     private int _advancedOpenings;
@@ -74,8 +77,9 @@ public partial class VariableSearch
         {
             var fields = await ConditionFieldsAsync();
             kept = _conditionFieldsFailed
-                ? [.. _filter.Conditions.Distinct()]
-                : [.. _filter.Conditions.Distinct().Where(condition => FieldOf(fields, condition.Field)?.Accepts(condition) == true)];
+                ? [.. _filter.Conditions.Distinct(SameCondition.Instance)]
+                : [.. _filter.Conditions.Distinct(SameCondition.Instance)
+                    .Where(condition => FieldOf(fields, condition.Field)?.Accepts(condition) == true)];
         }
 
         if (kept.Count != _filter.Conditions.Count)
@@ -90,6 +94,23 @@ public partial class VariableSearch
         }
     }
 
+    // Field and operator are matched ignoring case, as Accepts matches them, so «Navn» and «navn» are one condition.
+    private sealed class SameCondition : IEqualityComparer<SearchCondition>
+    {
+        internal static readonly SameCondition Instance = new();
+
+        public bool Equals(SearchCondition? x, SearchCondition? y) =>
+            ReferenceEquals(x, y) || (x is not null && y is not null
+                && string.Equals(x.Field, y.Field, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(x.Operator, y.Operator, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(x.Value, y.Value, StringComparison.Ordinal));
+
+        public int GetHashCode(SearchCondition condition) => HashCode.Combine(
+            StringComparer.OrdinalIgnoreCase.GetHashCode(condition.Field),
+            StringComparer.OrdinalIgnoreCase.GetHashCode(condition.Operator),
+            condition.Value);
+    }
+
     private async Task<IReadOnlyList<ConditionField>> ConditionFieldsAsync()
     {
         if (_conditionFields is { } known && !_conditionFieldsFailed)
@@ -97,6 +118,19 @@ public partial class VariableSearch
             return known;
         }
 
+        // One call however many ask while it is out, so a late failure cannot overwrite an answer; a failure is asked again.
+        var load = _conditionFieldsLoad ??= FetchConditionFieldsAsync();
+        var fields = await load;
+        if (_conditionFieldsFailed && ReferenceEquals(_conditionFieldsLoad, load))
+        {
+            _conditionFieldsLoad = null;
+        }
+
+        return fields;
+    }
+
+    private async Task<IReadOnlyList<ConditionField>> FetchConditionFieldsAsync()
+    {
         try
         {
             _conditionFields = await Client.GetConditionFieldsAsync();
@@ -299,8 +333,9 @@ public partial class VariableSearch
         List<SearchCondition> conditions = [];
         ConditionDraft? firstRefused = null;
         var opening = _advancedOpenings;
+        var rows = _drafts.ToList();
 
-        foreach (var draft in _drafts.ToList())
+        foreach (var draft in rows)
         {
             draft.Error = null;
 
@@ -323,8 +358,8 @@ public partial class VariableSearch
             }
         }
 
-        // The browser was asked between rows: a second press or a close may have landed meanwhile.
-        if (opening != _advancedOpenings || !_advancedOpen)
+        // The browser was asked between rows: a second press, a close, «Nullstill» or a removal may have landed meanwhile.
+        if (opening != _advancedOpenings || !_advancedOpen || !rows.SequenceEqual(_drafts))
         {
             return;
         }
@@ -395,6 +430,12 @@ public partial class VariableSearch
         if (!_advancedOpen)
         {
             return OpenAdvancedSearchAsync();
+        }
+
+        // The opening still loading puts focus on its first row itself.
+        if (_advancedLoading)
+        {
+            return Task.CompletedTask;
         }
 
         _focusDraft = _drafts.FirstOrDefault()?.Key;
@@ -479,20 +520,30 @@ public partial class VariableSearch
     /// <summary>Called from <see cref="OnAfterRenderAsync"/>: focus what the last press asked for, once it is drawn.</summary>
     private async Task FocusAdvancedSearchAsync()
     {
+        ElementReference? target = null;
         if (_focusDraft is { } key && _draftFieldSelects.TryGetValue(key, out var select) && select.Context is not null)
         {
-            _focusDraft = null;
-            await select.FocusAsync();
+            (_focusDraft, target) = (null, select);
         }
         else if (_focusAddCondition && _addConditionButton.Context is not null)
         {
-            _focusAddCondition = false;
-            await _addConditionButton.FocusAsync();
+            (_focusAddCondition, target) = (false, _addConditionButton);
         }
         else if (_focusAdvancedToggle && _advancedToggle.Context is not null)
         {
-            _focusAdvancedToggle = false;
-            await _advancedToggle.FocusAsync();
+            (_focusAdvancedToggle, target) = (false, _advancedToggle);
+        }
+
+        try
+        {
+            if (target is { } element)
+            {
+                await element.FocusAsync();
+            }
+        }
+        catch (JSException)
+        {
+            // An element a later render removed refuses focus; the reader is no worse off than before.
         }
     }
 }

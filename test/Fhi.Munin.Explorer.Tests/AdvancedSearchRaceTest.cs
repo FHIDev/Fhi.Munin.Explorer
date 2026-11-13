@@ -29,6 +29,8 @@ public class AdvancedSearchRaceTest : ExplorerTestContext
 
         public void ReleaseFields(int call) => _fieldCalls[call].TrySetResult();
 
+        public int HeldFieldCalls => _fieldCalls.Count;
+
         public void ReleaseSearches() => _searches.TrySetResult();
 
         public override async Task<IReadOnlyList<ConditionField>> GetConditionFieldsAsync(CancellationToken cancellationToken = default)
@@ -99,7 +101,7 @@ public class AdvancedSearchRaceTest : ExplorerTestContext
     }
 
     [Fact]
-    public async Task Open_WhenTheFormIsClosedAndReopenedWhileTheFieldsLoad_ThenOnlyTheLastOpeningFillsRows()
+    public async Task Open_WhenTheFormIsClosedAndReopenedWhileTheFieldsLoad_ThenOneCallServesAndOnlyTheLastOpeningFillsRows()
     {
         var client = new HeldClient { HoldFields = true };
         var cut = RenderWith(client, "navn:inneholder:a");
@@ -107,11 +109,9 @@ public class AdvancedSearchRaceTest : ExplorerTestContext
         Toggle(cut)!.Click();
         Toggle(cut)!.Click();
         Toggle(cut)!.Click();
-        await cut.InvokeAsync(() => client.ReleaseFields(1));
-        cut.WaitForAssertion(() => Assert.Single(Rows(cut)));
-        var renders = cut.RenderCount;
+        Assert.Equal(1, client.HeldFieldCalls);
         await cut.InvokeAsync(() => client.ReleaseFields(0));
-        cut.WaitForState(() => cut.RenderCount > renders);
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".munin-explorer-advanced-search [role=status]")));
 
         Assert.Single(Rows(cut));
     }
@@ -126,27 +126,26 @@ public class AdvancedSearchRaceTest : ExplorerTestContext
         RemoveChip(cut, "b");
         Assert.DoesNotContain(cut.FindAll("button"), b => b.GetAttribute("aria-label") == "Fjern filteret Navn inneholder «b»");
         RemoveChip(cut, "c");
+        Assert.DoesNotContain(cut.FindAll("button"), b => b.TextContent.Trim() == "Endre avansert søk");
         await cut.InvokeAsync(client.ReleaseSearches);
 
         cut.WaitForAssertion(() => Assert.Empty(client.Searches[^1]!.Conditions));
     }
 
     [Fact]
-    public async Task Open_WhenAnEarlierOpeningsFieldsArriveFirst_ThenTheFormStillWaitsForItsOwn()
+    public void ShowHits_WhenConditionsAreQueuedBehindASearch_ThenTheirChipsOfferEndre()
     {
-        var client = new HeldClient { HoldFields = true };
+        var client = new HeldClient { HoldLaterSearches = true };
         var cut = RenderWith(client, "navn:inneholder:a");
+        RemoveChip(cut, "a");
         Toggle(cut)!.Click();
-        Toggle(cut)!.Click();
-        Toggle(cut)!.Click();
-
-        var renders = cut.RenderCount;
-        await cut.InvokeAsync(() => client.ReleaseFields(0));
-        cut.WaitForState(() => cut.RenderCount > renders);
-
-        Assert.Empty(cut.FindAll(".munin-explorer-advanced-search button"));
-        await cut.InvokeAsync(() => client.ReleaseFields(1));
         cut.WaitForAssertion(() => Assert.Single(Rows(cut)));
+        Rows(cut)[0].QuerySelector("input")!.Change("b");
+
+        Press(cut, "Vis treff");
+
+        cut.WaitForAssertion(() => Assert.Contains(cut.FindAll("button"), b => b.GetAttribute("aria-label") == "Fjern filteret Navn inneholder «b»"));
+        Assert.Contains(cut.FindAll("button"), b => b.TextContent.Trim() == "Endre avansert søk");
     }
 
     [Fact]
@@ -165,6 +164,31 @@ public class AdvancedSearchRaceTest : ExplorerTestContext
     private static void RemoveChip(IRenderedComponent<VariableSearch> cut, string value) =>
         cut.FindAll("button").Single(b => b.GetAttribute("aria-label") == $"Fjern filteret Navn inneholder «{value}»").Click();
 
+
+    [Fact]
+    public async Task ShowHits_WhenNullstillIsPressedWhileTheBrowserIsAskedAboutADate_ThenNothingIsApplied()
+    {
+        var browser = JSInterop.SetupModule(ExplorerInterop.ModulePath).Setup<DateInputState>("readDateInput", _ => true);
+        var client = new HeldClient();
+        var cut = RenderWith(client, "navn:inneholder:a");
+        Toggle(cut)!.Click();
+        cut.WaitForAssertion(() => Assert.Single(Rows(cut)));
+        Rows(cut)[0].QuerySelector("input")!.Change("b");
+        Press(cut, "Legg til betingelse");
+        PickDate(cut, "for", row: 1);
+        var before = client.Searches.Count;
+
+        Press(cut, "Vis treff");
+        Assert.NotEmpty(browser.Invocations);
+        Press(cut, "Nullstill");
+
+        var renders = cut.RenderCount;
+        await cut.InvokeAsync(() => browser.SetResult(new DateInputState("", false)));
+        cut.WaitForState(() => cut.RenderCount > renders);
+
+        Assert.Equal("true", Toggle(cut)!.GetAttribute("aria-expanded"));
+        Assert.Equal(before, client.Searches.Count);
+    }
 
     [Theory]
     [InlineData(false)]

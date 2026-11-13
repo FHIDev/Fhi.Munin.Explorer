@@ -363,7 +363,8 @@ public sealed partial class VariableSearch : ComponentBase
     /// Read once, when the component initialises, and owned by the component afterwards — again like
     /// <see cref="Search"/>. A host that rewrites this parameter later does not move the filters that
     /// are on screen; what it gets instead is <see cref="FilterChanged"/>, which fires whenever the
-    /// reader moves them, and once on mount when avansert søk conditions in it had to be dropped.
+    /// reader moves them, and once on mount when avansert søk conditions in it had to be dropped or a
+    /// repeated one was kept once.
     /// </para>
     /// <para>
     /// <see cref="VariableFilter.ToQueryString"/> and <see cref="VariableFilter.Parse"/> are the two
@@ -396,7 +397,8 @@ public sealed partial class VariableSearch : ComponentBase
     /// hand out a link that reloads into a different selection than the one the page is showing.
     /// Unlike <see cref="SearchChanged"/> it is not raised on the initial load — nothing has changed
     /// yet, and the value would be the one the host just passed in — except when the load drops
-    /// <see cref="VariableFilter.Conditions"/> the feature is off for or the API would refuse.
+    /// <see cref="VariableFilter.Conditions"/> that the feature does not offer or the API would refuse, or
+    /// keeps a repeated one once.
     /// </para>
     /// </remarks>
     [Parameter] public EventCallback<VariableFilter> FilterChanged { get; set; }

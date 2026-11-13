@@ -675,7 +675,7 @@ else
     @if (_resultsTab != ExplorerTab.VariableList)
     {
         @ActiveFilters.For(this, T.ActiveFiltersTitle, ActiveFilterChips, T.ClearFilters, ClearFiltersAsync,
-                          AdvancedSearchOffered && _filter.Conditions.Count > 0 ? (T.EditAdvancedSearch, EditAdvancedSearchAsync) : null)
+                          AdvancedSearchOffered && Pending.Conditions.Count > 0 ? (T.EditAdvancedSearch, EditAdvancedSearchAsync) : null)
     }
 
     @* The hierarchy trail, above the results and below the filters — which is where Runa puts it,

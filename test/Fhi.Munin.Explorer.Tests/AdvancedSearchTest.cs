@@ -1,3 +1,4 @@
+using Microsoft.JSInterop;
 using System.Net;
 using System.Text.Json;
 using AngleSharp.Dom;
@@ -28,6 +29,18 @@ public class AdvancedSearchTest : ExplorerTestContext
         public int FieldCalls { get; private set; }
 
         public int FailFieldCalls { get; init; }
+
+        public TaskCompletionSource? HeldVocabulary { get; init; }
+
+        public override async Task<IReadOnlyList<PropertyMetadataEntry>> GetKildePropertyMetadataAsync(CancellationToken cancellationToken = default)
+        {
+            if (HeldVocabulary is { } held)
+            {
+                await held.Task;
+            }
+
+            return [];
+        }
 
         public override Task<IReadOnlyList<ConditionField>> GetConditionFieldsAsync(CancellationToken cancellationToken = default)
         {
@@ -574,15 +587,50 @@ public class AdvancedSearchTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData(0)]
-    [InlineData(1)]
-    public void Render_WhenALinkCarriesTheSameConditionTwice_ThenItIsSearchedAndShownOnce(int failedFieldCalls)
+    [InlineData(0, "navn:inneholder:a")]
+    [InlineData(1, "navn:inneholder:a")]
+    [InlineData(0, "Navn:INNEHOLDER:a")]
+    [InlineData(1, "Navn:INNEHOLDER:a")]
+    public void Render_WhenALinkCarriesTheSameConditionTwice_ThenItIsSearchedAndShownOnce(int failedFieldCalls, string again)
     {
         var client = new ConditionClient { FailFieldCalls = failedFieldCalls };
-        var cut = RenderWith(client, filter: new VariableFilter { Conditions = [Condition("navn:inneholder:a"), Condition("navn:inneholder:a")] });
+        var cut = RenderWith(client, filter: new VariableFilter { Conditions = [Condition("navn:inneholder:a"), Condition(again)] });
 
         cut.WaitForAssertion(() => Assert.Equal([Condition("navn:inneholder:a")], client.Searches[^1]!.Conditions));
         Assert.Single(cut.FindAll("button"), b => b.GetAttribute("aria-label") == "Fjern filteret Navn inneholder «a»");
+    }
+
+    [Fact]
+    public async Task Edit_WhenPressedWhileTheOpeningStillLoads_ThenFocusStaysOnTheFirstRowItLands()
+    {
+        var held = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var cut = RenderWith(new ConditionClient { HeldVocabulary = held },
+            filter: new VariableFilter { Conditions = [Condition("navn:inneholder:a")] });
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+        Button(cut, "Endre avansert søk").Click();
+
+        await cut.InvokeAsync(held.SetResult);
+        cut.WaitForAssertion(() => Assert.Single(Rows(cut)));
+        Remember(cut);
+        Rows(cut)[0].QuerySelector("input")!.Change("b");
+        Remember(cut);
+
+        AssertFocusOn(cut, () => FieldList(Rows(cut)[0]));
+    }
+
+    [Fact]
+    public void Open_WhenTheBrowserRefusesFocus_ThenTheFormStillOpens()
+    {
+        JSInterop.SetupVoid("Blazor._internal.domWrapper.focus", _ => true).SetException(new JSException("gone"));
+        var cut = RenderWith(new ConditionClient());
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+
+        Toggle(cut)!.Click();
+
+        cut.WaitForAssertion(() => Assert.Single(Rows(cut)));
+        Button(cut, "Legg til betingelse").Click();
+        Assert.Equal(2, Rows(cut).Count);
     }
 
     [Fact]
