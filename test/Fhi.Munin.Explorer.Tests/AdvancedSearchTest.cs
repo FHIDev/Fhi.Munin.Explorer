@@ -424,6 +424,25 @@ public class AdvancedSearchTest : ExplorerTestContext
         Assert.Equal("true", Rows(cut)[0].QuerySelector("input[type=date]")!.GetAttribute("aria-invalid"));
     }
 
+    [Theory]
+    [InlineData(0, "2009-01-01")]
+    [InlineData(1, "2020-12-31")]
+    public void ShowHits_WhenARefusedRangeIsCorrected_ThenTheRowNoLongerSaysItIsWrong(int input, string day)
+    {
+        var cut = RenderWith(new ConditionClient());
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+        Rows(cut)[0].QuerySelectorAll("select")[0].Change("gyldigFra");
+        Rows(cut)[0].QuerySelectorAll("input[type=date]")[0].Change("2010-01-01");
+        Button(cut, "Vis treff").Click();
+        Assert.Equal("true", Rows(cut)[0].QuerySelector("input[type=date]")!.GetAttribute("aria-invalid"));
+
+        Rows(cut)[0].QuerySelectorAll("input[type=date]")[input].Change(day);
+
+        Assert.Null(Rows(cut)[0].QuerySelector("input[type=date]")!.GetAttribute("aria-invalid"));
+        Assert.Empty(Rows(cut)[0].QuerySelector("[role=alert]")?.TextContent.Trim() ?? "");
+    }
+
     [Fact]
     public void ShowHits_WhenEveryRowIsEmpty_ThenTheConditionsInForceAreRemoved()
     {
@@ -492,10 +511,10 @@ public class AdvancedSearchTest : ExplorerTestContext
     {
         VariableFilter? told = null;
         var client = new ConditionClient { Answer = [] };
-        RenderWith(client, filter: new VariableFilter { Conditions = [Condition("navn:inneholder:a")] }, changed: filter => told = filter);
+        var cut = RenderWith(client, filter: new VariableFilter { Conditions = [Condition("navn:inneholder:a")] }, changed: filter => told = filter);
 
+        cut.WaitForAssertion(() => Assert.NotNull(told));
         Assert.Empty(client.Searches[^1]!.Conditions);
-        Assert.NotNull(told);
         Assert.Empty(told!.Conditions);
     }
 

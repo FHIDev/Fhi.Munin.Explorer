@@ -409,7 +409,7 @@ else
                                                    autocomplete="off"
                                                    aria-labelledby="@(legendId + " " + DraftId(draft, "from-label"))"
                                                    aria-invalid="@(draft.Error is null ? null : "true")"
-                                                   @bind-value="draft.From" @bind-value:event="onchange" />
+                                                   @bind-value="draft.From" @bind-value:event="onchange" @bind-value:after="() => draft.Error = null" />
                                         </div>
                                         @if (between)
                                         {
@@ -421,7 +421,7 @@ else
                                                        autocomplete="off"
                                                        aria-labelledby="@(legendId + " " + DraftId(draft, "to-label"))"
                                                        aria-invalid="@(draft.Error is null ? null : "true")"
-                                                       @bind-value="draft.To" @bind-value:event="onchange" />
+                                                       @bind-value="draft.To" @bind-value:event="onchange" @bind-value:after="() => draft.Error = null" />
                                             </div>
                                         }
                                     }
