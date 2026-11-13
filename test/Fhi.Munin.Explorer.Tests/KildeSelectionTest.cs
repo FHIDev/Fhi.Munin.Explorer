@@ -1435,10 +1435,37 @@ public class KildeSelectionTest : ExplorerTestContext
         var full = rows.Single(row => row.QuerySelector("th")!.TextContent.Trim() == "Oppfølging");
         Assert.Equal(none, empty.QuerySelectorAll("td").Last().TextContent.Trim());
         Assert.Equal(some, full.QuerySelectorAll("td").Last().TextContent.Trim());
-        Assert.Null(empty.QuerySelector("td.munin-explorer-kilde__datasamling-select input"));
-        Assert.NotNull(empty.QuerySelector("td.munin-explorer-kilde__datasamling-select"));
+        // Empty, not just without a box: Stiler's cards hide a td:empty, and a cell with anything in it
+        // would draw its «Velg» label over nothing at 767px and below.
+        Assert.Empty(empty.QuerySelector("td.munin-explorer-kilde__datasamling-select")!.ChildNodes);
         Assert.NotNull(full.QuerySelector("td.munin-explorer-kilde__datasamling-select input"));
-        Assert.Empty(empty.QuerySelectorAll("a"));
+    }
+
+    [Fact]
+    public void Marks_WhenTheAddressMarksADatasamlingThatNowHasNoVariables_ThenItsBoxStaysToUndoIt()
+    {
+        // A shared link or Back can bring back a mark made while the datasamling had variables. Without
+        // its box the mark would count in the bar and travel to an empty list, with only the reset to undo it.
+        var client = ThreeKilder();
+        client.Describing(DetailTwo() with
+        {
+            Datasamlinger =
+            [
+                Collection(CollectionTwoA, "Dødsfall") with { VariableCount = 0 },
+                Collection(CollectionTwoB, "Underliggende årsak"),
+            ],
+        });
+        var (cut, _, _) = RenderMarkable(client, b => b.Add(
+            c => c.MarkedDatasamlinger,
+            (IReadOnlyList<string>)[KildeSearch.MarkValue(KildeTwo, CollectionTwoA)]));
+
+        var box = Assert.Single(MarkBoxes(cut, KildeTwo), b => AccessibleName.Of(b) == "Velg Dødsfall");
+        Assert.True(box.HasAttribute("checked"));
+
+        Mark(cut, KildeTwo, "Dødsfall", marked: false);
+
+        Assert.Equal("", BarLine(cut));
+        Assert.DoesNotContain(MarkBoxes(cut, KildeTwo), b => AccessibleName.Of(b) == "Velg Dødsfall");
     }
 
     [Fact]

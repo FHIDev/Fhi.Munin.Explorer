@@ -164,9 +164,9 @@ internal static class DatasamlingTable
         builder.AddAttribute(seq++, "class", "munin-explorer-kilde__datasamling-select");
         builder.AddAttribute(seq++, "data-label", texts.SelectDatasamlingColumn);
 
-        // A mark hands the datasamling to the variable list, and one with no visible variables would
-        // land the reader on an empty list; the cell stays so the columns line up (Fhi.Metadata-l9l2n.183).
-        if (row.VariableCount == 0)
+        // A mark hands the datasamling to the variable list, which is empty at 0 (Fhi.Metadata-l9l2n.183);
+        // a mark the address brought back keeps its box, or it could not be undone. The cell stays.
+        if (row.VariableCount == 0 && !selection.IsMarked(row.Id))
         {
             builder.CloseElement();
             return;
