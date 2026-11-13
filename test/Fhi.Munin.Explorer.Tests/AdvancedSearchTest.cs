@@ -558,6 +558,48 @@ public class AdvancedSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void ShowHits_WhenTwoRowsSayTheSame_ThenTheConditionIsAppliedOnce()
+    {
+        var client = new ConditionClient();
+        var cut = RenderWith(client);
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+        Rows(cut)[0].QuerySelector("input[type=text]")!.Change("blod");
+        Button(cut, "Legg til betingelse").Click();
+        Rows(cut)[1].QuerySelector("input[type=text]")!.Change("blod");
+
+        Button(cut, "Vis treff").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal([Condition("navn:inneholder:blod")], client.Searches[^1]!.Conditions));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public void Render_WhenALinkCarriesTheSameConditionTwice_ThenItIsSearchedAndShownOnce(int failedFieldCalls)
+    {
+        var client = new ConditionClient { FailFieldCalls = failedFieldCalls };
+        var cut = RenderWith(client, filter: new VariableFilter { Conditions = [Condition("navn:inneholder:a"), Condition("navn:inneholder:a")] });
+
+        cut.WaitForAssertion(() => Assert.Equal([Condition("navn:inneholder:a")], client.Searches[^1]!.Conditions));
+        Assert.Single(cut.FindAll("button"), b => b.GetAttribute("aria-label") == "Fjern filteret Navn inneholder «a»");
+    }
+
+    [Fact]
+    public void ShowHits_WhenTheTextHoldsAPastedTab_ThenItIsAppliedAsASpaceALinkCanCarry()
+    {
+        var client = new ConditionClient();
+        var cut = RenderWith(client);
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+        Rows(cut)[0].QuerySelector("input[type=text]")!.Change("blod\ttrykk");
+
+        Button(cut, "Vis treff").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal([Condition("navn:inneholder:blod trykk")], client.Searches[^1]!.Conditions));
+    }
+
+    [Fact]
     public void Open_WhenEndreWasPressedWhileTheFieldsWereUnavailable_ThenTheNextOpeningKeepsFocusOnTheFirstRow()
     {
         var filter = new VariableFilter { Conditions = [Condition("navn:inneholder:a")] };

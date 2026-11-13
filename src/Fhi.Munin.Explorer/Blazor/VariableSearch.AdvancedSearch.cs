@@ -74,8 +74,8 @@ public partial class VariableSearch
         {
             var fields = await ConditionFieldsAsync();
             kept = _conditionFieldsFailed
-                ? _filter.Conditions
-                : [.. _filter.Conditions.Where(condition => FieldOf(fields, condition.Field)?.Accepts(condition) == true)];
+                ? [.. _filter.Conditions.Distinct()]
+                : [.. _filter.Conditions.Distinct().Where(condition => FieldOf(fields, condition.Field)?.Accepts(condition) == true)];
         }
 
         if (kept.Count != _filter.Conditions.Count)
@@ -315,9 +315,11 @@ public partial class VariableSearch
             draft.Error = error;
             firstRefused ??= error is null ? null : draft;
 
-            if (value is not null)
+            // Two rows saying the same thing would draw two chips with one name, and one press would empty both.
+            if (value is not null && new SearchCondition(field.Field, draft.Operator, value) is var condition
+                && !conditions.Contains(condition))
             {
-                conditions.Add(new SearchCondition(field.Field, draft.Operator, value));
+                conditions.Add(condition);
             }
         }
 
@@ -363,7 +365,8 @@ public partial class VariableSearch
 
         if (field.Type != ConditionField.DateType)
         {
-            var text = draft.Text.Trim();
+            // A pasted tab or line break would apply here and then be refused when a link is read back.
+            var text = string.Concat(draft.Text.Select(c => char.IsControl(c) ? ' ' : c)).Trim();
             return (text.Length == 0 ? null : text[..Math.Min(text.Length, SearchCondition.MaxTextLength)], null);
         }
 
