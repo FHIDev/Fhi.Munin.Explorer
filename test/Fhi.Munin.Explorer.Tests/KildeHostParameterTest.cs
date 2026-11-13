@@ -101,9 +101,9 @@ public class KildeHostParameterTest : ExplorerTestContext
     [MemberData(nameof(Mounts))]
     public void Mount_WhenTheHostAsksForNothing_ThenTheBlocksAreNotOnThePage(Type mount)
     {
-        // The embedded host: helsedata's candidate list carries Language, SkjemaId and
-        // IsAuthenticated and nothing else, so this is what its page renders today without a line
-        // changing on their side. The default has to be off for that to be the safe answer.
+        // The embedded host: helsedata's candidate list does not hold ShowAccessAndPrices, so its
+        // page never sets it, and this is what that page renders. The default has to be off for that
+        // to be the safe answer.
         var cut = OpenKilde(mount, show: null);
 
         Assert.DoesNotContain(AccessCriteria, cut.Markup, StringComparison.Ordinal);

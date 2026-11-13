@@ -13,9 +13,9 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>The one component a host mounts.</b> <see cref="Language"/> is the whole of what it needs —
-/// which is what helsedata's <c>BlazorComponentPage</c> offers — and the name a host reaches for
-/// first is therefore the one that works, as it is for <see cref="VariableExplorer"/>.
+/// <b>The one component a host mounts.</b> <see cref="Language"/> is the whole of what it needs to
+/// mount, and <see cref="VariableExplorerPath"/> turns on the way over to the variable explorer; the
+/// name a host reaches for first is therefore the one that works, as it is for <see cref="VariableExplorer"/>.
 /// <see cref="KildeSearch"/> stays public underneath for a host that wants to own its own query
 /// string or lay the surface out itself.
 /// </para>
@@ -219,13 +219,12 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// full URL is taken as given, for the host whose other explorer is in another application.
     /// </para>
     /// <para>
-    /// <b>A CMS host cannot set it, and null is the right answer there.</b> helsedata's
-    /// <c>BlazorComponentPage</c> offers a fixed candidate list — <c>Language</c>, <c>SkjemaId</c>,
-    /// <c>IsAuthenticated</c> — and drops every name outside it, so this parameter is reachable
-    /// only from a host that writes the mount itself. Defaulting it to a guess such as
-    /// <c>"variabler"</c> would be worse than leaving it null: the column and the link would both
-    /// be drawn, and both would land on a page that host may not have. Null draws neither, which is
-    /// the same page that mount renders today.
+    /// <b>Null is a valid setup, and draws neither the selection column nor the links.</b>
+    /// helsedata's <c>BlazorComponentPage</c> passes this from the page's «Variabelutforsker-side»
+    /// reference, resolved in the reader's content language so an English reader lands on the English
+    /// variable explorer, and shows its editor a hint in edit mode while that field is empty. A
+    /// default such as <c>"variabler"</c> would be worse than null: a host with no variable explorer
+    /// would get a column and a link to a page it does not have.
     /// </para>
     /// </remarks>
     [Parameter] public string? VariableExplorerPath { get; set; }

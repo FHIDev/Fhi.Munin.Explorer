@@ -326,8 +326,8 @@ public sealed partial class KildeSearch : ComponentBase
     /// <para>
     /// So it defaults to <see langword="false"/> and a host of your own sets it. Defaulting the
     /// other way could not be undone from the host that matters: helsedata's
-    /// <c>BlazorComponentPage</c> offers a fixed candidate list — <c>Language</c>,
-    /// <c>SkjemaId</c>, <c>IsAuthenticated</c> — and drops every name outside it.
+    /// <c>BlazorComponentPage</c> offers a fixed candidate list that does not hold this name, and
+    /// drops every name outside it.
     /// <see cref="KildeExplorer"/> declares and forwards it too, so either mount can
     /// be told. (Fhi.Metadata-ay3zz)
     /// </para>
