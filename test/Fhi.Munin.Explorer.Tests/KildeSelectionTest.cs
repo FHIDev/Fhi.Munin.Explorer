@@ -1464,8 +1464,9 @@ public class KildeSelectionTest : ExplorerTestContext
 
         Mark(cut, KildeTwo, "Dødsfall", marked: false);
 
+        // Unmarked, and still there: a box that left the DOM as it was pressed would drop the reader's focus.
         Assert.Equal("", BarLine(cut));
-        Assert.DoesNotContain(MarkBoxes(cut, KildeTwo), b => AccessibleName.Of(b) == "Velg Dødsfall");
+        Assert.False(Assert.Single(MarkBoxes(cut, KildeTwo), b => AccessibleName.Of(b) == "Velg Dødsfall").HasAttribute("checked"));
     }
 
     [Fact]

@@ -25,6 +25,7 @@ internal static class DatasamlingTable
     internal sealed record Selection(
         Func<Guid, bool> IsMarked,
         Func<Guid, bool, Task> Toggle,
+        Func<Guid, bool> KeepsBox,
         IHandleEvent Receiver);
 
     /// <summary>The table as a fragment, for callers that write markup rather than build it.</summary>
@@ -144,7 +145,7 @@ internal static class DatasamlingTable
         builder.CloseElement();
     }
 
-    /// <summary>One row's mark. A td, not a th: the box is a control over the row, not its label.</summary>
+    /// <summary>One row's mark in a td (a control over the row, not its label), or nothing for an unmarked empty datasamling.</summary>
     /// <remarks>
     /// <c>SetUpdatesAttributeName</c> for <see cref="ColumnPicker"/>'s reason: the browser ticks
     /// the box itself before any handler runs, so a render equal to the one before it leaves the
@@ -165,8 +166,8 @@ internal static class DatasamlingTable
         builder.AddAttribute(seq++, "data-label", texts.SelectDatasamlingColumn);
 
         // A mark hands the datasamling to the variable list, which is empty at 0 (Fhi.Metadata-l9l2n.183);
-        // a mark the address brought back keeps its box, or it could not be undone. The cell stays.
-        if (row.VariableCount == 0 && !selection.IsMarked(row.Id))
+        // a row marked on this mount keeps its box, so the mark can be undone without losing focus.
+        if (row.VariableCount == 0 && !selection.KeepsBox(row.Id))
         {
             builder.CloseElement();
             return;
