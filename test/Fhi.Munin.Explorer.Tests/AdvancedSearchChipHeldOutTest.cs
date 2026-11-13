@@ -49,7 +49,6 @@ public class AdvancedSearchChipHeldOutTest : ExplorerTestContext
         await cut.InvokeAsync(chipA);
         cut.WaitForAssertion(() => Assert.Single(client.Searches[^1]!.Conditions));
         await cut.InvokeAsync(chipA);
-        await Task.Delay(300);
 
         var last = client.Searches[^1]!.Conditions;
         Assert.Equal(["kode:begynnerMed:V_"], last.Select(c => c.ToString()).ToArray());
