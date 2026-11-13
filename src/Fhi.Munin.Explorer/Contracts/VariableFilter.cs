@@ -18,7 +18,8 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// <para>
 /// Every list is a logical OR within its own facet and an AND between facets, which is what the
 /// Explorer API does: two kilder means "either kilde", a kilde and a datatype means "both". The
-/// one exception is <see cref="OrTreeTicks"/>, which ORs the kilde tree's levels with each other.
+/// exceptions are <see cref="OrTreeTicks"/>, which ORs the kilde tree's levels with each other, and
+/// <see cref="Conditions"/>, which must all hold, with each other and with the facets.
 /// </para>
 /// <para>
 /// The property names are English, the domain terms are not — <c>kilde</c>, <c>delkilde</c>,

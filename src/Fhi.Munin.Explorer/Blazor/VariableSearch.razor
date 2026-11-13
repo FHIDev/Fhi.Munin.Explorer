@@ -390,7 +390,7 @@ else
                                                     <label>
                                                         <input type="checkbox"
                                                                checked="@draft.Codes.Contains(code)"
-                                                               @onchange="() => ToggleCode(draft, code)" />
+                                                               @onchange="change => SetCode(draft, code, change.Value is true)" />
                                                         @{ var word = CodeWord(field.Field, code); }
                                                         <span lang="@word.Language">@word.Text</span>
                                                     </label>
@@ -405,12 +405,11 @@ else
                                             <label class="caption" id="@DraftId(draft, "from-label")" for="@DraftId(draft, "from")">@(between ? T.ConditionFrom : T.ConditionValue)</label>
                                             <input id="@DraftId(draft, "from")"
                                                    class="input__field"
-                                                   type="date"
+                                                   type="@NativeDateType"
                                                    autocomplete="off"
                                                    aria-labelledby="@(legendId + " " + DraftId(draft, "from-label"))"
                                                    aria-invalid="@(draft.Error is null ? null : "true")"
-                                                   value="@draft.From"
-                                                   @onchange="change => draft.From = change.Value as string ?? string.Empty" />
+                                                   @bind-value="draft.From" @bind-value:event="onchange" />
                                         </div>
                                         @if (between)
                                         {
@@ -418,12 +417,11 @@ else
                                                 <label class="caption" id="@DraftId(draft, "to-label")" for="@DraftId(draft, "to")">@T.ConditionTo</label>
                                                 <input id="@DraftId(draft, "to")"
                                                        class="input__field"
-                                                       type="date"
+                                                       type="@NativeDateType"
                                                        autocomplete="off"
                                                        aria-labelledby="@(legendId + " " + DraftId(draft, "to-label"))"
                                                        aria-invalid="@(draft.Error is null ? null : "true")"
-                                                       value="@draft.To"
-                                                       @onchange="change => draft.To = change.Value as string ?? string.Empty" />
+                                                       @bind-value="draft.To" @bind-value:event="onchange" />
                                             </div>
                                         }
                                     }

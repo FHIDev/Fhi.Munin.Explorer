@@ -272,11 +272,16 @@ public partial class VariableSearch
         draft.Error = null;
     }
 
-    private static void ToggleCode(ConditionDraft draft, string code)
+    // Set from the box's own state, so a lost or repeated change event cannot leave the set inverted against it.
+    private static void SetCode(ConditionDraft draft, string code, bool ticked)
     {
-        if (!draft.Codes.Remove(code))
+        if (ticked)
         {
             draft.Codes.Add(code);
+        }
+        else
+        {
+            draft.Codes.Remove(code);
         }
     }
 
@@ -468,6 +473,12 @@ public partial class VariableSearch
 
     private string OperatorName(string token) => T.ConditionOperatorNames.GetValueOrDefault(token) ?? token;
 
+    // Not a literal in the markup: beside type="date", @bind converts to DateTime, and a row keeps the browser's own text.
+    private const string NativeDateType = "date";
+
+    // With the fields unknown, only a date operator says a value is a day; a text can look like one.
+    private static readonly string[] DateOperators = [ConditionField.BetweenOperator, "for", "etter"];
+
     /// <summary>A condition in words: «Beskrivelse inneholder «blodtrykk»», «Tilgangsnivå er en av Statistikkbank».</summary>
     private string ConditionReading(SearchCondition condition)
     {
@@ -475,7 +486,9 @@ public partial class VariableSearch
         var op = OperatorName(condition.Operator);
 
         var known = _conditionFields is { } fields ? FieldOf(fields, condition.Field) : null;
-        var dated = known is null || known.Type == ConditionField.DateType;
+        var dated = known is null
+            ? DateOperators.Contains(condition.Operator, StringComparer.OrdinalIgnoreCase)
+            : known.Type == ConditionField.DateType;
 
         string value;
         if (dated && ConditionField.TryReadRange(condition.Value, out var from, out var to))

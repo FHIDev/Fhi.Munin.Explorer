@@ -13,4 +13,6 @@ category: Notes for hosts
   «Verdi», and 15px above «Fjern betingelse» inside a condition (Stiler: Fhi.Metadata-ipok2.9). A condition chip's
   text can be long, so the shared chip rule wants a radius that keeps it inside the chip when it wraps (16px in
   Stiler, the same bead). A host with its own
-  `IMuninExplorerClient` gets no fields until it implements `GetConditionFieldsAsync`.
+  `IMuninExplorerClient` gets no fields until it implements `GetConditionFieldsAsync`. The `vilkar` query key is the
+  package's from now on, in `VariableFilter.QueryKeys` and `ExplorerUrlState.QueryKeys`, whether the feature is on or
+  off: a page that mounts the explorer cannot use a `vilkar` parameter of its own.

@@ -374,6 +374,34 @@ public class AdvancedSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void ShowHits_WhenATickArrivesTwice_ThenTheCodeStaysTicked()
+    {
+        var client = new ConditionClient();
+        var cut = RenderWith(client);
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+        Rows(cut)[0].QuerySelectorAll("select")[0].Change("tilgangsniva");
+
+        Rows(cut)[0].QuerySelectorAll("input[type=checkbox]")[0].Change(true);
+        Rows(cut)[0].QuerySelectorAll("input[type=checkbox]")[0].Change(true);
+        Rows(cut)[0].QuerySelectorAll("input[type=checkbox]")[1].Change(false);
+        Button(cut, "Vis treff").Click();
+
+        cut.WaitForAssertion(() =>
+            Assert.Equal([Condition("tilgangsniva:erEnAv:statistikkbank")], client.Searches[^1]!.Conditions));
+    }
+
+    [Theory]
+    [InlineData("navn:erLik:2020-01-01", "Fjern filteret Navn er lik «2020-01-01»")]
+    [InlineData("gyldigFra:for:2020-01-01", "Fjern filteret Gyldig fra før 01.01.2020")]
+    public void Render_WhenTheFieldsFailedToLoad_ThenOnlyADateOperatorReadsItsValueAsADay(string link, string removeLabel)
+    {
+        var cut = RenderWith(new ConditionClient { FailFieldCalls = 1 }, filter: new VariableFilter { Conditions = [Condition(link)] });
+
+        cut.WaitForAssertion(() => Assert.Contains(cut.FindAll("button"), b => b.GetAttribute("aria-label") == removeLabel));
+    }
+
+    [Fact]
     public void ShowHits_WhenARangeHasOneDate_ThenNothingIsAppliedAndTheRowSaysWhy()
     {
         var client = new ConditionClient();
