@@ -104,7 +104,8 @@ public sealed partial class KildeView : ComponentBase, IDisposable
 
     /// <summary>
     /// The host's pages «Søk om tilgang» points to. Null takes the ones registered with
-    /// <see cref="Client.MuninExplorerOptions.AccessLinks"/>, which is how a CMS mount that can set no parameter gets them.
+    /// <see cref="Client.MuninExplorerOptions.AccessLinks"/>, which is how a CMS mount gets them: it
+    /// cannot pass an object such as this.
     /// </summary>
     [Parameter]
     public KildeAccessLinks? AccessLinks { get; set; }

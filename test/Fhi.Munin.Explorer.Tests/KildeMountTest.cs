@@ -14,8 +14,8 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </summary>
 /// <remarks>
 /// THE TRAP: helsedata mounts by a type name typed into a CMS field, resolved with
-/// <c>Type.GetType</c> and handed a fixed candidate dictionary — <c>Language</c>, <c>SkjemaId</c>,
-/// <c>IsAuthenticated</c> — that <c>KomponentParameterVelger</c> filters against the type's own
+/// <c>Type.GetType</c> and handed a fixed candidate dictionary (helsedata's BlazorComponentPage
+/// <c>Index.cshtml</c>) that <c>KomponentParameterVelger</c> filters against the type's own
 /// <c>[Parameter]</c> properties. So the mount is a string, not a compile-time reference, and a
 /// test that mounts generically would stay green through a rename that silently changed which
 /// component that string reaches. Hence: resolved by name, parameters set by name, asserted on the
@@ -241,8 +241,8 @@ public class KildeMountTest : ExplorerTestContext
     [Fact]
     public void KildeExplorer_WhenTheHostCanOnlySetLanguage_ThenAnOpenDrawerOffersNoWayToTheVariables()
     {
-        // The link's half of the CMS mount: no path, so nowhere to send anyone, so no link — and
-        // this is where a link drawn dead on helsedata's own mount would be seen.
+        // The link's half of a CMS page with no «Variabelutforsker-side»: no path, so nowhere to send
+        // anyone, so no link — and this is where a dead link on such a page would be seen.
         var cut = MountByName("KildeExplorer", "http://localhost/kilder");
 
         Assert.Empty(OpenTheDrawer(cut).QuerySelectorAll("a"));
@@ -251,9 +251,9 @@ public class KildeMountTest : ExplorerTestContext
     [Fact]
     public void KildeExplorer_WhenTheHostCanOnlySetLanguage_ThenAnOpenDrawerOffersNoDatasamlingMarks()
     {
-        // The marks' half of the CMS mount. They hand over to a variable explorer this host has not
-        // named, so a column of checkboxes here would be a control with nowhere to go — the same
-        // answer the kilde column one table out gives. (Fhi.Metadata-75yov)
+        // The marks' half of a CMS page with no «Variabelutforsker-side». They hand over to a variable
+        // explorer this host has not named, so a column of checkboxes here would be a control with
+        // nowhere to go — the same answer the kilde column one table out gives. (Fhi.Metadata-75yov)
         var cut = MountByName("KildeExplorer", "http://localhost/kilder");
         var drawer = OpenTheDrawer(cut);
 

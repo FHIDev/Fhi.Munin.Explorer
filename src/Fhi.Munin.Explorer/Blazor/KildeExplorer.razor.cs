@@ -13,9 +13,9 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>The one component a host mounts.</b> <see cref="Language"/> is the whole of what it needs —
-/// which is what helsedata's <c>BlazorComponentPage</c> offers — and the name a host reaches for
-/// first is therefore the one that works, as it is for <see cref="VariableExplorer"/>.
+/// <b>The one component a host mounts.</b> <see cref="Language"/> is the whole of what it needs to
+/// mount, and <see cref="VariableExplorerPath"/> turns on the way over to the variable explorer; the
+/// name a host reaches for first is therefore the one that works, as it is for <see cref="VariableExplorer"/>.
 /// <see cref="KildeSearch"/> stays public underneath for a host that wants to own its own query
 /// string or lay the surface out itself.
 /// </para>
@@ -219,10 +219,10 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// full URL is taken as given, for the host whose other explorer is in another application.
     /// </para>
     /// <para>
-    /// <b>Null is a valid setup, and it draws neither.</b> helsedata's <c>BlazorComponentPage</c>
-    /// passes this from the page's «Variabelutforsker-side» reference, resolved in the reader's
-    /// content language so an English reader lands on the English variable explorer, and shows its
-    /// editor a hint in edit mode while that field is empty. Defaulting it to a guess such as
+    /// <b>Null is a valid setup, and draws neither the selection column nor the links.</b>
+    /// helsedata's <c>BlazorComponentPage</c> passes this from the page's «Variabelutforsker-side»
+    /// reference, resolved in the reader's content language so an English reader lands on the English
+    /// variable explorer, and shows its editor a hint in edit mode while that field is empty. So defaulting it to a guess such as
     /// <c>"variabler"</c> would be worse than leaving it null: the column and the link would both
     /// be drawn, and both would land on a page that host may not have.
     /// </para>

@@ -2061,8 +2061,8 @@ public class UrlStateComponentTest : ExplorerTestContext
     [Fact]
     public void Kilder_WhenNoVariableExplorerPathIsGiven_ThenAnOpenDrawerEndsAtItsDatasamlinger()
     {
-        // The CMS mount, where the parameter cannot be set at all: no link rather than one that
-        // lands on a page that host may not have — the same answer the selection column gives.
+        // A CMS page with no «Variabelutforsker-side», so helsedata passes no path: no link rather than
+        // one that lands on a page that host may not have — the same answer the selection column gives.
         var cut = RenderOpenDrawer(Guid.NewGuid());
 
         var panel = cut.Find(".munin-explorer-kilder__expanded");

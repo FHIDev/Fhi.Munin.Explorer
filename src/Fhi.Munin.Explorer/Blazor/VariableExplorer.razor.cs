@@ -12,7 +12,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <remarks>
 /// <para>
 /// <b>The one component a host mounts.</b> Language and IsAuthenticated are the whole of what it
-/// needs — which is exactly what helsedata's <c>BlazorComponentPage</c> offers, and this type's
+/// needs, helsedata's <c>BlazorComponentPage</c> passes both, and this type's
 /// full name is already that page's shipped default. <see cref="VariableSearch"/> and
 /// <see cref="VariableListView"/> stay public underneath for a host that wants to lay the two
 /// surfaces out itself, or to own its own query string.
