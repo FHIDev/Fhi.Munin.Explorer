@@ -63,8 +63,8 @@ public partial class VariableSearch
 
     private string DraftId(ConditionDraft draft, string part) => $"munin-explorer-condition-{_instance}-{draft.Key}-{part}";
 
-    /// <summary>Before the first fetch, drop the conditions a link carries that nobody could see (feature off) or that
-    /// the API would refuse (one refusal is a 400 for the whole search).</summary>
+    /// <summary>Before the first fetch, drop the conditions a link or a host's Filter carries that nobody could see
+    /// (feature off), that the API would refuse (one refusal is a 400 for the whole search), or past the first MaxCount.</summary>
     private async Task PrepareLinkedConditionsAsync()
     {
         if (_filter.Conditions.Count == 0)
