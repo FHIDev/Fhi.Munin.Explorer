@@ -34,7 +34,7 @@ public class KildeMountTest : ExplorerTestContext
         public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
             string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<KildeSummary>>(
-                [new KildeSummary { Id = KildeId, Name = "Als registeret", Code = "K_ALS", DatasamlingCount = 1 }]);
+                [new KildeSummary { Id = KildeId, Name = "Als registeret", Code = "K_ALS", DatasamlingCount = 1, TotalVariables = 12 }]);
 
         /// <remarks>
         /// With a datasamling under it, because a kilde reporting none is drawn with no expand

@@ -617,8 +617,9 @@ public class UrlStateComponentTest : ExplorerTestContext
     /// A row in the kilde list. <paramref name="datasamlinger"/> is what decides whether it has a
     /// drawer at all — <c>KildeSearch.CanExpand</c> draws no toggle on a kilde with none.
     /// </summary>
+    // Twelve variables a datasamling, as OneKildeClient's detail carries: a kilde at 0 draws no drawer link (l9l2n.184).
     private static KildeSummary Kilde(Guid id, string name, int datasamlinger = 0, string code = "") =>
-        new() { Id = id, Name = name, Code = code, DatasamlingCount = datasamlinger };
+        new() { Id = id, Name = name, Code = code, DatasamlingCount = datasamlinger, TotalVariables = 12 * datasamlinger };
 
     /// <summary>Answers with one kilde, so there is a row to open and a selection to hand over.</summary>
     /// <remarks>
@@ -2516,15 +2517,15 @@ public class UrlStateComponentTest : ExplorerTestContext
     /// <summary>Two kilder with two datasamlinger each, so a mark under one is not every mark.</summary>
     private sealed class TwoDrawersClient : EmptyMuninExplorerClient
     {
-        private static KildeSummary Row(Guid id, string name) =>
-            new() { Id = id, Name = name, Code = "", IsActive = true, DatasamlingCount = 2 };
+        private static KildeSummary Row(Guid id, string name, int variables) =>
+            new() { Id = id, Name = name, Code = "", IsActive = true, DatasamlingCount = 2, TotalVariables = variables };
 
         public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
             string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<KildeSummary>>(
             [
-                Row(MarkKildeOne, "Als registeret"),
-                Row(MarkKildeTwo, "Dødsårsaksregisteret"),
+                Row(MarkKildeOne, "Als registeret", 10),
+                Row(MarkKildeTwo, "Dødsårsaksregisteret", 5),
             ]);
 
         public override Task<KildeDetail?> GetKildeAsync(
