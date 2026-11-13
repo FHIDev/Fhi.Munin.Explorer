@@ -23,7 +23,21 @@ public class AdvancedSearchRaceTest : ExplorerTestContext
 
         public bool HoldFields { get; init; }
 
+        public bool FailFirstFieldCall { get; init; } = true;
+
         public bool HoldLaterSearches { get; init; }
+
+        public TaskCompletionSource? HeldVocabulary { get; init; }
+
+        public override async Task<IReadOnlyList<PropertyMetadataEntry>> GetKildePropertyMetadataAsync(CancellationToken cancellationToken = default)
+        {
+            if (HeldVocabulary is { } held)
+            {
+                await held.Task;
+            }
+
+            return [];
+        }
 
         public List<VariableFilter?> Searches { get; } = [];
 
@@ -35,7 +49,7 @@ public class AdvancedSearchRaceTest : ExplorerTestContext
 
         public override async Task<IReadOnlyList<ConditionField>> GetConditionFieldsAsync(CancellationToken cancellationToken = default)
         {
-            if (HoldFields && !_firstFieldCallFailed)
+            if (HoldFields && FailFirstFieldCall && !_firstFieldCallFailed)
             {
                 // The link's conditions stay in force unjudged, and every opening asks again.
                 _firstFieldCallFailed = true;
@@ -152,6 +166,25 @@ public class AdvancedSearchRaceTest : ExplorerTestContext
     }
 
     [Fact]
+    public async Task Open_WhenAnEarlierOpeningGivesUpWhileTheLastStillLoads_ThenTheFormStillDrawsNoButtons()
+    {
+        var vocabulary = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new HeldClient { HoldFields = true, FailFirstFieldCall = false, HeldVocabulary = vocabulary };
+        var cut = RenderWith(client);
+        Toggle(cut)!.Click();
+        Toggle(cut)!.Click();
+        Toggle(cut)!.Click();
+
+        var renders = cut.RenderCount;
+        await cut.InvokeAsync(() => client.ReleaseFields(0));
+        cut.WaitForState(() => cut.RenderCount > renders);
+
+        Assert.Empty(cut.FindAll(".munin-explorer-advanced-search button"));
+        await cut.InvokeAsync(vocabulary.SetResult);
+        cut.WaitForAssertion(() => Assert.Single(Rows(cut)));
+    }
+
+    [Fact]
     public void Open_WhenAChipRemovalIsQueuedBehindASearch_ThenTheRowsAreTheQueuedConditions()
     {
         var client = new HeldClient { HoldLaterSearches = true };
@@ -159,6 +192,7 @@ public class AdvancedSearchRaceTest : ExplorerTestContext
 
         RemoveChip(cut, "a");
         RemoveChip(cut, "b");
+        Assert.Equal("Avansert søk (1)", Toggle(cut)!.TextContent.Trim());
         Toggle(cut)!.Click();
 
         cut.WaitForAssertion(() => Assert.Equal("c", Assert.Single(Rows(cut)).QuerySelector("input")!.GetAttribute("value")));

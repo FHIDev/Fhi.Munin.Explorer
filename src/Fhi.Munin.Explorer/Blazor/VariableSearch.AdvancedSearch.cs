@@ -59,7 +59,7 @@ public partial class VariableSearch
     private string AdvancedPanelId => $"munin-explorer-advanced-{_instance}";
 
     private string AdvancedLabel =>
-        _filter.Conditions.Count > 0 ? T.AdvancedSearchCount(_filter.Conditions.Count) : T.AdvancedSearch;
+        Pending.Conditions.Count > 0 ? T.AdvancedSearchCount(Pending.Conditions.Count) : T.AdvancedSearch;
 
     private string DraftId(ConditionDraft draft, string part) => $"munin-explorer-condition-{_instance}-{draft.Key}-{part}";
 
