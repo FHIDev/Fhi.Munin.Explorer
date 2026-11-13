@@ -17,7 +17,7 @@ concurrency:
 jobs:
   build:
     name: build + test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -150,7 +150,7 @@ jobs:
   # runs beside it: the same check on every PR, gated through "ci summary" like every other job. (Fhi.Metadata-ln1s6)
   format:
     name: format
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -190,7 +190,7 @@ jobs:
       github.event_name == 'pull_request'
       && github.event.pull_request.user.login != 'dependabot[bot]'
       && !contains(github.event.pull_request.title, '[no-changelog]')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
@@ -214,7 +214,7 @@ jobs:
   # one. Not in the ruleset's required list, and it does not need to be: "ci summary" needs it.
   changelog-assembly:
     name: changelog assembles
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
@@ -242,7 +242,7 @@ jobs:
   # the gate without removing the check that appears to enforce it.
   sample-css:
     name: sample stylesheets in step
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
@@ -273,7 +273,7 @@ jobs:
   # compare against and the script exits 2 rather than guessing.
   host-notes:
     name: host notes for new names
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
@@ -298,7 +298,7 @@ jobs:
   # an incomplete README is not a broken build.
   class-names:
     name: class names listed in the README
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
@@ -315,7 +315,7 @@ jobs:
   # No fetch-depth: nothing here reads history. Its own job for the same reason as the three above.
   fragment-host-notes:
     name: fragment names noted for hosts
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
@@ -329,7 +329,7 @@ jobs:
   comment-budget:
     name: comment budget
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
@@ -353,7 +353,7 @@ jobs:
   # guard that fails open is worth little if the check reporting it cannot block a merge either.
   portability-guard:
     name: portability guard armed
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
@@ -382,7 +382,7 @@ jobs:
   # one asks what is in the package, this one asks whether a stranger can use it.
   consumer:
     name: a host needs no glue
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
@@ -441,7 +441,7 @@ jobs:
   # job below passes only when every shard did. (Fhi.Metadata-ln1s6)
   accessibility-shard:
     name: accessibility ${{ matrix.shard }}/4
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -485,7 +485,7 @@ jobs:
     name: accessibility
     needs: accessibility-shard
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Every shard passed
@@ -503,7 +503,7 @@ jobs:
   # Fhi.Metadata-56lxp); each shard has its own host and stub, so a hold one pair stages never meets another's.
   component-state-shard:
     name: state after a refused press ${{ matrix.shard }}/4
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -547,7 +547,7 @@ jobs:
     name: state after a refused press
     needs: component-state-shard
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Every shard passed
@@ -587,7 +587,7 @@ jobs:
   # at. It costs a second. The restore above it stays because the guard needs the real package.
   hostile-layout:
     name: declarations match helsedata's stylesheet
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
@@ -738,7 +738,7 @@ jobs:
   # The review-round head step of pre-pr-review-line.yml against a fake gh, one case per rule (DevInfra-0f5.8).
   pre-pr-review-head:
     name: pre-PR review head step
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
@@ -765,7 +765,7 @@ jobs:
     needs: [build, format, changelog, changelog-assembly, comment-budget, sample-css, host-notes, class-names, fragment-host-notes, portability-guard, consumer, windows-rebuild, accessibility, component-state, hostile-layout, pre-pr-review-head]
     # It exists to report failed and skipped jobs, so it must not be skipped by one.
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     # This job fails when any job in the table did (see the last step). That is what makes it worth
     # requiring: every job is already in needs: above, so a NEW job is gated the moment it is added

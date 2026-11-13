@@ -636,7 +636,7 @@ public sealed class GuardScripts
 /// with.
 /// </summary>
 /// <remarks>
-/// Skipped rather than failed, and only for the shell that runs the guard: CI is ubuntu-latest, so
+/// Skipped rather than failed, and only for the shell that runs the guard: CI is ubuntu-24.04, so
 /// these always run where it matters, and a Windows checkout without Git Bash on PATH is told why
 /// instead of being shown a Win32Exception. The same shape as
 /// <see cref="LiveApiFactAttribute"/>, for the same reason — the reason is written where whoever
@@ -651,7 +651,7 @@ internal sealed class ShellFactAttribute : FactAttribute
             // Says "that can run a script by its path" because a WSL alias on PATH is a bash and
             // is not one of these, and being skipped for a bash you can see is otherwise a puzzle.
             Skip = "No bash on PATH that can run a script named by its absolute path, so the " +
-                   "scripts/assert-*.sh guards cannot be run here. CI runs on ubuntu-latest, " +
+                   "scripts/assert-*.sh guards cannot be run here. CI runs on ubuntu-24.04, " +
                    "where it always can.";
         }
     }
