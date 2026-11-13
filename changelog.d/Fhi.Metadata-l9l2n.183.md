@@ -1,0 +1,2 @@
+category: Changed
+- **The kildeutforsker's datasamling table offers no mark on a datasamling with no variables.** A datasamling the API reports with a variable count of 0 already read «0 variabler» («0 variables») there. Its mark would have handed it to the variable explorer and opened an empty list, so the row now has none. A row marked on the page, or by the address, keeps its box, so the mark can still be undone. The cell in the mark column stays, so the columns line up. The datasamling's own page already offers no variables link at 0.

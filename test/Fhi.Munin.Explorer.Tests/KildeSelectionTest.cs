@@ -1410,6 +1410,65 @@ public class KildeSelectionTest : ExplorerTestContext
         Assert.Equal("", BarLine(cut));
     }
 
+    [Theory]
+    [InlineData("no", "0 variabler", "7 variabler")]
+    [InlineData("en", "0 variables", "7 variables")]
+    public void Marks_WhenADatasamlingHasNoVariables_ThenItSaysSoAndOffersNoMark(string language, string none, string some)
+    {
+        // Fhi.Metadata-l9l2n.183: an admin can publish a datasamling with no visible variables, and a
+        // mark on it would hand the reader to an empty variable list. Its neighbour keeps its mark.
+        var client = ThreeKilder();
+        client.Describing(DetailOne() with
+        {
+            Datasamlinger =
+            [
+                Collection(CollectionOneA, "Inklusjon") with { DisplayOrder = 1, VariableCount = 0 },
+                Collection(CollectionOneB, "Oppfølging") with { DisplayOrder = 2 },
+            ],
+        });
+        var (cut, _, _) = RenderMarkable(client, b => b.Add(c => c.Language, language));
+
+        Expand(cut, "Als registeret");
+
+        var rows = Drawer(cut, KildeOne).QuerySelectorAll("tbody tr");
+        var empty = rows.Single(row => row.QuerySelector("th")!.TextContent.Trim() == "Inklusjon");
+        var full = rows.Single(row => row.QuerySelector("th")!.TextContent.Trim() == "Oppfølging");
+        Assert.Equal(none, empty.QuerySelectorAll("td").Last().TextContent.Trim());
+        Assert.Equal(some, full.QuerySelectorAll("td").Last().TextContent.Trim());
+        // Empty, not just without a box: Stiler's cards hide a td:empty, and a cell with anything in it
+        // would draw its «Velg» label over nothing at 767px and below.
+        Assert.Empty(empty.QuerySelector("td.munin-explorer-kilde__datasamling-select")!.ChildNodes);
+        Assert.NotNull(full.QuerySelector("td.munin-explorer-kilde__datasamling-select input"));
+    }
+
+    [Fact]
+    public void Marks_WhenTheAddressMarksADatasamlingThatNowHasNoVariables_ThenItsBoxStaysToUndoIt()
+    {
+        // A shared link or Back can bring back a mark made while the datasamling had variables. Without
+        // its box the mark would count in the bar and travel to an empty list, with only the reset to undo it.
+        var client = ThreeKilder();
+        client.Describing(DetailTwo() with
+        {
+            Datasamlinger =
+            [
+                Collection(CollectionTwoA, "Dødsfall") with { VariableCount = 0 },
+                Collection(CollectionTwoB, "Underliggende årsak"),
+            ],
+        });
+        var (cut, _, _) = RenderMarkable(client, b => b.Add(
+            c => c.MarkedDatasamlinger,
+            (IReadOnlyList<string>)[KildeSearch.MarkValue(KildeTwo, CollectionTwoA)]));
+
+        var box = Assert.Single(MarkBoxes(cut, KildeTwo), b => AccessibleName.Of(b) == "Velg Dødsfall");
+        Assert.True(box.HasAttribute("checked"));
+
+        Mark(cut, KildeTwo, "Dødsfall", marked: false);
+
+        // Unmarked, and still there: a box that left the DOM as it was pressed would drop the reader's focus.
+        Assert.Equal("", BarLine(cut));
+        Assert.False(Assert.Single(MarkBoxes(cut, KildeTwo), b => AccessibleName.Of(b) == "Velg Dødsfall").HasAttribute("checked"));
+    }
+
     [Fact]
     public void Marks_WhenARowIsTicked_ThenItsDatasamlingerAreNotMarked()
     {

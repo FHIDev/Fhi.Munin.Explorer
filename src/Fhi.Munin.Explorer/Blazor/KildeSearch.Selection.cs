@@ -124,6 +124,10 @@ public sealed partial class KildeSearch
     /// </remarks>
     private readonly List<(Guid Kilde, Guid Datasamling)> _marked = [];
 
+    // Every pair marked on this mount: its box stays drawn at a variable count of 0, the reset included, so
+    // unmarking never pulls the control from under the reader's focus. Kept to undo, not to offer (l9l2n.183).
+    private readonly HashSet<(Guid Kilde, Guid Datasamling)> _boxed = [];
+
     /// <summary>Whether the column and its bar are drawn, which is whether the host wired the
     /// handover.</summary>
     /// <remarks>
@@ -175,6 +179,7 @@ public sealed partial class KildeSearch
             if (!_marked.Contains((kilde, datasamling)))
             {
                 _marked.Add((kilde, datasamling));
+                _boxed.Add((kilde, datasamling));
             }
         }
         else
@@ -192,6 +197,7 @@ public sealed partial class KildeSearch
             ? new DatasamlingTable.Selection(
                 datasamling => IsMarked(kilde, datasamling),
                 (datasamling, marked) => MarkAsync(kilde, datasamling, marked),
+                datasamling => _boxed.Contains((kilde, datasamling)),
                 this)
             : null;
 
@@ -284,6 +290,7 @@ public sealed partial class KildeSearch
             if (ParseMark(value) is { } mark && !_marked.Contains(mark))
             {
                 _marked.Add(mark);
+                _boxed.Add(mark);
             }
         }
     }
