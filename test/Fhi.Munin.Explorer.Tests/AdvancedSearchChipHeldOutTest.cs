@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Bunit;
-using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Blazor;
+using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -25,7 +25,10 @@ public class AdvancedSearchChipHeldOutTest : ExplorerTestContext
             return Task.FromResult(new Page<VariableSummary>
             {
                 Items = [new VariableSummary { Id = Guid.NewGuid(), Code = "V_A", PreferredTerm = "Blodtrykk" }],
-                TotalCount = 1, PageNumber = 1, Size = 25, TotalPages = 1
+                TotalCount = 1,
+                PageNumber = 1,
+                Size = 25,
+                TotalPages = 1
             });
         }
     }

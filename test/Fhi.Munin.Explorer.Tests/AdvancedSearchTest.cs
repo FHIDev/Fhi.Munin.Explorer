@@ -1,4 +1,3 @@
-using Microsoft.JSInterop;
 using System.Net;
 using System.Text.Json;
 using AngleSharp.Dom;
@@ -9,6 +8,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -59,7 +59,10 @@ public class AdvancedSearchTest : ExplorerTestContext
             return Task.FromResult(new Page<VariableSummary>
             {
                 Items = [new VariableSummary { Id = Guid.NewGuid(), Code = "V_A", PreferredTerm = "Blodtrykk" }],
-                TotalCount = 1, PageNumber = 1, Size = 25, TotalPages = 1
+                TotalCount = 1,
+                PageNumber = 1,
+                Size = 25,
+                TotalPages = 1
             });
         }
     }

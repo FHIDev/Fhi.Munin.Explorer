@@ -30,7 +30,10 @@ public class AdvancedSearchDateHeldOutTest : ExplorerTestContext
             return Task.FromResult(new Page<VariableSummary>
             {
                 Items = [new VariableSummary { Id = Guid.NewGuid(), Code = "V_A", PreferredTerm = "Blodtrykk" }],
-                TotalCount = 1, PageNumber = 1, Size = 25, TotalPages = 1
+                TotalCount = 1,
+                PageNumber = 1,
+                Size = 25,
+                TotalPages = 1
             });
         }
     }

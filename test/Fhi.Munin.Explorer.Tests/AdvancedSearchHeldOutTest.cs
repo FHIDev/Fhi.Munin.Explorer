@@ -55,7 +55,10 @@ public class AdvancedSearchHeldOutTest : ExplorerTestContext
             return new Page<VariableSummary>
             {
                 Items = [new VariableSummary { Id = Guid.NewGuid(), Code = "V_A", PreferredTerm = "Blodtrykk" }],
-                TotalCount = 1, PageNumber = 1, Size = 25, TotalPages = 1
+                TotalCount = 1,
+                PageNumber = 1,
+                Size = 25,
+                TotalPages = 1
             };
         }
     }
@@ -116,7 +119,7 @@ public class AdvancedSearchHeldOutTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.NotEmpty(client.Searches));
         cut.FindAll("button").Single(b => b.TextContent.Trim() == "Endre avansert søk").Click();
         cut.WaitForAssertion(() => Assert.Contains("Fjern betingelse 2", cut.Markup, StringComparison.Ordinal));
-        var stale = HandlerOf( "Fjern betingelse 2");
+        var stale = HandlerOf("Fjern betingelse 2");
 
         await cut.InvokeAsync(() => stale.InvokeAsync(new MouseEventArgs()));
         var second = await Record.ExceptionAsync(() => cut.InvokeAsync(() => stale.InvokeAsync(new MouseEventArgs())));
