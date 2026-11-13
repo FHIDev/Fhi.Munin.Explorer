@@ -385,6 +385,8 @@ public class AdvancedSearchTest : ExplorerTestContext
         Rows(cut)[0].QuerySelectorAll("input[type=checkbox]")[0].Change(true);
         Rows(cut)[0].QuerySelectorAll("input[type=checkbox]")[0].Change(true);
         Rows(cut)[0].QuerySelectorAll("input[type=checkbox]")[1].Change(false);
+        Rows(cut)[0].QuerySelectorAll("input[type=checkbox]")[2].Change(true);
+        Rows(cut)[0].QuerySelectorAll("input[type=checkbox]")[2].Change(false);
         Button(cut, "Vis treff").Click();
 
         cut.WaitForAssertion(() =>
@@ -394,6 +396,8 @@ public class AdvancedSearchTest : ExplorerTestContext
     [Theory]
     [InlineData("navn:erLik:2020-01-01", "Fjern filteret Navn er lik «2020-01-01»")]
     [InlineData("gyldigFra:for:2020-01-01", "Fjern filteret Gyldig fra før 01.01.2020")]
+    [InlineData("gyldigFra:etter:2020-01-01", "Fjern filteret Gyldig fra etter 01.01.2020")]
+    [InlineData("gyldigFra:mellom:2010-01-01..2020-12-31", "Fjern filteret Gyldig fra mellom 01.01.2010–31.12.2020")]
     public void Render_WhenTheFieldsFailedToLoad_ThenOnlyADateOperatorReadsItsValueAsADay(string link, string removeLabel)
     {
         var cut = RenderWith(new ConditionClient { FailFieldCalls = 1 }, filter: new VariableFilter { Conditions = [Condition(link)] });
@@ -471,6 +475,28 @@ public class AdvancedSearchTest : ExplorerTestContext
 
         Assert.Equal(SearchCondition.MaxCount, Rows(cut).Count);
         Assert.DoesNotContain(cut.FindAll("button"), b => b.TextContent == "Legg til betingelse");
+    }
+
+    [Fact]
+    public void Render_WhenTheFieldsFailedToLoadAndTheDateOperatorIsInCapitals_ThenTheValueStillReadsAsADay()
+    {
+        var cut = RenderWith(new ConditionClient { FailFieldCalls = 1 },
+            filter: new VariableFilter { Conditions = [Condition("gyldigFra:FOR:2020-01-01")] });
+
+        cut.WaitForAssertion(() => Assert.Contains(cut.FindAll("button"), b =>
+            b.GetAttribute("aria-label") is { } label && label.EndsWith(" 01.01.2020", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public void Render_WhenTheApiOffersNoFieldsAndALinkCarriesConditions_ThenTheyAreDroppedAndTheHostIsTold()
+    {
+        VariableFilter? told = null;
+        var client = new ConditionClient { Answer = [] };
+        RenderWith(client, filter: new VariableFilter { Conditions = [Condition("navn:inneholder:a")] }, changed: filter => told = filter);
+
+        Assert.Empty(client.Searches[^1]!.Conditions);
+        Assert.NotNull(told);
+        Assert.Empty(told!.Conditions);
     }
 
     [Fact]

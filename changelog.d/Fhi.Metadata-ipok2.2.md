@@ -11,4 +11,5 @@ category: Added
   restores the search. `SearchCondition` is one condition, `ConditionField` one field from the new
   `IMuninExplorerClient.GetConditionFieldsAsync` (`GET api/explorer/variables/vilkar`), whose default answers empty.
   A condition a link carries that the API would refuse is dropped before the first search, and a repeated one is
-  kept once; when the fields cannot be loaded, the link's conditions are kept unjudged, a repeated one still once.
+  kept once; when the field call fails, the link's conditions are kept unjudged, a repeated one still once. An API
+  without the fields route offers none, and a link's conditions are then dropped.

@@ -476,9 +476,6 @@ public partial class VariableSearch
     // Not a literal in the markup: beside type="date", @bind converts to DateTime, and a row keeps the browser's own text.
     private const string NativeDateType = "date";
 
-    // With the fields unknown, only a date operator says a value is a day; a text can look like one.
-    private static readonly string[] DateOperators = [ConditionField.BetweenOperator, "for", "etter"];
-
     /// <summary>A condition in words: «Beskrivelse inneholder «blodtrykk»», «Tilgangsnivå er en av Statistikkbank».</summary>
     private string ConditionReading(SearchCondition condition)
     {
@@ -487,7 +484,7 @@ public partial class VariableSearch
 
         var known = _conditionFields is { } fields ? FieldOf(fields, condition.Field) : null;
         var dated = known is null
-            ? DateOperators.Contains(condition.Operator, StringComparer.OrdinalIgnoreCase)
+            ? ConditionField.DateOperators.Contains(condition.Operator)
             : known.Type == ConditionField.DateType;
 
         string value;

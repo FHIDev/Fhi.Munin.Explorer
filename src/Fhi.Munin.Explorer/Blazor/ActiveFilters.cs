@@ -9,27 +9,18 @@ namespace Fhi.Munin.Explorer.Blazor;
 internal static class ActiveFilters
 {
     /// <summary>One active filter, as the row draws it.</summary>
-    /// <param name="Text">The value as the panel's own checkbox shows it, cut to the same length.</param>
-    /// <param name="RemoveLabel">
-    /// The remove control's whole accessible name. It names the value, because a row of controls
-    /// all announcing "Fjern" is a row a screen reader cannot tell apart.
-    /// </param>
+    /// <param name="Text">The filter as the panel shows it: a facet value cut to its checkbox's length, or a condition.</param>
+    /// <param name="RemoveLabel">The remove control's whole accessible name, naming the value so a row of them can be told apart.</param>
     /// <param name="Title">The whole value where <paramref name="Text"/> was cut, and nothing where it was not.</param>
-    /// <param name="Language">
-    /// The language <paramref name="Text"/> is written in, or null where it is the reader's own or
-    /// belongs to no language at all. Null means "do not mark this".
-    /// </param>
-    /// <param name="Remove">
-    /// Clears this one value, through whatever state the panel's own checkbox writes. Awaited, so a
-    /// caller can hand focus on before the chip is gone.
-    /// </param>
+    /// <param name="Language">The language of <paramref name="Text"/>, or null where it is the reader's or none: do not mark it.</param>
+    /// <param name="Remove">Clears this one filter through the panel's own state; awaited, so focus can move first.</param>
     internal readonly record struct Chip(
         string Text, string RemoveLabel, string? Title, string? Language, Func<Task> Remove);
 
     /// <summary>The row.</summary>
     /// <param name="receiver">The component a press redraws: an <c>object</c> receiver would never be redrawn.</param>
     /// <param name="heading">The row's own word — "Aktive filtre".</param>
-    /// <param name="chips">The ticked values, in the order the panel lists them.</param>
+    /// <param name="chips">The active filters, in the order the panel lists them.</param>
     /// <param name="clearAllLabel">The clear-all's word — the panel's own "Fjern alle filtre".</param>
     /// <param name="clearAll">Clears every value in one write of the same state.</param>
     /// <param name="edit">A second action before the clear-all, as its label and its press; null for none.</param>

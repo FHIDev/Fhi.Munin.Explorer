@@ -21,6 +21,10 @@ public sealed record ConditionField
     /// <summary>The operator whose value is a range of two days.</summary>
     public const string BetweenOperator = "mellom";
 
+    // The date type's operators, for reading a condition whose field is not known.
+    internal static readonly IReadOnlySet<string> DateOperators =
+        new HashSet<string>([BetweenOperator, "for", "etter"], StringComparer.OrdinalIgnoreCase);
+
     /// <summary>The API's field token, for example <c>beskrivelse</c>.</summary>
     [JsonPropertyName("felt")] public string Field { get; init; } = "";
 
