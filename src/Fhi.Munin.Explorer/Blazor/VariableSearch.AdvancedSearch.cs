@@ -434,20 +434,23 @@ public partial class VariableSearch
         return T.ConditionText(field, op, value);
     }
 
-    /// <summary>A code's word: the catalogue's own for tilgangsnivå, this package's for personidentifikasjon, else the code.</summary>
-    private string CodeName(string field, string code)
+    private string CodeName(string field, string code) => CodeWord(field, code).Text;
+
+    /// <summary>A code's word, and its language where that is not the reader's: the catalogue's own for
+    /// tilgangsnivå, this package's for personidentifikasjon, else the code.</summary>
+    private (string Text, string? Language) CodeWord(string field, string code)
     {
         if (string.Equals(field, "tilgangsniva", StringComparison.OrdinalIgnoreCase)
             && _vocabulary.TryGetValue(AccessLevels.Key, out var entry)
-            && CatalogueProperties.Option(entry, code, Language) is { } word)
+            && CatalogueProperties.Option(entry, code, Reader) is { Curated: true } word)
         {
-            return word.Label;
+            return (word.Label, Foreign(word.Language));
         }
 
         return string.Equals(field, "personidentifikasjon", StringComparison.OrdinalIgnoreCase)
             && T.PersonIdentificationNames.TryGetValue(code, out var name)
-            ? name
-            : code;
+            ? (name, null)
+            : (code, null);
     }
 
     /// <summary>Called from <see cref="OnAfterRenderAsync"/>: focus what the last press asked for, once it is drawn.</summary>

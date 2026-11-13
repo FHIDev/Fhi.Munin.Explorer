@@ -391,7 +391,8 @@ else
                                                         <input type="checkbox"
                                                                checked="@draft.Codes.Contains(code)"
                                                                @onchange="() => ToggleCode(draft, code)" />
-                                                        @CodeName(field.Field, code)
+                                                        @{ var word = CodeWord(field.Field, code); }
+                                                        <span lang="@word.Language">@word.Text</span>
                                                     </label>
                                                 </div>
                                             }
