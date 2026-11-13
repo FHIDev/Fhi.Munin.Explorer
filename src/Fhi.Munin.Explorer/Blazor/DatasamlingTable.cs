@@ -164,6 +164,14 @@ internal static class DatasamlingTable
         builder.AddAttribute(seq++, "class", "munin-explorer-kilde__datasamling-select");
         builder.AddAttribute(seq++, "data-label", texts.SelectDatasamlingColumn);
 
+        // A mark hands the datasamling to the variable list, and one with no visible variables would
+        // land the reader on an empty list; the cell stays so the columns line up (Fhi.Metadata-l9l2n.183).
+        if (row.VariableCount == 0)
+        {
+            builder.CloseElement();
+            return;
+        }
+
         builder.OpenElement(seq++, "input");
         builder.AddAttribute(seq++, "type", "checkbox");
         builder.AddAttribute(seq++, "aria-label", texts.SelectDatasamling(named.Text));

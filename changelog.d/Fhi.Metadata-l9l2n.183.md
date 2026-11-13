@@ -1,0 +1,2 @@
+category: Changed
+- **A datasamling with no variables offers no way to the variable list.** Munin now lists a datasamling an administrator published without visible variables, with a count of 0. In the kildeutforsker's datasamling table such a row reads «0 variabler» («0 variables») and has no mark to hand it to the variable explorer, which would have opened an empty list. Its cell in the mark column stays, so the columns line up. The datasamling's own page already offered no variables link at 0.

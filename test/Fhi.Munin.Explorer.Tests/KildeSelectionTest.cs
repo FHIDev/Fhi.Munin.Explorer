@@ -1410,6 +1410,37 @@ public class KildeSelectionTest : ExplorerTestContext
         Assert.Equal("", BarLine(cut));
     }
 
+    [Theory]
+    [InlineData("no", "0 variabler", "7 variabler")]
+    [InlineData("en", "0 variables", "7 variables")]
+    public void Marks_WhenADatasamlingHasNoVariables_ThenItSaysSoAndOffersNoMark(string language, string none, string some)
+    {
+        // Fhi.Metadata-l9l2n.183: an admin can publish a datasamling with no visible variables, and a
+        // mark on it would hand the reader to an empty variable list. Its neighbour keeps its mark.
+        var client = ThreeKilder();
+        client.Describing(DetailOne() with
+        {
+            Datasamlinger =
+            [
+                Collection(CollectionOneA, "Inklusjon") with { DisplayOrder = 1, VariableCount = 0 },
+                Collection(CollectionOneB, "Oppfølging") with { DisplayOrder = 2 },
+            ],
+        });
+        var (cut, _, _) = RenderMarkable(client, b => b.Add(c => c.Language, language));
+
+        Expand(cut, "Als registeret");
+
+        var rows = Drawer(cut, KildeOne).QuerySelectorAll("tbody tr");
+        var empty = rows.Single(row => row.QuerySelector("th")!.TextContent.Trim() == "Inklusjon");
+        var full = rows.Single(row => row.QuerySelector("th")!.TextContent.Trim() == "Oppfølging");
+        Assert.Equal(none, empty.QuerySelectorAll("td").Last().TextContent.Trim());
+        Assert.Equal(some, full.QuerySelectorAll("td").Last().TextContent.Trim());
+        Assert.Null(empty.QuerySelector("td.munin-explorer-kilde__datasamling-select input"));
+        Assert.NotNull(empty.QuerySelector("td.munin-explorer-kilde__datasamling-select"));
+        Assert.NotNull(full.QuerySelector("td.munin-explorer-kilde__datasamling-select input"));
+        Assert.Empty(empty.QuerySelectorAll("a"));
+    }
+
     [Fact]
     public void Marks_WhenARowIsTicked_ThenItsDatasamlingerAreNotMarked()
     {
