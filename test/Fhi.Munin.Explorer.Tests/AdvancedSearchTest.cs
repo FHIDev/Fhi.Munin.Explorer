@@ -444,6 +444,25 @@ public class AdvancedSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Render_WhenTheReaderIsOnTheVariabellisteTab_ThenAvansertSokIsNotOffered()
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new ConditionClient());
+        Services.AddSingleton(new AdvancedSearchSwitch(true));
+        var cut = Render<VariableSearch>(b => b
+            .Add(c => c.IsAuthenticated, true)
+            .Add(c => c.VariableList, list => list.AddContent(0, "listen")));
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+
+        cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Variabelliste").Click();
+
+        Assert.Null(Toggle(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-advanced-search"));
+        cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() != "Variabelliste").Click();
+        Assert.NotNull(Toggle(cut));
+    }
+
+    [Fact]
     public void ShowHits_WhenEveryRowIsEmpty_ThenTheConditionsInForceAreRemoved()
     {
         var client = new ConditionClient();

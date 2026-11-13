@@ -304,9 +304,9 @@ else
         </div>
     </form>
 
-    @* Avansert søk, behind MuninExplorer:Features:AdvancedSearch. A disclosure rather than a dialog, so the
-       facets and the results stay where they are while the reader builds the conditions. (Fhi.Metadata-ipok2.2) *@
-    @if (AdvancedSearchOffered)
+    @* Avansert søk, behind MuninExplorer:Features:AdvancedSearch: a disclosure, so the facets and results stay put.
+       Not on the Variabelliste tab, where like the facets it would narrow nothing. (Fhi.Metadata-ipok2.2) *@
+    @if (AdvancedSearchOffered && _resultsTab != ExplorerTab.VariableList)
     {
         <div>
             <button class="hd-button-square button-square--ghost margin-bottom"
