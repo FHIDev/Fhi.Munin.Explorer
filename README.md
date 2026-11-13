@@ -1541,7 +1541,7 @@ Four things are worth knowing before mounting one.
   reader to: a control that lands on a page that host may not have would be worse than no
   control. helsedata's `BlazorComponentPage` passes it from the page's «Variabelutforsker-side»
   reference, resolved in the reader's content language, and shows its editor a hint in edit mode
-  while that field is empty. It is relative to your application rather than to the domain — `"variabler"` and
+  while that field is empty. The path is relative to your application rather than to the domain — `"variabler"` and
   `"/variabler"` mean the same page, and a path base is kept either way — and a full URL is taken
   as given. A path rather than a callback on purpose: an `EventCallback` handed to an interactive
   component by a statically rendered parent serialises to an empty delegate.

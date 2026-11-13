@@ -320,8 +320,8 @@ public class VariableExplorerTest : ExplorerTestContext
     [Fact]
     public void ShippedDefaultName_WhenItIsResolved_ThenItTakesOnlyWhatTheCmsCanOffer()
     {
-        // BlazorComponentPage passes a candidate only if the component declares it, silently. The two
-        // parameters helsedata sets on this component must stay declared, or the CMS stops setting them.
+        // BlazorComponentPage passes a candidate only if the component declares it, silently. Language and
+        // IsAuthenticated, which helsedata always sets on this component, must stay declared.
         var component = typeof(IMuninExplorerClient).Assembly.GetType(ShippedDefault, throwOnError: true)!;
 
         var declared = component
