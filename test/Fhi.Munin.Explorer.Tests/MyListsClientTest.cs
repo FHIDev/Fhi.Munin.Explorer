@@ -726,7 +726,7 @@ public class MyListsClientTest
     [InlineData("", false)]
     public async Task AddItemsToMyListAsync_WhenTheApiRefusesTheBatch_ThenItNamesTheRefusedVariablesWhereItsAnswerDoes(string body, bool named)
     {
-        // Munin's body, as MyListsController writes it: a caller resends the rest at once rather than row by row.
+        // Munin's body, as MyListsController writes it: the variables named are the ones a carry-over tells the reader of.
         var handler = StubHttpHandler.Answering(HttpStatusCode.BadRequest, body);
         var variable = new Guid("b7c1f4a2-5d38-4e6b-9c02-8a1e3f7d5b90");
 

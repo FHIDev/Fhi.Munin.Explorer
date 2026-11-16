@@ -370,41 +370,47 @@ public class VariableListStateBrowserTest
     }
 
     [Fact]
-    public async Task CarryBrowserListOverAsync_WhenTheDeleteFailsTooAfterALimiterRefusal_ThenTheNextPressReusesThatEmptyList()
+    public async Task CarryBrowserListOverAsync_WhenTheDeleteFailsTooAfterALimiterRefusal_ThenTheListIsLeftAndTheNextPressMakesItsOwn()
     {
-        // The limiter that refused the add can refuse the delete in the same window; a new list would be «Navn (2)».
+        // A press deletes only the list it made: the one left behind may have taken the reader's own rows since.
         var browser = new FakeBrowserList();
         browser.Rows.AddRange(Rows(2));
         var client = new ListsClient { AddThrows = new MuninExplorerRateLimitedException(), DeleteThrows = true };
         var state = await SignedInAsync(browser, client);
         await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => state.CarryBrowserListOverAsync("Min variabelliste"));
+        var left = client.Adds[0].List;
 
-        client.AddThrows = null;
         client.DeleteThrows = false;
-        var carried = await state.CarryBrowserListOverAsync("Min variabelliste (2)");
+        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => state.CarryBrowserListOverAsync("Min variabelliste (2)"));
 
-        Assert.Equal(["Min variabelliste"], client.Created);
-        Assert.Equal(2, client.Adds.Count);
-        Assert.Equal(client.Adds[0].List, carried!.List!.Id);
-        Assert.Empty(browser.Rows);
+        Assert.Equal(["Min variabelliste", "Min variabelliste (2)"], client.Created);
+        Assert.NotEqual(left, client.Adds[1].List);
+        Assert.Equal([left, client.Adds[1].List], client.Deleted);
+        Assert.Equal(2, browser.Rows.Count);
     }
 
     [Fact]
-    public async Task CarryBrowserListOverAsync_WhenAnotherReaderPressesAfterAnUndeletedList_ThenTheirOwnListIsMade()
+    public async Task CarryBrowserListOverAsync_WhenAnotherReaderSignsInWhileTheSavedRowsLeaveTheBrowser_ThenTheirOfferIsNotStuck()
     {
+        // The rows that would not leave were the last reader's press; the next reader is offered them afresh.
         var browser = new FakeBrowserList();
-        browser.Rows.AddRange(Rows(2));
-        var client = new ListsClient { AddThrows = new MuninExplorerRateLimitedException(), DeleteThrows = true };
-        var state = await SignedInAsync(browser, client);
-        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => state.CarryBrowserListOverAsync("Min variabelliste"));
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        browser.Failing.Add("removeKeys");
+        var state = await SignedInAsync(browser, new ListsClient { BeforeAdd = () => browser.Hold = true });
+
+        var carrying = state.CarryBrowserListOverAsync("Min variabelliste");
+        while (!browser.Pending.Exists(p => p.Call == "removeKeys"))
+        {
+            await Task.Delay(5);
+        }
 
         state.SetAuthenticated(false);
         state.SetAuthenticated(true);
-        client.AddThrows = null;
-        await state.CarryBrowserListOverAsync("Min variabelliste");
+        browser.Hold = false;
+        await ReleaseUntilAsync(browser, carrying);
 
-        Assert.Equal(2, client.Created.Count);
-        Assert.NotEqual(client.Adds[0].List, client.Adds[1].List);
+        Assert.Equal(1, state.BrowserCount);
+        Assert.False(state.BrowserCarryOverStuck);
     }
 
     [Theory]

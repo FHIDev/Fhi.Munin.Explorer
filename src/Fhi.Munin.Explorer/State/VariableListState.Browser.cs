@@ -378,9 +378,6 @@ public sealed partial class VariableListState : IDisposable
     internal int BrowserVariablesOf(IReadOnlySet<Guid> variables) =>
         _browserKeys.Select(k => k.VariableId).Where(variables.Contains).Distinct().Count();
 
-    // A list a carry-over made and could not delete again, empty, which the same reader's next press reuses.
-    private (Guid List, int Reader)? _emptyCarryList;
-
     /// <summary>Saves the browser list as a new list in one add, all or nothing, then takes its rows out of the browser.</summary>
     /// <returns>Null when signed out, the list is empty or unread, the reader changed during any call, or the new list was
     /// gone; any other failure throws, an unnamed refusal too. When nothing is saved, the list is deleted and rows stay.</returns>
@@ -409,9 +406,7 @@ public sealed partial class VariableListState : IDisposable
         }
 
         // CreateAsync answers null itself when the reader changed while it was out.
-        var reused = _emptyCarryList is { } empty && empty.Reader == reader ? _lists.FirstOrDefault(l => l.Id == empty.List) : null;
-
-        if ((reused ?? await CreateAsync(name, cancellationToken).ConfigureAwait(false)) is not { } target)
+        if (await CreateAsync(name, cancellationToken).ConfigureAwait(false) is not { } target)
         {
             return null;
         }
@@ -426,7 +421,7 @@ public sealed partial class VariableListState : IDisposable
         catch (ListItemsRefusedException ex) when (Reader == reader && ex.VariableIds is { Count: > 0 } named)
         {
             _logger?.LogWarning(ex, "the API refused the browser list's rows of {Count} variables", named.Count);
-            await DiscardAsync(target.Id, reader).ConfigureAwait(false);
+            await DiscardAsync(target.Id).ConfigureAwait(false);
             var refused = keys.Select(k => k.VariableId).Where(named.Contains).ToHashSet();
 
             // Naming none of these rows, it says no more than a refusal that names nothing.
@@ -440,7 +435,7 @@ public sealed partial class VariableListState : IDisposable
         catch (Exception ex) when (Reader == reader)
         {
             _logger?.LogWarning(ex, "a carry-over to list {ListId} saved nothing", target.Id);
-            await DiscardAsync(target.Id, reader).ConfigureAwait(false);
+            await DiscardAsync(target.Id).ConfigureAwait(false);
             throw;
         }
         catch (Exception ex)
@@ -458,11 +453,10 @@ public sealed partial class VariableListState : IDisposable
         if (!accepted)
         {
             // The list was gone before the rows reached it.
-            await DiscardAsync(target.Id, reader).ConfigureAwait(false);
+            await DiscardAsync(target.Id).ConfigureAwait(false);
             return null;
         }
 
-        _emptyCarryList = null;
         var left = await RemoveBrowserKeysAsync(keys).ConfigureAwait(false);
 
         // Rows left only where no other page reads them, or none left at all, cannot be saved twice.
@@ -523,18 +517,16 @@ public sealed partial class VariableListState : IDisposable
         return removed;
     }
 
-    // The limiter that refused the add may refuse the delete too; the empty list is then kept for the next press.
-    private async Task DiscardAsync(Guid id, int reader)
+    // Only the list this press made. The limiter that refused the add may refuse this too: the empty list then stays.
+    private async Task DiscardAsync(Guid id)
     {
         try
         {
             await DeleteAsync(id).ConfigureAwait(false);
-            _emptyCarryList = null;
         }
         catch (Exception ex)
         {
             _logger?.LogWarning(ex, "could not delete list {ListId} after a carry-over failed", id);
-            _emptyCarryList = (id, reader);
         }
     }
 

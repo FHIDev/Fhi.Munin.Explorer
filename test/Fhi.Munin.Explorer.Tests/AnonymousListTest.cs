@@ -172,6 +172,11 @@ public class AnonymousListTest : ExplorerTestContext
             return Task.FromResult(new ExportedList([1], "application/octet-stream", "Variabelliste.xlsx"));
         }
 
+        public SharedList? SharedAnswer { get; init; }
+
+        public override Task<SharedList?> GetSharedListAsync(string? code, CancellationToken cancellationToken = default) =>
+            Task.FromResult(SharedAnswer);
+
         public override Task<string> ShareListAsync(
             string name, IReadOnlyCollection<VariableListItem> items, CancellationToken cancellationToken = default)
         {
@@ -853,9 +858,12 @@ public class AnonymousListTest : ExplorerTestContext
 
         // The offer is back for the row that is left, and focus is on it.
         Assert.Contains(No.BrowserListWaiting(1), cut.Markup);
-        // bUnit leaves this reference unprinted, so the call is told apart from the one before: a second, elsewhere.
         cut.WaitForAssertion(() => Assert.Equal(focusesBefore + 1, JSInterop.Invocations[Focus].Count));
-        Assert.NotEqual(((ElementReference)JSInterop.Invocations[Focus][^2].Arguments[0]!).Id, ((ElementReference)JSInterop.Invocations[Focus][^1].Arguments[0]!).Id);
+
+        // bUnit prints no reference on a button kept from an earlier render, so the view's own reference stands in for it.
+        var offer = (ElementReference)typeof(VariableListView)
+            .GetField("_carryOverButton", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(cut.Instance)!;
+        Assert.Equal(offer.Id, ((ElementReference)JSInterop.Invocations[Focus][^1].Arguments[0]!).Id);
 
         ButtonSaying(cut, No.CarryBrowserListOver).Click();
 
@@ -955,6 +963,142 @@ public class AnonymousListTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(2), cut.Markup));
         Assert.DoesNotContain(No.RemoveRefusedFromBrowser(1, 1), cut.Markup);
+    }
+
+    [Theory]
+    [InlineData("refused")]
+    [InlineData("removed")]
+    [InlineData("saved")]
+    [InlineData("failed")]
+    public void VariableListView_WhenAnotherReaderSignsInAfterAPress_ThenNoneOfItsSentencesOrButtonsShow(string outcome)
+    {
+        // What a press said was said to the reader who pressed; the next one at the screen made no such press.
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange([FakeBrowserList.Row("Gammel"), FakeBrowserList.Row("Alder")]);
+        var client = outcome switch
+        {
+            "saved" => new Client(),
+            "failed" => new Client { AddThrows = true },
+            _ => new Client { Stale = VariableDatasamlingKey.Of(browser.Rows[0]), NamesStale = true },
+        };
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(2), cut.Markup));
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+        var said = outcome switch
+        {
+            "saved" => No.BrowserListSavedAs(No.FirstListName),
+            "failed" => No.CarryBrowserListOverError,
+            _ => No.BrowserListRefused(1, 1),
+        };
+        cut.WaitForAssertion(() => Assert.Contains(said, cut.Markup));
+        if (outcome == "removed")
+        {
+            browser.Failing.Add("removeKeys");
+            ButtonSaying(cut, No.RemoveRefusedFromBrowser(1, 1)).Click();
+            cut.WaitForAssertion(() => Assert.Contains(No.BrowserListRefusedNotRemoved, cut.Markup));
+            browser.Failing.Clear();
+        }
+
+        cut.Render(p => p.Add(c => c.IsAuthenticated, false));
+        cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+        if (outcome != "saved")
+        {
+            cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(2), cut.Markup));
+        }
+
+        Assert.DoesNotContain(No.BrowserListRefused(1, 1), cut.Markup);
+        Assert.DoesNotContain(No.RemoveRefusedFromBrowser(1, 1), cut.Markup);
+        Assert.DoesNotContain(No.BrowserListRefusedNotRemoved, cut.Markup);
+        Assert.DoesNotContain(No.BrowserListSavedAs(No.FirstListName), cut.Markup);
+        Assert.DoesNotContain(No.CarryBrowserListOverError, cut.Markup);
+    }
+
+    [Fact]
+    public async Task VariableListView_WhenTheReaderOpensAFormWhileTheCarryOverIsRefused_ThenFocusStaysInTheForm()
+    {
+        // The refusal's button must not take focus from a field the reader moved to while the press was out.
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange([FakeBrowserList.Row("Gammel"), FakeBrowserList.Row("Alder")]);
+        var hold = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new Client { HoldAdds = hold.Task };
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(2), cut.Markup));
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+        cut.WaitForAssertion(() => Assert.Equal(1, client.AddCalls));
+
+        cut.Find("button[id^='munin-explorer-create-toggle-']").Click();
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("input.munin-explorer-list-create__field")));
+        await cut.InvokeAsync(() => Task.Delay(100));
+        var focusCalls = JSInterop.Invocations[Focus].Count;
+        hold.SetException(new ListItemsRefusedException([browser.Rows[0].VariableId]));
+
+        cut.WaitForAssertion(() => Assert.Contains(No.RemoveRefusedFromBrowser(1, 1), cut.Markup));
+        await cut.InvokeAsync(() => Task.Delay(100));
+
+        Assert.Equal(focusCalls, JSInterop.Invocations[Focus].Count);
+    }
+
+    [Fact]
+    public void VariableListView_WhenASharedListIsOpenedAfterARefusal_ThenTheRemoveButtonIsNotDrawnOverIt()
+    {
+        // The shared list's rows are not the browser's: a button there would read as removing them. The view's
+        // shared-list branch draws no offer at all, which is what holds this, not a check of its own.
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange([FakeBrowserList.Row("Gammel"), FakeBrowserList.Row("Alder")]);
+        var client = new Client
+        {
+            Stale = VariableDatasamlingKey.Of(browser.Rows[0]),
+            NamesStale = true,
+            SharedAnswer = new SharedList("Delt liste", [Stored(Alder)]),
+        };
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(2), cut.Markup));
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+        cut.WaitForAssertion(() => Assert.Contains(No.RemoveRefusedFromBrowser(1, 1), cut.Markup));
+
+        cut.Render(p => p.Add(c => c.ShareCode, "ABC123"));
+
+        cut.WaitForAssertion(() => Assert.Contains("Delt liste", cut.Markup));
+        Assert.DoesNotContain(No.RemoveRefusedFromBrowser(1, 1), cut.Markup);
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheRefusedRowsCannotBeRemoved_ThenTheButtonStaysToTryAgain()
+    {
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange([FakeBrowserList.Row("Gammel"), FakeBrowserList.Row("Alder")]);
+        browser.Failing.Add("removeKeys");
+        var client = new Client { Stale = VariableDatasamlingKey.Of(browser.Rows[0]), NamesStale = true };
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(2), cut.Markup));
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListRefused(1, 1), cut.Markup));
+
+        ButtonSaying(cut, No.RemoveRefusedFromBrowser(1, 1)).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListRefusedNotRemoved, cut.Markup));
+        Assert.Contains(No.RemoveRefusedFromBrowser(1, 1), cut.Markup);
+        Assert.Equal(2, browser.Rows.Count);
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheNextPressFailsForAnotherReason_ThenTheRefusalAndItsButtonAreGone()
+    {
+        // A press starts afresh: the button belonged to the refusal before it, which this press did not repeat.
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange([FakeBrowserList.Row("Gammel"), FakeBrowserList.Row("Alder")]);
+        var client = new Client { Stale = VariableDatasamlingKey.Of(browser.Rows[0]), NamesStale = true };
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(2), cut.Markup));
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+        cut.WaitForAssertion(() => Assert.Contains(No.RemoveRefusedFromBrowser(1, 1), cut.Markup));
+        client.ThrottleAfter = 1;
+
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.CarryBrowserListOverError, cut.Markup));
+        Assert.DoesNotContain(No.RemoveRefusedFromBrowser(1, 1), cut.Markup);
+        Assert.DoesNotContain(No.BrowserListRefused(1, 1), cut.Markup);
     }
 
     [Fact]

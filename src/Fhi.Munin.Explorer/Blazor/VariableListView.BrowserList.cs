@@ -20,9 +20,12 @@ public sealed partial class VariableListView
     private string? _carriedOverAs;
     private bool _carriedOverButStillHere;
 
-    // The variables Munin refused at this reader's last press, whose rows the remove button takes out of the browser.
+    // The reader the carry-over's sentences and remove button were set for; another reader at the screen sees none.
+    private int? _carryOverNoticesFor;
+
+    // The variables Munin refused at the last press, whose rows the remove button takes out of the browser.
     // The alert counts them as the button does, from the rows this page holds; the press's own count only once none are.
-    private (IReadOnlySet<Guid> Variables, int Reader)? _refusal;
+    private IReadOnlySet<Guid>? _refusal;
     private (int Rows, int Variables)? _refusalSaid;
     private (bool Removed, int Rows, int Left)? _refusedRemoved;
     private ElementReference _carryOverButton;
@@ -58,8 +61,13 @@ public sealed partial class VariableListView
         : _browserPageFailed || _browserShareUnreadable ? T.BrowserListReadError
         : ShareMessage ?? DownloadMessage;
 
+    private bool CarryOverNoticesShown => State is { } state && state.Reader == _carryOverNoticesFor;
+
+    private bool CarryOverFailedShown => _carryOverFailed && CarryOverNoticesShown;
+
     private string? CarriedOverMessage =>
-        _refusedRemoved is { } removal
+        !CarryOverNoticesShown ? null
+        : _refusedRemoved is { } removal
             ? (removal.Removed ? T.BrowserListRefusedRemoved(removal.Rows, removal.Left) : T.BrowserListRefusedNotRemoved)
         : _refusalSaid is { } said ? T.BrowserListRefused((RefusedRowsShown ?? said).Rows, (RefusedRowsShown ?? said).Variables)
         : _carriedOverAs is not { } name ? null
@@ -77,9 +85,9 @@ public sealed partial class VariableListView
 
     /// <summary>The rows and variables the remove button would take out: those of the refusal, for the reader it was made to.</summary>
     private (int Rows, int Variables)? RefusedRowsShown =>
-        _refusal is { } refusal && State is { IsAuthenticated: true } state && state.Reader == refusal.Reader && !ShowsSharedList
-        && state.BrowserRowsOf(refusal.Variables) is > 0 and var rows
-            ? (rows, state.BrowserVariablesOf(refusal.Variables))
+        _refusal is { } refused && CarryOverNoticesShown && State is { IsAuthenticated: true } state
+        && state.BrowserRowsOf(refused) is > 0 and var rows
+            ? (rows, state.BrowserVariablesOf(refused))
             : null;
 
     /// <summary>The sentence over the browser list: kept, kept for this page only, or not there at all.</summary>
@@ -328,8 +336,8 @@ public sealed partial class VariableListView
     }
 
     /// <summary>
-    /// Saves the browser list as a new list of the reader's and shows it, or finishes the one a cut-short press made.
-    /// A failure that saved nothing leaves the browser list as it was and says so; nothing else is merged into.
+    /// Saves the browser list as a new list of the reader's and shows it, all rows or none. When none, the rows stay in
+    /// the browser and the alert says why; when Munin named variables, a button offers to remove their rows.
     /// </summary>
     private async Task CarryBrowserListOverAsync()
     {
@@ -376,6 +384,8 @@ public sealed partial class VariableListView
             return;
         }
 
+        _carryOverNoticesFor = reader;
+
         if (carried is null)
         {
             _carryOverFailed = true;
@@ -385,7 +395,7 @@ public sealed partial class VariableListView
         if (carried.List is not { } created)
         {
             // Munin named variables and saved nothing: every row stays, and the button beside the offer removes theirs.
-            _refusal = (carried.Refused ?? new HashSet<Guid>(), reader);
+            _refusal = carried.Refused ?? new HashSet<Guid>();
             _refusalSaid = (carried.RefusedRows, carried.Refused?.Count ?? 0);
             _offerFocus = (OfferControl.RemoveRefused, formsOpenAtStart, reader);
             return;
@@ -437,7 +447,7 @@ public sealed partial class VariableListView
     /// <summary>Takes the refused variables' rows out of the browser, which signed in has no «Tøm listen» to do it.</summary>
     private async Task RemoveRefusedFromBrowserAsync()
     {
-        if (State is null || !IsAuthenticated || _carryingOver || _refusal is not { } refusal || refusal.Reader != State.Reader)
+        if (State is null || !IsAuthenticated || _carryingOver || _refusal is not { } refused || !CarryOverNoticesShown)
         {
             return;
         }
@@ -445,8 +455,8 @@ public sealed partial class VariableListView
         ForgetFailures();
         var reader = State.Reader;
         var formsOpenAtStart = OpenForms();
-        var rows = State.BrowserRowsOf(refusal.Variables);
-        var removed = await State.RemoveRefusedFromBrowserAsync(refusal.Variables);
+        var rows = State.BrowserRowsOf(refused);
+        var removed = await State.RemoveRefusedFromBrowserAsync(refused);
 
         if (State.Reader != reader || !IsAuthenticated)
         {

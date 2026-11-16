@@ -1929,7 +1929,7 @@ internal sealed record Texts(
         BrowserListRefused: (rows, variables) =>
             $"{(rows == 1 ? "1 rad" : $"{rows} rader")} for {(variables == 1 ? "1 variabel" : $"{variables} variabler")} kunne ikke lagres i Mine lister, så ingenting ble lagret. Listen ligger fortsatt i denne nettleseren.",
         RemoveRefusedFromBrowser: (rows, variables) =>
-            $"Fjern {(rows == 1 ? "raden" : "radene")} for {(variables == 1 ? "denne variabelen" : "disse variablene")} fra denne nettleseren",
+            $"Fjern {(rows == 1 ? "raden" : "radene")} for {(variables == 1 ? "denne variabelen" : "disse variablene")}",
         BrowserListRefusedRemoved: (rows, rest) =>
             (rows == 1 ? "Raden er fjernet fra denne nettleseren." : "Radene er fjernet fra denne nettleseren.")
             + (rest == 0 ? "" : rest == 1 ? " Raden som er igjen, kan lagres som ny liste i Mine lister." : $" De {rest} radene som er igjen, kan lagres som ny liste i Mine lister."),
@@ -2611,7 +2611,7 @@ internal sealed record Texts(
         BrowserListRefused: (rows, variables) =>
             $"{(rows == 1 ? "1 row" : $"{rows} rows")} for {(variables == 1 ? "1 variable" : $"{variables} variables")} could not be saved in My lists, so nothing was saved. The list is still in this browser.",
         RemoveRefusedFromBrowser: (rows, variables) =>
-            $"Remove the {(rows == 1 ? "row" : "rows")} for {(variables == 1 ? "this variable" : "these variables")} from this browser",
+            $"Remove {(rows == 1 ? "the row" : "rows")} for {(variables == 1 ? "this variable" : "these variables")}",
         BrowserListRefusedRemoved: (rows, rest) =>
             (rows == 1 ? "The row is removed from this browser." : "The rows are removed from this browser.")
             + (rest == 0 ? "" : rest == 1 ? " The row that is left can be saved as a new list in My lists." : $" The {rest} rows that are left can be saved as a new list in My lists."),
