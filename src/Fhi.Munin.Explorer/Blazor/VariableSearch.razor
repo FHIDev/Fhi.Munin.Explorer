@@ -766,7 +766,7 @@ else
 
     @* Runa's two tabs sit here, below the shared search box and filters, rather than around the
        whole component (Fhi.Metadata-l9l2n.39). Signed out there is no tablist at all — the line
-       below says what it would have opened onto (Fhi.Metadata-4ifsa). *@
+       below says what it would have opened onto (Fhi.Metadata-4ifsa) — unless the browser list is on. *@
     @if (ShowTabs)
     {
         <div class="munin-explorer-meta__tabs"
@@ -800,7 +800,7 @@ else
     }
 
     @* The panel the results live in. Unclassed and role-less when there are no tabs, so a
-       signed-out reader gets the same document they always got.
+       signed-out reader without the browser list gets the same document they always got.
 
        The contents are rendered only for the tab that is open, rather than drawn and hidden.
        `hidden` is not enough: helsedata's stylesheet carries a bare `div { display: block }`,

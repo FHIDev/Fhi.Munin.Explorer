@@ -467,8 +467,9 @@ public sealed partial class VariableSearch : ComponentBase
     /// <para>
     /// The package does not remember the choice, by decision rather than by omission. It keeps no
     /// reader's preference in Web Storage — it has to run inside a static-SSR host as well as an
-    /// interactive one, and what is remembered about a reader is the host's own policy to set. The
-    /// one thing it does write there is the kilde list's scroll position, per tab, as
+    /// interactive one, and what is remembered about a reader is the host's own policy to set. What it
+    /// does write there is the kilde list's scroll position, per tab, and with
+    /// <c>MuninExplorer:Features:AnonymousLists</c> on a signed-out reader's list, as
     /// <see cref="KildeSearch.ExpandedKildeIds"/> says. Like <see cref="Search"/> and <see cref="Filter"/>
     /// it is read once at mount and owned by the component afterwards, so a host that wants it remembered
     /// stores what this raises and supplies it at the next mount; a later change to the parameter on
@@ -515,7 +516,8 @@ public sealed partial class VariableSearch : ComponentBase
     /// </para>
     /// <para>
     /// Remembered by the host and never by the package, exactly as <see cref="LevelLines"/> is:
-    /// the package keeps no reader's preference in Web Storage, and what is remembered about a
+    /// the package keeps no reader's preference in Web Storage (only the scroll position and, with
+    /// <c>AnonymousLists</c> on, a signed-out reader's list), and what is remembered about a
     /// reader is the host's own policy to set. It is read once at
     /// mount and owned by the component afterwards, so a host stores what
     /// <see cref="ShowNodeIconsChanged"/> raises and supplies it at the next mount; changing the

@@ -25,10 +25,12 @@ public sealed partial class KildeSearch : IAsyncDisposable
     /// was when the reader left it, and to the first open row otherwise — which needs the package's
     /// browser module; without it the rows open and the page stays where the browser put it.
     /// <para>
-    /// That position is the one thing the package writes to Web Storage: the page's vertical
-    /// offset, per tab in <c>sessionStorage</c> under <c>Fhi.Munin.Explorer:scroll:</c> followed
+    /// That position is what the package writes to <c>sessionStorage</c>: the page's vertical
+    /// offset, per tab, under <c>Fhi.Munin.Explorer:scroll:</c> followed
     /// by the page's path and query, written when the reader follows a link out of the list or
-    /// leaves the page and removed when it is read back. Nothing about the reader is in it.
+    /// leaves the page and removed when it is read back. Nothing about the reader is in it. With
+    /// <c>MuninExplorer:Features:AnonymousLists</c> on, a signed-out reader's variable list is kept in
+    /// <c>localStorage</c> as well; the README's entry for that feature says what it holds.
     /// </para>
     /// </remarks>
     [Parameter] public IReadOnlyList<Guid>? ExpandedKildeIds { get; set; }

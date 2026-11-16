@@ -36,7 +36,8 @@ test('CompletionLines_WhenTheScanAndTheGateFinish_ThenBothAreWritten', () => {
   const gate = readFileSync(new URL('./check-accessibility.sh', import.meta.url), 'utf8');
   assert.match(scan, /appendFileSync\(resultsFile, `\$\{JSON\.stringify\(scanFinishedLine\)\}\\n`\)/);
   assert.match(gate, /printf '\{"gate":"finished","axeRuns":%s\}\\n' "\$axe_runs" >> "\$AXE_RESULTS_FILE"/);
-  // Only when both passes reached a verdict, and counting the picker-off pass where it runs.
-  assert.match(gate, /\[ "\$scan_status" -le 1 \] && \[ "\$off_status" -le 1 \]; then\n  printf '\{"gate"/);
+  // Only when every pass reached a verdict, and counting the picker-off and browser-list passes where they run.
+  assert.match(gate, /\[ "\$scan_status" -le 1 \] && \[ "\$off_status" -le 1 \] && \[ "\$browser_status" -le 1 \]; then\n  printf '\{"gate"/);
+  assert.match(gate, /browser_status=0\nif \[ -z "\$\{SCAN_SHARD:-\}" \] \|\| \[ "\$\{SCAN_SHARD%%\/\*\}" = 1 \]; then\n  axe_runs=\$\(\(axe_runs \+ 1\)\)/);
   assert.match(gate, /axe_runs=1\nif \[ -z "\$\{SCAN_SHARD:-\}" \] \|\| \[ "\$\{SCAN_SHARD%%\/\*\}" = 1 \]; then\n  axe_runs=2/);
 });

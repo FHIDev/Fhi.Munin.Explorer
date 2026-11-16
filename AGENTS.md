@@ -534,6 +534,9 @@ in Development, so every state above sees it on. The shape a host ships by defau
 by `check-accessibility.sh` with axe at 1280, 375 and 320 in shard 1, and by `check-hostile-host.sh`
 against real Stiler with geometry at the six widths, 320 and 1279 and axe at 1440
 (`Fhi.Metadata-l9l2n.172`, `Fhi.Metadata-l9l2n.174`).
+A signed-out reader's list in the browser gets the same treatment in `list-browser-list`, on one more host start with
+`MuninExplorer__Features__AnonymousLists=true` and the samples' `Sample__SignedOut=true`, which mounts the composed
+explorer signed out; both samples stay signed in by default (`Fhi.Metadata-emsc0.3.12`).
 
 **It scans states, not only pages.** A page in its default state is not the page a reader uses,
 and for a while the default state was the whole of this check: the level lines shipped at 1.16:1

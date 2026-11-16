@@ -1,4 +1,5 @@
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -15,6 +16,13 @@ public sealed partial class VariableListView
     private ElementReference _clearToggle;
     private bool _carryingOver;
     private bool _carryOverFailed;
+    private string? _carriedOverAs;
+    private bool _browserShareTooLong;
+
+    // The page on screen and what it was read for: the list's version and the page number.
+    private IReadOnlyList<VariableListItem> _browserPage = [];
+    private (int Version, int Page, int Size)? _browserPageFor;
+    private int _browserVersionSeen = -1;
 
     private string ClearBrowserListId => $"munin-explorer-clear-browser-list-{_instance}";
 
@@ -23,29 +31,58 @@ public sealed partial class VariableListView
     /// <summary>Signed out, no shared list on screen, and the host offers the list in the browser.</summary>
     private bool ShowsBrowserCopy => !ShowsSharedList && !IsAuthenticated && State?.UsesBrowserList == true;
 
-    private int BrowserRowCount => State?.BrowserItems.Count ?? 0;
+    private int BrowserRowCount => State?.BrowserCount ?? 0;
 
-    /// <summary>What the shared-list view draws: the snapshot behind a code, or the browser list.</summary>
-    private SharedList? ShownSnapshot =>
-        _sharedList ?? (ShowsBrowserCopy ? new SharedList(State!.BrowserListName ?? T.FirstListName, State.BrowserItems) : null);
+    /// <summary>How many rows the shared-list view draws: the snapshot's, or the browser list's.</summary>
+    private int? ShownCount => _sharedList?.Items.Count ?? (ShowsBrowserCopy ? BrowserRowCount : null);
 
-    private string? BrowserListMessage => ShowsBrowserCopy ? ShareMessage ?? DownloadMessage : null;
+    private string? BrowserListMessage =>
+        !ShowsBrowserCopy ? null
+        : _browserShareTooLong ? T.BrowserListTooLongToShare(VariableListState.MaxBrowserShareRows)
+        : ShareMessage ?? DownloadMessage;
+
+    private string? CarriedOverMessage => _carriedOverAs is { } name ? T.BrowserListSavedAs(name) : null;
+
+    /// <summary>The sentence over the browser list: kept, kept for this page only, or not there at all.</summary>
+    private string BrowserListStorageSentence =>
+        State?.BrowserListAvailable == false ? T.BrowserListUnavailable
+        : State?.BrowserListKept == false ? T.BrowserListNotKept
+        : T.BrowserListKeptHere;
 
     /// <summary>Turns the browser list on when the host does; GetService, so a host with neither still draws the view.</summary>
     private void OfferBrowserList()
     {
-        if (State is not null && ServiceProvider.GetService<AnonymousListsSwitch>()?.On == true)
+        if (State is { OffersBrowserList: false } && ServiceProvider.GetService<AnonymousListsSwitch>()?.On == true)
         {
             State.OfferBrowserList(new BrowserListStore(Js));
         }
     }
 
-    /// <summary>From <c>OnAfterRenderAsync</c>: reads the stored list once, and gives focus back after «Tøm listen».</summary>
+    /// <summary>
+    /// From <c>OnAfterRenderAsync</c>: reads the stored list once, the page on screen when it is stale, and gives
+    /// focus back after «Tøm listen».
+    /// </summary>
     private async Task AfterBrowserListRenderAsync()
     {
-        if (State is { OffersBrowserList: true } state)
+        if (State is not { OffersBrowserList: true } state)
         {
-            await state.ReadBrowserListAsync();
+            return;
+        }
+
+        await state.ReadBrowserListAsync();
+
+        var wanted = (state.BrowserVersion, _sharedPageNumber, PageSize);
+
+        if (ShowsBrowserCopy && state.BrowserListRead && _browserPageFor != wanted)
+        {
+            _browserPageFor = wanted;
+            var rows = await state.ReadBrowserRowsAsync((_sharedPageNumber - 1) * PageSize, PageSize);
+
+            if (_browserPageFor == wanted)
+            {
+                _browserPage = rows ?? [];
+                StateHasChanged();
+            }
         }
 
         if (_focusClearToggle && ShowsBrowserCopy)
@@ -66,14 +103,20 @@ public sealed partial class VariableListView
     /// <summary>A change to the browser list ends a share of the rows it had, and a page past its end.</summary>
     private void FollowBrowserListChange()
     {
-        if (!ShowsBrowserCopy)
+        if (State is not { } state || state.BrowserVersion == _browserVersionSeen)
         {
             return;
         }
 
-        _browserShare = null;
-        _sharingBrowserList = false;
-        _sharedPageNumber = Math.Min(_sharedPageNumber, SharedTotalPages);
+        _browserVersionSeen = state.BrowserVersion;
+
+        if (ShowsBrowserCopy)
+        {
+            _browserShare = null;
+            _sharingBrowserList = false;
+            _browserShareTooLong = false;
+            _sharedPageNumber = Math.Min(_sharedPageNumber, SharedTotalPages);
+        }
     }
 
     private void ToggleConfirmingClear()
@@ -110,6 +153,16 @@ public sealed partial class VariableListView
             return;
         }
 
+        ForgetFailures();
+        _browserShareTooLong = false;
+
+        if (BrowserRowCount > VariableListState.MaxBrowserShareRows)
+        {
+            _browserShareTooLong = true;
+            _sharingBrowserList = false;
+            return;
+        }
+
         _sharingBrowserList = !_sharingBrowserList;
 
         if (!_sharingBrowserList || _browserShare is not null)
@@ -117,13 +170,18 @@ public sealed partial class VariableListView
             return;
         }
 
-        ForgetFailures();
         _shareInFlight = true;
 
         try
         {
-            var name = State.BrowserListName ?? T.FirstListName;
-            var code = await Client.ShareListAsync(name, [.. State.BrowserItems]);
+            if (await State.ReadBrowserRowsAsync(0, VariableListState.MaxBrowserShareRows) is not { Count: > 0 } rows)
+            {
+                _shareFailure = ListActionFailure.Failed;
+                _sharingBrowserList = false;
+                return;
+            }
+
+            var code = await Client.ShareListAsync(T.FirstListName, rows);
             _browserShare = new ShareMade(Guid.Empty, code, SharedListHref?.Invoke(code));
         }
         catch (MuninExplorerRateLimitedException ex)
@@ -159,8 +217,13 @@ public sealed partial class VariableListView
 
         try
         {
-            var rows = State.BrowserItems.Select(VariableDatasamlingKey.Of).Distinct().ToList();
-            var file = await Client.ExportItemsAsync(rows, ExplorerPageUrl, format, _includeKodeverk);
+            if (await State.ReadBrowserKeysAsync() is not { Count: > 0 } rows)
+            {
+                _downloadFailure = DownloadFailure.Failed;
+                return;
+            }
+
+            var file = await Client.ExportItemsAsync([.. rows.Distinct()], ExplorerPageUrl, format, _includeKodeverk);
 
             await BrowserDownload.OfferAsync(Js, file);
             _downloadDone = true;
@@ -206,7 +269,7 @@ public sealed partial class VariableListView
 
         try
         {
-            created = await State.CarryBrowserListOverAsync(FreeListName(State.BrowserListName ?? T.FirstListName));
+            created = await State.CarryBrowserListOverAsync(FreeListName(T.FirstListName));
         }
         catch (Exception ex)
         {
@@ -252,9 +315,14 @@ public sealed partial class VariableListView
         }
 
         await LoadPageAsync();
+
+        // The button left with its offer: focus goes where a created list sends it, and the alert says what happened.
+        _formsOpenAtCreate = OpenForms();
+        _focusAfterCreate = true;
+        _carriedOverAs = created.Name;
     }
 
-    // The name the browser list had, made free among the reader's lists the way a reader would: «Navn (2)».
+    // The list's name, made free among the reader's lists the way a reader would: «Navn (2)».
     private string FreeListName(string name)
     {
         var taken = Lists.Select(l => l.Name.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);

@@ -40,7 +40,7 @@ public sealed partial class VariableListView
     private SharedList? _sharedList;
 
     // The column only when some item has codes: a share from before codes, or without any, looks as it did.
-    private bool SharedHasCodes => ShownSnapshot?.Items.Any(item => item.DesiredDataCodes.Count > 0) == true;
+    private bool SharedHasCodes => _sharedList?.Items.Any(item => item.DesiredDataCodes.Count > 0) == true;
     private int _sharedPageNumber = 1;
     private SharedListFailure _sharedListFailure;
     private string _failedCode = "";
@@ -102,7 +102,8 @@ public sealed partial class VariableListView
     private bool ShownListIsEmpty => ShownList is { VariableCount: 0 };
 
     private string SharedListName =>
-        ShownSnapshot?.Name is { Length: > 0 } name ? name : T.SharedListEyebrow;
+        ShowsBrowserCopy ? T.FirstListName
+        : _sharedList?.Name is { Length: > 0 } name ? name : T.SharedListEyebrow;
 
     private string? SharedListMessage => _sharedListFailure switch
     {
@@ -128,13 +129,13 @@ public sealed partial class VariableListView
 
     private string? SaveNameMessage => NameProblemMessage(_saveNameProblem);
 
+    // The browser list's page is read from the browser a page at a time; a snapshot arrives whole and is paged here.
     private IReadOnlyList<VariableListItem> SharedPageItems =>
-        ShownSnapshot is not { } shown
-            ? []
-            : [.. shown.Items.Skip((_sharedPageNumber - 1) * PageSize).Take(PageSize)];
+        _sharedList is { } shared
+            ? [.. shared.Items.Skip((_sharedPageNumber - 1) * PageSize).Take(PageSize)]
+            : ShowsBrowserCopy ? _browserPage : [];
 
-    private int SharedTotalPages =>
-        ShownSnapshot is not { } shown ? 1 : Math.Max(1, (shown.Items.Count + PageSize - 1) / Math.Max(1, PageSize));
+    private int SharedTotalPages => Math.Max(1, ((ShownCount ?? 0) + PageSize - 1) / Math.Max(1, PageSize));
 
     private string ShareMailTo(ShareMade made, string listName)
     {

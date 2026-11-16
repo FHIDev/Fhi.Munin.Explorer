@@ -1034,7 +1034,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     }
 
     /// <inheritdoc />
-    [Obsolete("Use ExportMyListAsync, which exports the reader's own list with its \"Ønskede data\". ExportListAsync is removed in 3.0.0.")]
+    [Obsolete("Use ExportMyListAsync for the reader's own list, with its \"Ønskede data\", or ExportItemsAsync for a list nobody has saved. ExportListAsync is removed in 3.0.0.")]
     public async Task<ExportedList> ExportListAsync(
         IReadOnlyCollection<Guid> variableIds,
         ExportFormat format = ExportFormat.Xlsx,
@@ -1077,8 +1077,8 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         return new ExportedList(bytes, contentType, fileName);
     }
 
-    /// <summary>The API's <c>MaxVariabelCount</c> for an export by items.</summary>
-    private const int MaxExportItems = 2000;
+    /// <summary>The API's <c>MaxVariabelCount</c> for an export by items, and so the browser list's ceiling too.</summary>
+    internal const int MaxExportItems = 2000;
 
     /// <inheritdoc />
     public async Task<ExportedList> ExportItemsAsync(

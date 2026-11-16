@@ -714,7 +714,7 @@ public interface IMuninExplorerClient
     /// <param name="includeKodeverk">Whether to include the codebooks alongside the variables.</param>
     /// <param name="kildeIdFilter">Optional: only the variables belonging to one kilde.</param>
     /// <param name="cancellationToken">Cancelled when the caller goes away.</param>
-    [Obsolete("Use ExportMyListAsync, which exports the reader's own list with its \"Ønskede data\". ExportListAsync is removed in 3.0.0.")]
+    [Obsolete("Use ExportMyListAsync for the reader's own list, with its \"Ønskede data\", or ExportItemsAsync for a list nobody has saved. ExportListAsync is removed in 3.0.0.")]
     Task<ExportedList> ExportListAsync(
         IReadOnlyCollection<Guid> variableIds,
         ExportFormat format = ExportFormat.Xlsx,

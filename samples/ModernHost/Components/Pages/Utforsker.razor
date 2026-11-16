@@ -1,5 +1,6 @@
 @page "/utforsker"
 @using Fhi.Munin.Explorer.Blazor
+@inject IConfiguration Configuration
 
 <PageTitle>Modern host — utforskeren</PageTitle>
 
@@ -12,10 +13,11 @@
         parameter and so has to own its own query string.
     </p>
     <p class="hostchrome-note">
-        <code>IsAuthenticated</code> is hardcoded <code>true</code> here. This sample has no sign-in,
-        and the Variabelliste tab renders nothing at all for a signed-out reader — the package has no
-        business wording a sign-in prompt for a host. Saying so at the mount point is how the tab has
-        anything in it to look at.
+        <code>IsAuthenticated</code> is <code>true</code> here unless <code>Sample:SignedOut</code> is
+        <code>true</code>. This sample has no sign-in, and the Variabelliste tab renders nothing for a
+        signed-out reader unless <code>MuninExplorer:Features:AnonymousLists</code> is on — the package
+        has no business wording a sign-in prompt for a host. The switch is how the browser gates scan
+        the signed-out list.
     </p>
 </div>
 
@@ -24,6 +26,6 @@
        the component owns the query string and throws on initialisation if it is prerendered,
        rather than drawing a page whose URL never follows the view. *@
     <VariableExplorer Language="no"
-                      IsAuthenticated="true"
+                      IsAuthenticated="@(!Configuration.GetValue<bool>("Sample:SignedOut"))"
                       @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
 </div>

@@ -119,7 +119,9 @@ public partial class VariableSearch : IDisposable, IAsyncDisposable
     // GetService for both, as for the list state: a host with neither still draws the explorer, without the list.
     private void OfferBrowserList()
     {
-        if (ServiceProvider.GetService<AnonymousListsSwitch>()?.On == true && ServiceProvider.GetService<IJSRuntime>() is { } js)
+        if (ListState is { OffersBrowserList: false }
+            && ServiceProvider.GetService<AnonymousListsSwitch>()?.On == true
+            && ServiceProvider.GetService<IJSRuntime>() is { } js)
         {
             ListState?.OfferBrowserList(new BrowserListStore(js));
         }

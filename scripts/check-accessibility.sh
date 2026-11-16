@@ -55,7 +55,9 @@ HOST_PROJECT="$ROOT/samples/ModernHost/ModernHost.csproj"
 #
 # The code picker is on for every state above (the sample turns MuninExplorer:Features:CodePicker on in Development),
 # and off, the shape a host ships by default, in one more: list-row-picker-off, scanned after them on the host
-# restarted with the switch overridden, in shard 1 only (Fhi.Metadata-l9l2n.172).
+# restarted with the switch overridden, in shard 1 only (Fhi.Metadata-l9l2n.172). A signed-out reader's list in the
+# browser is scanned the same way, in list-browser-list, on a host started with MuninExplorer__Features__AnonymousLists
+# and the sample's Sample__SignedOut (Fhi.Metadata-emsc0.3.12).
 #
 # /utforsker is the only page in either sample that mounts the composed VariableExplorer, so it is
 # the only place the page-level tablist and the reader's list panel are scanned at all.
@@ -355,10 +357,47 @@ else
   echo "==> code picker off: scanned in shard 1/${SCAN_SHARD#*/}, not this one (${SCAN_SHARD})"
 fi
 
+# A signed-out reader's list in the browser, off by default: one more host start with the feature on and the sample's
+# sign-out switch, in shard 1 only like the pass above (Fhi.Metadata-emsc0.3.12).
+browser_status=0
+if [ -z "${SCAN_SHARD:-}" ] || [ "${SCAN_SHARD%%/*}" = 1 ]; then
+  axe_runs=$((axe_runs + 1))
+  echo
+  echo "==> a signed-out reader's list in the browser"
+  kill "$host_pid" 2>/dev/null || true
+  wait "$host_pid" 2>/dev/null || true
+  MuninExplorer__ApiBaseUrl="$STUB_BASE" MuninExplorer__Features__AnonymousLists=true Sample__SignedOut=true \
+    ASPNETCORE_ENVIRONMENT=Development \
+    dotnet "$HOST_DLL" --urls "$BASE" --contentRoot "$ROOT/samples/ModernHost" \
+    >/tmp/accessibility-host-browser-list.log 2>&1 &
+  host_pid=$!
+  for _ in $(seq 1 60); do
+    curl -fsS -o /dev/null --max-time 2 "$BASE/" 2>/dev/null && break
+    kill -0 "$host_pid" 2>/dev/null || break
+    sleep 2
+  done
+  if ! curl -fsS -o /dev/null --max-time 5 "$BASE/" 2>/dev/null; then
+    echo "the host with the browser list on never answered - TOOLING failure." >&2
+    tail -30 /tmp/accessibility-host-browser-list.log >&2
+    browser_status=2
+  else
+    set +e
+    SCAN_SHARD= AXE_EXTRA_WIDTHS="${AXE_EXTRA_WIDTHS-375,320}" AXE_KNOWN_VIOLATIONS="$ROOT/test/axe-known-violations.txt" \
+      node "$ROOT/scripts/axe-scan.mjs" "${BASE}/utforsker::list-browser-list"
+    browser_status=$?
+    set -e
+  fi
+else
+  echo "==> browser list: scanned in shard 1/${SCAN_SHARD#*/}, not this one (${SCAN_SHARD})"
+fi
+
 # Anything non-zero is a finding, except the one code that means the step never ran.
 findings=0
 [ "$scan_status" -ne 0 ] && findings=1
 if [ "$off_status" -ne 0 ] && [ "$off_status" -ne 2 ]; then
+  findings=1
+fi
+if [ "$browser_status" -ne 0 ] && [ "$browser_status" -ne 2 ]; then
   findings=1
 fi
 if [ "$reflow_status" -ne 0 ] && [ "$reflow_status" -ne 2 ]; then
@@ -366,7 +405,7 @@ if [ "$reflow_status" -ne 0 ] && [ "$reflow_status" -ne 2 ]; then
 fi
 
 # Every axe pass this run made reached its verdict, so a caller reading AXE_RESULTS_FILE may trust its lines (DevInfra-og3.42).
-if [ -n "${AXE_RESULTS_FILE:-}" ] && [ "$scan_status" -le 1 ] && [ "$off_status" -le 1 ]; then
+if [ -n "${AXE_RESULTS_FILE:-}" ] && [ "$scan_status" -le 1 ] && [ "$off_status" -le 1 ] && [ "$browser_status" -le 1 ]; then
   printf '{"gate":"finished","axeRuns":%s}\n' "$axe_runs" >> "$AXE_RESULTS_FILE" \
     || { echo "could not write $AXE_RESULTS_FILE - TOOLING failure." >&2; exit 2; }
 fi
@@ -391,6 +430,14 @@ fi
 # violation it found would report a page defect as a broken toolchain.
 if [ "$off_status" -eq 2 ]; then
   echo "the code-picker-off pass could not run - TOOLING failure, so that state was not scanned." >&2
+
+  if [ "$findings" -eq 0 ]; then
+    exit 2
+  fi
+fi
+
+if [ "$browser_status" -eq 2 ]; then
+  echo "the browser-list pass could not run - TOOLING failure, so that state was not scanned." >&2
 
   if [ "$findings" -eq 0 ]; then
     exit 2

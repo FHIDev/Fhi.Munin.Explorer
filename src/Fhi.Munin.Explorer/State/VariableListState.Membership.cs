@@ -40,7 +40,7 @@ public sealed partial class VariableListState
     /// </summary>
     /// <remarks>Signed out with <c>MuninExplorer:Features:AnonymousLists</c> on, the list is the one in the reader's browser.</remarks>
     public bool IsSaved(Guid variableId) =>
-        UsesBrowserList ? _browserItems.Any(i => i.VariableId == variableId) : _saved.Any(key => key.VariableId == variableId);
+        UsesBrowserList ? _browserKeys.Any(k => k.VariableId == variableId) : _saved.Any(key => key.VariableId == variableId);
 
     /// <summary>
     /// Whether this variable from this datasamling is in the active list. A plain read with no request
@@ -48,7 +48,7 @@ public sealed partial class VariableListState
     /// </summary>
     /// <remarks>Signed out with <c>MuninExplorer:Features:AnonymousLists</c> on, the list is the one in the reader's browser.</remarks>
     public bool IsSaved(VariableDatasamlingKey item) =>
-        UsesBrowserList ? _browserItems.Any(i => VariableDatasamlingKey.Of(i) == item) : _saved.Contains(item);
+        UsesBrowserList ? _browserKeys.Contains(item) : _saved.Contains(item);
 
     /// <summary>
     /// The active list's distinct variables and its rows, or null until its membership is read. A

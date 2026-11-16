@@ -13,9 +13,9 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Drawn only for a signed-in reader. Signed out there is no button at all rather than a disabled
-/// one — a control that can never do anything is worse than no control, and the state holder would
-/// refuse the call anyway.
+/// Drawn only for a signed-in reader, or signed out with <c>MuninExplorer:Features:AnonymousLists</c> on, when
+/// the row goes to the list kept in the reader's browser. Otherwise there is no button at all rather than a
+/// disabled one — a control that can never do anything is worse than no control.
 /// </para>
 /// <para>
 /// Whether a variable is saved is read from <see cref="VariableListState"/> on every render and
@@ -51,8 +51,11 @@ public partial class VariableSearch
         /// <summary>The browser list is full, so the row was not added.</summary>
         BrowserListFull,
 
-        /// <summary>The row is in the browser list, but the browser would not store it past this visit.</summary>
-        BrowserListNotKept
+        /// <summary>The row is in the browser list, but the browser holds it only while this page is open.</summary>
+        BrowserListNotKept,
+
+        /// <summary>The browser could not be asked, so there is no browser list to put the row in.</summary>
+        BrowserListUnavailable
     }
 
     /// <summary>
@@ -193,6 +196,7 @@ public partial class VariableSearch
             SaveFailure.Failed => T.SaveError,
             SaveFailure.BrowserListFull => T.BrowserListFull(VariableListState.MaxBrowserListRows),
             SaveFailure.BrowserListNotKept => T.BrowserListNotKept,
+            SaveFailure.BrowserListUnavailable => T.BrowserListUnavailable,
             _ => null
         });
         builder.CloseElement();
@@ -252,11 +256,15 @@ public partial class VariableSearch
 
             if (ListState.UsesBrowserList)
             {
-                var outcome = await ListState.ToggleInBrowserListAsync(BrowserListRow(v), drawnAsSaved, T.FirstListName);
+                var outcome = await ListState.ToggleInBrowserListAsync(BrowserListRow(v), drawnAsSaved);
 
                 if (outcome == VariableListState.BrowserListOutcome.Full)
                 {
                     _saveError[row] = SaveFailure.BrowserListFull;
+                }
+                else if (outcome == VariableListState.BrowserListOutcome.Unavailable)
+                {
+                    _saveError[row] = SaveFailure.BrowserListUnavailable;
                 }
                 else if (!ListState.BrowserListKept)
                 {

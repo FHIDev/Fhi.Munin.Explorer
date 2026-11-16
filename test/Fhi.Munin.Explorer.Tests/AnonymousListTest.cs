@@ -1,4 +1,3 @@
-using System.Text.Json;
 using AngleSharp.Dom;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
@@ -7,20 +6,20 @@ using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
 /// A signed-out reader's variable list, kept in their browser when the host turns
-/// <c>MuninExplorer:Features:AnonymousLists</c> on (Fhi.Metadata-emsc0.3.12).
+/// <c>MuninExplorer:Features:AnonymousLists</c> on (Fhi.Metadata-emsc0.3.12). The browser's half is
+/// <see cref="FakeBrowserList"/>; <see cref="BrowserListStoreTest"/> pins the module's own shapes.
 /// </summary>
 public class AnonymousListTest : ExplorerTestContext
 {
-    private const string Read = "readAnonymousList";
-    private const string Write = "writeAnonymousList";
+    private const string Focus = "Blazor._internal.domWrapper.focus";
 
     private static readonly Texts No = Texts.For("no");
+    private static readonly Guid OwnListId = Guid.NewGuid();
 
     private static VariableSummary Row(string name, string code) => new()
     {
@@ -35,13 +34,13 @@ public class AnonymousListTest : ExplorerTestContext
 
     private static readonly VariableSummary Alder = Row("Alder ved diagnose", "V_ALDER");
 
-    private static string Stored(params (Guid Variable, Guid? Datasamling, string Name)[] rows) =>
-        JsonSerializer.Serialize(new
-        {
-            v = 1,
-            name = "Min variabelliste",
-            items = rows.Select(r => new { variabelId = r.Variable, datasamlingId = r.Datasamling, variabelName = r.Name, variabelCode = r.Name }),
-        });
+    private static VariableListItem Stored(VariableSummary v) => new()
+    {
+        VariableId = v.Id,
+        VariableCode = v.Code,
+        VariableName = v.PreferredTerm,
+        DatasamlingId = v.DatasamlingId,
+    };
 
     private sealed class Client(params VariableSummary[] rows) : EmptyMuninExplorerClient
     {
@@ -112,29 +111,21 @@ public class AnonymousListTest : ExplorerTestContext
         }
     }
 
-    /// <summary>The package's module, answering the two storage calls; <paramref name="writeFails"/> throws as a full quota does.</summary>
-    private BunitJSModuleInterop Browser(string? stored = null, bool kept = true, Exception? writeFails = null, bool writeKept = true)
-    {
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
-        module.Setup<StoredBrowserList>(Read).SetResult(new StoredBrowserList(kept, stored));
-        var write = module.Setup<bool>(Write, _ => true);
-
-        if (writeFails is null)
-        {
-            write.SetResult(writeKept);
-        }
-        else
-        {
-            write.SetException(writeFails);
-        }
-
-        return module;
-    }
-
-    private void Register(Client client, bool? flag)
+    /// <summary>The switch as the host sets it, and the browser already reached when <paramref name="browser"/> is given.</summary>
+    private void Register(Client client, bool? flag, FakeBrowserList? browser = null)
     {
         Services.AddSingleton<IMuninExplorerClient>(client);
-        Services.AddScoped<VariableListState>();
+        Services.AddScoped(_ =>
+        {
+            var state = new VariableListState(client);
+
+            if (browser is not null)
+            {
+                state.OfferBrowserList(browser);
+            }
+
+            return state;
+        });
 
         if (flag is { } on)
         {
@@ -142,16 +133,16 @@ public class AnonymousListTest : ExplorerTestContext
         }
     }
 
-    private IRenderedComponent<VariableSearch> Search(Client client, bool? flag, bool signedIn = false)
+    private IRenderedComponent<VariableSearch> Search(Client client, FakeBrowserList? browser, bool? flag = true, bool signedIn = false)
     {
-        Register(client, flag);
+        Register(client, flag, browser);
         RenderFragment list = b => b.AddContent(0, "the list");
         return Render<VariableSearch>(p => p.Add(c => c.IsAuthenticated, signedIn).Add(c => c.VariableList, list));
     }
 
-    private IRenderedComponent<VariableListView> ListView(Client client, bool signedIn = false)
+    private IRenderedComponent<VariableListView> ListView(Client client, FakeBrowserList? browser, bool signedIn = false)
     {
-        Register(client, flag: true);
+        Register(client, flag: true, browser);
         return Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, signedIn));
     }
 
@@ -182,24 +173,23 @@ public class AnonymousListTest : ExplorerTestContext
     [Theory]
     [InlineData(null)]
     [InlineData(false)]
-    public void Search_WhenTheFlagIsOff_ThenASignedOutReaderHasNoSaveButtonNoTabsAndNoStorageCall(bool? flag)
+    public void VariableSearch_WhenTheFlagIsOff_ThenASignedOutReaderHasNoSaveButtonNoTabsAndNoStorageCall(bool? flag)
     {
         // Off is the default, and a host that has not opted in must see the signed-out page it always had.
-        var module = Browser();
-        var cut = Search(new Client(Alder), flag);
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var cut = Search(new Client(Alder), browser: null, flag);
 
         cut.Find("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name").Click(new MouseEventArgs { Detail = 1 });
 
         Assert.Empty(cut.FindAll(".munin-explorer-detail button[aria-pressed]"));
         Assert.Empty(cut.FindAll("[role=tablist]"));
         Assert.Contains(No.SignInForVariableLists, cut.Markup);
-        Assert.Empty(module.Invocations[Read]);
+        Assert.DoesNotContain(module.Invocations, call => call.Identifier.Contains("nonymousList", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void ListView_WhenTheFlagIsOff_ThenASignedOutReaderGetsNothing()
+    public void VariableListView_WhenTheFlagIsOff_ThenASignedOutReaderGetsNothing()
     {
-        Browser(Stored((Guid.NewGuid(), null, "Alder")));
         Register(new Client(), flag: false);
 
         var cut = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, false));
@@ -207,91 +197,69 @@ public class AnonymousListTest : ExplorerTestContext
         Assert.Equal("", cut.Markup.Trim());
     }
 
-    // -----------------------------------------------------------------------
-    // Adding and removing
-
     [Fact]
-    public void Search_WhenTheFlagIsOn_ThenASignedOutReaderGetsTheListTab()
+    public void VariableSearch_WhenTheFlagIsOn_ThenASignedOutReaderGetsTheListTab()
     {
-        Browser();
-        var cut = Search(new Client(Alder), flag: true);
+        // The real path: the switch is what makes the search offer the browser list, with no store handed in.
+        var cut = Search(new Client(Alder), browser: null, flag: true);
 
         Assert.Single(cut.FindAll("[role=tablist]"));
         Assert.DoesNotContain(No.SignInForVariableLists, cut.Markup);
     }
 
+    // -----------------------------------------------------------------------
+    // Adding and removing
+
     [Fact]
-    public void Save_WhenSignedOutWithTheFlagOn_ThenTheRowGoesToTheBrowserAndNothingToMunin()
+    public void VariableSearch_WhenSignedOutAndSavePressed_ThenTheRowGoesToTheBrowserAndNothingToMunin()
     {
-        var module = Browser();
+        var browser = new FakeBrowserList();
         var client = new Client(Alder);
-        var cut = Search(client, flag: true);
+        var cut = Search(client, browser);
 
         SaveButton(cut).Click();
 
         cut.WaitForAssertion(() => Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed")));
+        var row = Assert.Single(browser.Rows);
+        Assert.Equal(VariableDatasamlingKey.Of(Alder), VariableDatasamlingKey.Of(row));
+        Assert.Equal("V_ALDER", row.VariableCode);
         Assert.Equal(0, client.MyListsCalls);
         Assert.Empty(client.Created);
-
-        // Catalogue fields, the row's datasamling among them, and nothing the reader wrote.
-        var json = (string)module.Invocations[Write][^1].Arguments[0]!;
-        using var stored = JsonDocument.Parse(json);
-        Assert.Equal(1, stored.RootElement.GetProperty("v").GetInt32());
-        var item = Assert.Single(stored.RootElement.GetProperty("items").EnumerateArray());
-        Assert.Equal(Alder.Id, item.GetProperty("variabelId").GetGuid());
-        Assert.Equal(Alder.DatasamlingId, item.GetProperty("datasamlingId").GetGuid());
-        Assert.Equal("V_ALDER", item.GetProperty("variabelCode").GetString());
-        Assert.False(item.TryGetProperty("notes", out _));
-        Assert.False(item.TryGetProperty("desiredDataFreeText", out _));
-        Assert.False(item.TryGetProperty("desiredDataCodes", out _));
     }
 
     [Fact]
-    public void Save_WhenTheRowIsAlreadyInTheBrowserList_ThenThePressTakesItOutAndForgetsTheKey()
+    public void VariableSearch_WhenTheRowIsAlreadyInTheBrowserList_ThenThePressTakesItOut()
     {
-        var module = Browser(Stored((Alder.Id, Alder.DatasamlingId, "Alder")));
-        var cut = Search(new Client(Alder), flag: true);
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(Stored(Alder));
+        var cut = Search(new Client(Alder), browser);
         cut.WaitForAssertion(() => Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed")));
 
         SaveButton(cut).Click();
 
         cut.WaitForAssertion(() => Assert.Equal("false", SaveButton(cut).GetAttribute("aria-pressed")));
-        Assert.Null(module.Invocations[Write][^1].Arguments[0]);
+        Assert.Empty(browser.Rows);
     }
 
     [Fact]
-    public void Save_WhenTheBrowserListHoldsTwoThousandRows_ThenTheRowIsRefusedWithTheReason()
+    public void VariableSearch_WhenTheBrowserListHoldsTwoThousandRows_ThenTheRowIsRefusedWithTheReason()
     {
         // The anonymous export's own ceiling: a list it could not download is not a list worth growing.
-        var full = Enumerable.Range(0, VariableListState.MaxBrowserListRows)
-            .Select(n => (Guid.NewGuid(), (Guid?)null, $"V{n}")).ToArray();
-        var module = Browser(Stored(full));
-        var cut = Search(new Client(Alder), flag: true);
-        cut.WaitForState(() => module.Invocations[Read].Count > 0);
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange(Enumerable.Range(0, VariableListState.MaxBrowserListRows).Select(n => FakeBrowserList.Row($"v{n}")));
+        var cut = Search(new Client(Alder), browser);
 
         SaveButton(cut).Click();
 
         cut.WaitForAssertion(() => Assert.Equal(No.BrowserListFull(2000), Status(cut)));
         Assert.Equal("false", SaveButton(cut).GetAttribute("aria-pressed"));
-        Assert.Empty(module.Invocations[Write]);
+        Assert.Equal(2000, browser.Rows.Count);
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void Save_WhenTheBrowserRefusesStorage_ThenTheRowIsKeptForTheVisitAndTheReaderIsTold(bool scriptThrows)
+    [Fact]
+    public void VariableSearch_WhenTheBrowserRefusesStorage_ThenTheRowIsKeptForThePageAndTheReaderIsTold()
     {
-        // Both refusals: the script's own catch answers false, and a fault in it throws across the circuit.
-        if (scriptThrows)
-        {
-            Browser(writeFails: new JSException("QuotaExceededError"));
-        }
-        else
-        {
-            Browser(writeKept: false);
-        }
-
-        var cut = Search(new Client(Alder), flag: true);
+        var cut = Search(new Client(Alder), new FakeBrowserList { Refuses = true });
 
         SaveButton(cut).Click();
 
@@ -299,17 +267,69 @@ public class AnonymousListTest : ExplorerTestContext
         Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed"));
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void VariableSearch_WhenTheBrowserCannotBeAsked_ThenThePressSaysSoAndTheCircuitStays(bool throws)
+    {
+        // No module answers null; a fault inside it throws across the circuit. Neither may take the page down.
+        var browser = throws
+            ? new FakeBrowserList { Throws = new Microsoft.JSInterop.JSException("broken") }
+            : new FakeBrowserList { Unreachable = true };
+        var cut = Search(new Client(Alder), browser);
+
+        SaveButton(cut).Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(No.BrowserListUnavailable, Status(cut)));
+        Assert.Equal("false", SaveButton(cut).GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
+    public void VariableSearch_WhenSignedInWithTheFlagOn_ThenSaveGoesToMuninAndNeverToTheBrowser()
+    {
+        var browser = new FakeBrowserList();
+        var client = new Client(Alder);
+        client.Lists.Add(new VariableList { Id = OwnListId, Name = "Mine" });
+        var cut = Search(client, browser, signedIn: true);
+
+        SaveButton(cut).Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(VariableDatasamlingKey.Of(Alder), Assert.Single(Assert.Single(client.Added))));
+        Assert.Empty(browser.Rows);
+        Assert.DoesNotContain(browser.Calls, call => call.Call is "add" or "remove");
+    }
+
+    [Fact]
+    public void VariableSearch_WhenTheReaderSignsInAndOutInOneCircuit_ThenTheButtonAnswersFromTheRightList()
+    {
+        // The browser list is the signed-out reader's; signed in, the same row reads from Munin's list, which lacks it.
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(Stored(Alder));
+        var client = new Client(Alder);
+        client.Lists.Add(new VariableList { Id = OwnListId, Name = "Mine" });
+        var cut = Search(client, browser);
+        cut.WaitForAssertion(() => Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed")));
+
+        cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+        cut.WaitForAssertion(() => Assert.Equal("false", SaveButton(cut).GetAttribute("aria-pressed")));
+
+        cut.Render(p => p.Add(c => c.IsAuthenticated, false));
+        cut.WaitForAssertion(() => Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed")));
+    }
+
     // -----------------------------------------------------------------------
     // Showing it
 
     [Fact]
-    public void ListView_WhenABrowserListIsStored_ThenItIsReadBackOnMountWithTheSentences()
+    public void VariableListView_WhenABrowserListIsStored_ThenItIsReadBackOnMountWithTheSentences()
     {
-        Browser(Stored((Guid.NewGuid(), null, "Alder ved diagnose"), (Guid.NewGuid(), null, "Kjønn")));
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange([FakeBrowserList.Row("Alder ved diagnose"), FakeBrowserList.Row("Kjønn")]);
 
-        var cut = ListView(new Client());
+        var cut = ListView(new Client(), browser);
 
         cut.WaitForAssertion(() => Assert.Equal(["Alder ved diagnose", "Kjønn"], RowNames(cut)));
+        Assert.Contains(No.FirstListName, cut.Markup);
         Assert.Contains(No.BrowserListKeptHere, cut.Markup);
         Assert.Contains(No.BrowserListApplication, cut.Markup);
         Assert.Contains(No.BrowserListSignInFor, cut.Markup);
@@ -317,109 +337,174 @@ public class AnonymousListTest : ExplorerTestContext
     }
 
     [Fact]
-    public void ListView_WhenTheBrowserCannotStore_ThenTheViewSaysTheListIsOnlyForThisVisit()
+    public void VariableListView_WhenTheListIsLong_ThenNoCallCarriesMoreThanASmallChunk()
     {
-        Browser(kept: false);
+        // A JS answer on Blazor Server is capped at 32 KB: a whole list of rows in one answer drops the circuit.
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange(Enumerable.Range(0, 450).Select(n => FakeBrowserList.Row($"Variabel {n:000}")));
 
-        var cut = ListView(new Client());
+        var cut = ListView(new Client(), browser);
+
+        cut.WaitForAssertion(() => Assert.Equal(25, RowNames(cut).Count));
+        Assert.Equal("Variabel 000", RowNames(cut)[0]);
+        Assert.All(browser.Calls.Where(c => c.Call == "keys"), c => Assert.True(c.Count <= 100));
+        Assert.All(browser.Calls.Where(c => c.Call == "page"), c => Assert.True(c.Count <= VariableListState.RowsPerCall));
+        Assert.Contains(No.ListVariableCount(450), cut.Markup);
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheBrowserCannotStore_ThenTheViewSaysTheListIsOnlyForThisPage()
+    {
+        var browser = new FakeBrowserList { Refuses = true };
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+
+        var cut = ListView(new Client(), browser);
 
         cut.WaitForAssertion(() => Assert.Contains(No.BrowserListNotKept, cut.Markup));
         Assert.DoesNotContain(No.BrowserListKeptHere, cut.Markup);
     }
 
     [Fact]
-    public void Download_WhenPressed_ThenTheBrowserListsRowsGoToTheAnonymousExport()
+    public void VariableListView_WhenTheHostServesNoModule_ThenTheViewSaysThereIsNoListToKeep()
     {
-        var variable = Guid.NewGuid();
+        var cut = ListView(new Client(), new FakeBrowserList { Unreachable = true });
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListUnavailable, cut.Markup));
+    }
+
+    [Fact]
+    public void VariableListView_WhenDownloadIsPressed_ThenTheBrowserListsRowsGoToTheAnonymousExport()
+    {
         var datasamling = Guid.NewGuid();
-        Browser(Stored((variable, datasamling, "Alder")));
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange([FakeBrowserList.Row("Alder", datasamling), FakeBrowserList.Row("Kjønn")]);
         var client = new Client();
-        var cut = ListView(client);
-        cut.WaitForAssertion(() => Assert.Single(RowNames(cut)));
+        var cut = ListView(client, browser);
+        cut.WaitForAssertion(() => Assert.Equal(2, RowNames(cut).Count));
 
         cut.Find("button[id^=munin-explorer-list-download-toggle]").Click();
         cut.FindAll("[id^=munin-explorer-list-download-] button.munin-explorer-list-menu__item")[0].Click();
 
-        cut.WaitForAssertion(() => Assert.Equal(new VariableDatasamlingKey(variable, datasamling), Assert.Single(Assert.Single(client.Exported))));
+        cut.WaitForAssertion(() => Assert.Equal(browser.Rows.Select(VariableDatasamlingKey.Of), Assert.Single(client.Exported)));
     }
 
     [Fact]
-    public void Share_WhenPressed_ThenTheRowsGoToTheAnonymousShareAndTheCodeIsShown()
+    public void VariableListView_WhenShareIsPressed_ThenTheRowsGoToTheAnonymousShareAndTheCodeIsShown()
     {
-        Browser(Stored((Guid.NewGuid(), null, "Alder")));
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
         var client = new Client();
-        var cut = ListView(client);
+        var cut = ListView(client, browser);
         cut.WaitForAssertion(() => Assert.Single(RowNames(cut)));
 
         ButtonSaying(cut, No.ShareList).Click();
 
         cut.WaitForAssertion(() => Assert.Equal("ABC123", cut.Find("input[id^=munin-explorer-share-code]").GetAttribute("value")));
         var (name, items) = Assert.Single(client.Shared);
-        Assert.Equal("Min variabelliste", name);
+        Assert.Equal(No.FirstListName, name);
         Assert.Single(items);
     }
 
     [Fact]
-    public void Clear_WhenPressedOnce_ThenItOnlyAsksAndTheSecondStepEmptiesTheListAndTheKey()
+    public void VariableListView_WhenTheListIsTooLongToShare_ThenShareIsRefusedWithItsOwnSentence()
     {
-        var module = Browser(Stored((Guid.NewGuid(), null, "Alder")));
-        var cut = ListView(new Client());
+        // The share endpoint refuses a snapshot over 1 MB, which 2000 rows of names can pass.
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange(Enumerable.Range(0, VariableListState.MaxBrowserShareRows + 1).Select(n => FakeBrowserList.Row($"v{n}")));
+        var client = new Client();
+        var cut = ListView(client, browser);
+        cut.WaitForAssertion(() => Assert.Equal(25, RowNames(cut).Count));
+
+        ButtonSaying(cut, No.ShareList).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListTooLongToShare(VariableListState.MaxBrowserShareRows), cut.Markup));
+        Assert.Empty(client.Shared);
+    }
+
+    [Fact]
+    public void VariableListView_WhenClearIsPressedOnce_ThenItOnlyAsksAndTheSecondStepEmptiesTheListAndReturnsFocus()
+    {
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var cut = ListView(new Client(), browser);
         cut.WaitForAssertion(() => Assert.Single(RowNames(cut)));
 
         ButtonSaying(cut, No.ClearBrowserList).Click();
 
         Assert.Contains(No.ConfirmClearBrowserList, cut.Markup);
-        Assert.Single(RowNames(cut));
-        Assert.Empty(module.Invocations[Write]);
+        Assert.Single(browser.Rows);
+        Assert.Empty(JSInterop.Invocations[Focus]);
 
         ButtonSaying(cut, No.ConfirmEmptyYes).Click();
 
         cut.WaitForAssertion(() => Assert.Empty(RowNames(cut)));
-        Assert.Null(Assert.Single(module.Invocations[Write]).Arguments[0]);
+        Assert.Empty(browser.Rows);
         Assert.Contains(No.EmptyList, cut.Markup);
 
-        // Refused rather than gone, so the press that emptied it leaves focus somewhere.
+        // The yes button left with the question; the control that asked it stays, refused, and takes focus. Only a
+        // reference to it can be focused here: the yes button is gone and nothing else asks for focus in this view.
         Assert.Equal("true", ButtonSaying(cut, No.ClearBrowserList).GetAttribute("aria-disabled"));
+        cut.WaitForAssertion(() => Assert.Single(JSInterop.Invocations[Focus]));
     }
 
     // -----------------------------------------------------------------------
-    // Carry-over at sign-in
+    // Signed in with a browser list
 
     [Fact]
-    public void CarryOver_WhenSignedInWithABrowserList_ThenOnePressSavesItAsANewListAndEmptiesTheBrowserCopy()
+    public void VariableListView_WhenSignedInWithABrowserList_ThenOnlyTheOfferIsDrawnNotTheList()
     {
-        var variable = Guid.NewGuid();
-        var datasamling = Guid.NewGuid();
-        var module = Browser(Stored((variable, datasamling, "Alder")));
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
         var client = new Client();
-        client.Lists.Add(new VariableList { Id = Guid.NewGuid(), Name = "Min variabelliste" });
-        var cut = ListView(client, signedIn: true);
+
+        var cut = ListView(client, browser, signedIn: true);
+
         cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
+        Assert.DoesNotContain(No.BrowserListKeptHere, cut.Markup);
+        Assert.Empty(RowNames(cut));
 
         // Never on its own: nothing is made until the reader presses.
         Assert.Empty(client.Created);
-
-        ButtonSaying(cut, No.CarryBrowserListOver).Click();
-
-        cut.WaitForAssertion(() => Assert.DoesNotContain(No.BrowserListWaiting(1), cut.Markup));
-        Assert.Equal(["Min variabelliste (2)"], client.Created);
-        Assert.Equal(new VariableDatasamlingKey(variable, datasamling), Assert.Single(Assert.Single(client.Added)));
-        Assert.Null(module.Invocations[Write][^1].Arguments[0]);
     }
 
     [Fact]
-    public void CarryOver_WhenTheApiFails_ThenTheBrowserListStaysAndTheReaderIsTold()
+    public void VariableListView_WhenTheCarryOverIsPressed_ThenItSavesANewListEmptiesTheBrowserAndSaysSo()
     {
-        var module = Browser(Stored((Guid.NewGuid(), null, "Alder")));
+        var datasamling = Guid.NewGuid();
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder", datasamling));
+        var client = new Client();
+        client.Lists.Add(new VariableList { Id = OwnListId, Name = "Min variabelliste" });
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
+        var keys = browser.Rows.Select(VariableDatasamlingKey.Of).ToList();
+
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListSavedAs("Min variabelliste (2)"), cut.Markup));
+        Assert.DoesNotContain(No.BrowserListWaiting(1), cut.Markup);
+        Assert.Equal(["Min variabelliste (2)"], client.Created);
+        Assert.Equal(keys, Assert.Single(client.Added));
+        Assert.Empty(browser.Rows);
+
+        // The button left with its offer; focus goes to the picker that now names the new list.
+        cut.WaitForAssertion(() => JSInterop.Invocations[Focus][^1].Arguments[0].ShouldBeElementReferenceTo(cut.Find("select")));
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheCarryOverFails_ThenTheBrowserListStaysAndTheReaderIsTold()
+    {
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
         var client = new Client { AddThrows = true };
-        var cut = ListView(client, signedIn: true);
+        var cut = ListView(client, browser, signedIn: true);
         cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
 
         ButtonSaying(cut, No.CarryBrowserListOver).Click();
 
         cut.WaitForAssertion(() => Assert.Contains(No.CarryBrowserListOverError, cut.Markup));
         Assert.Contains(No.BrowserListWaiting(1), cut.Markup);
-        Assert.Empty(module.Invocations[Write]);
+        Assert.Single(browser.Rows);
 
         // The half-made list is taken away again rather than left empty among the reader's own.
         Assert.Empty(client.Lists);

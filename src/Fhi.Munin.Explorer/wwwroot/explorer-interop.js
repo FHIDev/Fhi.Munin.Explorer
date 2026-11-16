@@ -842,27 +842,121 @@ export function writePreference(key, value) {
   }
 }
 
-// A signed-out reader's one variable list, in this browser only (Fhi.Metadata-emsc0.3.12). Unlike a preference,
-// both answer whether storage worked, so the page can say a list is only held for this visit.
+// A signed-out reader's one variable list, in this browser only (Fhi.Metadata-emsc0.3.12). The list lives here, not
+// on the server: every change is read, modified and written in one call, so two tabs cannot lose each other's rows,
+// and nothing returns more than a small chunk, since a JS answer to Blazor Server is capped at 32 KB by default.
 const anonymousListKey = 'Fhi.Munin.Explorer:anonymous-list';
+const anonymousListVersion = 1;
 
-export function readAnonymousList() {
+// The visit's copy while storage refuses, or while the key holds something this package did not write.
+let anonymousMemory = null;
+let anonymousForeign = false;
+let anonymousReadable = true;
+let anonymousWatcher = null;
+
+const anonymousRowKey = row => `${row.variabelId}|${row.datasamlingId ?? ''}`;
+
+// The current list; foreign when the key holds a value that is not ours, which is then neither read nor overwritten.
+function anonymousLoad() {
+  let raw;
   try {
-    return { kept: true, json: localStorage.getItem(anonymousListKey) };
+    raw = localStorage.getItem(anonymousListKey);
+    anonymousReadable = true;
   } catch {
-    return { kept: false, json: null };
+    anonymousReadable = false;
+    return anonymousMemory ?? { v: anonymousListVersion, items: [] };
+  }
+  anonymousForeign = false;
+  if (raw === null) {
+    return anonymousMemory ?? { v: anonymousListVersion, items: [] };
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.v === anonymousListVersion && Array.isArray(parsed.items)) {
+      return anonymousMemory ?? parsed;
+    }
+  } catch {
+    // Unparsable: not ours either.
+  }
+  anonymousForeign = true;
+  return anonymousMemory ?? { v: anonymousListVersion, items: [] };
+}
+
+// Stored where the browser lets it be; otherwise held for the visit. A later write that works makes it kept again.
+function anonymousSave(list) {
+  if (anonymousForeign || !anonymousReadable) {
+    anonymousMemory = list;
+    return false;
+  }
+  try {
+    if (list.items.length === 0) {
+      localStorage.removeItem(anonymousListKey);
+    } else {
+      localStorage.setItem(anonymousListKey, JSON.stringify({ v: anonymousListVersion, items: list.items }));
+    }
+    anonymousMemory = null;
+    return true;
+  } catch {
+    anonymousMemory = list;
+    return false;
   }
 }
 
-export function writeAnonymousList(json) {
-  try {
-    if (json === null) {
-      localStorage.removeItem(anonymousListKey);
-    } else {
-      localStorage.setItem(anonymousListKey, json);
-    }
-    return true;
-  } catch {
-    return false;
+const anonymousKept = () => anonymousReadable && anonymousMemory === null && !anonymousForeign;
+
+function anonymousStatus(list, ok, kept, full) {
+  return { ok, count: list.items.length, kept, full, foreign: anonymousForeign };
+}
+
+export function anonymousListCount() {
+  const list = anonymousLoad();
+  return anonymousStatus(list, true, anonymousKept(), false);
+}
+
+export function anonymousListAdd(row, max) {
+  const list = anonymousLoad();
+  const key = anonymousRowKey(row);
+  if (list.items.some(item => anonymousRowKey(item) === key)) {
+    return anonymousStatus(list, true, anonymousKept(), false);
   }
+  if (list.items.length >= max) {
+    return anonymousStatus(list, false, anonymousKept(), true);
+  }
+  const next = { v: anonymousListVersion, items: [...list.items, row] };
+  return anonymousStatus(next, true, anonymousSave(next), false);
+}
+
+export function anonymousListRemove(variabelId, datasamlingId) {
+  const list = anonymousLoad();
+  const key = anonymousRowKey({ variabelId, datasamlingId });
+  const next = { v: anonymousListVersion, items: list.items.filter(item => anonymousRowKey(item) !== key) };
+  return anonymousStatus(next, true, anonymousSave(next), false);
+}
+
+export function anonymousListClear() {
+  const next = { v: anonymousListVersion, items: [] };
+  anonymousLoad();
+  return anonymousStatus(next, true, anonymousSave(next), false);
+}
+
+// "variabelId|datasamlingId" per row, the datasamling empty when there is none: about 75 bytes a key.
+export function anonymousListKeys(offset, count) {
+  return anonymousLoad().items.slice(offset, offset + count).map(anonymousRowKey);
+}
+
+export function anonymousListPage(offset, count) {
+  return { items: anonymousLoad().items.slice(offset, offset + count) };
+}
+
+// Another tab changed the list: .NET reads its keys again rather than being handed them.
+export function watchAnonymousList(listener) {
+  if (anonymousWatcher !== null) {
+    return;
+  }
+  anonymousWatcher = event => {
+    if (event.key === anonymousListKey || event.key === null) {
+      listener.invokeMethodAsync('ChangedElsewhere').catch(() => {});
+    }
+  };
+  window.addEventListener('storage', anonymousWatcher);
 }

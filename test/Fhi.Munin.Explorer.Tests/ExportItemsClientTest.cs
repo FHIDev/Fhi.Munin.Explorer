@@ -80,4 +80,17 @@ public class ExportItemsClientTest
 
         Assert.Equal(0, handler.Calls);
     }
+
+    [Fact]
+    public async Task ExportItemsAsync_WhenARowHasNoDatasamling_ThenItCrossesAsNullRatherThanAnEmptyId()
+    {
+        // Munin refuses Guid.Empty as a datasamling with a 400, and reads a null as the variable's own.
+        var handler = new FileHandler();
+
+        await Client(handler).ExportItemsAsync([new VariableDatasamlingKey(Variable, null)]);
+
+        using var body = JsonDocument.Parse(handler.LastBody!);
+        var item = Assert.Single(body.RootElement.GetProperty("items").EnumerateArray());
+        Assert.Equal(JsonValueKind.Null, item.GetProperty("datasamlingId").ValueKind);
+    }
 }

@@ -1,4 +1,3 @@
-using System.Text.Json;
 using System.Text.Json.Serialization;
 using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
@@ -11,18 +10,29 @@ namespace Fhi.Munin.Explorer.State;
 /// only when the host turns <see cref="MuninExplorerFeatures.AnonymousLists"/> on.
 /// </summary>
 /// <remarks>
-/// The rows carry the catalogue fields a share snapshot carries and nothing about the reader, stored in the
-/// snapshot's own shape so <see cref="SharedSnapshot"/> reads them back as tolerantly. Storage can be refused; the
-/// list then lasts for the circuit and <see cref="BrowserListKept"/> says so.
+/// The browser owns the list and changes it one row at a time; this holds only the rows' keys, read in chunks, since
+/// a JS answer on Blazor Server is capped at 32 KB. Every call waits its turn, so they reach the browser in the
+/// order they were made.
 /// </remarks>
-public sealed partial class VariableListState
+public sealed partial class VariableListState : IDisposable
 {
-    /// <summary>The anonymous export's ceiling, Munin's <c>MaxVariabelCount</c>.</summary>
-    internal const int MaxBrowserListRows = 2000;
+    /// <summary>The anonymous export's ceiling, which the browser list therefore cannot pass.</summary>
+    internal const int MaxBrowserListRows = MuninExplorerClient.MaxExportItems;
+
+    /// <summary>The most rows a share is offered for: at about 550 bytes a row, more nears the API's 1 MB snapshot cap.</summary>
+    internal const int MaxBrowserShareRows = 1500;
+
+    // Each chunk well under the 32 KB a JS answer may carry: a key is about 75 bytes, a row about 550.
+    private const int KeysPerCall = 100;
+    internal const int RowsPerCall = 20;
 
     private IBrowserListStore? _browserStore;
-    private List<VariableListItem> _browserItems = [];
-    private string? _browserName;
+
+    // The last call's turn; the next waits on it. A chain rather than a semaphore, which would need disposing mid-call.
+    private Task _browserTail = Task.CompletedTask;
+
+    // Swapped whole, never changed in place: a render may be enumerating the one it holds.
+    private IReadOnlySet<VariableDatasamlingKey> _browserKeys = new HashSet<VariableDatasamlingKey>();
     private Task? _browserRead;
 
     /// <summary>What a press on the save button did to the browser list.</summary>
@@ -32,7 +42,10 @@ public sealed partial class VariableListState
         Removed,
 
         /// <summary>Refused: the list already holds <see cref="MaxBrowserListRows"/> rows.</summary>
-        Full
+        Full,
+
+        /// <summary>The browser could not be asked: no module, or a fault in it.</summary>
+        Unavailable
     }
 
     /// <summary>Whether the host offers the browser list, which a component says once it has a JS runtime.</summary>
@@ -41,111 +54,298 @@ public sealed partial class VariableListState
     /// <summary>Whether saves go to the browser list rather than to Munin: offered, and the reader is signed out.</summary>
     internal bool UsesBrowserList => !IsAuthenticated && OffersBrowserList;
 
-    /// <summary>The browser list's rows, oldest first. Kept across a sign-in so the reader can carry them over.</summary>
-    internal IReadOnlyList<VariableListItem> BrowserItems => _browserItems;
+    /// <summary>How many rows the browser list holds, as the browser last said. Kept across a sign-in for the carry-over.</summary>
+    internal int BrowserCount { get; private set; }
 
-    /// <summary>The name the list was first saved under, or null before it has one.</summary>
-    internal string? BrowserListName => _browserName;
+    /// <summary>Whether the browser has answered once, so an empty list is an answer.</summary>
+    internal bool BrowserListRead { get; private set; }
 
-    /// <summary>Whether the stored list has been read, so an empty one is an answer.</summary>
-    internal bool BrowserListRead => _browserRead is { IsCompleted: true };
+    /// <summary>False when the browser could not be asked at all; the list then does not exist.</summary>
+    internal bool BrowserListAvailable { get; private set; } = true;
 
-    /// <summary>False once the browser refused to store the list: it lasts only for this visit.</summary>
+    /// <summary>False while the browser holds the list for this page only: storage refused, or the key is not ours.</summary>
     internal bool BrowserListKept { get; private set; } = true;
+
+    /// <summary>Moves on every change to the browser list, so a view can tell its page is stale.</summary>
+    internal int BrowserVersion { get; private set; }
 
     /// <summary>Turns the browser list on for this circuit. The first store wins: every component reaches the same browser.</summary>
     internal void OfferBrowserList(IBrowserListStore store) => _browserStore ??= store;
 
+    /// <summary>Releases the browser list's hold on the reader's browser when the circuit ends.</summary>
+    /// <remarks>The container calls it; a host never needs to.</remarks>
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _browserStore, null) is IAsyncDisposable store)
+        {
+            _ = store.DisposeAsync().AsTask();
+        }
+    }
+
+    /// <summary>Runs <paramref name="call"/> after every call made before it has finished.</summary>
+    private async Task<T> InTurnAsync<T>(Func<Task<T>> call)
+    {
+        var mine = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var previous = Interlocked.Exchange(ref _browserTail, mine.Task);
+
+        try
+        {
+            await previous.ConfigureAwait(false);
+            return await call().ConfigureAwait(false);
+        }
+        finally
+        {
+            mine.SetResult();
+        }
+    }
+
     /// <summary>
-    /// Reads the stored list once per circuit, or joins the read in flight. Call from <c>OnAfterRenderAsync</c>:
-    /// there is no browser during prerender. Never throws.
+    /// Reads the list's keys once per circuit, or joins the read in flight, and starts listening for other tabs. Call
+    /// from <c>OnAfterRenderAsync</c>: there is no browser during prerender. Never throws.
     /// </summary>
     internal Task ReadBrowserListAsync()
     {
-        if (_browserStore is null)
+        if (_browserStore is not { } store)
         {
             return Task.CompletedTask;
         }
 
-        return _browserRead ??= ReadBrowserListOnceAsync(_browserStore);
+        return _browserRead ??= FirstReadAsync(store);
     }
 
-    private async Task ReadBrowserListOnceAsync(IBrowserListStore store)
+    private async Task FirstReadAsync(IBrowserListStore store)
     {
         try
         {
-            var stored = await store.ReadAsync().ConfigureAwait(false);
-
-            if (stored is not { Kept: true })
-            {
-                BrowserListKept = false;
-            }
-            else if (stored.Json is { Length: > 0 } json)
-            {
-                using var document = JsonDocument.Parse(json);
-                var list = SharedSnapshot.Read(document.RootElement);
-
-                // A press made while the read was out is newer than the stored rows, so it is kept after them.
-                var pressed = _browserItems.Select(VariableDatasamlingKey.Of).ToHashSet();
-                _browserItems = [.. list.Items.Where(i => !pressed.Contains(VariableDatasamlingKey.Of(i))).Take(MaxBrowserListRows), .. _browserItems];
-                _browserName ??= list.Name.Length > 0 ? list.Name : null;
-            }
+            await store.WatchAsync(SyncBrowserListAsync).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            // A refused module, a broken script or an unreadable value: the visit keeps a list of its own.
-            _logger?.LogWarning(ex, "could not read the browser's variable list");
-            BrowserListKept = false;
+            // Without it another tab's change shows at the next read rather than at once; the list still works.
+            _logger?.LogWarning(ex, "could not listen for the browser list changing in another tab");
         }
 
-        RaiseChanged(listId: null, affectsRows: true);
+        await SyncBrowserListAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>Reads the keys again, as after another tab changed them. Never throws.</summary>
+    internal async Task SyncBrowserListAsync()
+    {
+        if (_browserStore is not { } store)
+        {
+            return;
+        }
+
+        await InTurnAsync(async () =>
+        {
+            try
+            {
+                await RereadKeysAsync(store, await store.CountAsync().ConfigureAwait(false)).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "could not read the browser's variable list");
+                BrowserListAvailable = false;
+            }
+
+            return true;
+        }).ConfigureAwait(false);
+
+        BrowserChanged();
+    }
+
+    // In its turn. A null anywhere means the browser could not be asked, and nothing is published.
+    private async Task RereadKeysAsync(IBrowserListStore store, BrowserListStatus? status)
+    {
+        if (status is null)
+        {
+            BrowserListAvailable = false;
+            return;
+        }
+
+        var keys = new HashSet<VariableDatasamlingKey>();
+
+        for (var offset = 0; offset < status.Count; offset += KeysPerCall)
+        {
+            if (await store.KeysAsync(offset, KeysPerCall).ConfigureAwait(false) is not { } chunk)
+            {
+                BrowserListAvailable = false;
+                return;
+            }
+
+            if (chunk.Count == 0)
+            {
+                break;
+            }
+
+            keys.UnionWith(chunk);
+        }
+
+        Publish(status, keys);
+        BrowserListRead = true;
+    }
+
+    private void Publish(BrowserListStatus status, IReadOnlySet<VariableDatasamlingKey> keys)
+    {
+        _browserKeys = keys;
+        BrowserCount = status.Count;
+        BrowserListKept = status.Kept;
+        BrowserListAvailable = true;
+    }
+
+    private void BrowserChanged()
+    {
+        BrowserVersion++;
+
+        // No signed-in list's rows moved, so no view reloads one; the browser list's view follows BrowserVersion.
+        RaiseChanged(listId: null, affectsRows: false);
     }
 
     /// <summary>Puts the row in the browser list, or takes it out if <paramref name="drawnAsSaved"/>.</summary>
     /// <param name="item">The row with the catalogue fields it is shown with; nothing else is stored.</param>
     /// <param name="drawnAsSaved">What the button said, read before any await, for the reason <c>ToggleAsync</c> gives.</param>
-    /// <param name="nameForFirstList">The list's name the first time it is stored.</param>
-    internal async Task<BrowserListOutcome> ToggleInBrowserListAsync(
-        VariableListItem item, bool drawnAsSaved, string nameForFirstList)
+    internal async Task<BrowserListOutcome> ToggleInBrowserListAsync(VariableListItem item, bool drawnAsSaved)
     {
+        if (_browserStore is not { } store)
+        {
+            return BrowserListOutcome.Unavailable;
+        }
+
         await ReadBrowserListAsync().ConfigureAwait(false);
+        var outcome = await InTurnAsync(() => ToggleInTurnAsync(store, item, drawnAsSaved)).ConfigureAwait(false);
 
-        var key = VariableDatasamlingKey.Of(item);
-        BrowserListOutcome outcome;
-
-        if (drawnAsSaved)
-        {
-            _browserItems.RemoveAll(i => VariableDatasamlingKey.Of(i) == key);
-            outcome = BrowserListOutcome.Removed;
-        }
-        else if (_browserItems.Any(i => VariableDatasamlingKey.Of(i) == key))
-        {
-            return BrowserListOutcome.Added;
-        }
-        else if (_browserItems.Count >= MaxBrowserListRows)
-        {
-            return BrowserListOutcome.Full;
-        }
-        else
-        {
-            _browserItems.Add(StoredFields(item));
-            _browserName ??= nameForFirstList;
-            outcome = BrowserListOutcome.Added;
-        }
-
-        await WriteBrowserListAsync().ConfigureAwait(false);
-        RaiseChanged(listId: null, affectsRows: true);
-
+        BrowserChanged();
         return outcome;
     }
 
-    /// <summary>Empties the browser list and forgets its key. Never throws.</summary>
-    internal async Task ClearBrowserListAsync()
+    private async Task<BrowserListOutcome> ToggleInTurnAsync(IBrowserListStore store, VariableListItem item, bool drawnAsSaved)
     {
-        _browserItems = [];
-        _browserName = null;
-        await WriteBrowserListAsync().ConfigureAwait(false);
-        RaiseChanged(listId: null, affectsRows: true);
+        try
+        {
+            var key = VariableDatasamlingKey.Of(item);
+            var status = drawnAsSaved
+                ? await store.RemoveAsync(key).ConfigureAwait(false)
+                : await store.AddAsync(StoredFields(item), MaxBrowserListRows).ConfigureAwait(false);
+
+            if (status is null)
+            {
+                BrowserListAvailable = false;
+                return BrowserListOutcome.Unavailable;
+            }
+
+            var keys = new HashSet<VariableDatasamlingKey>(_browserKeys);
+            var outcome = status.Full ? BrowserListOutcome.Full : drawnAsSaved ? BrowserListOutcome.Removed : BrowserListOutcome.Added;
+
+            if (outcome == BrowserListOutcome.Removed)
+            {
+                keys.Remove(key);
+            }
+            else if (outcome == BrowserListOutcome.Added)
+            {
+                keys.Add(key);
+            }
+
+            // Another tab's change shows as a count the keys do not add up to: read them again rather than guess.
+            if (keys.Count != status.Count)
+            {
+                await RereadKeysAsync(store, status).ConfigureAwait(false);
+            }
+            else
+            {
+                Publish(status, keys);
+            }
+
+            return outcome;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "could not change the browser's variable list");
+            BrowserListAvailable = false;
+            return BrowserListOutcome.Unavailable;
+        }
+    }
+
+    /// <summary>Empties the browser list and forgets its key. False when the browser could not be asked. Never throws.</summary>
+    internal async Task<bool> ClearBrowserListAsync()
+    {
+        if (_browserStore is not { } store)
+        {
+            return false;
+        }
+
+        var cleared = await InTurnAsync(async () =>
+        {
+            try
+            {
+                if (await store.ClearAsync().ConfigureAwait(false) is { } status)
+                {
+                    Publish(status, new HashSet<VariableDatasamlingKey>());
+                    return true;
+                }
+
+                BrowserListAvailable = false;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "could not empty the browser's variable list");
+                BrowserListAvailable = false;
+            }
+
+            return false;
+        }).ConfigureAwait(false);
+
+        BrowserChanged();
+        return cleared;
+    }
+
+    /// <summary>Every row's key, in the list's order, read from the browser now; null when it could not be asked.</summary>
+    internal Task<IReadOnlyList<VariableDatasamlingKey>?> ReadBrowserKeysAsync() =>
+        ReadInChunksAsync(KeysPerCall, (store, offset, count) => store.KeysAsync(offset, count), int.MaxValue);
+
+    /// <summary>Rows from <paramref name="offset"/>, at most <paramref name="count"/>, with their catalogue fields.</summary>
+    internal Task<IReadOnlyList<VariableListItem>?> ReadBrowserRowsAsync(int offset, int count) =>
+        ReadInChunksAsync(RowsPerCall, (store, at, size) => store.PageAsync(at, size), count, offset);
+
+    private async Task<IReadOnlyList<T>?> ReadInChunksAsync<T>(
+        int chunk,
+        Func<IBrowserListStore, int, int, Task<IReadOnlyList<T>?>> read,
+        int count,
+        int offset = 0)
+    {
+        if (_browserStore is not { } store)
+        {
+            return null;
+        }
+
+        return await InTurnAsync<IReadOnlyList<T>?>(async () =>
+        {
+            try
+            {
+                var all = new List<T>();
+
+                while (all.Count < count)
+                {
+                    if (await read(store, offset + all.Count, Math.Min(chunk, count - all.Count)).ConfigureAwait(false) is not { } part)
+                    {
+                        return null;
+                    }
+
+                    if (part.Count == 0)
+                    {
+                        break;
+                    }
+
+                    all.AddRange(part);
+                }
+
+                return all;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "could not read rows of the browser's variable list");
+                return null;
+            }
+        }).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -154,12 +354,11 @@ public sealed partial class VariableListState
     /// </summary>
     internal async Task<VariableList?> CarryBrowserListOverAsync(string name, CancellationToken cancellationToken = default)
     {
-        if (!IsAuthenticated || _browserItems.Count == 0)
+        if (!IsAuthenticated || await ReadBrowserKeysAsync().ConfigureAwait(false) is not { Count: > 0 } keys)
         {
             return null;
         }
 
-        var rows = _browserItems.Select(VariableDatasamlingKey.Of).Distinct().ToList();
         var created = await CreateAsync(name, cancellationToken).ConfigureAwait(false);
 
         if (created is null)
@@ -173,7 +372,7 @@ public sealed partial class VariableListState
         {
             added = true;
 
-            foreach (var batch in rows.Chunk(IMuninExplorerClient.MaxVariablesPerBatch))
+            foreach (var batch in keys.Distinct().Chunk(IMuninExplorerClient.MaxVariablesPerBatch))
             {
                 added = added && await AddItemsAsync(created.Id, batch, kilder: null, cancellationToken).ConfigureAwait(false);
             }
@@ -224,52 +423,55 @@ public sealed partial class VariableListState
         DataTo = item.DataTo,
         VersionStatus = item.VersionStatus,
     };
-
-    private async Task WriteBrowserListAsync()
-    {
-        if (_browserStore is not { } store)
-        {
-            return;
-        }
-
-        try
-        {
-            var json = _browserItems.Count == 0
-                ? null
-                : JsonSerializer.Serialize(new StoredList(
-                    1, _browserName ?? "", DateTimeOffset.UtcNow,
-                    [.. _browserItems.Select(MuninExplorerClient.SharedItemBody.From)]));
-
-            if (!await store.WriteAsync(json).ConfigureAwait(false))
-            {
-                BrowserListKept = false;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning(ex, "could not store the browser's variable list");
-            BrowserListKept = false;
-        }
-    }
-
-    /// <summary>What the browser stores: the share snapshot's shape, versioned.</summary>
-    private sealed record StoredList(
-        [property: JsonPropertyName("v")] int Version,
-        [property: JsonPropertyName("name")] string Name,
-        [property: JsonPropertyName("updatedAt")] DateTimeOffset? UpdatedAt,
-        [property: JsonPropertyName("items")] IReadOnlyList<MuninExplorerClient.SharedItemBody> Items);
 }
 
 /// <summary>Where the browser list is kept: the reader's browser, through the package's script.</summary>
-/// <remarks>Neither member throws for a refused storage; a fault in the script may, and the state logs it.</remarks>
+/// <remarks>Null from any member means the browser could not be asked; a fault in the script may throw, and the state logs it.</remarks>
 internal interface IBrowserListStore
 {
-    /// <summary>The stored value, with <c>Kept</c> false where the browser refused storage; null when unreachable.</summary>
-    Task<StoredBrowserList?> ReadAsync();
+    Task<BrowserListStatus?> CountAsync();
 
-    /// <summary>Stores <paramref name="json"/>, or forgets the key for null; false where the browser did not keep it.</summary>
-    Task<bool> WriteAsync(string? json);
+    Task<BrowserListStatus?> AddAsync(VariableListItem row, int max);
+
+    Task<BrowserListStatus?> RemoveAsync(VariableDatasamlingKey key);
+
+    Task<BrowserListStatus?> ClearAsync();
+
+    /// <summary>Keys from <paramref name="offset"/>; an empty answer is the end of the list.</summary>
+    Task<IReadOnlyList<VariableDatasamlingKey>?> KeysAsync(int offset, int count);
+
+    /// <summary>Rows from <paramref name="offset"/>; an empty answer is the end of the list.</summary>
+    Task<IReadOnlyList<VariableListItem>?> PageAsync(int offset, int count);
+
+    /// <summary>Calls <paramref name="changedElsewhere"/> when another tab changes the list; false when it could not listen.</summary>
+    Task<bool> WatchAsync(Func<Task> changedElsewhere);
 }
 
-/// <summary>What the browser holds under the anonymous list's key, and whether its storage answered at all.</summary>
-internal sealed record StoredBrowserList(bool Kept, string? Json);
+/// <summary>What the browser answers after any call: the row count, and whether the list is stored past this page.</summary>
+/// <param name="Ok">False when the call changed nothing it was asked to: a full list.</param>
+/// <param name="Count">Rows after the call.</param>
+/// <param name="Kept">Whether storage holds the list; false while it lives in the page alone.</param>
+/// <param name="Full">The add was refused at the ceiling.</param>
+/// <param name="Foreign">The key holds a value this package did not write, which is neither read nor overwritten.</param>
+internal sealed record BrowserListStatus(
+    [property: JsonPropertyName("ok")] bool Ok,
+    [property: JsonPropertyName("count")] int Count,
+    [property: JsonPropertyName("kept")] bool Kept,
+    [property: JsonPropertyName("full")] bool Full,
+    [property: JsonPropertyName("foreign")] bool Foreign);
+
+/// <summary>The module's spelling of a row's key: <c>variabelId|datasamlingId</c>, the datasamling empty for none.</summary>
+internal static class BrowserListKeys
+{
+    internal static VariableDatasamlingKey? Parse(string? key)
+    {
+        var parts = key?.Split('|');
+
+        if (parts is not { Length: 2 } || !Guid.TryParse(parts[0], out var variable))
+        {
+            return null;
+        }
+
+        return new VariableDatasamlingKey(variable, Guid.TryParse(parts[1], out var datasamling) ? datasamling : null);
+    }
+}

@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
 
-// The browser list reaches a host only when it asks for it (Fhi.Metadata-emsc0.3.12); off is Odin's default.
+// The browser list reaches a host only when it asks for it (Fhi.Metadata-emsc0.3.12), and is off by default.
 public class AnonymousListsOptionTest
 {
     private static bool On(Dictionary<string, string?>? hostSettings = null, Action<MuninExplorerOptions>? extra = null)

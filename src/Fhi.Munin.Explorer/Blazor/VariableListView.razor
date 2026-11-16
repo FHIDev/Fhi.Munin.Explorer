@@ -492,9 +492,9 @@ else if (ShowsBrowserCopy)
                     @DetailBlocks.Heading(TitleLevel, SharedListName, "headline headline-s margin--bottom",
                                           ListHeadingId)
 
-                    @if (ShownSnapshot is { } snapshot)
+                    @if (ShownCount is { } shownCount)
                     {
-                        <p class="caption">@T.ListVariableCount(snapshot.Items.Count)</p>
+                        <p class="caption">@T.ListVariableCount(shownCount)</p>
                     }
                 </div>
             </Header>
@@ -552,15 +552,15 @@ else if (ShowsBrowserCopy)
                     @(SharedListMessage ?? SaveSharedMessage ?? BrowserListMessage)
                 </div>
 
-                @if (ShowsBrowserCopy && State is { BrowserListRead: true, BrowserItems.Count: 0 })
+                @if (ShowsBrowserCopy && State is { BrowserListRead: true, BrowserCount: 0 })
                 {
                     @EmptyPanel(T.EmptyList)
                 }
-                else if (ShownSnapshot is { Items.Count: 0 } && !ShowsBrowserCopy)
+                else if (_sharedList is { Items.Count: 0 })
                 {
                     <p>@T.EmptyList</p>
                 }
-                else if (ShownSnapshot is { Items.Count: > 0 })
+                else if (ShownCount > 0)
                 {
                     <div class="munin-explorer-results__toolbar">@ListColumnPicker()</div>
 
@@ -713,7 +713,7 @@ else if (ShowsBrowserCopy)
     // A signed-out reader's list in the browser: what is kept where, what needs sign-in, and the three things it can
     // do. One sentence each rather than a hidden control: «Ønskede data» and notes are not offered here at all.
     private RenderFragment BrowserListControls => @<text>
-        <p class="caption">@(State?.BrowserListKept == false ? T.BrowserListNotKept : T.BrowserListKeptHere)</p>
+        <p class="caption">@BrowserListStorageSentence</p>
         <p class="caption">@T.BrowserListApplication</p>
         <p class="caption">@T.BrowserListSignInFor</p>
 
@@ -777,7 +777,7 @@ else if (ShowsBrowserCopy)
 
     // Signed in with rows still in the browser: one press saves them as a new list, never on its own (Fhi.Metadata-emsc0.3.12).
     private RenderFragment CarryOverOffer => @<text>
-        @if (State is { IsAuthenticated: true, BrowserItems.Count: > 0 and var rows } && !ShowsSharedList)
+        @if (State is { IsAuthenticated: true, BrowserCount: > 0 and var rows } && !ShowsSharedList)
         {
             <div>
                 <p class="caption">@T.BrowserListWaiting(rows)</p>

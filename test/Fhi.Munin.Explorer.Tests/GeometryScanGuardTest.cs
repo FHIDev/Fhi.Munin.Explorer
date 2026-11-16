@@ -486,6 +486,17 @@ public class GeometryScanGuardTest
         Assert.Contains("::list-row-picker-off\"", source, StringComparison.Ordinal);
     }
 
+    // The browser list is off by default and the samples are signed in, so only this pass scans it (Fhi.Metadata-emsc0.3.12).
+    [Fact]
+    public void AccessibilityGate_WhenItRuns_ThenItAlsoScansASignedOutReadersBrowserList()
+    {
+        var source = File.ReadAllText(Repo.In("scripts", "check-accessibility.sh"));
+
+        Assert.Contains("MuninExplorer__Features__AnonymousLists=true Sample__SignedOut=true", source, StringComparison.Ordinal);
+        Assert.Contains("/utforsker::list-browser-list\"", source, StringComparison.Ordinal);
+        Assert.Contains("[ \"$browser_status\" -ne 0 ]", source, StringComparison.Ordinal);
+    }
+
     // The same against helsedata's real stylesheet, which ModernHost's stand-in cannot speak for (Fhi.Metadata-l9l2n.174).
     [Fact]
     public void HostileHostGate_WhenItRuns_ThenItAlsoMeasuresTheOpenedRowWithTheCodePickerOff()
@@ -502,6 +513,21 @@ public class GeometryScanGuardTest
         var pass = source[source.IndexOf("picker_off_pass() {", StringComparison.Ordinal)..];
         Assert.DoesNotContain("exit ", pass[..pass.IndexOf("\n}\n", StringComparison.Ordinal)], StringComparison.Ordinal);
         Assert.Contains("AXE_VIEWPORT_WIDTH=1440 AXE_VIEWPORT_HEIGHT=900 \\\n    node \"$ROOT/scripts/axe-scan.mjs\" \"${BASE}/::list-row-picker-off\"", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void HostileHostGate_WhenItRuns_ThenItAlsoMeasuresASignedOutReadersBrowserList()
+    {
+        // The browser list is off by default and the samples are signed in, so no other pass draws it (Fhi.Metadata-emsc0.3.12).
+        var source = File.ReadAllText(Repo.In("scripts", "check-hostile-host.sh"));
+
+        Assert.Contains("MuninExplorer__Features__AnonymousLists=true Sample__SignedOut=true ASPNETCORE_ENVIRONMENT", source, StringComparison.Ordinal);
+        Assert.Contains("node \"$ROOT/scripts/axe-scan.mjs\" \"${BASE}/::list-browser-list\"", source, StringComparison.Ordinal);
+        Assert.Contains("[ \"$browser_status\" -ne 0 ]", source, StringComparison.Ordinal);
+        Assert.True(source.LastIndexOf("exit 3", StringComparison.Ordinal)
+            < source.IndexOf("if [ \"$browser_status\" -eq 2 ]", StringComparison.Ordinal));
+        var pass = source[source.IndexOf("browser_list_pass() {", StringComparison.Ordinal)..];
+        Assert.DoesNotContain("exit ", pass[..pass.IndexOf("\n}\n", StringComparison.Ordinal)], StringComparison.Ordinal);
     }
 }
 

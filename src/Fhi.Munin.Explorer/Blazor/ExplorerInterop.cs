@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Fhi.Munin.Explorer.State;
 using Microsoft.JSInterop;
 
@@ -335,49 +336,44 @@ internal sealed class ExplorerInterop : IAsyncDisposable
         }
     }
 
-    /// <summary>The signed-out reader's stored list, or null where the module or the browser is out of reach.</summary>
-    /// <remarks>A <see cref="JSException"/> travels on: the caller says the list is not kept and logs it.</remarks>
-    internal async Task<StoredBrowserList?> ReadAnonymousListAsync()
-    {
-        if (_module is not { } module)
-        {
-            return null;
-        }
+    // The browser list's calls (Fhi.Metadata-emsc0.3.12), each one a read-modify-write inside the module. Reached only
+    // from a press or OnAfterRenderAsync, so each loads the module itself. Null where it is not there; a fault travels.
+    internal Task<BrowserListStatus?> AnonymousListCountAsync() => AnonymousCallAsync<BrowserListStatus>("anonymousListCount");
 
-        return await Tolerated(() => module.InvokeAsync<StoredBrowserList>("readAnonymousList")).ConfigureAwait(false);
-    }
+    internal Task<BrowserListStatus?> AnonymousListAddAsync(object row, int max) =>
+        AnonymousCallAsync<BrowserListStatus>("anonymousListAdd", row, max);
 
-    /// <summary>Stores the signed-out reader's list, or forgets it for null. False where the browser did not keep it.</summary>
-    /// <remarks>On <see cref="ReadAnonymousListAsync()"/>'s terms, a <see cref="JSException"/> included.</remarks>
-    internal async Task<bool> WriteAnonymousListAsync(string? json)
+    internal Task<BrowserListStatus?> AnonymousListRemoveAsync(Guid variableId, Guid? datasamlingId) =>
+        AnonymousCallAsync<BrowserListStatus>("anonymousListRemove", variableId, datasamlingId);
+
+    internal Task<BrowserListStatus?> AnonymousListClearAsync() => AnonymousCallAsync<BrowserListStatus>("anonymousListClear");
+
+    internal Task<string[]?> AnonymousListKeysAsync(int offset, int count) =>
+        AnonymousCallAsync<string[]>("anonymousListKeys", offset, count);
+
+    internal Task<JsonDocument?> AnonymousListPageAsync(int offset, int count) =>
+        AnonymousCallAsync<JsonDocument>("anonymousListPage", offset, count);
+
+    /// <summary>Tells <paramref name="listener"/> when another tab changes the list; false where the module is not there.</summary>
+    internal async Task<bool> WatchAnonymousListAsync(object listener)
     {
-        if (_module is not { } module)
+        if (!await TryLoadAsync().ConfigureAwait(false) || _module is not { } module)
         {
             return false;
         }
 
-        return await Tolerated<object>(async () =>
-            await module.InvokeAsync<bool>("writeAnonymousList", json).ConfigureAwait(false) ? true : null!)
-            .ConfigureAwait(false) is not null;
+        await Tolerated(() => module.InvokeVoidAsync("watchAnonymousList", listener)).ConfigureAwait(false);
+        return true;
     }
 
-    /// <summary>The same read, for a caller that holds no module of its own; null where the module is not there.</summary>
-    internal static async Task<StoredBrowserList?> ReadAnonymousListAsync(IJSRuntime js)
+    private async Task<T?> AnonymousCallAsync<T>(string export, params object?[] args) where T : class
     {
-        await using var interop = new ExplorerInterop(js);
+        if (!await TryLoadAsync().ConfigureAwait(false) || _module is not { } module)
+        {
+            return null;
+        }
 
-        return await interop.TryLoadAsync().ConfigureAwait(false)
-            ? await interop.ReadAnonymousListAsync().ConfigureAwait(false)
-            : null;
-    }
-
-    /// <summary>The same write, for a caller that holds no module of its own; false where the module is not there.</summary>
-    internal static async Task<bool> WriteAnonymousListAsync(IJSRuntime js, string? json)
-    {
-        await using var interop = new ExplorerInterop(js);
-
-        return await interop.TryLoadAsync().ConfigureAwait(false)
-            && await interop.WriteAnonymousListAsync(json).ConfigureAwait(false);
+        return await Tolerated(() => module.InvokeAsync<T>(export, args)).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

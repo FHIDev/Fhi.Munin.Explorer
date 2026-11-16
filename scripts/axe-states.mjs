@@ -1044,6 +1044,30 @@ export const states = {
     }
   },
 
+  // A signed-out reader's list in the browser (Fhi.Metadata-emsc0.3.12): one row saved from its open panel, then the
+  // list tab with that row drawn. Needs MuninExplorer__Features__AnonymousLists=true and Sample__SignedOut=true, and
+  // fails as tooling without them, since it would then scan the signed-in list.
+  'list-browser-list': async page => {
+    await rowsArePresent(page, 'button.munin-explorer-dataitem-main__name');
+    await page.locator('button.munin-explorer-dataitem-main__name').first().click();
+
+    const save = page.locator('.munin-explorer-detail button[aria-pressed]').first();
+    await save.waitFor({ state: 'visible', timeout: findTimeout });
+    await save.click();
+    await page.waitForFunction(el => el.getAttribute('aria-pressed') === 'true', await save.elementHandle(), { timeout: findTimeout });
+
+    const tab = page.getByRole('tab', { name: 'Variabelliste', exact: true }).first();
+    await tab.waitFor({ state: 'visible', timeout: findTimeout });
+    await tab.click();
+
+    const list = page.locator('[role=tabpanel]:not([hidden])').first();
+    await list.locator('table.munin-explorer-data-list tbody th[scope=row]').first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+    if (await list.getByText('Listen er lagret bare i denne nettleseren', { exact: false }).count() === 0) {
+      throw new Error('no browser list on the tab: list-browser-list needs MuninExplorer__Features__AnonymousLists=true and Sample__SignedOut=true');
+    }
+  },
+
   // The opened row's code picker on «Ønskede data»: the first code's branch opened and one code under it ticked, so a
   // nested level, a half-ticked parent and the summary are all scanned (Fhi.Metadata-9huq2.14).
   'list-row-picker': async page => {

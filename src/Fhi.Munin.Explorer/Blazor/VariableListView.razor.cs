@@ -634,7 +634,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// <summary>The one sentence the view's alert region says, the most recent failure first.</summary>
     private string? AlertText =>
         _failed ? T.ListLoadError
-        : SharedListMessage ?? ShareMessage ?? CopyMessage ?? EmptyingMessage ?? DownloadMessage ?? ActionMessage
+        : CarriedOverMessage ?? SharedListMessage ?? ShareMessage ?? CopyMessage ?? EmptyingMessage ?? DownloadMessage ?? ActionMessage
           ?? CreateMessage ?? DesiredDataMessage ?? NotesMessage ?? (State is { ListsReadFailed: true, Lists.Count: 0 } ? T.ListLoadError : null);
 
     /// <summary>The lists are still being read, so an empty list says nothing about the reader yet.</summary>
@@ -1327,6 +1327,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     {
         _failed = false;
         _listCreatedSaid = false;
+        _carriedOverAs = null;
         _createFailure = ListActionFailure.None;
         _actionFailure = ListActionFailure.None;
         _downloadFailure = DownloadFailure.None;
