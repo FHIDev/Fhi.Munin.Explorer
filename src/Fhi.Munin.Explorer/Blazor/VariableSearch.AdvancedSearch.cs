@@ -53,7 +53,7 @@ public partial class VariableSearch
     private bool _focusAddCondition;
     private bool _focusAdvancedToggle;
 
-    // Set when the rows arrive on their own, not on a press: the reader may be typing elsewhere by then.
+    // Set when an opening fills its rows, which can land after the reader has gone on typing elsewhere.
     private bool _focusDraftUnlessTyping;
 
     // Set when the link's conditions could not all be kept, so the host is told the filter actually in force.
@@ -481,6 +481,13 @@ public partial class VariableSearch
         return ApplyFilterAsync(Pending with { Conditions = conditions });
     }
 
+    // As a row would state it: a link may list codes in another order or casing than the API does.
+    private SearchCondition CanonicalCondition(SearchCondition condition) =>
+        _conditionFields is { } fields && FieldOf(fields, condition.Field) is { } field
+            && DraftFrom(field, condition) is var draft && DraftValue(draft, field).Value is { } value
+            ? new SearchCondition(field.Field, draft.Operator, value)
+            : condition;
+
     /// <summary>With the form open, drop the rows that state a condition the chip row removed.</summary>
     /// <remarks>Left in, «Vis treff» would apply the removed condition again.</remarks>
     private void DropDraftsStating(IReadOnlyCollection<SearchCondition> removed)
@@ -490,9 +497,10 @@ public partial class VariableSearch
             return;
         }
 
+        var canonical = removed.Select(CanonicalCondition).ToList();
         var stating = _drafts.Where(draft => DraftField(draft) is { } field
             && DraftValue(draft, field).Value is { } value
-            && removed.Contains(new SearchCondition(field.Field, draft.Operator, value), SameCondition.Instance)).ToList();
+            && canonical.Contains(new SearchCondition(field.Field, draft.Operator, value), SameCondition.Instance)).ToList();
 
         foreach (var draft in stating)
         {

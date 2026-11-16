@@ -598,7 +598,7 @@ public class AdvancedSearchTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.True(client.Searches[^1]!.IsEmpty));
     }
 
-    // Without the row going too, «Vis treff» on the still-open form put the removed condition back.
+    // A removed chip's row must go with it, or «Vis treff» on the open form applies the condition again.
     [Fact]
     public void Chip_WhenRemovedWhileTheFormIsOpen_ThenShowHitsDoesNotApplyItAgain()
     {
@@ -632,6 +632,68 @@ public class AdvancedSearchTest : ExplorerTestContext
         Button(cut, "Vis treff").Click();
 
         cut.WaitForAssertion(() => Assert.Equal([Condition("navn:inneholder:blodtrykk")], client.Searches[^1]!.Conditions));
+    }
+
+    [Theory]
+    [InlineData("navn:inneholder:blod", "navn:erLik:blod")]
+    [InlineData("navn:inneholder:blod", "beskrivelse:inneholder:blod")]
+    public void Chip_WhenAnotherRowDiffersOnlyInOperatorOrField_ThenThatRowStays(string removed, string kept)
+    {
+        var client = new ConditionClient();
+        var cut = RenderWith(client, filter: new VariableFilter { Conditions = [Condition(removed), Condition(kept)] });
+        cut.WaitForAssertion(() => Assert.NotEmpty(client.Searches));
+        Button(cut, "Endre avansert søk").Click();
+        cut.WaitForAssertion(() => Assert.Equal(2, Rows(cut).Count));
+
+        cut.FindAll("button").Single(b => b.GetAttribute("aria-label") == $"Fjern filteret {ConditionText(removed)}").Click();
+
+        cut.WaitForAssertion(() => Assert.Single(Rows(cut)));
+        Button(cut, "Vis treff").Click();
+        cut.WaitForAssertion(() => Assert.Equal([Condition(kept)], client.Searches[^1]!.Conditions));
+    }
+
+    private static string ConditionText(string condition) => condition switch
+    {
+        "navn:inneholder:blod" => "Navn inneholder «blod»",
+        _ => throw new ArgumentException(condition)
+    };
+
+    [Fact]
+    public void Chip_WhenTheLinkListsCodesInAnotherOrder_ThenItsRowStillGoes()
+    {
+        var client = new ConditionClient();
+        var cut = RenderWith(client, filter: new VariableFilter
+        {
+            Conditions = [Condition("tilgangsniva:erEnAv:APNE-DATA,statistikkbank"), Condition("navn:inneholder:blod")]
+        });
+        cut.WaitForAssertion(() => Assert.NotEmpty(client.Searches));
+        Button(cut, "Endre avansert søk").Click();
+        cut.WaitForAssertion(() => Assert.Equal(2, Rows(cut).Count));
+
+        cut.FindAll("button").Single(b => b.GetAttribute("aria-label")?.StartsWith("Fjern filteret Tilgangsnivå", StringComparison.Ordinal) == true).Click();
+
+        cut.WaitForAssertion(() => Assert.Single(Rows(cut)));
+        Button(cut, "Vis treff").Click();
+        cut.WaitForAssertion(() => Assert.Equal([Condition("navn:inneholder:blod")], client.Searches[^1]!.Conditions));
+    }
+
+    [Fact]
+    public async Task Chip_WhenRemovedWhileTheOpeningStillLoads_ThenTheRowsAreTheConditionsLeft()
+    {
+        var held = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new ConditionClient { HeldVocabulary = held };
+        var cut = RenderWith(client, filter: new VariableFilter
+        {
+            Conditions = [Condition("navn:inneholder:blod"), Condition("kode:begynnerMed:V_")]
+        });
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+
+        cut.FindAll("button").Single(b => b.GetAttribute("aria-label") == "Fjern filteret Navn inneholder «blod»").Click();
+        Assert.Empty(Rows(cut));
+        await cut.InvokeAsync(held.SetResult);
+
+        cut.WaitForAssertion(() => Assert.Equal("V_", Assert.Single(Rows(cut)).QuerySelector("input[type=text]")!.GetAttribute("value")));
     }
 
     [Fact]
@@ -843,7 +905,7 @@ public class AdvancedSearchTest : ExplorerTestContext
         AssertFocusOn(cut, () => FieldList(Rows(cut)[0]));
     }
 
-    // A slow field list used to pull focus out of the search field mid-word.
+    // A slow field list must not pull focus out of the field the reader is typing in.
     [Fact]
     public void Open_WhenTheReaderIsTypingElsewhereAsTheRowsArrive_ThenFocusStaysWhereItIs()
     {
