@@ -227,10 +227,10 @@ npm install --prefix "$ROOT" --no-save --silent "playwright@${PLAYWRIGHT_VERSION
   exit 2
 }
 
-# Skipped when a channel is set: that browser is already installed. Playwright 1.49.1's install could
-# not finish on Node 26 (Fhi.Metadata-2nfvm, -l9l2n.131); the pinned 1.62.1's does.
+# Skipped when a channel is set: that browser is already installed. Bounded, so a hung install reads
+# as TOOLING rather than as the caller's timeout (Fhi.Metadata-l9l2n.131).
 if [ -z "${PLAYWRIGHT_BROWSER_CHANNEL:-}" ]; then
-  npx --prefix "$ROOT" --yes playwright install chromium >/tmp/state-pw-install.log 2>&1 || {
+  timeout 600 npx --prefix "$ROOT" --yes playwright install chromium >/tmp/state-pw-install.log 2>&1 || {
     echo "could not install chromium - TOOLING failure." >&2
     echo "PLAYWRIGHT_BROWSER_CHANNEL=msedge uses an installed browser instead (a different engine build)." >&2
     tail -10 /tmp/state-pw-install.log >&2
