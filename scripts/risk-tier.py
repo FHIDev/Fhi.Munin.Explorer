@@ -33,7 +33,7 @@ DEPENDABOT_VERSIONS = re.compile(r"\bfrom v?(\d+)\.\S* to v?(\d+)\.\S*")
 # not Dockerfile.sh or composer.yaml.
 IMAGE_FILE = re.compile(r"(^|/)(Dockerfile(\.[A-Za-z0-9_-]+)*|[^/]+\.Dockerfile|(docker-)?compose(\.[A-Za-z0-9_-]+)?\.ya?ml)$")
 # A Dockerfile.<suffix> that is a script or data file, not an image file.
-NOT_IMAGE_SUFFIX = re.compile(r"(^|/)Dockerfile(\.[A-Za-z0-9_-]+)*\.(sh|ps1|py|js|mjs|ts|cs|json|ya?ml|toml|xml|exe|bat|cmd|txt|md)$", re.I)
+NOT_IMAGE_SUFFIX = re.compile(r"(^|/)Dockerfile(\.[A-Za-z0-9_-]+)*\.(sh|ps1|py|js|mjs|ts|cs|json|ya?ml|toml|xml|exe|bat|cmd|txt|md|dockerignore)$", re.I)
 # The whole title, with Dependabot's optional commit prefix («build(deps): ») and directory («in /varde»).
 DEPENDABOT_DIGEST = re.compile(r"(?:[\w()!-]+: )?[Bb]ump \S+ from `[0-9a-f]{7,64}` to `[0-9a-f]{7,64}`(?: in \S+)?")
 
