@@ -216,7 +216,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             state.SelectedVariableId = null;
             state.SelectedVariableCode = null;
             state.SelectedDatasamlingId = null;
-            state.Search = bare || string.IsNullOrWhiteSpace(state.Search) ? code : state.Search;
+            state.Search = string.IsNullOrWhiteSpace(state.Search) ? code : state.Search;
         }
         else
         {
@@ -265,7 +265,11 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
         if (!_known.TryGetValue(id, out var known))
         {
-            Learn(id);
+            if (!DeclinedVariable)
+            {
+                Learn(id);
+            }
+
             return state with { SelectedVariableCode = null };
         }
 
@@ -458,8 +462,9 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         var current = _state.ToState();
         var coded = Linkable(Coded(current)).ToQueryString();
 
+        // While a code is looked up there is no id spelling: without the variable, it would be the plain list.
         return query == coded
-            || query == Linkable(current with { SelectedVariableCode = null }).ToQueryString()
+            || current.SelectedVariableId is not null && query == Linkable(current with { SelectedVariableCode = null }).ToQueryString()
             || _alias is { } alias && alias.Arrived == query && alias.Resolved == coded;
     }
 

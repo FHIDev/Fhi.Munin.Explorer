@@ -35,6 +35,9 @@ public class SearchShareTest : ExplorerTestContext
         /// <summary>The variable's datasamlinger as its record lists them.</summary>
         public IReadOnlyList<Guid> AllDatasamlinger { get; init; } = [DatasamlingId, OtherDatasamlingId];
 
+        /// <summary>Whether the search finds the variable's row in its other datasamling as well.</summary>
+        public bool FindsTheOtherRow { get; init; }
+
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default, SortDirection direction = SortDirection.Ascending,
@@ -56,8 +59,20 @@ public class SearchShareTest : ExplorerTestContext
                         DatasamlingName = "Hjerteinfarkt",
                         VersionStatus = VersionStatus,
                     },
+                    .. FindsTheOtherRow
+                        ? [new VariableSummary
+                        {
+                            Id = VariableId,
+                            Code = Code,
+                            PreferredTerm = Name,
+                            KildeId = KildeId,
+                            DatasamlingId = OtherDatasamlingId,
+                            DatasamlingName = "Hjertesvikt",
+                            VersionStatus = VersionStatus,
+                        }]
+                        : Array.Empty<VariableSummary>(),
                 ],
-                TotalCount = 1,
+                TotalCount = FindsTheOtherRow ? 2 : 1,
                 PageNumber = 1,
                 Size = pageSize,
                 TotalPages = 1,
@@ -372,7 +387,7 @@ public class SearchShareTest : ExplorerTestContext
     public void Arrive_WhenTheCodeIsAnsweredLate_ThenTheRowIsALinksAndClosingItIsNotBack()
     {
         // A pushed entry, or a close that is Back, would take a reader who followed the link off the site.
-        var client = new ShareClient { CodeGate = new() };
+        var client = new ShareClient { CodeGate = new(TaskCreationOptions.RunContinuationsAsynchronously) };
         var cut = RenderExplorer(client, $"http://localhost/variabler?variabel={Code}");
         cut.WaitForAssertion(() => Assert.Equal([Code], client.CodesAsked));
 
@@ -387,7 +402,7 @@ public class SearchShareTest : ExplorerTestContext
     [Fact]
     public void Arrive_WhenTheReaderNavigatesWhileTheCodeIsLookedUp_ThenTheLateAnswerChangesNothing()
     {
-        var client = new ShareClient { CodeGate = new() };
+        var client = new ShareClient { CodeGate = new(TaskCreationOptions.RunContinuationsAsynchronously) };
         var cut = RenderExplorer(client, $"http://localhost/variabler?variabel={Code}");
         cut.WaitForAssertion(() => Assert.Equal([Code], client.CodesAsked));
 
@@ -399,6 +414,51 @@ public class SearchShareTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Equal("foo", client.Searches[^1].Search));
         Assert.DoesNotContain(_history!.Written, url => url?.Contains("variabel", StringComparison.Ordinal) is true);
         Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+    }
+
+    [Theory]
+    [InlineData("", "http://localhost/variabler")]
+    [InlineData("search=kjonn&", "http://localhost/variabler?search=kjonn")]
+    public void Arrive_WhenTheReaderLeavesForTheViewWithoutTheVariableWhileItIsLookedUp_ThenTheLateAnswerChangesNothing(
+        string own, string left)
+    {
+        // Without the variable, a code arrival still being looked up reads as that view: the leaving is still a leaving.
+        var client = new ShareClient { CodeGate = new(TaskCreationOptions.RunContinuationsAsynchronously) };
+        var cut = RenderExplorer(client, $"http://localhost/variabler?{own}variabel={Code}");
+        cut.WaitForAssertion(() => Assert.Equal([Code], client.CodesAsked));
+
+        Services.GetRequiredService<NavigationManager>().NavigateTo(left);
+        cut.WaitForAssertion(() => Assert.NotEmpty(client.Searches));
+        client.CodeGate.SetResult();
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("ul.munin-explorer-data-list")));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+        Assert.DoesNotContain(_history!.Written, url => url?.Contains("variabel", StringComparison.Ordinal) is true);
+    }
+
+    [Fact]
+    public void Arrive_WhenTheLinkNamesAnotherOfTheVariablesDatasamlinger_ThenThatRowOpensWithoutANote()
+    {
+        // The link the explorer writes for a row that is not the primary one, read back.
+        var client = new ShareClient { FindsTheOtherRow = true };
+        var cut = RenderExplorer(client, $"http://localhost/variabler?variabel={Code}&datasamlingId={OtherDatasamlingId}");
+
+        cut.WaitForAssertion(() => Assert.EndsWith($"/variabler?variabel={Code}&datasamlingId={OtherDatasamlingId}", Address(cut)));
+        Assert.Equal("", Note(cut));
+    }
+
+    [Fact]
+    public void Arrive_WhenACodeWithFiltersNamesNoVariable_ThenTheSearchIsForTheCode()
+    {
+        var client = new ShareClient();
+        var cut = RenderExplorer(client, $"http://localhost/variabler?variabel=V_HKR.FINNES_IKKE&kildeIds={KildeId}");
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal("V_HKR.FINNES_IKKE", client.Searches[^1].Search);
+            Assert.Equal([KildeId], client.Searches[^1].Filter!.KildeIds);
+            Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+        });
     }
 
     [Fact]
@@ -419,7 +479,7 @@ public class SearchShareTest : ExplorerTestContext
     [Fact]
     public void Learn_WhenTheCodeIsAnsweredAfterTheFirstWrite_ThenTheAddressKeepsItsSection()
     {
-        var client = new ShareClient { CodeGate = new() };
+        var client = new ShareClient { CodeGate = new(TaskCreationOptions.RunContinuationsAsynchronously) };
         var cut = RenderExplorer(client, $"http://localhost/variabler?variabelId={VariableId}&datasamlingId={DatasamlingId}#sec");
         cut.WaitForAssertion(() => Assert.EndsWith("#sec", Address(cut)));
 

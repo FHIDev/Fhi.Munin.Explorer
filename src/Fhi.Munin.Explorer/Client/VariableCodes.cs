@@ -6,8 +6,8 @@ namespace Fhi.Munin.Explorer.Client;
 /// </summary>
 internal static class VariableCodes
 {
-    /// <summary>Longer than any variable code, so a longer value is never sent.</summary>
-    public const int MaxLength = 100;
+    /// <summary>Munin's own bound on a variable code (Fhi.Metadata-9huq2.27), so a longer value is never sent.</summary>
+    public const int MaxLength = 255;
 
     /// <summary>Whether <paramref name="value"/> could be a variable code: letters, digits, «_», «-» or «.», not too long.</summary>
     public static bool IsLinkCode(string? value)

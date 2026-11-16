@@ -191,7 +191,8 @@ public class ExplorerUrlStateTest
     [Fact]
     public void Parse_WhenACodeIsTooLong_ThenNoCodeIsRead()
     {
-        Assert.Null(ExplorerUrlState.Parse("?variabel=" + new string('A', 101)).SelectedVariableCode);
+        Assert.Null(ExplorerUrlState.Parse("?variabel=" + new string('A', 256)).SelectedVariableCode);
+        Assert.NotNull(ExplorerUrlState.Parse("?variabel=" + new string('A', 255)).SelectedVariableCode);
     }
 
     /// <summary>The facets are the filter's own business, and must survive the trip through here.</summary>
