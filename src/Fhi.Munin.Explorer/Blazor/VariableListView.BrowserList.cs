@@ -129,6 +129,7 @@ public sealed partial class VariableListView
             _browserShare = null;
             _sharingBrowserList = false;
             _browserShareTooLong = false;
+            _confirmingClear = false;
             _sharedPageNumber = Math.Min(_sharedPageNumber, SharedTotalPages);
         }
     }

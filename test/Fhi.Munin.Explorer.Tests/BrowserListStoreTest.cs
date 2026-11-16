@@ -74,6 +74,20 @@ public class BrowserListStoreTest : ExplorerTestContext
     }
 
     [Fact]
+    public async Task BrowserListStore_WhenACarryOverRemovesItsRows_ThenTheKeysCrossInTheModulesSpelling()
+    {
+        // The same two literals test-anonymous-list.mjs hands anonymousListRemoveKeys.
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        module.Setup<BrowserListStatus>("anonymousListRemoveKeys", _ => true).SetResult(new BrowserListStatus(true, 0, true, false, false));
+        var store = new BrowserListStore(JSInterop.JSRuntime);
+
+        await store.RemoveKeysAsync([new VariableDatasamlingKey(Variable, Datasamling), new VariableDatasamlingKey(Variable, null)]);
+
+        var sent = Assert.IsAssignableFrom<IEnumerable<string>>(Assert.Single(module.Invocations["anonymousListRemoveKeys"]).Arguments[0]);
+        Assert.Equal([$"{Variable}|{Datasamling}", $"{Variable}|"], sent);
+    }
+
+    [Fact]
     public async Task BrowserListStore_WhenTheHostServesNoModule_ThenEveryCallAnswersNullRatherThanThrowing()
     {
         // The browser answers the import with a 404, as for a host that does not serve the file.

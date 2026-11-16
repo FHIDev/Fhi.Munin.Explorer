@@ -9,7 +9,8 @@ can consume it.
 
 Data comes from the public Munin Explorer API. **The browsing components are read-only and
 anonymous**; everything the variable and kilde explorers render is public metadata and needs no
-token.
+token. The one exception is `MuninExplorer:Features:AnonymousLists`: with it on, a signed-out reader's save button
+writes to a list kept in their own browser, never to Munin.
 
 The client reaches one step further than those. `IMuninExplorerClient` also carries the eight
 `api/explorer/my/lists` calls — the signed-in user's saved variable lists — which are the only part
@@ -17,7 +18,7 @@ of it that is authenticated, and therefore the only part that needs a host-suppl
 `IMuninExplorerTokenProvider` registered *before* `AddMuninExplorer`. Without one they answer 401,
 which arrives as a thrown `HttpRequestException` rather than as an empty list. `VariableListView`
 is the component built on them — the one this package ships that reads and writes rather than
-browses — and a host is free to build its own instead.
+browses, besides the browser list `AnonymousLists` adds — and a host is free to build its own instead.
 
 **Mount `VariableExplorer`.** It is the variabelutforsker whole: search and the reader's lists
 behind Runa's two tabs, with the view in the address bar. `VariableSearch` and `VariableListView`
@@ -1366,7 +1367,12 @@ Three things, each only where the host serves the package's browser module, and 
 | --- | --- | --- | --- |
 | `sessionStorage`, per tab | `Fhi.Munin.Explorer:scroll:` + the page's path and query | the kildeutforsker list's scroll position | written when the reader leaves the list, removed when read back |
 | `localStorage` | `munin-explorer.filters-collapsed` | whether the filter panel is folded on a wide screen | when the reader folds or unfolds it |
-| `localStorage` | `Fhi.Munin.Explorer:anonymous-list` | a signed-out reader's variable list: each row's ids, code, names, kilde and datasamling, period | only with `MuninExplorer:Features:AnonymousLists` on |
+| `localStorage` | `Fhi.Munin.Explorer:anonymous-list` | a signed-out reader's variable list, `{"v":1,"items":[…]}`, each row the fields below | only with `MuninExplorer:Features:AnonymousLists` on |
+
+Stored row fields: `variabelId`, `variabelCode`, `variabelName`, `kildeId`, `kildeName`, `kildeKortNavn`, `datasamlingId`, `datasamlingName`, `variabelgruppeName`, `dataType`, `dataFrom`, `dataTo`, `versjonStatus` — the
+variable's and datasamling's ids, its code and Norwegian name, its kilde's id, name and short name, the datasamling's
+and variabelgruppe's names, the data type, the data period and the version status. No list name, no English names, no
+notes, no «Ønskede data» and nothing about the reader. `StoredRowFieldsTest` holds this line to the code.
 
 Nothing else — no other choice a reader makes, such as the level lines or the node icons, is remembered by the
 package; a host that wants one remembered stores what the component raises.
@@ -1395,10 +1401,13 @@ leave `AnonymousLists` off; the gates turn it on for one state of their own. Tod
   it off, none of that is drawn and conditions a link carries are dropped, and `FilterChanged` tells the host so its
   address loses them too.
 - `AnonymousLists`, a variable list for a reader who is not signed in, kept only in their browser's local storage
-  under `Fhi.Munin.Explorer:anonymous-list`: each row's catalogue fields (ids, code, names, kilde and datasamling,
-  period), no name for the list and nothing about the reader, at most 2000 rows. The package's `explorer-interop.js`
-  owns the list and changes it a row at a time, so two tabs do not undo each other, and another tab's change is
-  picked up through the browser's `storage` event. The save button a signed-in reader has adds a row to it, the
+  under `Fhi.Munin.Explorer:anonymous-list`: each row's catalogue fields, exactly those named under «What the package
+  keeps in the reader's browser», no name for the list and nothing about the reader, at most 2000 rows. The package's
+  `explorer-interop.js` owns the list and changes it a row at a time, re-reading the stored list on every call, so
+  another tab's change is never overwritten. Where storage refuses a write, the page keeps only its own unsaved adds
+  and removals and lays them over the stored list on the next call: another tab's rows, removals and «Tøm listen» hold
+  for every row this page did not touch, and for a row it did touch its own unsaved change wins. Another tab's change
+  is picked up through the browser's `storage` event. The save button a signed-in reader has adds a row to it, the
   list tab shows it through the shared-list view, and it can be downloaded (`ExportItemsAsync`, Munin's anonymous
   export), shared as a code while its snapshot stays under the share endpoint's 512 KB (about 990 full rows), or
   emptied. Signed in with rows still

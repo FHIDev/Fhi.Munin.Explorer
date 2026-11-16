@@ -84,6 +84,7 @@ public sealed partial class VariableListState(
         }
 
         IsAuthenticated = isAuthenticated;
+        ForgetCarryOverStuck();
 
         // Anything already in flight belongs to the reader who was here a moment ago. Bumping the
         // generation is what lets those calls recognise, when they come back, that their answer is

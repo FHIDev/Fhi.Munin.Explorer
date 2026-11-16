@@ -848,24 +848,27 @@ export function writePreference(key, value) {
 const anonymousListKey = 'Fhi.Munin.Explorer:anonymous-list';
 const anonymousListVersion = 1;
 const anonymousPageBytes = 16_000;
+const anonymousEncoder = new TextEncoder();
 
-// This page's changes while storage refuses them: rows it added, and keys it removed, laid over the stored list.
-let anonymousMemory = null;
+// Only this page's unsaved changes, while storage refuses them: rows it added and keys it removed. The stored list
+// is read fresh every time, so another tab's adds, removals and clears stand for every key this page did not touch.
+// This page's unsaved change wins for the keys it touched, since which came last cannot be known from here.
+let anonymousAdded = new Map();
 let anonymousRemoved = new Set();
 let anonymousForeign = false;
 let anonymousReadable = true;
 let anonymousWatcher = null;
 
 const anonymousRowKey = row => `${row.variabelId}|${row.datasamlingId ?? ''}`;
-const anonymousEmpty = () => ({ v: anonymousListVersion, items: [] });
 const anonymousIsRow = item => item !== null && typeof item === 'object' && typeof item.variabelId === 'string';
+const anonymousUnsaved = () => anonymousAdded.size > 0 || anonymousRemoved.size > 0;
 
 // Ours only as v:1 with an array of rows; anything else is foreign, and is then neither read nor overwritten.
 function anonymousParse(raw) {
   try {
     const parsed = JSON.parse(raw);
     if (parsed && parsed.v === anonymousListVersion && Array.isArray(parsed.items) && parsed.items.every(anonymousIsRow)) {
-      return parsed;
+      return parsed.items;
     }
   } catch {
     // Unparsable: not ours either.
@@ -873,85 +876,83 @@ function anonymousParse(raw) {
   return null;
 }
 
-// The stored list with this page's unsaved changes laid over it, so a newer list from another tab is never hidden.
+// The stored rows, read now, less the keys this page removed, plus the rows it added that are not stored already.
 function anonymousLoad() {
-  let raw;
+  let stored = [];
   try {
-    raw = localStorage.getItem(anonymousListKey);
+    const raw = localStorage.getItem(anonymousListKey);
     anonymousReadable = true;
+    const parsed = raw === null ? [] : anonymousParse(raw);
+    anonymousForeign = parsed === null;
+    stored = parsed ?? [];
   } catch {
     anonymousReadable = false;
-    return anonymousMemory ?? anonymousEmpty();
   }
-  const stored = raw === null ? anonymousEmpty() : anonymousParse(raw);
-  anonymousForeign = stored === null;
-  if (stored === null) {
-    return anonymousMemory ?? anonymousEmpty();
-  }
-  if (anonymousMemory === null) {
-    return stored;
-  }
-  const items = stored.items.filter(item => !anonymousRemoved.has(anonymousRowKey(item)));
+  const items = stored.filter(item => !anonymousRemoved.has(anonymousRowKey(item)));
   const seen = new Set(items.map(anonymousRowKey));
-  for (const item of anonymousMemory.items) {
-    if (!seen.has(anonymousRowKey(item))) {
-      seen.add(anonymousRowKey(item));
-      items.push(item);
+  for (const [key, row] of anonymousAdded) {
+    if (!seen.has(key)) {
+      seen.add(key);
+      items.push(row);
     }
   }
-  return { v: anonymousListVersion, items };
+  return items;
 }
 
-// Stored where the browser lets it be; otherwise held for this page. A later write that works makes it kept again.
-function anonymousSave(list) {
+// Writes the merged list where the browser lets it; then nothing is unsaved. Refused, the changes stay in the delta.
+function anonymousSave(items) {
   if (!anonymousForeign && anonymousReadable) {
     try {
-      if (list.items.length === 0) {
+      if (items.length === 0) {
         localStorage.removeItem(anonymousListKey);
       } else {
-        localStorage.setItem(anonymousListKey, JSON.stringify({ v: anonymousListVersion, items: list.items }));
+        localStorage.setItem(anonymousListKey, JSON.stringify({ v: anonymousListVersion, items }));
       }
-      anonymousMemory = null;
+      anonymousAdded = new Map();
       anonymousRemoved = new Set();
       return true;
     } catch {
-      // Refused: held below.
+      // Refused: the delta already holds this change.
     }
   }
-  anonymousMemory = list;
   return false;
 }
 
-const anonymousKept = () => anonymousReadable && anonymousMemory === null && !anonymousForeign;
+const anonymousKept = () => anonymousReadable && !anonymousForeign && !anonymousUnsaved();
 
-function anonymousStatus(list, ok, kept, full) {
-  return { ok, count: list.items.length, kept, full, foreign: anonymousForeign };
+function anonymousStatus(items, ok, full) {
+  return { ok, count: items.length, kept: anonymousKept(), full, foreign: anonymousForeign };
 }
 
 function anonymousWithout(keys) {
-  const list = anonymousLoad();
-  keys.forEach(key => anonymousRemoved.add(key));
-  const next = { v: anonymousListVersion, items: list.items.filter(item => !keys.has(anonymousRowKey(item))) };
-  return anonymousStatus(next, true, anonymousSave(next), false);
+  const before = anonymousLoad();
+  for (const key of keys) {
+    anonymousAdded.delete(key);
+    anonymousRemoved.add(key);
+  }
+  const items = before.filter(item => !keys.has(anonymousRowKey(item)));
+  anonymousSave(items);
+  return anonymousStatus(items, true, false);
 }
 
 export function anonymousListCount() {
-  const list = anonymousLoad();
-  return anonymousStatus(list, true, anonymousKept(), false);
+  return anonymousStatus(anonymousLoad(), true, false);
 }
 
 export function anonymousListAdd(row, max) {
-  const list = anonymousLoad();
+  const items = anonymousLoad();
   const key = anonymousRowKey(row);
-  if (list.items.some(item => anonymousRowKey(item) === key)) {
-    return anonymousStatus(list, true, anonymousKept(), false);
+  if (items.some(item => anonymousRowKey(item) === key)) {
+    return anonymousStatus(items, true, false);
   }
-  if (list.items.length >= max) {
-    return anonymousStatus(list, false, anonymousKept(), true);
+  if (items.length >= max) {
+    return anonymousStatus(items, false, true);
   }
   anonymousRemoved.delete(key);
-  const next = { v: anonymousListVersion, items: [...list.items, row] };
-  return anonymousStatus(next, true, anonymousSave(next), false);
+  anonymousAdded.set(key, row);
+  const next = [...items, row];
+  anonymousSave(next);
+  return anonymousStatus(next, true, false);
 }
 
 export function anonymousListRemove(variabelId, datasamlingId) {
@@ -964,24 +965,31 @@ export function anonymousListRemoveKeys(keys) {
 }
 
 export function anonymousListClear() {
-  return anonymousWithout(new Set(anonymousLoad().items.map(anonymousRowKey)));
+  return anonymousWithout(new Set(anonymousLoad().map(anonymousRowKey)));
 }
 
 // "variabelId|datasamlingId" per row, the datasamling empty when there is none: about 75 bytes a key.
 export function anonymousListKeys(offset, count) {
-  return anonymousLoad().items.slice(offset, offset + count).map(anonymousRowKey);
+  return anonymousLoad().slice(offset, offset + count).map(anonymousRowKey);
 }
 
-// At most `count` rows and about 16 KB, at least one: the caller moves on by the rows it got.
+// At most `count` rows and 16 KB of UTF-8. A row alone over that comes back as its ids and code only, so the caller,
+// which moves on by the rows it got, still lands on the next one.
 export function anonymousListPage(offset, count) {
   const items = [];
   let bytes = 0;
-  for (const item of anonymousLoad().items.slice(offset, offset + count)) {
-    bytes += JSON.stringify(item).length;
-    if (items.length > 0 && bytes > anonymousPageBytes) {
+  for (const item of anonymousLoad().slice(offset, offset + count)) {
+    let row = item;
+    let size = anonymousEncoder.encode(JSON.stringify(row)).length;
+    if (size > anonymousPageBytes) {
+      row = { variabelId: item.variabelId, datasamlingId: item.datasamlingId ?? null, variabelCode: String(item.variabelCode ?? '').slice(0, 200) };
+      size = anonymousEncoder.encode(JSON.stringify(row)).length;
+    }
+    if (bytes + size > anonymousPageBytes) {
       break;
     }
-    items.push(item);
+    bytes += size;
+    items.push(row);
   }
   return { items };
 }

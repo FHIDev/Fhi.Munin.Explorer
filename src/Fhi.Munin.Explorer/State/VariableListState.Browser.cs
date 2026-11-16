@@ -72,6 +72,9 @@ public sealed partial class VariableListState : IDisposable
     /// </summary>
     internal bool BrowserCarryOverStuck { get; private set; }
 
+    /// <summary>A sign-in or sign-out is a new reader at the screen, who is offered the carry-over afresh.</summary>
+    private void ForgetCarryOverStuck() => BrowserCarryOverStuck = false;
+
     /// <summary>Moves on every change to the browser list, so a view can tell its page is stale.</summary>
     internal int BrowserVersion { get; private set; }
 
@@ -195,6 +198,13 @@ public sealed partial class VariableListState : IDisposable
     {
         _browserKeys = keys;
         BrowserCount = status.Count;
+
+        // Nothing left to save twice.
+        if (status.Count == 0)
+        {
+            BrowserCarryOverStuck = false;
+        }
+
         BrowserListKept = status.Kept;
         BrowserListForeign = status.Foreign;
         BrowserListAvailable = true;
@@ -420,7 +430,9 @@ public sealed partial class VariableListState : IDisposable
                 if (await store.RemoveKeysAsync(keys).ConfigureAwait(false) is { } status)
                 {
                     await RereadKeysAsync(store, status).ConfigureAwait(false);
-                    return true;
+
+                    // Held only by this page, the removal is gone at the next load in another page.
+                    return status.Kept;
                 }
 
                 BrowserListAvailable = false;
@@ -450,8 +462,8 @@ public sealed partial class VariableListState : IDisposable
         }
     }
 
-    // The catalogue fields and nothing the reader wrote, whatever the caller handed in.
-    private static VariableListItem StoredFields(VariableListItem item) => new()
+    // The catalogue fields and nothing the reader wrote, whatever the caller handed in. The README names each one.
+    internal static VariableListItem StoredFields(VariableListItem item) => new()
     {
         VariableId = item.VariableId,
         VariableCode = item.VariableCode,

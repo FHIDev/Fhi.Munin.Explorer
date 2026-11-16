@@ -285,7 +285,8 @@ public sealed partial class VariableSearch : ComponentBase
     /// <para>
     /// The default is signed out on purpose. A host that forgets this parameter gets no saved
     /// lists, which is a visible gap; the alternative default would send unauthorised calls on
-    /// every render instead, which is not visible at all.
+    /// every render instead, which is not visible at all. With <c>MuninExplorer:Features:AnonymousLists</c>
+    /// on, it gets the list kept in the reader's browser instead, for signed-in readers as well.
     /// </para>
     /// </remarks>
     [Parameter] public bool IsAuthenticated { get; set; }

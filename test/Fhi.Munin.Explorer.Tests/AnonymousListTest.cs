@@ -366,6 +366,19 @@ public class AnonymousListTest : ExplorerTestContext
     }
 
     [Fact]
+    public void VariableListView_WhenARowArrivesAsItsCodeOnly_ThenItIsNamedByItsCode()
+    {
+        // The module hands a row too long for one answer back as its ids and code; it is not a variable that went away.
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(new VariableListItem { VariableId = Guid.NewGuid(), VariableCode = "V_HUGE" });
+
+        var cut = ListView(new Client(), browser);
+
+        cut.WaitForAssertion(() => Assert.Equal(["V_HUGE"], RowNames(cut)));
+        Assert.DoesNotContain(No.VariableNoLongerAvailable, cut.Markup);
+    }
+
+    [Fact]
     public void VariableListView_WhenTheBrowserCannotStore_ThenTheViewSaysTheListIsOnlyForThisPage()
     {
         var browser = new FakeBrowserList { Refuses = true };

@@ -270,11 +270,15 @@ else
 fi
 
 echo "==> checking browser state preparation"
-node --test "$ROOT/scripts/test-axe-states.mjs" "$ROOT/scripts/test-scan-shard.mjs" "$ROOT/scripts/test-axe-pages.mjs" \
-  "$ROOT/scripts/test-anonymous-list.mjs" || {
+node --test "$ROOT/scripts/test-axe-states.mjs" "$ROOT/scripts/test-scan-shard.mjs" "$ROOT/scripts/test-axe-pages.mjs" || {
   echo "the state-preparation tests failed - TOOLING failure, so nothing was scanned." >&2
   exit 2
 }
+
+# Product code, not tooling: the browser list as the package's module keeps it. A failure is a finding (Fhi.Metadata-emsc0.3.12).
+echo "==> checking the package's browser list module"
+module_status=0
+node --test "$ROOT/scripts/test-anonymous-list.mjs" || module_status=1
 
 set +e
 # Each state again at a phone's two widths once reached, resized in place (Fhi.Metadata-mhqx0.1).
@@ -395,6 +399,7 @@ fi
 # Anything non-zero is a finding, except the one code that means the step never ran.
 findings=0
 [ "$scan_status" -ne 0 ] && findings=1
+[ "$module_status" -ne 0 ] && findings=1
 if [ "$off_status" -ne 0 ] && [ "$off_status" -ne 2 ]; then
   findings=1
 fi

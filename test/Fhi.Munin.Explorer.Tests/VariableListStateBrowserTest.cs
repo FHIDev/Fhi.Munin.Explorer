@@ -122,8 +122,12 @@ public class VariableListStateBrowserTest
     // Answers the newest held call until the work is done, as a network that delivers the later answer first.
     private static async Task ReleaseUntilAsync(FakeBrowserList browser, Task work)
     {
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+
         while (!work.IsCompleted)
         {
+            Assert.True(DateTime.UtcNow < deadline, "the presses never finished: a call is waiting on one nobody releases");
+
             if (browser.Pending.Count > 0)
             {
                 browser.ReleaseNewest();
@@ -133,6 +137,61 @@ public class VariableListStateBrowserTest
         }
 
         await work;
+    }
+
+    private sealed class ListsClient : EmptyMuninExplorerClient
+    {
+        public override Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new VariableList { Id = Guid.NewGuid(), Name = name });
+
+        public override Task<bool> AddItemsToMyListAsync(
+            Guid id, IReadOnlyCollection<VariableDatasamlingKey> items, CancellationToken cancellationToken = default) =>
+            Task.FromResult(true);
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenTheRemovalIsHeldOnlyByThisPage_ThenItCountsAsStuck()
+    {
+        // kept:false means the removal lives in this page's memory; another page still holds the rows to save twice.
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var state = new VariableListState(new ListsClient());
+        state.OfferBrowserList(browser);
+        await state.ReadBrowserListAsync();
+        state.SetAuthenticated(true);
+        browser.Refuses = true;
+
+        var carried = await state.CarryBrowserListOverAsync("Min variabelliste");
+
+        Assert.False(carried!.LeftTheBrowser);
+        Assert.True(state.BrowserCarryOverStuck);
+    }
+
+    [Theory]
+    [InlineData("sign-out")]
+    [InlineData("clear")]
+    public async Task BrowserCarryOverStuck_WhenTheReaderChangesOrTheListEmpties_ThenItIsClearedAgain(string what)
+    {
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        browser.Failing.Add("removeKeys");
+        var state = new VariableListState(new ListsClient());
+        state.OfferBrowserList(browser);
+        await state.ReadBrowserListAsync();
+        state.SetAuthenticated(true);
+        await state.CarryBrowserListOverAsync("Min variabelliste");
+        Assert.True(state.BrowserCarryOverStuck);
+
+        if (what == "sign-out")
+        {
+            state.SetAuthenticated(false);
+        }
+        else
+        {
+            await state.ClearBrowserListAsync();
+        }
+
+        Assert.False(state.BrowserCarryOverStuck);
     }
 
     [Fact]

@@ -49,6 +49,16 @@ test('Keys_WhenRead_ThenTheyAreSpelledAsBrowserListKeysParsesThem', async () => 
   assert.deepEqual(m.anonymousListKeys(0, 10), [`${VARIABLE}|${DATASAMLING}`, `${VARIABLE}|`]);
 });
 
+test('RemoveKeys_WhenGivenTheSpellingDotNetSends_ThenExactlyThoseRowsGo', async () => {
+  // The same two literals BrowserListStoreTest asserts RemoveKeysAsync sends.
+  const m = await tab();
+  m.anonymousListAdd(row(VARIABLE, DATASAMLING), 10);
+  m.anonymousListAdd(row(VARIABLE), 10);
+  m.anonymousListAdd(row('other'), 10);
+  assert.equal(m.anonymousListRemoveKeys([`${VARIABLE}|${DATASAMLING}`, `${VARIABLE}|`]).count, 1);
+  assert.deepEqual(stored().items.map(i => i.variabelId), ['other']);
+});
+
 test('AddRemoveClear_WhenCalled_ThenStorageFollowsAndARepeatIsNotADuplicate', async () => {
   const m = await tab();
   assert.equal(m.anonymousListAdd(row('a', 'd'), 10).count, 1);
@@ -142,13 +152,84 @@ test('TwoTabs_WhenEachAddsInTurn_ThenNoRowIsLost', async () => {
   assert.equal(first.anonymousListCount().count, 2);
 });
 
-test('Page_WhenRowsAreLong_ThenOneAnswerStaysNearSixteenKilobytes', async () => {
+const utf8 = value => new TextEncoder().encode(JSON.stringify(value)).length;
+
+test('Page_WhenRowsAreLong_ThenOneAnswerStaysUnderSixteenKilobytesOfUtf8', async () => {
+  // Norwegian letters are two bytes each: a bound counted in characters would let these past it.
   const m = await tab();
-  for (let n = 0; n < 20; n++) m.anonymousListAdd(row(`v${n}`, null, { variabelName: 'x'.repeat(2000) }), 100);
+  for (let n = 0; n < 20; n++) m.anonymousListAdd(row(`v${n}`, null, { variabelName: 'ø'.repeat(1500) }), 100);
   const page = m.anonymousListPage(0, 20);
   assert.ok(page.items.length > 0 && page.items.length < 20, `${page.items.length} rows`);
-  assert.ok(JSON.stringify(page).length < 18_000);
+  assert.ok(utf8(page) <= 16_100, `${utf8(page)} bytes`);
   assert.equal(m.anonymousListPage(19, 20).items.length, 1);
+});
+
+test('Page_WhenOneRowIsOverTheBoundAlone_ThenItComesBackAsItsIdsAndCodeAndTheNextRowFollows', async () => {
+  const m = await tab();
+  m.anonymousListAdd(row('huge', 'd', { variabelCode: 'V_HUGE', variabelName: 'å'.repeat(20_000) }), 10);
+  m.anonymousListAdd(row('next', null, { variabelName: 'Neste' }), 10);
+  const page = m.anonymousListPage(0, 10);
+  assert.deepEqual(page.items[0], { variabelId: 'huge', datasamlingId: 'd', variabelCode: 'V_HUGE' });
+  assert.equal(page.items[1].variabelName, 'Neste');
+  assert.ok(utf8(page) <= 16_000);
+});
+
+test('TwoTabs_WhenOneIsRefusedAndTheOtherClears_ThenTheClearHoldsAndOnlyTheUnsavedRowIsAdded', async () => {
+  // (a) The refused tab holds only its own unsaved change, so its next good write cannot bring the cleared rows back.
+  const a = await tab();
+  const b = await tab();
+  a.anonymousListAdd(row('x'), 10);
+  a.anonymousListAdd(row('y'), 10);
+  failing.set = true;
+  a.anonymousListAdd(row('unsaved'), 10);
+  failing.set = false;
+  b.anonymousListClear();
+  assert.equal(store.has(KEY), false);
+  a.anonymousListAdd(row('later'), 10);
+  assert.deepEqual(stored().items.map(i => i.variabelId), ['unsaved', 'later']);
+  assert.equal(b.anonymousListCount().count, 2);
+});
+
+test('TwoTabs_WhenARefusedRemoveMeetsAnotherTabsReAdd_ThenThisPagesUnsavedChangeWinsForThatKey', async () => {
+  // (b) Which came last cannot be known from here, so the page's own unsaved change wins for the key it touched.
+  const c = await tab();
+  const d = await tab();
+  c.anonymousListAdd(row('x'), 10);
+  c.anonymousListAdd(row('kept'), 10);
+  failing.set = true;
+  c.anonymousListRemove('x', null);
+  failing.set = false;
+  d.anonymousListRemove('x', null);
+  d.anonymousListAdd(row('x'), 10);
+  d.anonymousListAdd(row('theirs'), 10);
+  c.anonymousListAdd(row('mine'), 10);
+  assert.deepEqual(stored().items.map(i => i.variabelId).sort(), ['kept', 'mine', 'theirs']);
+});
+
+test('TwoTabs_WhenOneCarriesOverWhileTheOtherIsRefused_ThenTheCarriedRowsStayGone', async () => {
+  // (c) A carry-over takes its rows out with removeKeys; a refused tab's later good write must not put them back.
+  const a = await tab();
+  const b = await tab();
+  a.anonymousListAdd(row('x'), 10);
+  a.anonymousListAdd(row('y'), 10);
+  failing.set = true;
+  a.anonymousListRemove('nothing', null);
+  failing.set = false;
+  b.anonymousListRemoveKeys(['x|', 'y|']);
+  a.anonymousListAdd(row('z'), 10);
+  assert.deepEqual(stored().items.map(i => i.variabelId), ['z']);
+});
+
+test('TwoTabs_WhenARefusedTabsRemovalIsSavedLater_ThenAnotherTabsNewRowsStay', async () => {
+  const a = await tab();
+  const b = await tab();
+  a.anonymousListAdd(row('x'), 10);
+  failing.set = true;
+  a.anonymousListClear();
+  failing.set = false;
+  b.anonymousListAdd(row('new'), 10);
+  a.anonymousListAdd(row('mine'), 10);
+  assert.deepEqual(stored().items.map(i => i.variabelId), ['new', 'mine']);
 });
 
 test('Watch_WhenASecondCircuitListens_ThenItReplacesTheFirstAndOnlyItIsTold', async () => {
@@ -160,4 +241,58 @@ test('Watch_WhenASecondCircuitListens_ThenItReplacesTheFirstAndOnlyItIsTold', as
   for (const fn of listeners) fn({ key: KEY });
   for (const fn of listeners) fn({ key: 'something else' });
   assert.deepEqual(told, ['second ChangedElsewhere']);
+});
+
+// Many random runs of two tabs, each sometimes refused, against a small model of the rule the module states: the stored
+// list stands for every key a tab has no unsaved change to, and a tab's unsaved change stands for the keys it touched.
+test('TwoTabs_WhenRandomRefusalsInterleave_ThenStorageAlwaysMatchesTheModel', async () => {
+  let seed = 7;
+  const random = n => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed % n; };
+  const keysOf = () => (stored()?.items ?? []).map(i => i.variabelId);
+
+  for (let run = 0; run < 200; run++) {
+    store.clear();
+    const tabs = [await tab(), await tab()];
+    const model = { stored: [], deltas: [{ added: [], removed: new Set() }, { added: [], removed: new Set() }] };
+    const view = d => [...model.stored.filter(k => !d.removed.has(k)), ...d.added.filter(k => !model.stored.includes(k) || d.removed.has(k))]
+      .filter((k, i, all) => all.indexOf(k) === i);
+
+    for (let step = 0; step < 30; step++) {
+      const t = random(2);
+      const d = model.deltas[t];
+      const key = `k${random(5)}`;
+      const op = random(5);
+      failing.set = random(3) === 0;
+      const before = view(d);
+      let next = null;
+
+      if (op <= 1) {
+        tabs[t].anonymousListAdd(row(key), 100);
+        if (!before.includes(key)) {
+          d.removed.delete(key);
+          d.added = [...d.added.filter(k => k !== key), key];
+          next = [...before, key];
+        }
+      } else if (op <= 3) {
+        tabs[t].anonymousListRemove(key, null);
+        d.added = d.added.filter(k => k !== key);
+        d.removed.add(key);
+        next = before.filter(k => k !== key);
+      } else {
+        tabs[t].anonymousListClear();
+        d.added = [];
+        before.forEach(k => d.removed.add(k));
+        next = [];
+      }
+
+      if (next !== null && !failing.set) {
+        model.stored = next;
+        model.deltas[t] = { added: [], removed: new Set() };
+      }
+
+      failing.set = false;
+      assert.deepEqual(keysOf(), model.stored, `run ${run} step ${step}`);
+      assert.equal(new Set(keysOf()).size, keysOf().length, `duplicate in run ${run} step ${step}`);
+    }
+  }
 });

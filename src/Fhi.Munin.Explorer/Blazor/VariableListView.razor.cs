@@ -346,12 +346,13 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         CatalogueDate.Period(item.DataFrom, item.DataTo, Language, T);
 
     /// <summary>
-    /// The name column's text: the variable's name, or the sentence shown for one no longer in the
-    /// catalogue. The remove button is named from the rendered cell rather than from a second call to
-    /// this, so the two cannot drift.
+    /// The name column's text: the variable's name, its code for a browser-list row too long to hand over whole,
+    /// or the sentence for one no longer in the catalogue. The remove button is named from the rendered cell.
     /// </summary>
     private string RowName(VariableListItem item) =>
-        string.IsNullOrWhiteSpace(item.VariableName) ? T.VariableNoLongerAvailable : item.VariableName;
+        !string.IsNullOrWhiteSpace(item.VariableName) ? item.VariableName
+        : ShowsBrowserCopy && !string.IsNullOrWhiteSpace(item.VariableCode) ? item.VariableCode
+        : T.VariableNoLongerAvailable;
 
     /// <summary>
     /// The columns of one row, drawn by the helper the search results use. A fragment gets its own

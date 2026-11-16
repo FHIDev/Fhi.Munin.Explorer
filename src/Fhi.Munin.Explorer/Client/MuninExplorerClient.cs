@@ -1375,7 +1375,6 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         return SharedSnapshot.Read(snapshot.RootElement);
     }
 
-    /// <summary>The share body. The API stores <c>items</c> verbatim, so their names are the contract.</summary>
     /// <summary>
     /// Under Munin's <c>SharedListSnapshots.MaxSnapshotBytes</c>, 524,288 characters of the snapshot it stores, with
     /// room for the server's own spelling of the same items.
@@ -1386,6 +1385,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     internal static int ShareSnapshotLength(string name, IEnumerable<VariableListItem> items) =>
         JsonSerializer.Serialize(new ShareBody(name, [.. items.Select(SharedItemBody.From)])).Length;
 
+    /// <summary>The share body. The API stores <c>items</c> verbatim, so their names are the contract.</summary>
     private sealed record ShareBody(
         [property: JsonPropertyName("name")] string Name,
         [property: JsonPropertyName("items")] IReadOnlyList<SharedItemBody> Items);
