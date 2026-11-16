@@ -3105,7 +3105,8 @@ table.munin-explorer-data-list tbody th {
 }
 
 /* The code picker's tree (Fhi.Metadata-9huq2.14): a fixed indent per level, the arrow in its own column (blank for a
-   code with nothing under it), so boxes and codes line up by level; a long name is cut, the whole of it in the title. */
+   code with nothing under it), so boxes and codes line up by level; a long name is cut, the whole of it in the title,
+   and wraps instead below 768px. */
 .munin-explorer-codetree,
 .munin-explorer-codetree__group {
   list-style: none;
