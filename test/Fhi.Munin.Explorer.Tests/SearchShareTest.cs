@@ -439,7 +439,7 @@ public class SearchShareTest : ExplorerTestContext
     [Fact]
     public void Arrive_WhenTheHostDeclinesVariabelId_ThenACodeInTheAddressIsNeitherReadNorRewritten()
     {
-        // Declining either variable key leaves the open variable out of the address, so the code is not read in either.
+        // Declining variabelId keeps the open variable out of the address, so a code is not read either.
         var client = new ShareClient();
         var cut = RenderExplorer(client, $"http://localhost/variabler?variabel={Code}", declined: ["variabelId"]);
 
