@@ -1407,15 +1407,15 @@ leave `AnonymousLists` off; the gates turn it on for one state of their own. Tod
   tab's change stands for every row this page has not touched; for a row this page changed while writes were refused,
   its unsaved change wins. A write that would pass 2000 rows keeps the stored rows and drops this page's newest unsaved
   adds. Another tab's change is picked up through the browser's `storage` event. A signed-out reader's save button (the
-  one a signed-in reader has) adds a row to it, the list tab shows it through the shared-list view, and it can be downloaded (`ExportItemsAsync`, Munin's anonymous
-  export), shared as a code while its snapshot stays under the share endpoint's 512 KB (about 990 full rows), or
-  emptied. Signed in with rows still
-  in the browser, the list tab offers one button that saves them as a new list in Mine lister. Where the browser
-  refuses storage the list lasts while the page is open and the view says so; a host that does not serve the module
-  has no list, and the save button and the list tab say it cannot be kept in this browser. With it off, a
-  signed-out reader has no save button and no list tab, as before. `check-accessibility.sh` scans it with axe in `list-browser-list`, on
-  a host started with it on and with the samples' `Sample:SignedOut` switch, which mounts the composed explorer signed
-  out; `check-hostile-host.sh` measures the same state when it runs, nightly or by hand, not on a pull request.
+  one a signed-in reader has) adds a row to it, the list tab shows it through the shared-list view, and it can be
+  downloaded (`ExportItemsAsync`, Munin's anonymous export), shared as a code while its snapshot stays under the share
+  endpoint's 512 KB (about 990 full rows), or emptied. Signed in with rows still in the browser, the list tab offers one
+  button that saves them as a new list in Mine lister. Where the browser refuses storage the list lasts while the page
+  is open and the view says so; a host that does not serve the module has no list, and the save button and the list tab
+  say it cannot be kept in this browser. With it off, a signed-out reader has no save button and no list tab, as before.
+  `check-accessibility.sh` scans it with axe in `list-browser-list`, on a host started with it on and with the samples'
+  `Sample:SignedOut` switch, which mounts the composed explorer signed out; `check-hostile-host.sh` measures the same
+  state when it runs, nightly or by hand, not on a pull request.
 
 A new feature gets its own entry, off by default, and the entry is removed once the feature is on for every host.
 
