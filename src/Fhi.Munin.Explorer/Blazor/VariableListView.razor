@@ -190,7 +190,7 @@ else if (State?.IsAuthenticated == true)
                 @* A paragraph, so the sentence keeps its distance from the buttons above it. *@
                 @if (AlertText is { } alert)
                 {
-                    <p>@alert</p>
+                    <p id="@(RefusalSaidShown ? RefusalSentenceId : null)">@alert</p>
                 }
 
                 @* In the region, so the failure and the way out are one utterance; the search's retry does the same.
@@ -776,7 +776,8 @@ else if (ShowsBrowserCopy)
     </text>;
 
     // Signed in with rows still in the browser: one press saves them as a new list, never on its own (Fhi.Metadata-emsc0.3.12).
-    // Munin saves all or none; signed in there is no «Tøm listen», so the rows of variables it refused get a button.
+    // Munin saves all or none; signed in there is no «Tøm listen», so the rows of variables it refused get a button,
+    // described by the sentence that names them and this browser.
     private RenderFragment CarryOverOffer => @<text>
         @if (ShowsCarryOverOffer)
         {
@@ -784,7 +785,7 @@ else if (ShowsBrowserCopy)
                 <p class="caption">@T.BrowserListWaiting(State!.BrowserCount)</p>
                 <button class="hd-button-square button-square--secondary"
                         type="button"
-                        aria-disabled="@AriaDisabled(!_carryingOver)"
+                        aria-disabled="@AriaDisabled(!_carryingOver && !_removing)"
                         aria-busy="@(_carryingOver ? "true" : null)"
                         @ref="_carryOverButton"
                         @onclick="CarryBrowserListOverAsync">@(_carryingOver ? T.SavingToList : T.CarryBrowserListOver)</button>
@@ -796,9 +797,10 @@ else if (ShowsBrowserCopy)
             <div>
                 <button class="hd-button-square button-square--ghost-blue"
                         type="button"
-                        aria-disabled="@AriaDisabled(!_carryingOver)"
+                        aria-disabled="@AriaDisabled(!_carryingOver && !_removing)"
+                        aria-describedby="@RefusalSentenceId"
                         @ref="_removeRefusedButton"
-                        @onclick="RemoveRefusedFromBrowserAsync">@T.RemoveRefusedFromBrowser(refused.Rows, refused.Variables)</button>
+                        @onclick="RemoveRefusedFromBrowserAsync">@T.RemoveRefusedFromBrowser(refused.Rows)</button>
             </div>
         }
     </text>;

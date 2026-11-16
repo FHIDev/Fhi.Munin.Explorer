@@ -144,8 +144,16 @@ public class AnonymousListTest : ExplorerTestContext
             return true;
         }
 
+        /// <summary>Munin's write limiter refuses every delete, as it can the one after a refused add.</summary>
+        public bool DeleteThrows { get; init; }
+
         public override Task<bool> DeleteMyListAsync(Guid id, CancellationToken cancellationToken = default)
         {
+            if (DeleteThrows)
+            {
+                throw new MuninExplorerRateLimitedException();
+            }
+
             Lists.RemoveAll(l => l.Id == id);
             return Task.FromResult(true);
         }
@@ -846,7 +854,7 @@ public class AnonymousListTest : ExplorerTestContext
         Assert.Empty(client.Lists);
         Assert.Empty(client.Added);
         Assert.Equal(3, browser.Rows.Count);
-        var remove = ButtonSaying(cut, No.RemoveRefusedFromBrowser(2, 1));
+        var remove = ButtonSaying(cut, No.RemoveRefusedFromBrowser(2));
         cut.WaitForAssertion(() => JSInterop.Invocations[Focus][^1].Arguments[0].ShouldBeElementReferenceTo(remove));
         var focusesBefore = JSInterop.Invocations[Focus].Count;
 
@@ -854,7 +862,7 @@ public class AnonymousListTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Contains(No.BrowserListRefusedRemoved(2, 1), cut.Markup));
         Assert.Equal([VariableDatasamlingKey.Of(other)], browser.Rows.Select(VariableDatasamlingKey.Of));
-        Assert.DoesNotContain(No.RemoveRefusedFromBrowser(2, 1), cut.Markup);
+        Assert.DoesNotContain(No.RemoveRefusedFromBrowser(2), cut.Markup);
 
         // The offer is back for the row that is left, and focus is on it.
         Assert.Contains(No.BrowserListWaiting(1), cut.Markup);
@@ -888,7 +896,7 @@ public class AnonymousListTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Equal(2, client.AddCalls));
         cut.WaitForAssertion(() => Assert.Contains(No.BrowserListRefused(1, 1), cut.Markup));
-        Assert.Contains(No.RemoveRefusedFromBrowser(1, 1), cut.Markup);
+        Assert.Contains(No.RemoveRefusedFromBrowser(1), cut.Markup);
         Assert.Empty(client.Lists);
         Assert.Equal(2, browser.Rows.Count);
     }
@@ -911,7 +919,7 @@ public class AnonymousListTest : ExplorerTestContext
         await cut.InvokeAsync(browser.ChangedElsewhereAsync);
 
         cut.WaitForAssertion(() => Assert.Contains(No.BrowserListRefused(1, 1), cut.Markup));
-        Assert.Contains(No.RemoveRefusedFromBrowser(1, 1), cut.Markup);
+        Assert.Contains(No.RemoveRefusedFromBrowser(1), cut.Markup);
         Assert.DoesNotContain(No.BrowserListRefused(2, 1), cut.Markup);
     }
 
@@ -924,10 +932,10 @@ public class AnonymousListTest : ExplorerTestContext
         var cut = ListView(client, browser, signedIn: true);
         cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(2), cut.Markup));
         ButtonSaying(cut, No.CarryBrowserListOver).Click();
-        cut.WaitForAssertion(() => Assert.Contains(No.RemoveRefusedFromBrowser(1, 1), cut.Markup));
+        cut.WaitForAssertion(() => Assert.Contains(No.RemoveRefusedFromBrowser(1), cut.Markup));
         browser.Hold = true;
 
-        ButtonSaying(cut, No.RemoveRefusedFromBrowser(1, 1)).Click();
+        ButtonSaying(cut, No.RemoveRefusedFromBrowser(1)).Click();
         cut.WaitForAssertion(() => Assert.NotEmpty(browser.Pending));
         var focusCalls = JSInterop.Invocations[Focus].Count;
         cut.Render(p => p.Add(c => c.IsAuthenticated, false));
@@ -956,13 +964,13 @@ public class AnonymousListTest : ExplorerTestContext
         var cut = ListView(client, browser, signedIn: true);
         cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(2), cut.Markup));
         ButtonSaying(cut, No.CarryBrowserListOver).Click();
-        cut.WaitForAssertion(() => Assert.Contains(No.RemoveRefusedFromBrowser(1, 1), cut.Markup));
+        cut.WaitForAssertion(() => Assert.Contains(No.RemoveRefusedFromBrowser(1), cut.Markup));
 
         cut.Render(p => p.Add(c => c.IsAuthenticated, false));
         cut.Render(p => p.Add(c => c.IsAuthenticated, true));
 
         cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(2), cut.Markup));
-        Assert.DoesNotContain(No.RemoveRefusedFromBrowser(1, 1), cut.Markup);
+        Assert.DoesNotContain(No.RemoveRefusedFromBrowser(1), cut.Markup);
     }
 
     [Theory]
@@ -994,7 +1002,7 @@ public class AnonymousListTest : ExplorerTestContext
         if (outcome == "removed")
         {
             browser.Failing.Add("removeKeys");
-            ButtonSaying(cut, No.RemoveRefusedFromBrowser(1, 1)).Click();
+            ButtonSaying(cut, No.RemoveRefusedFromBrowser(1)).Click();
             cut.WaitForAssertion(() => Assert.Contains(No.BrowserListRefusedNotRemoved, cut.Markup));
             browser.Failing.Clear();
         }
@@ -1007,7 +1015,7 @@ public class AnonymousListTest : ExplorerTestContext
         }
 
         Assert.DoesNotContain(No.BrowserListRefused(1, 1), cut.Markup);
-        Assert.DoesNotContain(No.RemoveRefusedFromBrowser(1, 1), cut.Markup);
+        Assert.DoesNotContain(No.RemoveRefusedFromBrowser(1), cut.Markup);
         Assert.DoesNotContain(No.BrowserListRefusedNotRemoved, cut.Markup);
         Assert.DoesNotContain(No.BrowserListSavedAs(No.FirstListName), cut.Markup);
         Assert.DoesNotContain(No.CarryBrowserListOverError, cut.Markup);
@@ -1032,7 +1040,7 @@ public class AnonymousListTest : ExplorerTestContext
         var focusCalls = JSInterop.Invocations[Focus].Count;
         hold.SetException(new ListItemsRefusedException([browser.Rows[0].VariableId]));
 
-        cut.WaitForAssertion(() => Assert.Contains(No.RemoveRefusedFromBrowser(1, 1), cut.Markup));
+        cut.WaitForAssertion(() => Assert.Contains(No.RemoveRefusedFromBrowser(1), cut.Markup));
         await cut.InvokeAsync(() => Task.Delay(100));
 
         Assert.Equal(focusCalls, JSInterop.Invocations[Focus].Count);
@@ -1054,12 +1062,12 @@ public class AnonymousListTest : ExplorerTestContext
         var cut = ListView(client, browser, signedIn: true);
         cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(2), cut.Markup));
         ButtonSaying(cut, No.CarryBrowserListOver).Click();
-        cut.WaitForAssertion(() => Assert.Contains(No.RemoveRefusedFromBrowser(1, 1), cut.Markup));
+        cut.WaitForAssertion(() => Assert.Contains(No.RemoveRefusedFromBrowser(1), cut.Markup));
 
         cut.Render(p => p.Add(c => c.ShareCode, "ABC123"));
 
         cut.WaitForAssertion(() => Assert.Contains("Delt liste", cut.Markup));
-        Assert.DoesNotContain(No.RemoveRefusedFromBrowser(1, 1), cut.Markup);
+        Assert.DoesNotContain(No.RemoveRefusedFromBrowser(1), cut.Markup);
     }
 
     [Fact]
@@ -1074,10 +1082,10 @@ public class AnonymousListTest : ExplorerTestContext
         ButtonSaying(cut, No.CarryBrowserListOver).Click();
         cut.WaitForAssertion(() => Assert.Contains(No.BrowserListRefused(1, 1), cut.Markup));
 
-        ButtonSaying(cut, No.RemoveRefusedFromBrowser(1, 1)).Click();
+        ButtonSaying(cut, No.RemoveRefusedFromBrowser(1)).Click();
 
         cut.WaitForAssertion(() => Assert.Contains(No.BrowserListRefusedNotRemoved, cut.Markup));
-        Assert.Contains(No.RemoveRefusedFromBrowser(1, 1), cut.Markup);
+        Assert.Contains(No.RemoveRefusedFromBrowser(1), cut.Markup);
         Assert.Equal(2, browser.Rows.Count);
     }
 
@@ -1091,13 +1099,13 @@ public class AnonymousListTest : ExplorerTestContext
         var cut = ListView(client, browser, signedIn: true);
         cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(2), cut.Markup));
         ButtonSaying(cut, No.CarryBrowserListOver).Click();
-        cut.WaitForAssertion(() => Assert.Contains(No.RemoveRefusedFromBrowser(1, 1), cut.Markup));
+        cut.WaitForAssertion(() => Assert.Contains(No.RemoveRefusedFromBrowser(1), cut.Markup));
         client.ThrottleAfter = 1;
 
         ButtonSaying(cut, No.CarryBrowserListOver).Click();
 
         cut.WaitForAssertion(() => Assert.Contains(No.CarryBrowserListOverError, cut.Markup));
-        Assert.DoesNotContain(No.RemoveRefusedFromBrowser(1, 1), cut.Markup);
+        Assert.DoesNotContain(No.RemoveRefusedFromBrowser(1), cut.Markup);
         Assert.DoesNotContain(No.BrowserListRefused(1, 1), cut.Markup);
     }
 
@@ -1112,7 +1120,7 @@ public class AnonymousListTest : ExplorerTestContext
         ButtonSaying(cut, No.CarryBrowserListOver).Click();
         cut.WaitForAssertion(() => Assert.Contains(No.BrowserListRefused(1, 1), cut.Markup));
 
-        ButtonSaying(cut, No.RemoveRefusedFromBrowser(1, 1)).Click();
+        ButtonSaying(cut, No.RemoveRefusedFromBrowser(1)).Click();
 
         cut.WaitForAssertion(() => Assert.Contains(No.BrowserListRefusedNotRemoved, cut.Markup));
         Assert.DoesNotContain(No.BrowserListRefusedRemoved(1, 1), cut.Markup);
@@ -1137,7 +1145,7 @@ public class AnonymousListTest : ExplorerTestContext
         Assert.Single(client.Created);
         Assert.Empty(client.Lists);
         Assert.Equal(2, browser.Rows.Count);
-        Assert.DoesNotContain(No.RemoveRefusedFromBrowser(1, 1), cut.Markup);
+        Assert.DoesNotContain(No.RemoveRefusedFromBrowser(1), cut.Markup);
         Assert.DoesNotContain(No.BrowserListSavedAs(No.FirstListName), cut.Markup);
     }
 
@@ -1195,5 +1203,137 @@ public class AnonymousListTest : ExplorerTestContext
 
         // The half-made list is taken away again rather than left empty among the reader's own.
         Assert.Empty(client.Lists);
+    }
+
+    // Two rows of one variable Munin names, and one row of another.
+    private static (FakeBrowserList Browser, Client Client) NamedRefusal(bool deleteThrows = false, bool onlyRefused = false)
+    {
+        var browser = new FakeBrowserList();
+        var valid = FakeBrowserList.Row("Alder", Guid.NewGuid());
+        var stale = valid with { DatasamlingId = Guid.NewGuid() };
+        browser.Rows.AddRange([valid, stale]);
+        if (!onlyRefused)
+        {
+            browser.Rows.Add(FakeBrowserList.Row("Kjønn"));
+        }
+
+        return (browser, new Client { Stale = VariableDatasamlingKey.Of(stale), NamesStale = true, DeleteThrows = deleteThrows });
+    }
+
+    private IRenderedComponent<VariableListView> RefusedView(FakeBrowserList browser, Client client)
+    {
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(browser.Rows.Count), cut.Markup));
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListRefused(2, 1), cut.Markup));
+        return cut;
+    }
+
+    [Fact]
+    public void VariableListView_WhenAListIsCreatedAfterARefusal_ThenTheRemoveButtonLeavesWithItsSentence()
+    {
+        // Without the sentence beside it, the button would offer to remove rows nobody has just been told about.
+        var (browser, client) = NamedRefusal();
+        var cut = RefusedView(browser, client);
+
+        cut.Find("button[id^='munin-explorer-create-toggle-']").Click();
+        cut.Find("input[id^='munin-explorer-new-list-']").Change("Hjerte og kar");
+        ButtonSaying(cut, "Opprett liste").Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("Hjerte og kar", client.Created));
+        cut.WaitForAssertion(() => Assert.DoesNotContain(No.BrowserListRefused(2, 1), cut.Markup));
+        Assert.DoesNotContain(No.RemoveRefusedFromBrowser(2), cut.Markup);
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheRemoveButtonIsDrawn_ThenItIsDescribedByTheSentenceNamingTheRowsAndThisBrowser()
+    {
+        // «Fjern disse radene» alone does not say which rows or where; the sentence it points at does.
+        var (browser, client) = NamedRefusal();
+        browser.Failing.Add("removeKeys");
+        var cut = RefusedView(browser, client);
+
+        var described = ButtonSaying(cut, No.RemoveRefusedFromBrowser(2)).GetAttribute("aria-describedby");
+        Assert.Equal(No.BrowserListRefused(2, 1), cut.Find($"#{described}").TextContent.Trim());
+
+        ButtonSaying(cut, No.RemoveRefusedFromBrowser(2)).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListRefusedNotRemoved, cut.Markup));
+        described = ButtonSaying(cut, No.RemoveRefusedFromBrowser(2)).GetAttribute("aria-describedby");
+        Assert.Equal(No.BrowserListRefusedNotRemoved, cut.Find($"#{described}").TextContent.Trim());
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheDeleteAfterANamedRefusalFails_ThenTheRefusalStandsAndTheLeftListIsShown()
+    {
+        // The delete's own failure is not the reader's news: the refusal and its button are, and the list they can delete.
+        var (browser, client) = NamedRefusal(deleteThrows: true);
+        var cut = RefusedView(browser, client);
+
+        Assert.Contains(No.RemoveRefusedFromBrowser(2), cut.Markup);
+        Assert.DoesNotContain(No.CarryBrowserListOverError, cut.Markup);
+        var left = Assert.Single(client.Lists);
+        Assert.Contains(Services.GetRequiredService<VariableListState>().Lists, l => l.Id == left.Id);
+        Assert.Equal(3, browser.Rows.Count);
+    }
+
+    [Fact]
+    public void VariableListView_WhenEveryRefusedRowIsRemoved_ThenThereIsNoOfferAndFocusGoesToCreatingAList()
+    {
+        var (browser, client) = NamedRefusal(onlyRefused: true);
+        var cut = RefusedView(browser, client);
+        var focusesBefore = JSInterop.Invocations[Focus].Count;
+
+        ButtonSaying(cut, No.RemoveRefusedFromBrowser(2)).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListRefusedRemoved(2, 0), cut.Markup));
+        Assert.Empty(browser.Rows);
+        Assert.DoesNotContain(No.CarryBrowserListOver, cut.Markup);
+
+        // The toggle's reference is not printed by bUnit (see above), so the call is compared with the view's own.
+        cut.WaitForAssertion(() => Assert.Equal(focusesBefore + 1, JSInterop.Invocations[Focus].Count));
+        var toggle = (ElementReference)typeof(VariableListView)
+            .GetField("_createToggle", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(cut.Instance)!;
+        Assert.Equal(toggle.Id, ((ElementReference)JSInterop.Invocations[Focus][^1].Arguments[0]!).Id);
+    }
+
+    [Fact]
+    public async Task VariableListView_WhenAnotherTabRemovesEveryRefusedRow_ThenTheSentenceKeepsThePressCountAndTheButtonGoes()
+    {
+        // Counted from the rows still here, the sentence would read «0 rader»; the press's own count is what Munin refused.
+        var (browser, client) = NamedRefusal();
+        var cut = RefusedView(browser, client);
+
+        browser.Rows.RemoveRange(0, 2);
+        await cut.InvokeAsync(browser.ChangedElsewhereAsync);
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
+        Assert.Contains(No.BrowserListRefused(2, 1), cut.Markup);
+        Assert.DoesNotContain(No.RemoveRefusedFromBrowser(2), cut.Markup);
+        Assert.DoesNotContain(No.RemoveRefusedFromBrowser(1), cut.Markup);
+    }
+
+    [Fact]
+    public async Task VariableListView_WhenTheCarryOverIsPressedWhileARemovalIsOut_ThenNothingIsSent()
+    {
+        // The press would read the rows the removal is taking out and send them to Munin as they leave.
+        var (browser, client) = NamedRefusal();
+        var cut = RefusedView(browser, client);
+        browser.Hold = true;
+
+        ButtonSaying(cut, No.RemoveRefusedFromBrowser(2)).Click();
+        cut.WaitForAssertion(() => Assert.NotEmpty(browser.Pending));
+        Assert.Equal("true", ButtonSaying(cut, No.CarryBrowserListOver).GetAttribute("aria-disabled"));
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+        browser.Hold = false;
+        while (browser.Pending.Count > 0)
+        {
+            await cut.InvokeAsync(browser.ReleaseNewest);
+        }
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListRefusedRemoved(2, 1), cut.Markup));
+        await cut.InvokeAsync(() => Task.Delay(100));
+        Assert.Single(client.Created);
+        Assert.Equal(1, client.AddCalls);
     }
 }

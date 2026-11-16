@@ -200,7 +200,7 @@ public sealed partial class VariableListState(
             return;
         }
 
-        _lists = lists;
+        _lists = _carryingInto is { } carrying ? [.. lists.Where(l => l.Id != carrying)] : lists;
         _loaded = true;
         ListsReadFailed = false;
 

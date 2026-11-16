@@ -32,6 +32,9 @@ public sealed partial class VariableListState : IDisposable
     private IReadOnlySet<VariableDatasamlingKey> _browserKeys = new HashSet<VariableDatasamlingKey>();
     private Task? _browserRead;
 
+    // The list a carry-over is filling, kept out of Lists until the add succeeds: a save into it would go with a discard.
+    private Guid? _carryingInto;
+
     /// <summary>What a press on the save button did to the browser list.</summary>
     internal enum BrowserListOutcome
     {
@@ -378,9 +381,9 @@ public sealed partial class VariableListState : IDisposable
     internal int BrowserVariablesOf(IReadOnlySet<Guid> variables) =>
         _browserKeys.Select(k => k.VariableId).Where(variables.Contains).Distinct().Count();
 
-    /// <summary>Saves the browser list as a new list in one add, all or nothing, then takes its rows out of the browser.</summary>
-    /// <returns>Null when signed out, the list is empty or unread, the reader changed during any call, or the new list was
-    /// gone; any other failure throws, an unnamed refusal too. When nothing is saved, the list is deleted and rows stay.</returns>
+    /// <returns>The list, also when the reader changes as its rows leave the browser; no list and the variables when Munin
+    /// names these rows. Null when signed out, empty, unread, the list gone, or the reader changed before the add answered
+    /// (a list made by then stays in Munin). Any other failure throws; when nothing is saved, the list is deleted.</returns>
     internal async Task<CarryOver?> CarryBrowserListOverAsync(string name, CancellationToken cancellationToken = default)
     {
         // Every await is a point at which the reader can sign out; the rows belong to the reader who pressed.
@@ -405,23 +408,41 @@ public sealed partial class VariableListState : IDisposable
             return null;
         }
 
-        // CreateAsync answers null itself when the reader changed while it was out.
-        if (await CreateAsync(name, cancellationToken).ConfigureAwait(false) is not { } target)
+        var target = await _client.CreateMyListAsync(name, cancellationToken).ConfigureAwait(false);
+
+        // Made for a reader who has left: Munin's list is theirs, and nothing here touches it again.
+        if (!StillCurrent(reader))
         {
             return null;
         }
 
+        _carryingInto = target.Id;
+        _lists = [.. _lists.Where(l => l.Id != target.Id)];
+
+        try
+        {
+            return await FillCarriedListAsync(target, keys, reader, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _carryingInto = null;
+        }
+    }
+
+    private async Task<CarryOver?> FillCarriedListAsync(
+        VariableList target, List<VariableDatasamlingKey> keys, int reader, CancellationToken cancellationToken)
+    {
         bool accepted;
 
         try
         {
             // One request, which the browser list's ceiling keeps within a batch: Munin saves every row or none.
-            accepted = await AddItemsAsync(target.Id, keys, kilder: null, cancellationToken).ConfigureAwait(false);
+            accepted = await _client.AddItemsToMyListAsync(target.Id, keys, cancellationToken).ConfigureAwait(false);
         }
         catch (ListItemsRefusedException ex) when (Reader == reader && ex.VariableIds is { Count: > 0 } named)
         {
             _logger?.LogWarning(ex, "the API refused the browser list's rows of {Count} variables", named.Count);
-            await DiscardAsync(target.Id).ConfigureAwait(false);
+            await DiscardAsync(target, reader).ConfigureAwait(false);
             var refused = keys.Select(k => k.VariableId).Where(named.Contains).ToHashSet();
 
             // Naming none of these rows, it says no more than a refusal that names nothing.
@@ -435,7 +456,7 @@ public sealed partial class VariableListState : IDisposable
         catch (Exception ex) when (Reader == reader)
         {
             _logger?.LogWarning(ex, "a carry-over to list {ListId} saved nothing", target.Id);
-            await DiscardAsync(target.Id).ConfigureAwait(false);
+            await DiscardAsync(target, reader).ConfigureAwait(false);
             throw;
         }
         catch (Exception ex)
@@ -453,9 +474,13 @@ public sealed partial class VariableListState : IDisposable
         if (!accepted)
         {
             // The list was gone before the rows reached it.
-            await DiscardAsync(target.Id).ConfigureAwait(false);
+            await DiscardAsync(target, reader).ConfigureAwait(false);
             return null;
         }
+
+        _carryingInto = null;
+        _lists = [.. _lists, target];
+        RaiseChanged(target.Id, affectsRows: true);
 
         var left = await RemoveBrowserKeysAsync(keys).ConfigureAwait(false);
 
@@ -517,16 +542,23 @@ public sealed partial class VariableListState : IDisposable
         return removed;
     }
 
-    // Only the list this press made. The limiter that refused the add may refuse this too: the empty list then stays.
-    private async Task DiscardAsync(Guid id)
+    // Only the list this press made. The limiter that refused the add may refuse this too: the empty list then stays,
+    // shown among the reader's lists so they can delete it.
+    private async Task DiscardAsync(VariableList list, int reader)
     {
         try
         {
-            await DeleteAsync(id).ConfigureAwait(false);
+            await DeleteAsync(list.Id).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            _logger?.LogWarning(ex, "could not delete list {ListId} after a carry-over failed", id);
+            _logger?.LogWarning(ex, "could not delete list {ListId} after a carry-over failed", list.Id);
+
+            if (StillCurrent(reader))
+            {
+                _lists = [.. _lists.Where(l => l.Id != list.Id), list];
+                RaiseChanged(list.Id, affectsRows: false);
+            }
         }
     }
 

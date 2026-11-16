@@ -945,7 +945,7 @@ internal sealed record Texts(
     Func<string, string> BrowserListSavedAs,
     Func<string, string> BrowserListSavedButStillHere,
     Func<int, int, string> BrowserListRefused,
-    Func<int, int, string> RemoveRefusedFromBrowser,
+    Func<int, string> RemoveRefusedFromBrowser,
     Func<int, int, string> BrowserListRefusedRemoved,
     string BrowserListRefusedNotRemoved,
     Func<int, string> BrowserListFull,
@@ -1928,8 +1928,7 @@ internal sealed record Texts(
         BrowserListSavedButStillHere: name => $"Listen ble lagret i Mine lister («{name}»), men den kunne ikke fjernes fra denne nettleseren. Tøm den når du er logget ut.",
         BrowserListRefused: (rows, variables) =>
             $"{(rows == 1 ? "1 rad" : $"{rows} rader")} for {(variables == 1 ? "1 variabel" : $"{variables} variabler")} kunne ikke lagres i Mine lister, så ingenting ble lagret. Listen ligger fortsatt i denne nettleseren.",
-        RemoveRefusedFromBrowser: (rows, variables) =>
-            $"Fjern {(rows == 1 ? "raden" : "radene")} for {(variables == 1 ? "denne variabelen" : "disse variablene")}",
+        RemoveRefusedFromBrowser: rows => rows == 1 ? "Fjern denne raden" : "Fjern disse radene",
         BrowserListRefusedRemoved: (rows, rest) =>
             (rows == 1 ? "Raden er fjernet fra denne nettleseren." : "Radene er fjernet fra denne nettleseren.")
             + (rest == 0 ? "" : rest == 1 ? " Raden som er igjen, kan lagres som ny liste i Mine lister." : $" De {rest} radene som er igjen, kan lagres som ny liste i Mine lister."),
@@ -2610,8 +2609,7 @@ internal sealed record Texts(
         BrowserListSavedButStillHere: name => $"The list was saved in My lists («{name}»), but it could not be removed from this browser. Empty it when you are signed out.",
         BrowserListRefused: (rows, variables) =>
             $"{(rows == 1 ? "1 row" : $"{rows} rows")} for {(variables == 1 ? "1 variable" : $"{variables} variables")} could not be saved in My lists, so nothing was saved. The list is still in this browser.",
-        RemoveRefusedFromBrowser: (rows, variables) =>
-            $"Remove {(rows == 1 ? "the row" : "rows")} for {(variables == 1 ? "this variable" : "these variables")}",
+        RemoveRefusedFromBrowser: rows => rows == 1 ? "Remove this row" : "Remove these rows",
         BrowserListRefusedRemoved: (rows, rest) =>
             (rows == 1 ? "The row is removed from this browser." : "The rows are removed from this browser.")
             + (rest == 0 ? "" : rest == 1 ? " The row that is left can be saved as a new list in My lists." : $" The {rest} rows that are left can be saved as a new list in My lists."),

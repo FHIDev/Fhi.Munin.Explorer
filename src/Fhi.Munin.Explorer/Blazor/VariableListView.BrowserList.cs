@@ -16,6 +16,7 @@ public sealed partial class VariableListView
     private bool _focusClearToggle;
     private ElementReference _clearToggle;
     private bool _carryingOver;
+    private bool _removing;
     private bool _carryOverFailed;
     private string? _carriedOverAs;
     private bool _carriedOverButStillHere;
@@ -47,6 +48,8 @@ public sealed partial class VariableListView
 
     private string ConfirmClearId => $"munin-explorer-confirm-clear-{_instance}";
 
+    private string RefusalSentenceId => $"munin-explorer-browser-list-refusal-{_instance}";
+
     /// <summary>Signed out, no shared list on screen, and the host offers the list in the browser.</summary>
     private bool ShowsBrowserCopy => !ShowsSharedList && !IsAuthenticated && State?.UsesBrowserList == true;
 
@@ -65,6 +68,10 @@ public sealed partial class VariableListView
 
     private bool CarryOverFailedShown => _carryOverFailed && CarryOverNoticesShown;
 
+    /// <summary>The alert says the refusal, or that its rows were not removed: the remove button's sentence.</summary>
+    private bool RefusalSaidShown =>
+        !_failed && CarryOverNoticesShown && (_refusedRemoved is { Removed: false } || (_refusedRemoved is null && _refusalSaid is not null));
+
     private string? CarriedOverMessage =>
         !CarryOverNoticesShown ? null
         : _refusedRemoved is { } removal
@@ -80,14 +87,12 @@ public sealed partial class VariableListView
     }
 
     /// <summary>Signed in with rows in the browser, and no carry-over that saved them but could not take them out.</summary>
-    private bool ShowsCarryOverOffer =>
-        State is { IsAuthenticated: true, BrowserCount: > 0, BrowserCarryOverStuck: false } && !ShowsSharedList;
+    private bool ShowsCarryOverOffer => State is { IsAuthenticated: true, BrowserCount: > 0, BrowserCarryOverStuck: false };
 
-    /// <summary>The rows and variables the remove button would take out: those of the refusal, for the reader it was made to.</summary>
+    /// <summary>The rows and variables the remove button would take out, while its sentence is the one on screen.</summary>
     private (int Rows, int Variables)? RefusedRowsShown =>
-        _refusal is { } refused && CarryOverNoticesShown && State is { IsAuthenticated: true } state
-        && state.BrowserRowsOf(refused) is > 0 and var rows
-            ? (rows, state.BrowserVariablesOf(refused))
+        _refusal is { } refused && RefusalSaidShown && State!.BrowserRowsOf(refused) is > 0 and var rows
+            ? (rows, State.BrowserVariablesOf(refused))
             : null;
 
     /// <summary>The sentence over the browser list: kept, kept for this page only, or not there at all.</summary>
@@ -341,14 +346,13 @@ public sealed partial class VariableListView
     /// </summary>
     private async Task CarryBrowserListOverAsync()
     {
-        if (State is null || !IsAuthenticated || _carryingOver)
+        if (State is null || !IsAuthenticated || _carryingOver || _removing)
         {
             return;
         }
 
         _carryingOver = true;
         _carryOverFailed = false;
-        _refusal = null;
         ForgetFailures();
 
         // Before the first await, as a create does: a form the reader opens meanwhile keeps the focus.
@@ -447,29 +451,43 @@ public sealed partial class VariableListView
     /// <summary>Takes the refused variables' rows out of the browser, which signed in has no «Tøm listen» to do it.</summary>
     private async Task RemoveRefusedFromBrowserAsync()
     {
-        if (State is null || !IsAuthenticated || _carryingOver || _refusal is not { } refused || !CarryOverNoticesShown)
+        if (State is null || _carryingOver || _removing || _refusal is not { } refused || !CarryOverNoticesShown)
+        {
+            return;
+        }
+
+        // The sentence stays while the rows are taken out, so the button keeps it until there is a new one to say.
+        _removing = true;
+        var reader = State.Reader;
+        var formsOpenAtStart = OpenForms();
+        var rows = State.BrowserRowsOf(refused);
+        bool removed;
+
+        try
+        {
+            removed = await State.RemoveRefusedFromBrowserAsync(refused);
+        }
+        finally
+        {
+            _removing = false;
+        }
+
+        if (State.Reader != reader)
         {
             return;
         }
 
         ForgetFailures();
-        var reader = State.Reader;
-        var formsOpenAtStart = OpenForms();
-        var rows = State.BrowserRowsOf(refused);
-        var removed = await State.RemoveRefusedFromBrowserAsync(refused);
-
-        if (State.Reader != reader || !IsAuthenticated)
-        {
-            return;
-        }
-
         _refusedRemoved = (removed, rows, State.BrowserCount);
 
         // The button leaves with its rows; focus goes to the offer for the rest, or where a created list's would.
         if (removed)
         {
-            _refusal = null;
             _offerFocus = (OfferControl.CarryOver, formsOpenAtStart, reader);
+        }
+        else
+        {
+            _refusal = refused;
         }
     }
 
@@ -483,7 +501,7 @@ public sealed partial class VariableListView
 
         _offerFocus = null;
 
-        if (ShowsSharedList || State is not { IsAuthenticated: true } state || state.Reader != wanted.Reader
+        if (ShowsSharedList || State is not { } state || state.Reader != wanted.Reader
             || (OpenForms() & ~wanted.Forms) != 0)
         {
             return null;

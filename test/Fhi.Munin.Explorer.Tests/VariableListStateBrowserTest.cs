@@ -167,6 +167,9 @@ public class VariableListStateBrowserTest
         public List<Guid> Deleted { get; } = [];
         public List<string> Created { get; } = [];
 
+        /// <summary>The lists Munin holds, which a read of the reader's lists answers with.</summary>
+        public List<VariableList> Made { get; } = [];
+
         public override async Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default)
         {
             Created.Add(name);
@@ -176,8 +179,13 @@ public class VariableListStateBrowserTest
                 await hold.Task;
             }
 
-            return new VariableList { Id = Guid.NewGuid(), Name = name };
+            var list = new VariableList { Id = Guid.NewGuid(), Name = name };
+            Made.Add(list);
+            return list;
         }
+
+        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<VariableList>>([.. Made]);
 
         public override async Task<bool> AddItemsToMyListAsync(
             Guid id, IReadOnlyCollection<VariableDatasamlingKey> items, CancellationToken cancellationToken = default)
@@ -387,6 +395,67 @@ public class VariableListStateBrowserTest
         Assert.NotEqual(left, client.Adds[1].List);
         Assert.Equal([left, client.Adds[1].List], client.Deleted);
         Assert.Equal(2, browser.Rows.Count);
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenTheAddFailsAndTheDeleteThrowsToo_ThenTheAddsFailureIsWhatTheCallerSees()
+    {
+        // The caller words its sentence from the type: a limiter refusing the delete must not pass for the add's own fault.
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange(Rows(2));
+        var client = new ListsClient
+        {
+            AddThrows = new HttpRequestException("nede", null, System.Net.HttpStatusCode.InternalServerError),
+            DeleteThrows = true,
+        };
+        var state = await SignedInAsync(browser, client);
+
+        await Assert.ThrowsAsync<HttpRequestException>(() => state.CarryBrowserListOverAsync("Min variabelliste"));
+
+        Assert.Single(client.Deleted);
+        Assert.Contains(state.Lists, l => l.Id == client.Adds[0].List);
+        Assert.Equal(2, browser.Rows.Count);
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhileTheAddIsOut_ThenTheNewListIsOfferedNowhereEvenAfterARead()
+    {
+        // Offered, it could take a save of the reader's own, which deleting it after a refusal would take with it.
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange(Rows(2));
+        var hold = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new ListsClient { HoldFirstAdd = hold };
+        var state = await SignedInAsync(browser, client);
+
+        var carrying = state.CarryBrowserListOverAsync("Min variabelliste");
+        while (client.Adds.Count == 0)
+        {
+            await Task.Delay(5);
+        }
+
+        await state.RefreshAsync();
+        Assert.Contains(client.Made, l => l.Id == client.Adds[0].List);
+        Assert.DoesNotContain(state.Lists, l => l.Id == client.Adds[0].List);
+
+        hold.SetResult(true);
+        var carried = await carrying;
+
+        Assert.Contains(state.Lists, l => l.Id == carried!.List!.Id);
+    }
+
+    [Fact]
+    public async Task RemoveRefusedFromBrowserAsync_WhenAnotherTabAddedARowOfTheVariableUnseen_ThenItSaysNotRemoved()
+    {
+        // The removal takes out the rows this page knew of; a row of the same variable it did not know of is still there.
+        var (browser, client, _) = NamedRefusal();
+        var state = await SignedInAsync(browser, client);
+        var refused = await state.CarryBrowserListOverAsync("Min variabelliste");
+        var late = browser.Rows[0] with { DatasamlingId = Guid.NewGuid() };
+        browser.Rows.Add(late);
+
+        Assert.False(await state.RemoveRefusedFromBrowserAsync(refused!.Refused!));
+
+        Assert.Contains(browser.Rows, r => VariableDatasamlingKey.Of(r) == VariableDatasamlingKey.Of(late));
     }
 
     [Fact]
