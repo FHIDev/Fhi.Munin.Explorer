@@ -40,7 +40,10 @@ public class VariableCodeLinkHeldOutTest : ExplorerTestContext
                         DatasamlingName = "Hjerteinfarkt", VersionStatus = "Active",
                     },
                 ],
-                TotalCount = 1, PageNumber = 1, Size = pageSize, TotalPages = 1,
+                TotalCount = 1,
+                PageNumber = 1,
+                Size = pageSize,
+                TotalPages = 1,
             });
 
         public override Task<VariableDetail?> GetVariableAsync(
@@ -68,9 +71,15 @@ public class VariableCodeLinkHeldOutTest : ExplorerTestContext
         private static VariableDetail Detail() =>
             new()
             {
-                Id = VariableId, Code = Code, PreferredTerm = "Kjønn", KildeId = KildeId,
-                KildeName = "Hjerte- og karregisteret", KildeShortName = "HKR", DatasamlingId = DatasamlingId,
-                DatasamlingName = "Hjerteinfarkt", VersionStatus = "Active",
+                Id = VariableId,
+                Code = Code,
+                PreferredTerm = "Kjønn",
+                KildeId = KildeId,
+                KildeName = "Hjerte- og karregisteret",
+                KildeShortName = "HKR",
+                DatasamlingId = DatasamlingId,
+                DatasamlingName = "Hjerteinfarkt",
+                VersionStatus = "Active",
                 AllDatasamlinger = [new DatasamlingReference { Id = DatasamlingId }],
             };
     }
