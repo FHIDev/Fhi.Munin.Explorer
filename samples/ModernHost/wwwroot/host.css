@@ -2304,7 +2304,7 @@ table.munin-explorer-data-list tbody th {
   gap: 8px;
 }
 
-.munin-explorer-kilde__access > p:nth-child(odd):not(:first-child) {
+.munin-explorer-kilde__access > .editor-content:not(:first-child) {
   margin-top: 16px;
 }
 
@@ -3105,7 +3105,8 @@ table.munin-explorer-data-list tbody th {
 }
 
 /* The code picker's tree (Fhi.Metadata-9huq2.14): a fixed indent per level, the arrow in its own column (blank for a
-   code with nothing under it), so boxes and codes line up by level; a long name is cut, the whole of it in the title. */
+   code with nothing under it), so boxes and codes line up by level; a long name is cut, the whole of it in the title,
+   and wraps instead below 768px. */
 .munin-explorer-codetree,
 .munin-explorer-codetree__group {
   list-style: none;
@@ -3148,10 +3149,18 @@ table.munin-explorer-data-list tbody th {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+@media all and (max-width: 767px) {
+  .munin-explorer-codetree__name {
+    overflow: visible;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
 .munin-explorer-codetree__count {
   margin-inline-start: auto;
   white-space: nowrap;
   color: var(--grey60);
+  font-variant-numeric: tabular-nums;
 }
 
 .munin-explorer-codes__table th,
@@ -3978,11 +3987,17 @@ table.munin-explorer-data-list tbody th {
   width: 12.75rem;
 }
 
+/* The value fields as tall as the field and operator lists above them; `input.` leaves those lists out. */
+.munin-explorer-advanced-search input.input__field {
+  height: 2.75rem;
+  padding: 0 1rem;
+}
+
 .munin-explorer .munin-explorer-filters__chip {
   align-items: center;
   background: rgb(239, 240, 250);
   border: 1px solid rgb(81, 84, 123);
-  border-radius: 999px;
+  border-radius: 16px;
   color: rgb(38, 32, 69);
   display: inline-flex;
   font-size: 0.875rem;
