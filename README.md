@@ -1400,29 +1400,33 @@ leave `AnonymousLists` off; the gates turn it on for one state of their own. Tod
   `VariableFilter.Conditions`, written as the API's repeated `vilkar`, so a link with them restores the search. With
   it off, none of that is drawn and conditions a link carries are dropped, and `FilterChanged` tells the host so its
   address loses them too.
-- `AnonymousLists`, a variable list for a reader who is not signed in, kept only in their browser's local storage
-  under `Fhi.Munin.Explorer:anonymous-list`: each row's catalogue fields, exactly those named under «What the package
-  keeps in the reader's browser», no name for the list and nothing about the reader, at most 2000 rows. The package's
+- `AnonymousLists`, a variable list for a reader who is not signed in, kept only in their browser's local storage under
+  `Fhi.Munin.Explorer:anonymous-list`: each row's catalogue fields, exactly those named under «What the package keeps in
+  the reader's browser», no name for the list and nothing about the reader, at most 2000 rows. The package's
   `explorer-interop.js` owns the list and changes it a row at a time. Every call re-reads the stored list, so another
   tab's change stands for every row this page has not touched; for a row this page changed while writes were refused,
   its unsaved change wins. A write that would pass 2000 rows keeps the stored rows and drops this page's newest unsaved
-  adds. Another tab's change is picked up through the browser's `storage` event. It needs a list tab to show the
-  list: `VariableExplorer`, or `VariableSearch` given a `VariableList` fragment holding `VariableListView`; mounted
-  alone, `VariableSearch` offers a signed-out reader no save button. A signed-out reader's save button (the
-  one a signed-in reader has) adds a row to it, the list tab shows it through the shared-list view, and it can be
-  downloaded (`ExportItemsAsync`, Munin's anonymous export), shared as a code while its snapshot stays under the share
-  endpoint's 512 KB (about 990 full rows), or emptied. Signed in with rows still in the browser, the list tab offers one
-  button that saves them as a new list in Mine lister and then takes the saved rows out of the browser. A row Munin
-  refuses, such as one whose datasamling is no longer the variable's, stays in the browser and is not offered again
-  while the page is open: the reader is told how many, and a button of its own takes exactly those rows out of the browser. Munin's refusal
-  names its rows, so the rest are sent once more in one request; a refusal that names none is tried a row at a time,
-  for at most 20 rows, and past that saves nothing. Where Munin's write limiter stops it part way, the saved rows stay
-  in the new list, the rest stay in the browser, and the next press on that page adds them to that same list. Where the browser refuses storage the list lasts while the page
-  is open and the view says so; a host that does not serve the module has no list, and the save button and the list tab
-  say it cannot be kept in this browser. With it off, a signed-out reader has no save button and no list tab, as before.
-  `check-accessibility.sh` scans it with axe in `list-browser-list`, on a host started with it on and with the samples'
-  `Sample:SignedOut` switch, which mounts the composed explorer signed out; `check-hostile-host.sh` measures the same
-  state when it runs, nightly or by hand, not on a pull request.
+  adds. Another tab's change is picked up through the browser's `storage` event. It needs a list tab to show the list:
+  `VariableExplorer`, or `VariableSearch` given a `VariableList` fragment holding `VariableListView`; mounted alone,
+  `VariableSearch` offers a signed-out reader no save button. A signed-out reader's save button (the one a signed-in
+  reader has) adds a row to it, the list tab shows it through the shared-list view, and it can be downloaded
+  (`ExportItemsAsync`, Munin's anonymous export), shared as a code while its snapshot stays under the share endpoint's
+  512 KB (about 990 full rows), or emptied. Signed in with rows still in the browser, the list tab offers one button
+  that creates a new list in Mine lister and adds every row to it in one request, so Munin saves all of them or none;
+  once saved, the rows leave the browser. When Munin refuses the request and names variables, such as one whose row's
+  datasamling is no longer its own, nothing is saved: the new list is deleted again, every row stays in the browser, the
+  reader is told how many rows of how many variables Munin refused, and a button beside the offer takes every row of
+  those variables out of the browser, after which the offer counts the rows that are left and takes focus. A refused row
+  is not remembered: kept, the next press is refused the same way. Any other failure (a refusal that names nothing, the
+  write limiter, a lapsed sign-in, a list gone, an error) also saves nothing, deletes the new list and keeps every row;
+  where that delete fails too, the same reader's next press on that page reuses the empty list rather than making a
+  second. Saving the rows Munin accepts and leaving only the refused ones behind is follow-up work,
+  Fhi.Metadata-emsc0.3.14. Where the browser refuses storage the list lasts while the page is open and the view says so;
+  a host that does not serve the module has no list, and the save button and the list tab say it cannot be kept in this
+  browser. With it off, a signed-out reader has no save button and no list tab, as before. `check-accessibility.sh`
+  scans it with axe in `list-browser-list`, on a host started with it on and with the samples' `Sample:SignedOut`
+  switch, which mounts the composed explorer signed out; `check-hostile-host.sh` measures the same state when it runs,
+  nightly or by hand, not on a pull request.
 
 A new feature gets its own entry, off by default, and the entry is removed once the feature is on for every host.
 

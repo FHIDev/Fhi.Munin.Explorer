@@ -146,19 +146,22 @@ public class VariableListStateBrowserTest
         /// <summary>Rows Munin refuses, as it does a datasamling that is no longer the variable's: a 400 for any batch holding one.</summary>
         public HashSet<VariableDatasamlingKey> Stale { get; } = [];
 
-        /// <summary>When set, the add numbered <see cref="HeldAdd"/> waits for it, so a test can change the reader mid-call.</summary>
+        /// <summary>When set, the first add waits for it, so a test can change the reader mid-call.</summary>
         public TaskCompletionSource<bool>? HoldFirstAdd { get; init; }
-
-        public int HeldAdd { get; init; } = 1;
 
         /// <summary>The 400 names the refused variables, as Munin's body does; otherwise the body says nothing usable.</summary>
         public bool NamesStale { get; init; }
 
-        /// <summary>Munin's write limiter: every add after this many answers 429.</summary>
-        public int? ThrottleAfter { get; set; }
-
         /// <summary>When set, the create waits for it, so a test can change the reader mid-call.</summary>
         public TaskCompletionSource? HoldCreate { get; init; }
+
+        /// <summary>Thrown by every add, unless a stale row answers first.</summary>
+        public Exception? AddThrows { get; set; }
+
+        /// <summary>What an accepted add answers: false is Munin's 404 for a list that is gone.</summary>
+        public bool AddAnswer { get; init; } = true;
+
+        public bool DeleteThrows { get; set; }
 
         public List<(Guid List, int Rows)> Adds { get; } = [];
         public List<Guid> Deleted { get; } = [];
@@ -182,19 +185,14 @@ public class VariableListStateBrowserTest
             BeforeAdd?.Invoke();
             Adds.Add((id, items.Count));
 
-            if (Adds.Count == HeldAdd && HoldFirstAdd is { } hold)
+            if (Adds.Count == 1 && HoldFirstAdd is { } hold)
             {
                 return await hold.Task;
             }
 
-            if (Adds.Count > ThrottleAfter)
-            {
-                throw new MuninExplorerRateLimitedException();
-            }
-
             if (!items.Any(Stale.Contains))
             {
-                return true;
+                return AddThrows is { } thrown ? throw thrown : AddAnswer;
             }
 
             throw NamesStale
@@ -205,7 +203,7 @@ public class VariableListStateBrowserTest
         public override Task<bool> DeleteMyListAsync(Guid id, CancellationToken cancellationToken = default)
         {
             Deleted.Add(id);
-            return Task.FromResult(true);
+            return DeleteThrows ? throw new MuninExplorerRateLimitedException() : Task.FromResult(true);
         }
     }
 
@@ -259,41 +257,154 @@ public class VariableListStateBrowserTest
         Assert.False(state.BrowserCarryOverStuck);
     }
 
-    [Fact]
-    public async Task CarryBrowserListOverAsync_WhenOneRowIsStale_ThenTheOthersAreCarriedAndItStaysBehind()
+    private static List<VariableListItem> Rows(int count) => [.. Enumerable.Range(0, count).Select(n => FakeBrowserList.Row($"v{n}"))];
+
+    // Two rows of one variable, the second from a datasamling no longer its own, beside a row of another variable.
+    private static (FakeBrowserList Browser, ListsClient Client, VariableListItem Other) NamedRefusal()
     {
-        // A refused batch is tried a row at a time, so one stale row no longer costs the reader the whole list.
         var browser = new FakeBrowserList();
-        browser.Rows.AddRange([FakeBrowserList.Row("Alder"), FakeBrowserList.Row("Gammel"), FakeBrowserList.Row("Kjønn")]);
-        var stale = VariableDatasamlingKey.Of(browser.Rows[1]);
-        var client = new ListsClient();
-        client.Stale.Add(stale);
-        var state = await SignedInAsync(browser, client);
-
-        var carried = await state.CarryBrowserListOverAsync("Min variabelliste");
-
-        Assert.Equal(1, carried!.NotCarried);
-        Assert.Equal([stale], browser.Rows.Select(VariableDatasamlingKey.Of));
-        Assert.Empty(client.Deleted);
-        Assert.False(state.BrowserCarryOverStuck);
+        var valid = FakeBrowserList.Row("Alder", Guid.NewGuid());
+        var stale = valid with { DatasamlingId = Guid.NewGuid() };
+        var other = FakeBrowserList.Row("Kjønn");
+        browser.Rows.AddRange([valid, stale, other]);
+        var client = new ListsClient { NamesStale = true };
+        client.Stale.Add(VariableDatasamlingKey.Of(stale));
+        return (browser, client, other);
     }
 
     [Fact]
-    public async Task CarryBrowserListOverAsync_WhenEveryRowIsStale_ThenTheNewListIsDeletedAndNothingLeaves()
+    public async Task CarryBrowserListOverAsync_WhenMuninNamesAVariable_ThenNothingIsSavedTheListIsDeletedAndEveryRowStays()
     {
-        var browser = new FakeBrowserList();
-        browser.Rows.Add(FakeBrowserList.Row("Gammel"));
-        var client = new ListsClient();
-        client.Stale.Add(VariableDatasamlingKey.Of(browser.Rows[0]));
+        var (browser, client, other) = NamedRefusal();
+        var variable = browser.Rows[0].VariableId;
         var state = await SignedInAsync(browser, client);
 
         var carried = await state.CarryBrowserListOverAsync("Min variabelliste");
 
-        // An outcome of its own rather than null, so the reader is told how many rows stayed and not that it failed.
+        // One add for every row, so Munin saves all or none; both rows of the named variable are counted.
+        Assert.Equal([3], client.Adds.Select(a => a.Rows));
         Assert.Null(carried!.List);
-        Assert.Equal(1, carried.NotCarried);
+        Assert.Equal([variable], carried.Refused!);
+        Assert.Equal(2, carried.RefusedRows);
         Assert.Single(client.Deleted);
-        Assert.Single(browser.Rows);
+        Assert.Equal(3, browser.Rows.Count);
+        Assert.DoesNotContain(browser.Calls, c => c.Call == "removeKeys");
+
+        Assert.True(await state.RemoveRefusedFromBrowserAsync(carried.Refused!));
+
+        Assert.Equal([VariableDatasamlingKey.Of(other)], browser.Rows.Select(VariableDatasamlingKey.Of));
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenTheRefusedRowsAreRemoved_ThenTheNextPressSavesTheRest()
+    {
+        var (browser, client, _) = NamedRefusal();
+        var state = await SignedInAsync(browser, client);
+        var refused = await state.CarryBrowserListOverAsync("Min variabelliste");
+        await state.RemoveRefusedFromBrowserAsync(refused!.Refused!);
+
+        var carried = await state.CarryBrowserListOverAsync("Min variabelliste");
+
+        Assert.NotNull(carried!.List);
+        Assert.Equal([3, 1], client.Adds.Select(a => a.Rows));
+        Assert.Empty(browser.Rows);
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenTheRefusedRowsAreKept_ThenTheNextPressIsRefusedTheSameWay()
+    {
+        // Refused rows are not remembered: the next press sends them again, and Munin refuses them again.
+        var (browser, client, _) = NamedRefusal();
+        var state = await SignedInAsync(browser, client);
+        await state.CarryBrowserListOverAsync("Min variabelliste");
+
+        var again = await state.CarryBrowserListOverAsync("Min variabelliste");
+
+        Assert.Null(again!.List);
+        Assert.Equal(2, again.RefusedRows);
+        Assert.Equal([3, 3], client.Adds.Select(a => a.Rows));
+        Assert.Equal(2, client.Deleted.Count);
+        Assert.Equal(3, browser.Rows.Count);
+    }
+
+    [Theory]
+    [InlineData("unnamed")]
+    [InlineData("named-elsewhere")]
+    [InlineData("throttled")]
+    [InlineData("failed")]
+    public async Task CarryBrowserListOverAsync_WhenTheAddFailsWithoutNamingARow_ThenTheListIsDeletedEveryRowStaysAndItThrows(string failure)
+    {
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange(Rows(3));
+        var client = new ListsClient
+        {
+            AddThrows = failure switch
+            {
+                "unnamed" => new Client.ListItemsRefusedException(null),
+                "named-elsewhere" => new Client.ListItemsRefusedException([Guid.NewGuid()]),
+                "throttled" => new MuninExplorerRateLimitedException(),
+                _ => new HttpRequestException("nede", null, System.Net.HttpStatusCode.InternalServerError),
+            },
+        };
+        var state = await SignedInAsync(browser, client);
+
+        await Assert.ThrowsAnyAsync<Exception>(() => state.CarryBrowserListOverAsync("Min variabelliste"));
+
+        Assert.Single(client.Deleted);
+        Assert.Equal(3, browser.Rows.Count);
+        Assert.DoesNotContain(browser.Calls, c => c.Call == "removeKeys");
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenTheNewListIsGoneBeforeTheAdd_ThenItIsDeletedAndEveryRowStays()
+    {
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange(Rows(2));
+        var client = new ListsClient { AddAnswer = false };
+        var state = await SignedInAsync(browser, client);
+
+        Assert.Null(await state.CarryBrowserListOverAsync("Min variabelliste"));
+
+        Assert.Single(client.Deleted);
+        Assert.Equal(2, browser.Rows.Count);
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenTheDeleteFailsTooAfterALimiterRefusal_ThenTheNextPressReusesThatEmptyList()
+    {
+        // The limiter that refused the add can refuse the delete in the same window; a new list would be «Navn (2)».
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange(Rows(2));
+        var client = new ListsClient { AddThrows = new MuninExplorerRateLimitedException(), DeleteThrows = true };
+        var state = await SignedInAsync(browser, client);
+        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => state.CarryBrowserListOverAsync("Min variabelliste"));
+
+        client.AddThrows = null;
+        client.DeleteThrows = false;
+        var carried = await state.CarryBrowserListOverAsync("Min variabelliste (2)");
+
+        Assert.Equal(["Min variabelliste"], client.Created);
+        Assert.Equal(2, client.Adds.Count);
+        Assert.Equal(client.Adds[0].List, carried!.List!.Id);
+        Assert.Empty(browser.Rows);
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenAnotherReaderPressesAfterAnUndeletedList_ThenTheirOwnListIsMade()
+    {
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange(Rows(2));
+        var client = new ListsClient { AddThrows = new MuninExplorerRateLimitedException(), DeleteThrows = true };
+        var state = await SignedInAsync(browser, client);
+        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => state.CarryBrowserListOverAsync("Min variabelliste"));
+
+        state.SetAuthenticated(false);
+        state.SetAuthenticated(true);
+        client.AddThrows = null;
+        await state.CarryBrowserListOverAsync("Min variabelliste");
+
+        Assert.Equal(2, client.Created.Count);
+        Assert.NotEqual(client.Adds[0].List, client.Adds[1].List);
     }
 
     [Theory]
@@ -301,9 +412,9 @@ public class VariableListStateBrowserTest
     [InlineData(true)]
     public async Task CarryBrowserListOverAsync_WhenTheReaderChangesMidway_ThenItStopsAndLeavesTheBrowserRows(bool anotherSignsIn)
     {
-        // The rows and the list belong to the reader who pressed: no further batch, no removal, no list made active.
+        // The rows and the list belong to the reader who pressed: no removal, no delete, no list made active.
         var browser = new FakeBrowserList();
-        browser.Rows.AddRange(Enumerable.Range(0, IMuninExplorerClient.MaxVariablesPerBatch + 1).Select(n => FakeBrowserList.Row($"v{n}")));
+        browser.Rows.AddRange(Rows(3));
         var hold = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var client = new ListsClient { HoldFirstAdd = hold };
         var state = await SignedInAsync(browser, client);
@@ -325,55 +436,18 @@ public class VariableListStateBrowserTest
         Assert.Null(await carrying);
         Assert.Single(client.Adds);
         Assert.Empty(client.Deleted);
-        Assert.Equal(IMuninExplorerClient.MaxVariablesPerBatch + 1, browser.Rows.Count);
+        Assert.Equal(3, browser.Rows.Count);
         Assert.Null(state.ActiveListId);
         Assert.DoesNotContain(browser.Calls, c => c.Call == "removeKeys");
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task CarryBrowserListOverAsync_WhenAnotherReaderSignsInDuringARowByRowAdd_ThenNoFurtherRowIsSent(bool rowRefused)
+    [InlineData("named")]
+    [InlineData("unnamed")]
+    [InlineData("throttled")]
+    public async Task CarryBrowserListOverAsync_WhenAnotherReaderSignsInAndTheAddIsThenRefused_ThenNothingIsDeletedUnderThem(string refusal)
     {
-        // The batch is refused for its stale row, so the rows go one at a time; the reader changes on the first of them.
-        var browser = new FakeBrowserList();
-        browser.Rows.AddRange([FakeBrowserList.Row("Gammel"), FakeBrowserList.Row("Alder"), FakeBrowserList.Row("Kjønn")]);
-        var hold = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var client = new ListsClient { HoldFirstAdd = hold, HeldAdd = 2 };
-        client.Stale.Add(VariableDatasamlingKey.Of(browser.Rows[0]));
-        var state = await SignedInAsync(browser, client);
-
-        var carrying = state.CarryBrowserListOverAsync("Min variabelliste");
-        while (client.Adds.Count < 2)
-        {
-            await Task.Delay(5);
-        }
-
-        state.SetAuthenticated(false);
-        state.SetAuthenticated(true);
-
-        if (rowRefused)
-        {
-            hold.SetException(new HttpRequestException("stale", null, System.Net.HttpStatusCode.BadRequest));
-        }
-        else
-        {
-            hold.SetResult(true);
-        }
-
-        Assert.Null(await carrying);
-        Assert.Equal(2, client.Adds.Count);
-        Assert.Empty(client.Deleted);
-        Assert.Equal(3, browser.Rows.Count);
-        Assert.DoesNotContain(browser.Calls, c => c.Call == "removeKeys");
-    }
-
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task CarryBrowserListOverAsync_WhenAnotherReaderSignsInAndTheBatchIsThenRefused_ThenNothingIsResentOrDeleted(bool named)
-    {
-        // The refusal belongs to the reader who pressed; sorting it out under the next one would write to their lists.
+        // The refusal belongs to the reader who pressed; deleting the new list under the next one would write to their lists.
         var browser = new FakeBrowserList();
         browser.Rows.AddRange([FakeBrowserList.Row("Gammel"), FakeBrowserList.Row("Alder")]);
         var hold = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -388,9 +462,12 @@ public class VariableListStateBrowserTest
 
         state.SetAuthenticated(false);
         state.SetAuthenticated(true);
-        hold.SetException(named
-            ? new Client.ListItemsRefusedException([browser.Rows[0].VariableId])
-            : new HttpRequestException("stale", null, System.Net.HttpStatusCode.BadRequest));
+        hold.SetException(refusal switch
+        {
+            "named" => new Client.ListItemsRefusedException([browser.Rows[0].VariableId]),
+            "unnamed" => new HttpRequestException("stale", null, System.Net.HttpStatusCode.BadRequest),
+            _ => new MuninExplorerRateLimitedException(),
+        });
 
         Assert.Null(await carrying);
         Assert.Single(client.Adds);
@@ -447,154 +524,16 @@ public class VariableListStateBrowserTest
         Assert.Single(browser.Rows);
     }
 
-    private static List<VariableListItem> Rows(int count) => [.. Enumerable.Range(0, count).Select(n => FakeBrowserList.Row($"v{n}"))];
-
     [Fact]
-    public async Task CarryBrowserListOverAsync_WhenMuninNamesAStaleRowAmongMany_ThenTheRestIsSentOnceMore()
+    public async Task RemoveRefusedFromBrowserAsync_WhenTheRowsStayInTheStoredValue_ThenItSaysTheyWereNotRemoved()
     {
-        // Row by row, 70 rows would be 70 writes against a limiter allowing 60 a minute.
-        var browser = new FakeBrowserList();
-        browser.Rows.AddRange(Rows(70));
-        var stale = VariableDatasamlingKey.Of(browser.Rows[40]);
-        var client = new ListsClient { NamesStale = true };
-        client.Stale.Add(stale);
+        // Another page still finds them there and would draw them, so «removed» would not be true.
+        var (browser, client, _) = NamedRefusal();
+        browser.KeepsStored = true;
         var state = await SignedInAsync(browser, client);
+        var refused = await state.CarryBrowserListOverAsync("Min variabelliste");
 
-        var carried = await state.CarryBrowserListOverAsync("Min variabelliste");
-
-        Assert.Equal([70, 69], client.Adds.Select(a => a.Rows));
-        Assert.Equal(1, carried!.NotCarried);
-        Assert.NotNull(carried.List);
-        Assert.Equal([stale], browser.Rows.Select(VariableDatasamlingKey.Of));
-        Assert.Empty(client.Deleted);
-    }
-
-    [Fact]
-    public async Task CarryBrowserListOverAsync_WhenTheRefusalNamesNoRowAndTheBatchIsLong_ThenNothingIsSavedOneByOne()
-    {
-        var browser = new FakeBrowserList();
-        browser.Rows.AddRange(Rows(VariableListState.MaxRowsTriedAlone + 1));
-        var client = new ListsClient();
-        client.Stale.Add(VariableDatasamlingKey.Of(browser.Rows[0]));
-        var state = await SignedInAsync(browser, client);
-
-        await Assert.ThrowsAnyAsync<HttpRequestException>(() => state.CarryBrowserListOverAsync("Min variabelliste"));
-
-        Assert.Single(client.Adds);
-        Assert.Single(client.Deleted);
-        Assert.Equal(VariableListState.MaxRowsTriedAlone + 1, browser.Rows.Count);
-    }
-
-    [Fact]
-    public async Task CarryBrowserListOverAsync_WhenTheRefusalNamesNoRowAndTheBatchIsShort_ThenEachRowIsTriedAlone()
-    {
-        var browser = new FakeBrowserList();
-        browser.Rows.AddRange(Rows(VariableListState.MaxRowsTriedAlone));
-        var client = new ListsClient();
-        client.Stale.Add(VariableDatasamlingKey.Of(browser.Rows[0]));
-        var state = await SignedInAsync(browser, client);
-
-        var carried = await state.CarryBrowserListOverAsync("Min variabelliste");
-
-        Assert.Equal(VariableListState.MaxRowsTriedAlone + 1, client.Adds.Count);
-        Assert.Equal(1, carried!.NotCarried);
-        Assert.Single(browser.Rows);
-    }
-
-    [Fact]
-    public async Task CarryBrowserListOverAsync_WhenTheLimiterRefusesPartWay_ThenTheSavedRowsStayAndTheNextPressFinishesTheSameList()
-    {
-        // One batch refused without names, then rows alone until the limiter says no: four rows are saved by then.
-        var browser = new FakeBrowserList();
-        browser.Rows.AddRange(Rows(10));
-        var stale = VariableDatasamlingKey.Of(browser.Rows[9]);
-        var client = new ListsClient { ThrottleAfter = 5 };
-        client.Stale.Add(stale);
-        var state = await SignedInAsync(browser, client);
-
-        var first = await state.CarryBrowserListOverAsync("Min variabelliste");
-
-        Assert.True(first!.CutShort);
-        Assert.NotNull(first.List);
-        Assert.Empty(client.Deleted);
-        Assert.Equal(6, browser.Rows.Count);
-        Assert.Equal(6, state.BrowserRowsToCarry);
-
-        client.ThrottleAfter = null;
-        var second = await state.CarryBrowserListOverAsync("Min variabelliste (2)");
-
-        Assert.Equal(["Min variabelliste"], client.Created);
-        Assert.Equal(first.List!.Id, second!.List!.Id);
-        Assert.False(second.CutShort);
-        Assert.Equal([stale], browser.Rows.Select(VariableDatasamlingKey.Of));
-    }
-
-    [Fact]
-    public async Task CarryBrowserListOverAsync_WhenTheLimiterRefusesBeforeAnyRowIsSaved_ThenTheNewListIsDeletedAndItThrows()
-    {
-        var browser = new FakeBrowserList();
-        browser.Rows.AddRange(Rows(3));
-        var client = new ListsClient { ThrottleAfter = 0 };
-        var state = await SignedInAsync(browser, client);
-
-        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => state.CarryBrowserListOverAsync("Min variabelliste"));
-
-        Assert.Single(client.Deleted);
-        Assert.Equal(3, browser.Rows.Count);
-    }
-
-    [Fact]
-    public async Task CarryBrowserListOverAsync_WhenTheOnlyRowIsRefused_ThenItIsNotOfferedAgain()
-    {
-        var browser = new FakeBrowserList();
-        browser.Rows.Add(FakeBrowserList.Row("Gammel"));
-        var client = new ListsClient { NamesStale = true };
-        client.Stale.Add(VariableDatasamlingKey.Of(browser.Rows[0]));
-        var state = await SignedInAsync(browser, client);
-
-        await state.CarryBrowserListOverAsync("Min variabelliste");
-
-        Assert.Equal(1, state.BrowserRefusedCount);
-        Assert.Equal(0, state.BrowserRowsToCarry);
-        Assert.Null(await state.CarryBrowserListOverAsync("Min variabelliste"));
-        Assert.Single(client.Created);
-    }
-
-    [Fact]
-    public async Task RemoveRefusedFromBrowserAsync_WhenMuninRefusedARow_ThenExactlyThatRowLeavesTheBrowser()
-    {
-        var browser = new FakeBrowserList();
-        browser.Rows.AddRange([FakeBrowserList.Row("Gammel"), FakeBrowserList.Row("Alder")]);
-        var stale = VariableDatasamlingKey.Of(browser.Rows[0]);
-        var client = new ListsClient { NamesStale = true };
-        client.Stale.Add(stale);
-        var state = await SignedInAsync(browser, client);
-        await state.CarryBrowserListOverAsync("Min variabelliste");
-        var late = FakeBrowserList.Row("Kjønn");
-        browser.Rows.Add(late);
-        await browser.ChangedElsewhereAsync();
-
-        Assert.True(await state.RemoveRefusedFromBrowserAsync());
-
-        Assert.Equal([VariableDatasamlingKey.Of(late)], browser.Rows.Select(VariableDatasamlingKey.Of));
-        Assert.Equal(0, state.BrowserRefusedCount);
-    }
-
-    [Fact]
-    public async Task CarryBrowserListOverAsync_WhenOnlyRefusedRowsRemainBesideRowsStillStored_ThenItIsNotStuck()
-    {
-        // Stuck means a press would save rows twice; the refused rows are not offered, so nothing would be.
-        var browser = new FakeBrowserList { KeepsStored = true };
-        browser.Rows.AddRange([FakeBrowserList.Row("Alder"), FakeBrowserList.Row("Gammel")]);
-        var client = new ListsClient { NamesStale = true };
-        client.Stale.Add(VariableDatasamlingKey.Of(browser.Rows[1]));
-        var state = await SignedInAsync(browser, client);
-
-        var carried = await state.CarryBrowserListOverAsync("Min variabelliste");
-
-        Assert.False(carried!.LeftTheBrowser);
-        Assert.Equal(1, state.BrowserCount);
-        Assert.False(state.BrowserCarryOverStuck);
+        Assert.False(await state.RemoveRefusedFromBrowserAsync(refused!.Refused!));
     }
 
     private static async Task<VariableListState> StuckAsync()
@@ -631,4 +570,8 @@ public class VariableListStateBrowserTest
     [Fact]
     public void MaxBrowserListRows_WhenCompared_ThenItIsTheExportsCeiling() =>
         Assert.Equal(Client.MuninExplorerClient.MaxExportItems, VariableListState.MaxBrowserListRows);
+
+    [Fact]
+    public void MaxBrowserListRows_WhenCompared_ThenTheWholeListFitsTheOneAddOfACarryOver() =>
+        Assert.True(VariableListState.MaxBrowserListRows <= IMuninExplorerClient.MaxVariablesPerBatch);
 }

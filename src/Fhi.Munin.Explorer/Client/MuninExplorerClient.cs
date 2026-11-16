@@ -403,7 +403,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
 
         using var response = await SendAsync(HttpMethod.Post, MyListVariables(id), new ItemsBody(items), cancellationToken);
 
-        // Munin names the variables whose datasamling is not their own, so a caller can resend the rest at once.
+        // Munin names the variables whose datasamling is not their own, so a caller can say which rows it refused.
         if (response.StatusCode == HttpStatusCode.BadRequest)
         {
             throw new ListItemsRefusedException(await RefusedVariablesAsync(response, cancellationToken).ConfigureAwait(false));

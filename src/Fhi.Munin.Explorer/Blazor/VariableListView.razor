@@ -776,27 +776,29 @@ else if (ShowsBrowserCopy)
     </text>;
 
     // Signed in with rows still in the browser: one press saves them as a new list, never on its own (Fhi.Metadata-emsc0.3.12).
-    // Rows Munin refused are not offered again; signed in there is no «Tøm listen», so they get a button of their own.
+    // Munin saves all or none; signed in there is no «Tøm listen», so the rows of variables it refused get a button.
     private RenderFragment CarryOverOffer => @<text>
-        @if (State is { IsAuthenticated: true, BrowserRowsToCarry: > 0 and var rows, BrowserCarryOverStuck: false } && !ShowsSharedList)
+        @if (ShowsCarryOverOffer)
         {
             <div>
-                <p class="caption">@T.BrowserListWaiting(rows)</p>
+                <p class="caption">@T.BrowserListWaiting(State!.BrowserCount)</p>
                 <button class="hd-button-square button-square--secondary"
                         type="button"
                         aria-disabled="@AriaDisabled(!_carryingOver)"
                         aria-busy="@(_carryingOver ? "true" : null)"
+                        @ref="_carryOverButton"
                         @onclick="CarryBrowserListOverAsync">@(_carryingOver ? T.SavingToList : T.CarryBrowserListOver)</button>
                 <p role="alert">@(_carryOverFailed ? T.CarryBrowserListOverError : null)</p>
             </div>
         }
-        @if (State is { IsAuthenticated: true, BrowserRefusedCount: > 0 and var refused } && !ShowsSharedList)
+        @if (RefusedRowsShown is { } refused)
         {
             <div>
                 <button class="hd-button-square button-square--ghost-blue"
                         type="button"
                         aria-disabled="@AriaDisabled(!_carryingOver)"
-                        @onclick="RemoveRefusedFromBrowserAsync">@T.RemoveRefusedFromBrowser(refused)</button>
+                        @ref="_removeRefusedButton"
+                        @onclick="RemoveRefusedFromBrowserAsync">@T.RemoveRefusedFromBrowser(refused.Rows, refused.Variables)</button>
             </div>
         }
     </text>;

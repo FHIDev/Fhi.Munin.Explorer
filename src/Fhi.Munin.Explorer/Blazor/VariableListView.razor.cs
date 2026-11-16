@@ -704,8 +704,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         var fromWrite = TakeFocusTarget();
         var fromCreateForm = TakeCreateFormFocusTarget();
         var fromRemove = TakeRemoveFocusTarget();
+        var fromOffer = TakeOfferFocusTarget();
 
-        if ((fromCreateForm ?? fromSource ?? fromMenu ?? fromWrite ?? fromRemove) is { } target)
+        if ((fromCreateForm ?? fromSource ?? fromMenu ?? fromWrite ?? fromRemove ?? fromOffer) is { } target)
         {
             try
             {
@@ -1330,8 +1331,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _listCreatedSaid = false;
         _carriedOverAs = null;
         _carriedOverButStillHere = false;
-        _notCarried = 0;
-        _carryOverCutShort = false;
+        _refusalSaid = null;
         _refusedRemoved = null;
         _createFailure = ListActionFailure.None;
         _actionFailure = ListActionFailure.None;

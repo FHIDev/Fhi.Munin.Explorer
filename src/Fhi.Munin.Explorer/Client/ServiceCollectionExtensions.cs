@@ -62,11 +62,11 @@ public sealed class MuninExplorerFeatures
 
     /// <summary>A variable list for a reader who is not signed in, kept only in their browser's local storage; key
     /// <c>MuninExplorer:Features:AnonymousLists</c>. The save button adds a row to it, the list tab shows it, and it can be
-    /// downloaded, shared or emptied; at sign-in the reader may save it as a new list of their own. It holds catalogue
-    /// fields only, never anything about the reader. It needs a list tab to show the list: <c>VariableExplorer</c>, or
-    /// <c>VariableSearch</c> given a <c>VariableList</c> fragment holding <c>VariableListView</c>; mounted alone,
-    /// <c>VariableSearch</c> offers a signed-out reader no save button. Off: a signed-out reader has no list and no save
-    /// button, as before.</summary>
+    /// downloaded, shared or emptied; at sign-in the reader may save it as a new list of their own, every row or, when
+    /// Munin refuses any, none. It holds catalogue fields only, never anything about the reader. It needs a list tab to
+    /// show the list: <c>VariableExplorer</c>, or <c>VariableSearch</c> given a <c>VariableList</c> fragment holding
+    /// <c>VariableListView</c>; mounted alone, <c>VariableSearch</c> offers a signed-out reader no save button. Off: a
+    /// signed-out reader has no list and no save button, as before.</summary>
     public bool? AnonymousLists { get; set; }
 }
 

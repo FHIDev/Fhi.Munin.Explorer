@@ -19,9 +19,15 @@ public sealed partial class VariableListView
     private bool _carryOverFailed;
     private string? _carriedOverAs;
     private bool _carriedOverButStillHere;
-    private int _notCarried;
-    private bool _carryOverCutShort;
-    private bool? _refusedRemoved;
+
+    // The variables Munin refused at this reader's last press, whose rows the remove button takes out of the browser.
+    // The alert counts them as the button does, from the rows this page holds; the press's own count only once none are.
+    private (IReadOnlySet<Guid> Variables, int Reader)? _refusal;
+    private (int Rows, int Variables)? _refusalSaid;
+    private (bool Removed, int Rows, int Left)? _refusedRemoved;
+    private ElementReference _carryOverButton;
+    private ElementReference _removeRefusedButton;
+    private (OfferControl Control, int Forms, int Reader)? _offerFocus;
     private bool _browserShareTooLong;
     private bool _browserPageFailed;
     private bool _browserShareUnreadable;
@@ -53,11 +59,28 @@ public sealed partial class VariableListView
         : ShareMessage ?? DownloadMessage;
 
     private string? CarriedOverMessage =>
-        _refusedRemoved is { } removed ? (removed ? T.BrowserListRefusedRemoved : T.BrowserListRefusedNotRemoved)
-        : _carriedOverAs is not { } name ? (_notCarried > 0 ? T.BrowserListNotCarried(_notCarried) : null)
-        : (_carriedOverButStillHere ? T.BrowserListSavedButStillHere(name) : T.BrowserListSavedAs(name))
-          + (_notCarried > 0 ? " " + T.BrowserListNotCarried(_notCarried) : "")
-          + (_carryOverCutShort ? " " + T.BrowserListCarryOverCutShort : "");
+        _refusedRemoved is { } removal
+            ? (removal.Removed ? T.BrowserListRefusedRemoved(removal.Rows, removal.Left) : T.BrowserListRefusedNotRemoved)
+        : _refusalSaid is { } said ? T.BrowserListRefused((RefusedRowsShown ?? said).Rows, (RefusedRowsShown ?? said).Variables)
+        : _carriedOverAs is not { } name ? null
+        : _carriedOverButStillHere ? T.BrowserListSavedButStillHere(name) : T.BrowserListSavedAs(name);
+
+    private enum OfferControl
+    {
+        CarryOver,
+        RemoveRefused
+    }
+
+    /// <summary>Signed in with rows in the browser, and no carry-over that saved them but could not take them out.</summary>
+    private bool ShowsCarryOverOffer =>
+        State is { IsAuthenticated: true, BrowserCount: > 0, BrowserCarryOverStuck: false } && !ShowsSharedList;
+
+    /// <summary>The rows and variables the remove button would take out: those of the refusal, for the reader it was made to.</summary>
+    private (int Rows, int Variables)? RefusedRowsShown =>
+        _refusal is { } refusal && State is { IsAuthenticated: true } state && state.Reader == refusal.Reader && !ShowsSharedList
+        && state.BrowserRowsOf(refusal.Variables) is > 0 and var rows
+            ? (rows, state.BrowserVariablesOf(refusal.Variables))
+            : null;
 
     /// <summary>The sentence over the browser list: kept, kept for this page only, or not there at all.</summary>
     private string BrowserListStorageSentence =>
@@ -317,6 +340,7 @@ public sealed partial class VariableListView
 
         _carryingOver = true;
         _carryOverFailed = false;
+        _refusal = null;
         ForgetFailures();
 
         // Before the first await, as a create does: a form the reader opens meanwhile keeps the focus.
@@ -360,8 +384,10 @@ public sealed partial class VariableListView
 
         if (carried.List is not { } created)
         {
-            // Munin refused every row: they stay in the browser, and the offer to remove them says how.
-            _notCarried = carried.NotCarried;
+            // Munin named variables and saved nothing: every row stays, and the button beside the offer removes theirs.
+            _refusal = (carried.Refused ?? new HashSet<Guid>(), reader);
+            _refusalSaid = (carried.RefusedRows, carried.Refused?.Count ?? 0);
+            _offerFocus = (OfferControl.RemoveRefused, formsOpenAtStart, reader);
             return;
         }
 
@@ -406,29 +432,56 @@ public sealed partial class VariableListView
         _focusAfterCreate = true;
         _carriedOverAs = created.Name;
         _carriedOverButStillHere = !carried.LeftTheBrowser;
-        _notCarried = carried.NotCarried;
-        _carryOverCutShort = carried.CutShort;
     }
 
-    /// <summary>Takes the rows Munin refused out of the browser, which signed in has no «Tøm listen» to do it.</summary>
+    /// <summary>Takes the refused variables' rows out of the browser, which signed in has no «Tøm listen» to do it.</summary>
     private async Task RemoveRefusedFromBrowserAsync()
     {
-        if (State is null || !IsAuthenticated || _carryingOver)
+        if (State is null || !IsAuthenticated || _carryingOver || _refusal is not { } refusal || refusal.Reader != State.Reader)
         {
             return;
         }
 
         ForgetFailures();
+        var reader = State.Reader;
         var formsOpenAtStart = OpenForms();
-        var removed = await State.RemoveRefusedFromBrowserAsync();
-        _refusedRemoved = removed;
+        var rows = State.BrowserRowsOf(refusal.Variables);
+        var removed = await State.RemoveRefusedFromBrowserAsync(refusal.Variables);
 
-        // The button leaves with its rows; focus goes where a created list's would.
+        if (State.Reader != reader || !IsAuthenticated)
+        {
+            return;
+        }
+
+        _refusedRemoved = (removed, rows, State.BrowserCount);
+
+        // The button leaves with its rows; focus goes to the offer for the rest, or where a created list's would.
         if (removed)
         {
-            _formsOpenAtCreate = formsOpenAtStart;
-            _focusAfterCreate = true;
+            _refusal = null;
+            _offerFocus = (OfferControl.CarryOver, formsOpenAtStart, reader);
         }
+    }
+
+    /// <summary>Where focus goes after a refusal or a removal, gated as <c>TakeFocusTarget</c> is, or null.</summary>
+    private ElementReference? TakeOfferFocusTarget()
+    {
+        if (_offerFocus is not { } wanted)
+        {
+            return null;
+        }
+
+        _offerFocus = null;
+
+        if (ShowsSharedList || State is not { IsAuthenticated: true } state || state.Reader != wanted.Reader
+            || (OpenForms() & ~wanted.Forms) != 0)
+        {
+            return null;
+        }
+
+        return wanted.Control == OfferControl.RemoveRefused ? (RefusedRowsShown is not null ? _removeRefusedButton : null)
+            : ShowsCarryOverOffer ? _carryOverButton
+            : Lists.Count > 1 ? _listPicker : _createToggle;
     }
 
     // The list's name, made free among the reader's lists the way a reader would: «Navn (2)».

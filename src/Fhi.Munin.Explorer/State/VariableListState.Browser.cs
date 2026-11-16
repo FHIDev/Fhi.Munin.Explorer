@@ -366,32 +366,24 @@ public sealed partial class VariableListState : IDisposable
     }
 
     /// <summary>
-    /// What a carry-over did: the list the rows went to, null when Munin refused every one; whether the saved rows
-    /// also left the browser; how many Munin refused; and whether it stopped part way, the rest left for another press.
+    /// What a carry-over did: the list the rows went to and whether they also left the browser; or, when Munin refused
+    /// the variables in <see cref="Refused"/>, no list, nothing saved, and <see cref="RefusedRows"/> browser rows of them.
     /// </summary>
-    internal sealed record CarryOver(VariableList? List, bool LeftTheBrowser, int NotCarried = 0, bool CutShort = false);
+    internal sealed record CarryOver(VariableList? List, bool LeftTheBrowser, IReadOnlySet<Guid>? Refused = null, int RefusedRows = 0);
 
-    /// <summary>Past this many rows a batch Munin refused without naming its rows is not tried a row at a time.</summary>
-    /// <remarks>Each row is a write, and Munin allows a reader 60 writes a minute.</remarks>
-    internal const int MaxRowsTriedAlone = 20;
+    /// <summary>How many rows of the browser list belong to these variables, as this page last read it.</summary>
+    internal int BrowserRowsOf(IReadOnlySet<Guid> variables) => _browserKeys.Count(k => variables.Contains(k.VariableId));
 
-    // Rows Munin refused in this circuit, which the carry-over does not offer again; swapped whole, as the keys are.
-    private IReadOnlySet<VariableDatasamlingKey> _browserRefused = new HashSet<VariableDatasamlingKey>();
+    /// <summary>How many of these variables still have a row in the browser list, as this page last read it.</summary>
+    internal int BrowserVariablesOf(IReadOnlySet<Guid> variables) =>
+        _browserKeys.Select(k => k.VariableId).Where(variables.Contains).Distinct().Count();
 
-    // The list a carry-over cut short went to, so the next press of the same reader finishes it rather than adding one.
-    private (Guid List, int Reader)? _carryInto;
+    // A list a carry-over made and could not delete again, empty, which the same reader's next press reuses.
+    private (Guid List, int Reader)? _emptyCarryList;
 
-    /// <summary>Rows Munin refused that are still in the browser list.</summary>
-    internal int BrowserRefusedCount => _browserRefused.Count(_browserKeys.Contains);
-
-    /// <summary>Rows the carry-over would send now: the browser list's, less those Munin already refused.</summary>
-    internal int BrowserRowsToCarry => Math.Max(0, BrowserCount - BrowserRefusedCount);
-
-    /// <summary>
-    /// Saves the browser list to the signed-in reader and takes the saved rows, only those, out of the browser; a press
-    /// after one cut short adds to that one's list. Null when there was nothing to carry or the reader changed before
-    /// the saving was done; throws when nothing was saved, deleting a list it made.
-    /// </summary>
+    /// <summary>Saves the browser list as a new list in one add, all or nothing, then takes its rows out of the browser.</summary>
+    /// <returns>Null when signed out, the list is empty or unread, the reader changed during any call, or the new list was
+    /// gone; any other failure throws, an unnamed refusal too. When nothing is saved, the list is deleted and rows stay.</returns>
     internal async Task<CarryOver?> CarryBrowserListOverAsync(string name, CancellationToken cancellationToken = default)
     {
         // Every await is a point at which the reader can sign out; the rows belong to the reader who pressed.
@@ -409,186 +401,91 @@ public sealed partial class VariableListState : IDisposable
             return null;
         }
 
-        var keys = read.Distinct().Where(k => !_browserRefused.Contains(k)).ToList();
+        var keys = read.Distinct().ToList();
 
         if (keys.Count == 0)
         {
             return null;
         }
 
-        var continued = _carryInto is { } into && into.Reader == reader ? _lists.FirstOrDefault(l => l.Id == into.List) : null;
         // CreateAsync answers null itself when the reader changed while it was out.
-        var target = continued ?? await CreateAsync(name, cancellationToken).ConfigureAwait(false);
+        var reused = _emptyCarryList is { } empty && empty.Reader == reader ? _lists.FirstOrDefault(l => l.Id == empty.List) : null;
 
-        if (target is null)
+        if ((reused ?? await CreateAsync(name, cancellationToken).ConfigureAwait(false)) is not { } target)
         {
             return null;
         }
 
-        List<VariableDatasamlingKey> carried = [];
-        List<VariableDatasamlingKey> refused = [];
-        var cutShort = false;
+        bool accepted;
 
         try
         {
-            foreach (var batch in keys.Chunk(IMuninExplorerClient.MaxVariablesPerBatch))
-            {
-                if (!await AddOrSortAsync(target.Id, batch, carried, refused, reader, cancellationToken).ConfigureAwait(false))
-                {
-                    return await GiveUpAsync(target.Id, reader, made: continued is null && carried.Count == 0).ConfigureAwait(false);
-                }
-            }
+            // One request, which the browser list's ceiling keeps within a batch: Munin saves every row or none.
+            accepted = await AddItemsAsync(target.Id, keys, kilder: null, cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception ex) when (Reader == reader && carried.Count > 0)
+        catch (ListItemsRefusedException ex) when (Reader == reader && ex.VariableIds is { Count: > 0 } named)
         {
-            // A list holding saved rows is the reader's now; the rest stay in the browser for the next press.
-            _logger?.LogWarning(ex, "a carry-over to list {ListId} stopped part way", target.Id);
-            cutShort = true;
-        }
-        catch (Exception ex) when (Reader == reader)
-        {
-            // Nothing saved: a list this press made is not left behind empty.
-            _logger?.LogWarning(ex, "a carry-over to list {ListId} saved nothing", target.Id);
+            _logger?.LogWarning(ex, "the API refused the browser list's rows of {Count} variables", named.Count);
+            await DiscardAsync(target.Id, reader).ConfigureAwait(false);
+            var refused = keys.Select(k => k.VariableId).Where(named.Contains).ToHashSet();
 
-            if (continued is null)
-            {
-                await DeleteQuietlyAsync(target.Id).ConfigureAwait(false);
-            }
-
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning(ex, "a carry-over stopped because the reader changed");
-            return null;
-        }
-
-        _browserRefused = new HashSet<VariableDatasamlingKey>(_browserRefused.Concat(refused));
-        _carryInto = cutShort ? (target.Id, reader) : null;
-
-        if (carried.Count == 0)
-        {
-            if (continued is null)
-            {
-                await DeleteQuietlyAsync(target.Id).ConfigureAwait(false);
-            }
-
-            BrowserChanged();
-            return new CarryOver(null, LeftTheBrowser: false, refused.Count);
-        }
-
-        var left = await RemoveBrowserKeysAsync(carried).ConfigureAwait(false);
-
-        // Rows left only where no other page reads them, or none left at all, cannot be saved twice.
-        if (Reader == reader)
-        {
-            BrowserCarryOverStuck = !left && BrowserRowsToCarry > 0;
-        }
-
-        return new CarryOver(target, left, refused.Count, cutShort);
-    }
-
-    /// <summary>
-    /// Adds one batch. Refused, it drops the rows Munin names and sends the rest once; refused without names, it
-    /// tries each row alone, up to <see cref="MaxRowsTriedAlone"/>. False when the list is gone or the reader changed.
-    /// </summary>
-    private async Task<bool> AddOrSortAsync(
-        Guid listId,
-        VariableDatasamlingKey[] batch,
-        List<VariableDatasamlingKey> carried,
-        List<VariableDatasamlingKey> refused,
-        int reader,
-        CancellationToken cancellationToken)
-    {
-        IReadOnlyList<Guid>? named;
-
-        try
-        {
-            return await AddAllAsync(batch).ConfigureAwait(false);
-        }
-        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.BadRequest && Reader == reader)
-        {
-            named = (ex as ListItemsRefusedException)?.VariableIds;
-
-            if (named is null && batch.Length > MaxRowsTriedAlone)
+            // Naming none of these rows, it says no more than a refusal that names nothing.
+            if (refused.Count == 0)
             {
                 throw;
             }
 
-            _logger?.LogWarning(ex, "the API refused a batch of the browser list");
+            return new CarryOver(null, LeftTheBrowser: false, refused, keys.Count(k => refused.Contains(k.VariableId)));
         }
-
-        if (named is not null)
+        catch (Exception ex) when (Reader == reader)
         {
-            var rest = batch.Where(k => !named.Contains(k.VariableId)).ToArray();
-            refused.AddRange(batch.Except(rest));
-
-            return rest.Length == 0 || await AddAllAsync(rest).ConfigureAwait(false);
+            _logger?.LogWarning(ex, "a carry-over to list {ListId} saved nothing", target.Id);
+            await DiscardAsync(target.Id, reader).ConfigureAwait(false);
+            throw;
         }
-
-        foreach (var row in batch)
+        catch (Exception ex)
         {
-            try
-            {
-                if (!await AddAllAsync([row]).ConfigureAwait(false))
-                {
-                    return false;
-                }
-            }
-            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.BadRequest && Reader == reader)
-            {
-                _logger?.LogWarning(ex, "the API refused a row of the browser list for variable {VariableId}", row.VariableId);
-                refused.Add(row);
-            }
+            // Another reader's lists are not this press's to tidy, nor are the rows in the browser.
+            _logger?.LogWarning(ex, "a carry-over stopped because the reader changed");
+            return null;
         }
 
-        return true;
-
-        async Task<bool> AddAllAsync(VariableDatasamlingKey[] rows)
-        {
-            var accepted = await AddItemsAsync(listId, rows, kilder: null, cancellationToken).ConfigureAwait(false);
-
-            if (Reader != reader || !accepted)
-            {
-                return false;
-            }
-
-            carried.AddRange(rows);
-            return true;
-        }
-    }
-
-    // The list is gone, or the reader changed: a different reader's list is not this one's to tidy, nor its browser
-    // rows. Only a list this press made, holding nothing, is deleted.
-    private async Task<CarryOver?> GiveUpAsync(Guid listId, int reader, bool made)
-    {
         if (Reader != reader)
         {
             return null;
         }
 
-        _carryInto = null;
-
-        if (made)
+        if (!accepted)
         {
-            await DeleteQuietlyAsync(listId).ConfigureAwait(false);
+            // The list was gone before the rows reached it.
+            await DiscardAsync(target.Id, reader).ConfigureAwait(false);
+            return null;
         }
 
-        return null;
+        _emptyCarryList = null;
+        var left = await RemoveBrowserKeysAsync(keys).ConfigureAwait(false);
+
+        // Rows left only where no other page reads them, or none left at all, cannot be saved twice.
+        if (Reader == reader)
+        {
+            BrowserCarryOverStuck = !left && BrowserCount > 0;
+        }
+
+        return new CarryOver(target, left);
     }
 
-    /// <summary>Takes the rows Munin refused out of the browser list. False when any is still there. Never throws.</summary>
-    internal async Task<bool> RemoveRefusedFromBrowserAsync()
+    /// <summary>
+    /// Takes every browser row of these variables out of the browser list, the rows Munin refused. False when any is
+    /// still there. Never throws.
+    /// </summary>
+    internal async Task<bool> RemoveRefusedFromBrowserAsync(IReadOnlySet<Guid> variables)
     {
-        var refused = _browserRefused.Where(_browserKeys.Contains).ToList();
+        var refused = _browserKeys.Where(k => variables.Contains(k.VariableId)).ToList();
 
-        if (refused.Count > 0)
-        {
-            await RemoveBrowserKeysAsync(refused).ConfigureAwait(false);
-        }
+        // Still in the stored value, the rows reach another page, which would offer them again.
+        var left = refused.Count == 0 || await RemoveBrowserKeysAsync(refused).ConfigureAwait(false);
 
-        _browserRefused = new HashSet<VariableDatasamlingKey>(_browserRefused.Where(_browserKeys.Contains));
-        return BrowserRefusedCount == 0;
+        return left && BrowserRowsOf(variables) == 0;
     }
 
     /// <summary>Takes these rows out of the browser list in one call, leaving any another tab added. Never throws.</summary>
@@ -626,15 +523,18 @@ public sealed partial class VariableListState : IDisposable
         return removed;
     }
 
-    private async Task DeleteQuietlyAsync(Guid id)
+    // The limiter that refused the add may refuse the delete too; the empty list is then kept for the next press.
+    private async Task DiscardAsync(Guid id, int reader)
     {
         try
         {
             await DeleteAsync(id).ConfigureAwait(false);
+            _emptyCarryList = null;
         }
         catch (Exception ex)
         {
             _logger?.LogWarning(ex, "could not delete list {ListId} after a carry-over failed", id);
+            _emptyCarryList = (id, reader);
         }
     }
 

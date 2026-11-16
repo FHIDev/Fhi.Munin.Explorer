@@ -944,10 +944,9 @@ internal sealed record Texts(
     string BrowserListTooLongToShare,
     Func<string, string> BrowserListSavedAs,
     Func<string, string> BrowserListSavedButStillHere,
-    Func<int, string> BrowserListNotCarried,
-    string BrowserListCarryOverCutShort,
-    Func<int, string> RemoveRefusedFromBrowser,
-    string BrowserListRefusedRemoved,
+    Func<int, int, string> BrowserListRefused,
+    Func<int, int, string> RemoveRefusedFromBrowser,
+    Func<int, int, string> BrowserListRefusedRemoved,
     string BrowserListRefusedNotRemoved,
     Func<int, string> BrowserListFull,
     string ClearBrowserList,
@@ -1927,12 +1926,13 @@ internal sealed record Texts(
         BrowserListTooLongToShare: "Listen er for lang til å deles som kode. Last den ned i stedet.",
         BrowserListSavedAs: name => $"Lagret som «{name}» i Mine lister.",
         BrowserListSavedButStillHere: name => $"Listen ble lagret i Mine lister («{name}»), men den kunne ikke fjernes fra denne nettleseren. Tøm den når du er logget ut.",
-        BrowserListNotCarried: rows => rows == 1
-            ? "1 rad kunne ikke lagres i Mine lister og ligger fortsatt i denne nettleseren. «Fjern raden fra denne nettleseren» tar den bort."
-            : $"{rows} rader kunne ikke lagres i Mine lister og ligger fortsatt i denne nettleseren. «Fjern radene fra denne nettleseren» tar dem bort.",
-        BrowserListCarryOverCutShort: "Resten ligger fortsatt i denne nettleseren. Prøv igjen om et minutt.",
-        RemoveRefusedFromBrowser: rows => rows == 1 ? "Fjern raden fra denne nettleseren" : "Fjern radene fra denne nettleseren",
-        BrowserListRefusedRemoved: "Radene som ikke kunne lagres, er fjernet fra denne nettleseren.",
+        BrowserListRefused: (rows, variables) =>
+            $"{(rows == 1 ? "1 rad" : $"{rows} rader")} for {(variables == 1 ? "1 variabel" : $"{variables} variabler")} kunne ikke lagres i Mine lister, så ingenting ble lagret. Listen ligger fortsatt i denne nettleseren.",
+        RemoveRefusedFromBrowser: (rows, variables) =>
+            $"Fjern {(rows == 1 ? "raden" : "radene")} for {(variables == 1 ? "denne variabelen" : "disse variablene")} fra denne nettleseren",
+        BrowserListRefusedRemoved: (rows, rest) =>
+            (rows == 1 ? "Raden er fjernet fra denne nettleseren." : "Radene er fjernet fra denne nettleseren.")
+            + (rest == 0 ? "" : rest == 1 ? " Raden som er igjen, kan lagres som ny liste i Mine lister." : $" De {rest} radene som er igjen, kan lagres som ny liste i Mine lister."),
         BrowserListRefusedNotRemoved: "Kunne ikke fjerne radene fra denne nettleseren nå.",
         BrowserListFull: max => $"Listen kan ha høyst {max} rader. Fjern noen før du legger til flere.",
         ClearBrowserList: "Tøm listen",
@@ -2608,12 +2608,13 @@ internal sealed record Texts(
         BrowserListTooLongToShare: "The list is too long to share as a code. Download it instead.",
         BrowserListSavedAs: name => $"Saved as «{name}» in My lists.",
         BrowserListSavedButStillHere: name => $"The list was saved in My lists («{name}»), but it could not be removed from this browser. Empty it when you are signed out.",
-        BrowserListNotCarried: rows => rows == 1
-            ? "1 row could not be saved in My lists and is still in this browser. «Remove the row from this browser» takes it away."
-            : $"{rows} rows could not be saved in My lists and are still in this browser. «Remove the rows from this browser» takes them away.",
-        BrowserListCarryOverCutShort: "The rest is still in this browser. Try again in a minute.",
-        RemoveRefusedFromBrowser: rows => rows == 1 ? "Remove the row from this browser" : "Remove the rows from this browser",
-        BrowserListRefusedRemoved: "The rows that could not be saved are removed from this browser.",
+        BrowserListRefused: (rows, variables) =>
+            $"{(rows == 1 ? "1 row" : $"{rows} rows")} for {(variables == 1 ? "1 variable" : $"{variables} variables")} could not be saved in My lists, so nothing was saved. The list is still in this browser.",
+        RemoveRefusedFromBrowser: (rows, variables) =>
+            $"Remove the {(rows == 1 ? "row" : "rows")} for {(variables == 1 ? "this variable" : "these variables")} from this browser",
+        BrowserListRefusedRemoved: (rows, rest) =>
+            (rows == 1 ? "The row is removed from this browser." : "The rows are removed from this browser.")
+            + (rest == 0 ? "" : rest == 1 ? " The row that is left can be saved as a new list in My lists." : $" The {rest} rows that are left can be saved as a new list in My lists."),
         BrowserListRefusedNotRemoved: "Could not remove the rows from this browser just now.",
         BrowserListFull: max => $"The list can hold at most {max} rows. Remove some before adding more.",
         ClearBrowserList: "Empty the list",
