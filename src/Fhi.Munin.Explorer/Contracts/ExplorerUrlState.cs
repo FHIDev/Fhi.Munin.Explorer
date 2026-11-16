@@ -66,9 +66,10 @@ public sealed record ExplorerUrlState
     public string? SelectedVariableCode { get; init; }
 
     /// <summary>
-    /// The datasamling of the open row, written as <c>datasamlingId</c> beside <c>variabelId</c>: a
+    /// The datasamling of the open row, written as <c>datasamlingId</c> beside <c>variabelId</c> or <c>variabel</c>: a
     /// variable has a row per datasamling, so the variable alone does not name the row. A link without
-    /// it opens the variable's first row. Never written without <see cref="SelectedVariableId"/>.
+    /// it opens the variable's first row. Never written without <see cref="SelectedVariableId"/> or
+    /// <see cref="SelectedVariableCode"/>.
     /// </summary>
     public Guid? SelectedDatasamlingId { get; init; }
 
@@ -232,7 +233,8 @@ public sealed record ExplorerUrlState
             state = Apply(state, name, value);
         }
 
-        return state;
+        // An id names the variable outright, so a code beside it is not read: ToQueryString would write the code instead.
+        return state.SelectedVariableId is null ? state : state with { SelectedVariableCode = null };
     }
 
     private static ExplorerUrlState Apply(ExplorerUrlState state, string name, string value)
@@ -321,8 +323,8 @@ public sealed record ExplorerUrlState
     /// component to leave alone. <c>variabelId</c> and <c>instrumentId</c> are in here for that
     /// reason too: a host with a variable or instrument page of its own plausibly already means
     /// something by either, and so is <c>delekode</c>, which a host may already use for sharing
-    /// of its own. <c>variabel</c> (the variable's code) and <c>datasamlingId</c> go with <c>variabelId</c>; declining any
-    /// of the three leaves all three out.
+    /// of its own. <c>variabel</c> is the variable's code and goes with <c>variabelId</c>: declining either leaves the
+    /// open variable out altogether, <c>datasamlingId</c> with it. Declining <c>datasamlingId</c> leaves out only that.
     /// </remarks>
     public static IReadOnlySet<string> ScalarQueryKeys { get; } =
         new HashSet<string>(

@@ -36,9 +36,17 @@ public class ListRowPanelTest : ExplorerTestContext
         VariableCode = "V_HKR.ALDER",
     };
 
-    private sealed class PanelClient(params VariableListItem[] all) : EmptyMuninExplorerClient
+    private sealed class PanelClient(params VariableListItem[] all) : EmptyMuninExplorerClient, IMuninExplorerClient
     {
         private readonly List<VariableListItem> items = [.. all];
+
+        /// <summary>Whether this Munin has the by-code route (Fhi.Metadata-l9l2n.182); without it, links keep the id.</summary>
+        public bool AnswersCodes { get; init; }
+
+        public Task<VariableDetail?> GetVariableByCodeAsync(string code, CancellationToken cancellationToken = default) =>
+            Task.FromResult(AnswersCodes && all.FirstOrDefault(i => i.VariableCode == code) is { } item
+                ? new VariableDetail { Id = item.VariableId, Code = code, DatasamlingId = item.DatasamlingId, VersionStatus = item.VersionStatus ?? "" }
+                : null);
 
         public List<Guid> DetailsAskedFor { get; } = [];
 
@@ -1471,7 +1479,7 @@ public class ListRowPanelTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Explorer_WhenARowIsShared_ThenTheLinkNamesTheVariableByCodeAndItsDatasamlingById()
+    public void Explorer_WhenMuninHasNoCodeRoute_ThenTheSharedLinkSearchesItsCodeWithinItsKilde()
     {
         var cut = OpenInExplorer(new PanelClient(DatabaseVersion));
 
@@ -1480,20 +1488,16 @@ public class ListRowPanelTest : ExplorerTestContext
         var link = new Uri(body["Databaseversjon: ".Length..]);
         var state = ExplorerUrlState.Parse(link.Query);
 
-        // A list row is not open, so nothing has said which datasamling is the primary one: its own goes by id
-        // (Fhi.Metadata-l9l2n.182). The search and the kilde are the arrival's to work out from the code.
         Assert.True(link.IsAbsoluteUri);
-        Assert.Equal("V_HKR.VERSJON_DATABASE", state.SelectedVariableCode);
-        Assert.Equal(DatabaseVersion.DatasamlingId, state.SelectedDatasamlingId);
-        Assert.Null(state.SelectedVariableId);
-        Assert.Null(state.Search);
-        Assert.Empty(state.Filter.KildeIds);
+        Assert.Equal("V_HKR.VERSJON_DATABASE", state.Search);
+        Assert.Equal([HeartKildeId], state.Filter.KildeIds);
+        Assert.Equal(DatabaseVersion.VariableId, state.SelectedVariableId);
     }
 
     [Fact]
-    public void Explorer_WhenTheHostDeclinesTheVariableKey_ThenThePanelOffersNoLinkThatCouldNotOpenIt()
+    public void Explorer_WhenMuninHasNoCodeRouteAndTheHostDeclinesSearch_ThenThePanelOffersNoLink()
     {
-        var cut = OpenInExplorer(new PanelClient(DatabaseVersion), declined: ["variabel"]);
+        var cut = OpenInExplorer(new PanelClient(DatabaseVersion), declined: ["search"]);
 
         Assert.DoesNotContain("Del variabel", cut.Find("[role=region][id^='munin-explorer-list-panel-']").TextContent);
     }
@@ -1501,14 +1505,44 @@ public class ListRowPanelTest : ExplorerTestContext
     [Theory]
     [InlineData("Historical")]
     [InlineData("historisk")]
-    [InlineData("Active")]
-    public void Explorer_WhateverTheVariablesStatus_ThenTheLinkCarriesItsCodeAndNotTheHistoricalFilter(string status)
+    public void Explorer_WhenMuninHasNoCodeRouteAndTheVariableIsHistorical_ThenTheLinkShowsHistoricalVariables(string status)
     {
-        // Whether historical variables are shown is the arrival's to work out from the variable (Fhi.Metadata-l9l2n.182).
         var cut = OpenInExplorer(new PanelClient(DatabaseVersion with { VersionStatus = status }));
 
+        Assert.True(SharedLinkState(cut).Filter.IncludeHistorical);
+    }
+
+    [Fact]
+    public void Explorer_WhenMuninHasNoCodeRouteAndTheVariableIsActive_ThenTheLinkLeavesHistoricalVariablesOut()
+    {
+        var cut = OpenInExplorer(new PanelClient(DatabaseVersion with { VersionStatus = "Active" }));
+
         Assert.False(SharedLinkState(cut).Filter.IncludeHistorical);
-        Assert.Equal("V_HKR.VERSJON_DATABASE", SharedLinkState(cut).SelectedVariableCode);
+    }
+
+    [Theory]
+    [InlineData("Historical")]
+    [InlineData("Active")]
+    public void Explorer_WhenMuninAnswersTheCode_ThenTheSharedLinkNamesTheVariableByCodeAlone(string status)
+    {
+        // The row is the variable's primary datasamling, which the answer to its code said (Fhi.Metadata-l9l2n.182);
+        // whether historical variables are shown is the arrival's to work out from the variable.
+        var cut = OpenInExplorer(new PanelClient(DatabaseVersion with { VersionStatus = status }) { AnswersCodes = true });
+
+        cut.WaitForAssertion(() =>
+        {
+            var state = SharedLinkState(cut);
+            Assert.Equal("V_HKR.VERSJON_DATABASE", state.SelectedVariableCode);
+            Assert.Equal((null, null, null, false), (state.SelectedVariableId, state.SelectedDatasamlingId, state.Search, state.Filter.IncludeHistorical));
+        });
+    }
+
+    [Fact]
+    public void Explorer_WhenMuninAnswersTheCodeAndTheHostDeclinesTheVariable_ThenThePanelOffersNoLink()
+    {
+        var cut = OpenInExplorer(new PanelClient(DatabaseVersion) { AnswersCodes = true }, declined: ["variabel"]);
+
+        Assert.DoesNotContain("Del variabel", cut.Find("[role=region][id^='munin-explorer-list-panel-']").TextContent);
     }
 
     private static ExplorerUrlState SharedLinkState(IRenderedComponent<VariableExplorer> cut)

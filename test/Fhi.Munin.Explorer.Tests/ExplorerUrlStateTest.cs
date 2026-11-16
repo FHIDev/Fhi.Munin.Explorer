@@ -168,7 +168,19 @@ public class ExplorerUrlStateTest
         Assert.Contains("variabel", ExplorerUrlState.ScalarQueryKeys);
     }
 
+    [Fact]
+    public void Parse_WhenALinkNamesTheVariableByIdAndByCode_ThenTheIdWinsAndWritesBackTheSame()
+    {
+        var variable = Guid.NewGuid();
+
+        var state = ExplorerUrlState.Parse($"?variabel=V_MFR.KJONN&variabelId={variable}");
+
+        Assert.Equal((variable, null), (state.SelectedVariableId, state.SelectedVariableCode));
+        Assert.Equal($"variabelId={variable}", state.ToQueryString());
+    }
+
     [Theory]
+    [InlineData("?variabel=..")]
     [InlineData("?variabel=V_MFR/../x")]
     [InlineData("?variabel=V%20MFR")]
     public void Parse_WhenTheVariableCodeIsNotOne_ThenNoCodeIsRead(string query)

@@ -70,11 +70,22 @@ public class SearchShareTest : ExplorerTestContext
 
         public List<string> CodesAsked { get; } = [];
 
+        /// <summary>Whether this Munin has the by-code route; without it every code answers null.</summary>
+        public bool AnswersCodes { get; init; } = true;
+
+        /// <summary>Holds every answer to a code until the test releases it.</summary>
+        public TaskCompletionSource? CodeGate { get; set; }
+
         // Munin's by-code route: the code in any case finds the one variable (Fhi.Metadata-9huq2.27).
-        public Task<VariableDetail?> GetVariableByCodeAsync(string code, CancellationToken cancellationToken = default)
+        public async Task<VariableDetail?> GetVariableByCodeAsync(string code, CancellationToken cancellationToken = default)
         {
             CodesAsked.Add(code);
-            return Task.FromResult(string.Equals(code, Code, StringComparison.OrdinalIgnoreCase) ? Detail() : null);
+            if (CodeGate is { } gate)
+            {
+                await gate.Task;
+            }
+
+            return AnswersCodes && string.Equals(code, Code, StringComparison.OrdinalIgnoreCase) ? Detail() : null;
         }
 
         private VariableDetail Detail() =>
@@ -251,7 +262,7 @@ public class SearchShareTest : ExplorerTestContext
             var (search, filter) = client.Searches[^1];
             Assert.Equal(Code, search);
             Assert.Empty(filter!.KildeIds);
-            Assert.Equal([Code], client.CodesAsked);
+            Assert.Equal(Code, client.CodesAsked[^1]);
             Assert.Contains("1 variabel funnet", cut.Markup);
             Assert.Equal("true", cut.Find("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name").GetAttribute("aria-expanded"));
             Assert.NotNull(cut.Find(".munin-explorer-detail"));
@@ -351,6 +362,102 @@ public class SearchShareTest : ExplorerTestContext
             Assert.Equal([Code], client.CodesAsked);
             Assert.NotNull(cut.Find(".munin-explorer-detail"));
         });
+    }
+
+    private int Pushes => JSInterop.Invocations.Count(i => i.Identifier == "history.pushState");
+
+    private int Backs => JSInterop.Invocations.Count(i => i.Identifier == "history.back");
+
+    [Fact]
+    public void Arrive_WhenTheCodeIsAnsweredLate_ThenTheRowIsALinksAndClosingItIsNotBack()
+    {
+        // A pushed entry, or a close that is Back, would take a reader who followed the link off the site.
+        var client = new ShareClient { CodeGate = new() };
+        var cut = RenderExplorer(client, $"http://localhost/variabler?variabel={Code}");
+        cut.WaitForAssertion(() => Assert.Equal([Code], client.CodesAsked));
+
+        client.CodeGate.SetResult();
+        cut.WaitForElement(".munin-explorer-detail");
+        cut.Find("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name").Click();
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".munin-explorer-detail")));
+        Assert.Equal((0, 0), (Pushes, Backs));
+    }
+
+    [Fact]
+    public void Arrive_WhenTheReaderNavigatesWhileTheCodeIsLookedUp_ThenTheLateAnswerChangesNothing()
+    {
+        var client = new ShareClient { CodeGate = new() };
+        var cut = RenderExplorer(client, $"http://localhost/variabler?variabel={Code}");
+        cut.WaitForAssertion(() => Assert.Equal([Code], client.CodesAsked));
+
+        Services.GetRequiredService<NavigationManager>().NavigateTo("http://localhost/variabler?search=foo");
+        cut.WaitForAssertion(() => Assert.Equal("foo", client.Searches[^1].Search));
+        client.CodeGate.SetResult();
+
+        // The browser already shows the arrival, so nothing is written: least of all the variable the answer named.
+        cut.WaitForAssertion(() => Assert.Equal("foo", client.Searches[^1].Search));
+        Assert.DoesNotContain(_history!.Written, url => url?.Contains("variabel", StringComparison.Ordinal) is true);
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+    }
+
+    [Fact]
+    public void Arrive_WhenTheAddressCarriesTheReadersOwnSearchBesideTheCode_ThenTheSearchIsKept()
+    {
+        // The address the explorer writes for a row opened under the reader's search: a reload must give it back.
+        var client = new ShareClient();
+        var cut = RenderExplorer(client, $"http://localhost/variabler?search=kjonn&variabel={Code}");
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.NotNull(cut.Find(".munin-explorer-detail"));
+            Assert.Equal("kjonn", client.Searches[^1].Search);
+            Assert.EndsWith($"/variabler?search=kjonn&variabel={Code}", Address(cut));
+        });
+    }
+
+    [Fact]
+    public void Learn_WhenTheCodeIsAnsweredAfterTheFirstWrite_ThenTheAddressKeepsItsSection()
+    {
+        var client = new ShareClient { CodeGate = new() };
+        var cut = RenderExplorer(client, $"http://localhost/variabler?variabelId={VariableId}&datasamlingId={DatasamlingId}#sec");
+        cut.WaitForAssertion(() => Assert.EndsWith("#sec", Address(cut)));
+
+        client.CodeGate.SetResult();
+
+        cut.WaitForAssertion(() => Assert.EndsWith($"/variabler?variabel={Code}#sec", Address(cut)));
+    }
+
+    [Theory]
+    [InlineData("variabel=v_hkr.kjonn")]
+    [InlineData("search=V_HKR.KJONN&variabelId=7a1f0c4e-2b8d-4e5a-9c3f-1d2e3f4a5b6c&datasamlingId=66666666-7777-8888-9999-000000000000")]
+    public void Navigate_WhenTheHostNavigatesToTheViewOnScreenSpelledAnotherWay_ThenNothingRemounts(string spelling)
+    {
+        var client = new ShareClient();
+        var cut = RenderExplorer(client, "http://localhost/variabler?variabel=v_hkr.kjonn");
+        cut.WaitForAssertion(() => Assert.EndsWith($"/variabler?variabel={Code}", Address(cut)));
+        var (searches, codes) = (client.Searches.Count, client.CodesAsked.Count);
+
+        Services.GetRequiredService<NavigationManager>().NavigateTo($"http://localhost/variabler?{spelling}");
+
+        Assert.Equal((searches, codes), (client.Searches.Count, client.CodesAsked.Count));
+        Assert.NotNull(cut.Find(".munin-explorer-detail"));
+    }
+
+    [Fact]
+    public void OpenRow_WhenMuninHasNoCodeRoute_ThenTheLinkAndTheAddressKeepTheId()
+    {
+        // A host on the contract's default body, or a Munin before 9huq2.27: a code link would open no variable there.
+        var client = new ShareClient { AnswersCodes = false };
+        var cut = RenderExplorer(client);
+
+        OpenRow(cut);
+
+        cut.WaitForAssertion(() => Assert.Contains(Code, client.CodesAsked));
+        var query = QueryHelpers.ParseQuery(new Uri(MailLink(ShareGroup(cut.Find(".munin-explorer-detail")))).Query);
+        Assert.Equal((Code, VariableId.ToString(), KildeId.ToString()), (query["search"].ToString(), query["variabelId"].ToString(), query["kildeIds"].ToString()));
+        Assert.False(query.ContainsKey("variabel"));
+        Assert.Contains($"variabelId={VariableId}", Address(cut));
     }
 
     [Theory]

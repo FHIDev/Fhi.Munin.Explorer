@@ -1,3 +1,4 @@
+using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.Logging;
 using Microsoft.AspNetCore.Components;
@@ -136,32 +137,53 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
         if (NeedsResolving(_state))
         {
-            await ResolveAsync();
+            await ResolveAsync(++_resolution);
         }
     }
 
     // A variable code that arrived without an id is resolved before VariableSearch mounts, because it reads the open
-    // variable once (Fhi.Metadata-l9l2n.182). Until then the search is not drawn.
+    // variable once (Fhi.Metadata-l9l2n.182). Until then the search is not drawn and the address is not written.
     private bool _resolving;
     private int _resolution;
+    private bool _resolvePushed;
 
     // «The datasamling in the link was not found»: cascaded to VariableSearch, which says it beside «Vis alle treff».
-    private string? _linkNote;
+    private bool _linkNote;
 
-    // What the address needs to name an open variable by its code: the code, and which datasamling is its primary one,
-    // which only the detail asked without a datasamling says. Asked once per variable.
-    private readonly Dictionary<Guid, (string Code, Guid? Primary)> _known = [];
+    // The arrival's own spelling of a code link and the address it resolved to, so a host navigation that still
+    // carries the arrival's spelling is the same view rather than a remount.
+    private (string Arrived, string Resolved)? _alias;
+
+    // Whether Munin answers a variable by its code: null until a lookup has said. A code goes into a link only once
+    // one has, so a host without the route keeps writing links that open (Fhi.Metadata-l9l2n.182).
+    private bool? _codesResolve;
+
+    // What the address needs to name an open variable by its code, learned once per variable and only from Munin's
+    // answer to that code: the code, its primary datasamling, and whether it is historical.
+    private readonly Dictionary<Guid, (string Code, Guid? Primary, bool Historical)> _known = [];
     private readonly HashSet<Guid> _asked = [];
 
     private static bool NeedsResolving(Binding state) =>
         state.SelectedVariableCode is not null && state.SelectedVariableId is null;
 
+    private static ExplorerUrlState WithoutVariable(ExplorerUrlState state) =>
+        state with { SelectedVariableId = null, SelectedVariableCode = null, SelectedDatasamlingId = null };
+
+    // A link naming the variable and nothing else, whose search and filter are the arrival's to make.
+    private static bool IsBare(ExplorerUrlState state) => WithoutVariable(state).ToQueryString().Length == 0;
+
     /// <summary>Open the variable the address's code names, or a search for the code when it names none.</summary>
-    private async Task ResolveAsync()
+    private async Task ResolveAsync(int generation)
     {
-        var generation = ++_resolution;
-        var code = _state.SelectedVariableCode!;
-        var wanted = _state.SelectedDatasamlingId;
+        if (generation != _resolution || _disposed)
+        {
+            return;
+        }
+
+        var arrived = _state.ToState();
+        var code = arrived.SelectedVariableCode!;
+        var wanted = arrived.SelectedDatasamlingId;
+        var bare = IsBare(arrived);
         _resolving = true;
 
         VariableDetail? detail;
@@ -169,10 +191,15 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         {
             detail = await Client.GetVariableByCodeAsync(code);
         }
+        catch (MuninExplorerRateLimitedException ex)
+        {
+            Log?.LogWarning(ex, "could not resolve the variable code in the address");
+            detail = null;
+        }
         catch (Exception ex)
         {
-            // Unreachable or throttled reads as not found: the reader gets the search for the code.
-            Log?.LogWarning(ex, "could not resolve the variable code in the address");
+            // Read as not found: the reader gets the search for the code.
+            Log?.LogError(ex, "could not resolve the variable code in the address");
             detail = null;
         }
 
@@ -182,44 +209,52 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         }
 
         var state = _state;
-        _linkNote = null;
+        _linkNote = false;
         if (detail is null || string.IsNullOrWhiteSpace(detail.Code))
         {
             // The list's own empty state is the not-found view, and a code that is only part of one still finds it.
             state.SelectedVariableId = null;
             state.SelectedVariableCode = null;
             state.SelectedDatasamlingId = null;
-            state.Search = code;
+            state.Search = bare || string.IsNullOrWhiteSpace(state.Search) ? code : state.Search;
         }
         else
         {
-            _known[detail.Id] = (detail.Code, detail.DatasamlingId);
+            _codesResolve = true;
+            var historical = VersionStatusRule.IsHistorical(detail.VersionStatus);
+            _known[detail.Id] = (detail.Code, detail.DatasamlingId, historical);
 
             // A datasamling id from another environment falls back to the primary row. Said only when the variable has
             // more than one, since with one a missing id can only have meant that one.
             var found = wanted is { } id && (id == detail.DatasamlingId || detail.AllDatasamlinger.Any(d => d.Id == id));
-            if (wanted is not null && !found && detail.AllDatasamlinger.Count > 1)
+            _linkNote = wanted is not null && !found && detail.AllDatasamlinger.Count > 1;
+
+            // A bare link searches the code, which ranks first and so puts the pinned row on the first page; an
+            // address the explorer wrote itself keeps the reader's own search and filters, as an id link does.
+            if (bare)
             {
-                _linkNote = Texts.For(Language).LinkedDatasamlingNotFound;
+                state.Search = detail.Code;
+                state.Filter = VariableFilter.None with { IncludeHistorical = historical };
             }
 
-            // The exact code ranks first in a search for it, which is what lets the pinned row be on the first page.
-            state.Search = detail.Code;
-            state.Filter = VariableFilter.None with { IncludeHistorical = VersionStatusRule.IsHistorical(detail.VersionStatus) };
             state.SelectedVariableId = detail.Id;
             state.SelectedVariableCode = detail.Code;
             state.SelectedDatasamlingId = found ? wanted : detail.DatasamlingId;
         }
 
-        state.Page = 1;
+        // Arrived like any link, or like the entry pushed from the list that Back or Forward reached.
         _resolving = false;
+        _mirroredOpen = Open;
+        _detailPushed = _resolvePushed && Open;
+        _pushedListQuery = _detailPushed ? ListQuery() : null;
+        _alias = (Linkable(arrived).ToQueryString(), Linkable(Coded(_state.ToState())).ToQueryString());
         _arrival++;
         StateHasChanged();
     }
 
     /// <summary>
-    /// The state as the address writes it: the open variable by its code once its code and primary datasamling are known,
-    /// the datasamling only when it is not the primary one, and no search when the search is that code.
+    /// The state as the address writes it: the open variable by its code once Munin has answered that code, the
+    /// datasamling only when it is not the primary one, and no search or filter when the code alone makes them again.
     /// </summary>
     private ExplorerUrlState Coded(ExplorerUrlState state)
     {
@@ -234,18 +269,27 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             return state with { SelectedVariableCode = null };
         }
 
-        return state with
+        var coded = state with
         {
             SelectedVariableCode = known.Code,
             SelectedDatasamlingId = state.SelectedDatasamlingId == known.Primary ? null : state.SelectedDatasamlingId,
-            Search = string.Equals(state.Search?.Trim(), known.Code, StringComparison.OrdinalIgnoreCase) ? null : state.Search,
         };
+        var arrival = new ExplorerUrlState
+        {
+            Search = known.Code,
+            Filter = VariableFilter.None with { IncludeHistorical = known.Historical },
+        };
+
+        return WithoutVariable(state).ToQueryString() == arrival.ToQueryString()
+            ? coded with { Search = null, Filter = VariableFilter.None }
+            : coded;
     }
 
-    // Asked once, off the render: the address keeps the id form until the answer arrives, then names the code.
-    private void Learn(Guid id)
+    // Asked once per variable, off the render: the address keeps the id form until Munin has answered the code with
+    // this very variable. A failure is asked again at the next render that needs it.
+    private void Learn(Guid id, string? code = null)
     {
-        if (!_asked.Add(id))
+        if (_codesResolve is false || !_asked.Add(id))
         {
             return;
         }
@@ -254,16 +298,36 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         {
             try
             {
-                if (await Client.GetVariableAsync(id, includeHistorical: true) is { } detail
-                    && !string.IsNullOrWhiteSpace(detail.Code) && !_disposed)
+                code ??= (await Client.GetVariableAsync(id, includeHistorical: true))?.Code;
+                if (_disposed || !VariableCodes.IsLinkCode(code))
                 {
-                    _known[id] = (detail.Code, detail.DatasamlingId);
-                    StateHasChanged();
+                    return;
                 }
+
+                var detail = await Client.GetVariableByCodeAsync(code!);
+                if (_disposed || detail?.Id != id)
+                {
+                    // Nothing for a code that names a variable: this Munin, or this host's client, has no code route.
+                    _codesResolve ??= detail is null ? false : null;
+                    return;
+                }
+
+                // The same view said another way, so a section the address arrived with stays in it.
+                var before = Linkable(Coded(_state.ToState())).ToQueryString();
+                _known[id] = (detail.Code, detail.DatasamlingId, VersionStatusRule.IsHistorical(detail.VersionStatus));
+                _codesResolve = true;
+                _mirror.Reown(before, Linkable(Coded(_state.ToState())).ToQueryString());
+                StateHasChanged();
+            }
+            catch (MuninExplorerRateLimitedException ex)
+            {
+                _asked.Remove(id);
+                Log?.LogWarning(ex, "could not learn variable {VariableId}'s code for the address", id);
             }
             catch (Exception ex)
             {
-                Log?.LogWarning(ex, "could not learn variable {VariableId}'s code for the address", id);
+                _asked.Remove(id);
+                Log?.LogError(ex, "could not learn variable {VariableId}'s code for the address", id);
             }
         });
     }
@@ -295,7 +359,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             _mirroredOpen = false;
             await _mirror.BackAsync(Linkable(Coded(_state.ToState())).ToQueryString());
         }
-        else
+        else if (!_resolving)
         {
             // Only an opening the address shows: a host declining the selection's key gets no entry.
             // A list changed under the open row ends Back's claim, and the entry's mark with it.
@@ -357,20 +421,24 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         var arrived = Binding.From(ExplorerUrlState.Parse(mirror.Owned));
         _mirror = mirror;
 
-        if (Linkable(arrived.ToState()).ToQueryString() != Linkable(Coded(_state.ToState())).ToQueryString())
+        if (!IsShown(Linkable(arrived.ToState()).ToQueryString()))
         {
             // A remount: the browser already shows this address, and a late write could overwrite a Forward entry.
+            // A lookup still pending belongs to the view being left.
             mirror.Arrived();
             _state = arrived;
+            var generation = ++_resolution;
+            _resolving = NeedsResolving(arrived);
+            _resolvePushed = pushedFromList;
+            _alias = null;
 
-            if (NeedsResolving(arrived))
+            if (_resolving)
             {
-                _resolving = true;
-                _ = InvokeAsync(ResolveAsync);
+                _ = InvokeAsync(() => ResolveAsync(generation));
             }
             else
             {
-                _linkNote = null;
+                _linkNote = false;
                 _arrival++;
             }
         }
@@ -382,6 +450,17 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         _pushedListQuery = _detailPushed ? ListQuery() : null;
 
         StateHasChanged();
+    }
+
+    // Every spelling of the view on screen: by code, by id, and as the code link it arrived as.
+    private bool IsShown(string query)
+    {
+        var current = _state.ToState();
+        var coded = Linkable(Coded(current)).ToQueryString();
+
+        return query == coded
+            || query == Linkable(current with { SelectedVariableCode = null }).ToQueryString()
+            || _alias is { } alias && alias.Arrived == query && alias.Resolved == coded;
     }
 
     /// <inheritdoc />
@@ -470,24 +549,53 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     // environment falls back from to the variable's primary row (Fhi.Metadata-l9l2n.182).
     private Func<VariableListItem, string?>? VariableHref => DeclinedVariable
         ? null
-        : _variableAddress ??= item => VariableAddress(item.VariableCode, item.VariableId, item.DatasamlingId);
+        : _variableAddress ??= item =>
+            VariableAddress(item.VariableCode, item.KildeId, item.VersionStatus, item.VariableId, item.DatasamlingId);
 
     // The same link from a search row and from the whole variable, so «Del variabel» opens one thing everywhere.
     private Func<VariableSummary, string?>? SearchVariableHref => DeclinedVariable
         ? null
-        : _searchVariableAddress ??= v => VariableAddress(v.Code, v.Id, v.DatasamlingId);
+        : _searchVariableAddress ??= v => VariableAddress(v.Code, v.KildeId, v.VersionStatus, v.Id, v.DatasamlingId);
 
-    // The open variable's primary datasamling is left out once known; a row that is not open names its datasamling.
-    private string? VariableAddress(string? code, Guid variableId, Guid? datasamlingId) =>
-        string.IsNullOrWhiteSpace(code)
-            ? null
-            : Navigation.ToAbsoluteUri(_mirror.Address(Linkable(new ExplorerUrlState
+    // By code once Munin has answered one, leaving out a primary datasamling already known. Until then the id link that
+    // worked before: the search keeps a selection only on a row its first page shows, so it searches the code.
+    private string? VariableAddress(string? code, Guid? kildeId, string? versionStatus, Guid variableId, Guid? datasamlingId)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            return null;
+        }
+
+        if (_codesResolve is true && VariableCodes.IsLinkCode(code))
+        {
+            return Absolute(new ExplorerUrlState
             {
                 SelectedVariableCode = code.Trim(),
                 SelectedDatasamlingId = _known.TryGetValue(variableId, out var known) && known.Primary == datasamlingId
                     ? null
                     : datasamlingId,
-            }).ToQueryString())).ToString();
+            });
+        }
+
+        Learn(variableId, code.Trim());
+
+        return Declined("search")
+            ? null
+            : Absolute(new ExplorerUrlState
+            {
+                Search = code,
+                Filter = VariableFilter.None with
+                {
+                    KildeIds = kildeId is { } kilde ? [kilde] : [],
+                    IncludeHistorical = VersionStatusRule.IsHistorical(versionStatus),
+                },
+                SelectedVariableId = variableId,
+                SelectedDatasamlingId = datasamlingId,
+            });
+    }
+
+    private string Absolute(ExplorerUrlState state) =>
+        Navigation.ToAbsoluteUri(_mirror.Address(Linkable(state).ToQueryString())).ToString();
 
     private void OnShareCodeChanged(string? code) => _state.ShareCode = code;
 

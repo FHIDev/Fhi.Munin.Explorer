@@ -14,7 +14,8 @@ internal static class VariableCodes
     {
         var trimmed = value?.Trim();
 
-        return !string.IsNullOrEmpty(trimmed) && trimmed.Length <= MaxLength
+        // A letter or digit at least: "." and ".." are path segments, not codes.
+        return !string.IsNullOrEmpty(trimmed) && trimmed.Length <= MaxLength && trimmed.Any(char.IsLetterOrDigit)
             && trimmed.All(c => char.IsLetterOrDigit(c) || c is '_' or '-' or '.');
     }
 }

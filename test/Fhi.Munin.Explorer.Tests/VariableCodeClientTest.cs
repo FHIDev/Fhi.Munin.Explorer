@@ -15,7 +15,7 @@ public class VariableCodeClientTest
         new(new HttpClient(handler) { BaseAddress = new Uri("https://munin.example/") });
 
     [Fact]
-    public async Task GetVariableByCode_AsksTheCodeRoute_WithTheCodeEscaped_AndHistoricalVariablesIncluded()
+    public async Task GetVariableByCode_WhenGivenACode_ThenItAsksTheCodeRouteEscapedWithHistoricalVariables()
     {
         var handler = StubHttpHandler.Answering(HttpStatusCode.OK, $$"""{"id":"{{Kjonn}}","code":"V_MFR.KJONN"}""");
 
@@ -29,7 +29,7 @@ public class VariableCodeClientTest
     [Theory]
     [InlineData(HttpStatusCode.NotFound)]
     [InlineData(HttpStatusCode.Conflict)] // the code's one-letter fold names two variables
-    public async Task GetVariableByCode_WhenTheCodeNamesNoOneVariable_IsNull(HttpStatusCode status)
+    public async Task GetVariableByCode_WhenTheCodeNamesNoOneVariable_ThenItIsNull(HttpStatusCode status)
     {
         var handler = StubHttpHandler.Answering(status, "");
 
@@ -40,7 +40,8 @@ public class VariableCodeClientTest
     [InlineData("")]
     [InlineData("V_MFR/../x")]
     [InlineData("V MFR")]
-    public async Task GetVariableByCode_ForAValueNoCodeCanBe_SendsNothing(string code)
+    [InlineData("..")]
+    public async Task GetVariableByCode_WhenTheValueCannotBeACode_ThenNothingIsSent(string code)
     {
         var handler = StubHttpHandler.Answering(HttpStatusCode.OK, "{}");
 

@@ -617,7 +617,7 @@ public sealed partial class VariableSearch : ComponentBase
 
     // Said beside «Vis alle treff» while the linked row is pinned: the datasamling the link named was not found.
     [CascadingParameter(Name = LinkNoteName)]
-    private string? LinkNote { get; set; }
+    private bool LinkNote { get; set; }
 
     private string? _search;
 
