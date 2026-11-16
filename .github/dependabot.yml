@@ -12,6 +12,15 @@ updates:
         patterns:
           - "Microsoft.*"
           - "System.*"
+    # .NET 11 moves as one task; lift with Fhi.Metadata-l9l2n.187. Only the families on the .NET version line: Microsoft.NET.Test.Sdk
+    # (18.x) keeps its own updates, and 10.x updates still come in the microsoft group.
+    ignore:
+      - dependency-name: "Microsoft.AspNetCore.*"
+        versions: [">= 11.0.0"]
+      - dependency-name: "Microsoft.Extensions.*"
+        versions: [">= 11.0.0"]
+      - dependency-name: "System.*"
+        versions: [">= 11.0.0"]
 
   - package-ecosystem: github-actions
     directory: /
