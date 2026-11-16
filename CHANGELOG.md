@@ -29,6 +29,28 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 2.22.0 — 2026-11-16
+
+### Added
+
+- **A variable can be linked by its code: `?variabel=V_MFR.KJONN`, the same link in every environment.** `VariableExplorer` resolves the code through Munin and opens the variable as a search for its code, with the row of its primary datasamling open. A code that names no variable opens as a search for the code. The address and «Kopier lenke» now name the open variable by its code once Munin has answered a code: the code alone for its primary datasamling's row, and the code with `datasamlingId` for a row of another of its datasamlinger. An address carrying its own search or filters beside the code keeps them. A `datasamlingId` the variable does not have, such as one from another environment, opens the primary row instead and says so when the variable has more than one datasamling. `variabelId` links keep working. `ExplorerUrlState` gains `SelectedVariableCode`, and `IMuninExplorerClient` gains `GetVariableByCodeAsync`, with a default body answering null.
+
+### Changed
+
+- **The kildeutforsker's datasamling table offers no mark on a datasamling with no variables.** A datasamling the API reports with a variable count of 0 already read «0 variabler» («0 variables») there. Its mark would have handed it to the variable explorer and opened an empty list, so the row now has none. A row marked on the page, or by the address, keeps its box, so the mark can still be undone. The cell in the mark column stays, so the columns line up. The datasamling's own page already offers no variables link at 0.
+
+### Fixed
+
+- **Avansert søk's «Verdi» text field is as wide as the Felt and Operator lists above it.** It no longer wears `input__field--small`, which held it at 12.75rem. Its height, and that of the date fields, is a Stiler rule; see Notes for hosts.
+- **Removing a condition's chip while avansert søk is open also removes its row.** Before, «Vis treff» applied the removed condition again. «Fjern alle filtre» and «Vis variablene i variabelgruppen» on the Variabelliste tab remove every row that states a condition in force. Rows that state something else stay, a row the reader edited since the form opened among them. So does a row whose condition still has a chip that reads the same, such as a link listing the same codes in another order: the form can then show two such rows beside one chip, and «Vis treff» applies the condition once. When that leaves no row, the form draws one empty row.
+- **The form no longer takes focus from a field the reader is typing in when its field list arrives.** Opening avansert søk while the field list loads, then typing in the search field, used to move focus to the first row's field list mid-word. A press in the form still moves focus as before.
+- **An opened kilde row with no variables no longer links to an empty variable list.** In the kildeutforsker, an expanded kilde row ends in «Vis alle variabler i <kilde>» («Show all variables in <kilde>») when the host gave a `VariableExplorerPath`. For a kilde the API reports with 0 variables, for example one whose only datasamlinger were published without visible variables, the link is no longer drawn, as the kilde's own view already did. The row still lists its datasamlinger.
+
+### Notes for hosts
+
+- **Avansert søk's «Verdi» text field no longer wears `input__field--small`.** It wears `input__field` alone, like the date fields beside it, so it fills the column. For the text and date fields to be as tall as the Felt and Operator lists, a host needs `.munin-explorer-advanced-search input.input__field { height: 2.75rem; padding: 0 1rem }`, the 2.75rem of `.munin-explorer select`. Stiler has that rule from 0.1.215. On an older Stiler, the fields are full width and about 60px tall.
+- **`VariableExplorer` now owns the query key `variabel`, and needs Munin's code route for code links.** A host whose page already means something by `?variabel=` declines it in `DeclinedKeys`: the explorer then neither reads nor writes a code, and names the open variable by `variabelId` as before. Declining `variabelId` keeps the open variable out of the address altogether. Code links resolve through `api/explorer/variables/code/{code}`, which Munin added under Fhi.Metadata-9huq2.27. The explorer writes a code into its own links only once Munin has answered one, so against a Munin without the route, or with a client of the host's own on the contract's default body, its links keep naming the variable by id and open it as before. A code link that arrives there anyway opens as a search for the code.
+
 ## 2.21.0 — 2026-11-13
 
 ### Added
