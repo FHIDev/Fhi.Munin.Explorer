@@ -1297,6 +1297,13 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
 
         using var response = await SendAsync(HttpMethod.Post, ShareLists, body, cancellationToken);
 
+        if (response.StatusCode == HttpStatusCode.BadRequest
+            && (await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false))
+                .Contains("exceeds the maximum allowed size", StringComparison.Ordinal))
+        {
+            throw new SharedSnapshotTooLargeException();
+        }
+
         response.EnsureSuccessStatusCode();
 
         var answer = await response.Content
@@ -1369,6 +1376,16 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     }
 
     /// <summary>The share body. The API stores <c>items</c> verbatim, so their names are the contract.</summary>
+    /// <summary>
+    /// Under Munin's <c>SharedListSnapshots.MaxSnapshotBytes</c>, 524,288 characters of the snapshot it stores, with
+    /// room for the server's own spelling of the same items.
+    /// </summary>
+    internal const int MaxShareSnapshotChars = 500_000;
+
+    /// <summary>About how many characters Munin will store for this share, measured as it measures them.</summary>
+    internal static int ShareSnapshotLength(string name, IEnumerable<VariableListItem> items) =>
+        JsonSerializer.Serialize(new ShareBody(name, [.. items.Select(SharedItemBody.From)])).Length;
+
     private sealed record ShareBody(
         [property: JsonPropertyName("name")] string Name,
         [property: JsonPropertyName("items")] IReadOnlyList<SharedItemBody> Items);
@@ -1402,3 +1419,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
             item.DesiredDataCodes.Count > 0 ? item.DesiredDataCodes : null);
     }
 }
+
+/// <summary>Munin refused a share because its snapshot is over the stored size, which no retry changes.</summary>
+internal sealed class SharedSnapshotTooLargeException()
+    : HttpRequestException("The shared list's snapshot exceeds the API's maximum size.", null, HttpStatusCode.BadRequest);

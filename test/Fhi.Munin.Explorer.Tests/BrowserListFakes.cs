@@ -20,6 +20,28 @@ internal sealed class FakeBrowserList : IBrowserListStore
     /// <summary>Thrown from every call, as a fault inside the module crosses the circuit.</summary>
     public Exception? Throws { get; set; }
 
+    /// <summary>The key holds something this version cannot read: answers say foreign and not kept.</summary>
+    public bool Foreign { get; set; }
+
+    /// <summary>Calls by these names answer null, as a module that failed only those would.</summary>
+    public HashSet<string> Failing { get; } = [];
+
+    /// <summary>
+    /// While set, every call works out its answer when it is made, as the browser does, and hands it back only when
+    /// a test releases it from <see cref="Pending"/>: the round trip, made as long as a test needs.
+    /// </summary>
+    public bool Hold { get; set; }
+
+    public List<(string Call, TaskCompletionSource Release)> Pending { get; } = [];
+
+    /// <summary>Releases the newest held call, the order a slow network can deliver answers in.</summary>
+    public void ReleaseNewest()
+    {
+        var (_, release) = Pending[^1];
+        Pending.RemoveAt(Pending.Count - 1);
+        release.SetResult();
+    }
+
     /// <summary>Every call, with the size it asked for, so a test can see nothing large crossed at once.</summary>
     public List<(string Call, int Offset, int Count)> Calls { get; } = [];
 
@@ -36,7 +58,7 @@ internal sealed class FakeBrowserList : IBrowserListStore
 
     private static string Key(VariableDatasamlingKey key) => $"{key.VariableId}|{key.DatasamlingId}";
 
-    private Task<T?> Answer<T>(string call, Func<T> answer, int offset = 0, int count = 0) where T : class
+    private async Task<T?> Answer<T>(string call, Func<T> answer, int offset = 0, int count = 0) where T : class
     {
         Calls.Add((call, offset, count));
 
@@ -45,10 +67,19 @@ internal sealed class FakeBrowserList : IBrowserListStore
             throw thrown;
         }
 
-        return Task.FromResult(Unreachable ? null : answer());
+        var answered = Unreachable || Failing.Contains(call) ? null : answer();
+
+        if (Hold)
+        {
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            Pending.Add((call, release));
+            await release.Task;
+        }
+
+        return answered;
     }
 
-    private BrowserListStatus Status(bool ok = true, bool full = false) => new(ok, Rows.Count, !Refuses, full, false);
+    private BrowserListStatus Status(bool ok = true, bool full = false) => new(ok, Rows.Count, !Refuses && !Foreign, full, Foreign);
 
     public Task<BrowserListStatus?> CountAsync() => Answer("count", () => Status());
 
@@ -71,6 +102,12 @@ internal sealed class FakeBrowserList : IBrowserListStore
     public Task<BrowserListStatus?> RemoveAsync(VariableDatasamlingKey key) => Answer("remove", () =>
     {
         Rows.RemoveAll(r => VariableDatasamlingKey.Of(r) == key);
+        return Status();
+    });
+
+    public Task<BrowserListStatus?> RemoveKeysAsync(IReadOnlyCollection<VariableDatasamlingKey> keys) => Answer("removeKeys", () =>
+    {
+        Rows.RemoveAll(r => keys.Contains(VariableDatasamlingKey.Of(r)));
         return Status();
     });
 

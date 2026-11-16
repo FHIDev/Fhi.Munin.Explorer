@@ -54,6 +54,9 @@ public partial class VariableSearch
         /// <summary>The row is in the browser list, but the browser holds it only while this page is open.</summary>
         BrowserListNotKept,
 
+        /// <summary>As <see cref="BrowserListNotKept"/>, because the key holds something this version cannot read.</summary>
+        BrowserListForeign,
+
         /// <summary>The browser could not be asked, so there is no browser list to put the row in.</summary>
         BrowserListUnavailable
     }
@@ -196,6 +199,7 @@ public partial class VariableSearch
             SaveFailure.Failed => T.SaveError,
             SaveFailure.BrowserListFull => T.BrowserListFull(VariableListState.MaxBrowserListRows),
             SaveFailure.BrowserListNotKept => T.BrowserListNotKept,
+            SaveFailure.BrowserListForeign => T.BrowserListForeign,
             SaveFailure.BrowserListUnavailable => T.BrowserListUnavailable,
             _ => null
         });
@@ -268,7 +272,7 @@ public partial class VariableSearch
                 }
                 else if (!ListState.BrowserListKept)
                 {
-                    _saveError[row] = SaveFailure.BrowserListNotKept;
+                    _saveError[row] = ListState.BrowserListForeign ? SaveFailure.BrowserListForeign : SaveFailure.BrowserListNotKept;
                 }
             }
             else

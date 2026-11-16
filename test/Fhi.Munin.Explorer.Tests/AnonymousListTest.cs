@@ -1,6 +1,7 @@
 using AngleSharp.Dom;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
+using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
@@ -51,6 +52,8 @@ public class AnonymousListTest : ExplorerTestContext
         public List<IReadOnlyCollection<VariableDatasamlingKey>> Added { get; } = [];
         public List<VariableList> Lists { get; } = [];
         public bool AddThrows { get; init; }
+        public Exception? ShareThrows { get; init; }
+        public Task<string>? ShareAnswer { get; init; }
 
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
@@ -72,9 +75,13 @@ public class AnonymousListTest : ExplorerTestContext
             return Task.FromResult(list);
         }
 
+        public Action? BeforeAdd { get; set; }
+
         public override Task<bool> AddItemsToMyListAsync(
             Guid id, IReadOnlyCollection<VariableDatasamlingKey> items, CancellationToken cancellationToken = default)
         {
+            BeforeAdd?.Invoke();
+
             if (AddThrows)
             {
                 throw new HttpRequestException("nede");
@@ -107,7 +114,13 @@ public class AnonymousListTest : ExplorerTestContext
             string name, IReadOnlyCollection<VariableListItem> items, CancellationToken cancellationToken = default)
         {
             Shared.Add((name, items));
-            return Task.FromResult("ABC123");
+
+            if (ShareThrows is { } thrown)
+            {
+                throw thrown;
+            }
+
+            return ShareAnswer ?? Task.FromResult("ABC123");
         }
     }
 
@@ -405,20 +418,105 @@ public class AnonymousListTest : ExplorerTestContext
         Assert.Single(items);
     }
 
-    [Fact]
-    public void VariableListView_WhenTheListIsTooLongToShare_ThenShareIsRefusedWithItsOwnSentence()
+    /// <summary>One row whose name brings the share's snapshot to exactly <paramref name="length"/> characters.</summary>
+    private static VariableListItem RowOfSnapshotLength(int length)
     {
-        // The share endpoint refuses a snapshot over 1 MB, which 2000 rows of names can pass.
+        var row = FakeBrowserList.Row("");
+        var bare = MuninExplorerClient.ShareSnapshotLength(No.FirstListName, [row]);
+        return row with { VariableName = new string('x', length - bare) };
+    }
+
+    [Theory]
+    [InlineData(0, true)]
+    [InlineData(1, false)]
+    public void VariableListView_WhenTheSnapshotIsAtOrPastTheShareCap_ThenItIsSentOrRefused(int past, bool sent)
+    {
+        // Munin stores at most 524,288 characters of snapshot; past the margin under it the share is refused here.
         var browser = new FakeBrowserList();
-        browser.Rows.AddRange(Enumerable.Range(0, VariableListState.MaxBrowserShareRows + 1).Select(n => FakeBrowserList.Row($"v{n}")));
+        browser.Rows.Add(RowOfSnapshotLength(MuninExplorerClient.MaxShareSnapshotChars + past));
         var client = new Client();
         var cut = ListView(client, browser);
-        cut.WaitForAssertion(() => Assert.Equal(25, RowNames(cut).Count));
+        cut.WaitForAssertion(() => Assert.Single(RowNames(cut)));
 
         ButtonSaying(cut, No.ShareList).Click();
 
-        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListTooLongToShare(VariableListState.MaxBrowserShareRows), cut.Markup));
-        Assert.Empty(client.Shared);
+        if (sent)
+        {
+            cut.WaitForAssertion(() => Assert.Single(client.Shared));
+            Assert.DoesNotContain(No.BrowserListTooLongToShare, cut.Markup);
+        }
+        else
+        {
+            cut.WaitForAssertion(() => Assert.Contains(No.BrowserListTooLongToShare, cut.Markup));
+            Assert.Empty(client.Shared);
+        }
+    }
+
+    [Fact]
+    public void VariableListView_WhenMuninRefusesTheShareAsTooLarge_ThenTheReaderGetsTheSameSentence()
+    {
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var cut = ListView(new Client { ShareThrows = new SharedSnapshotTooLargeException() }, browser);
+        cut.WaitForAssertion(() => Assert.Single(RowNames(cut)));
+
+        ButtonSaying(cut, No.ShareList).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListTooLongToShare, cut.Markup));
+    }
+
+    [Fact]
+    public async Task VariableListView_WhenTheListChangesWhileTheShareIsOut_ThenTheStaleCodeIsNotShown()
+    {
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var share = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new Client { ShareAnswer = share.Task };
+        var cut = ListView(client, browser);
+        cut.WaitForAssertion(() => Assert.Single(RowNames(cut)));
+
+        ButtonSaying(cut, No.ShareList).Click();
+        cut.WaitForAssertion(() => Assert.Single(client.Shared));
+        browser.Rows.Add(FakeBrowserList.Row("Kjønn"));
+        await cut.InvokeAsync(browser.ChangedElsewhereAsync);
+        share.SetResult("ABC123");
+
+        cut.WaitForAssertion(() => Assert.Equal(2, RowNames(cut).Count));
+        Assert.Empty(cut.FindAll("input[id^=munin-explorer-share-code]"));
+
+        // Asked again, the share is made of the list as it is now, not handed the stale code.
+        ButtonSaying(cut, No.ShareList).Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(2, client.Shared.Count));
+        Assert.Equal(2, client.Shared[^1].Items.Count);
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheKeyHoldsSomethingThisVersionCannotRead_ThenItSaysSo()
+    {
+        var cut = ListView(new Client(), new FakeBrowserList { Foreign = true });
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListForeign, cut.Markup));
+        Assert.DoesNotContain(No.BrowserListNotKept, cut.Markup);
+    }
+
+    [Fact]
+    public async Task VariableListView_WhenThePageCannotBeRead_ThenItSaysSoAndReadsAgainOnTheNextChange()
+    {
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        browser.Failing.Add("page");
+        var cut = ListView(new Client(), browser);
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListReadError, cut.Markup));
+        var reads = browser.Calls.Count(c => c.Call == "page");
+
+        browser.Failing.Remove("page");
+        await cut.InvokeAsync(browser.ChangedElsewhereAsync);
+
+        cut.WaitForAssertion(() => Assert.Equal(["Alder"], RowNames(cut)));
+        Assert.True(browser.Calls.Count(c => c.Call == "page") > reads);
+        Assert.DoesNotContain(No.BrowserListReadError, cut.Markup);
     }
 
     [Fact]
@@ -489,6 +587,61 @@ public class AnonymousListTest : ExplorerTestContext
 
         // The button left with its offer; focus goes to the picker that now names the new list.
         cut.WaitForAssertion(() => JSInterop.Invocations[Focus][^1].Arguments[0].ShouldBeElementReferenceTo(cut.Find("select")));
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheCarryOverMakesTheReadersOnlyList_ThenFocusGoesToCreatingAnother()
+    {
+        // With one list there is no picker to name it, so focus goes where a created list's does: «Legg til ny liste».
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var client = new Client();
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
+
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListSavedAs(No.FirstListName), cut.Markup));
+
+        // The toggle lives in a fragment whose reference bUnit does not print, so the call is counted, not compared;
+        // nothing else in this view asks for focus after the press.
+        Assert.Empty(cut.FindAll("select"));
+        cut.WaitForAssertion(() => Assert.Single(JSInterop.Invocations[Focus]));
+    }
+
+    [Fact]
+    public void VariableListView_WhenARowArrivesFromAnotherTabDuringTheCarryOver_ThenItStaysInTheBrowser()
+    {
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var client = new Client();
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
+        var late = FakeBrowserList.Row("Kjønn");
+        client.BeforeAdd = () => browser.Rows.Add(late);
+
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+
+        cut.WaitForAssertion(() => Assert.Equal([VariableDatasamlingKey.Of(late)], browser.Rows.Select(VariableDatasamlingKey.Of)));
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheSavedRowsCannotLeaveTheBrowser_ThenItSaysSoAndOffersNoSecondCarryOver()
+    {
+        // Offered again, the same rows would be saved as a second list.
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        browser.Failing.Add("removeKeys");
+        var client = new Client();
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
+
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListSavedButStillHere(No.FirstListName), cut.Markup));
+        Assert.DoesNotContain(No.BrowserListSavedAs(No.FirstListName), cut.Markup);
+        Assert.DoesNotContain(No.CarryBrowserListOver, cut.Markup);
+        Assert.Single(client.Created);
     }
 
     [Fact]

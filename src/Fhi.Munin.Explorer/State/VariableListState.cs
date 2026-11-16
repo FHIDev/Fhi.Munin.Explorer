@@ -5,7 +5,8 @@ using Microsoft.Extensions.Logging;
 namespace Fhi.Munin.Explorer.State;
 
 /// <summary>
-/// The one place the signed-in user's variable lists live for the lifetime of a circuit. Every
+/// The one place the signed-in user's variable lists live for the lifetime of a circuit, and, with
+/// <c>MuninExplorer:Features:AnonymousLists</c> on, the signed-out reader's list kept in their browser. Every
 /// surface that reads or writes them — the save action in the result list, the list view, the
 /// download — resolves this same instance and is told when the others change it.
 /// </summary>

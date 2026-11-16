@@ -732,7 +732,8 @@ public interface IMuninExplorerClient
     /// <remarks>
     /// Anonymous, like <see cref="ExportListAsync"/>, and on the same route: the items travel in the body. The API's
     /// ceiling is 2000 items; more is refused with an <see cref="ArgumentException"/> before anything is sent.
-    /// Carries a default body for the reader <see cref="ExportListAsync"/> names.
+    /// Its default body throws <see cref="NotSupportedException"/>, so a host that implements this interface itself
+    /// still builds after the upgrade and says plainly that it has no such export.
     /// </remarks>
     /// <param name="items">The rows to export, each a variable and the datasamling it was chosen from.</param>
     /// <param name="explorerPageUrl">The host's Explorer page, for links in the file; null leaves them out.</param>
@@ -882,7 +883,7 @@ public interface IMuninExplorerClient
     /// </para>
     /// <para>
     /// The API refuses an empty list, a blank name, a name over 200 characters, more than 10 000
-    /// items or a payload over 1 MB with a 400, which throws. Carries a default body for the reader
+    /// items or a snapshot over 512 KB (524,288 characters, about 990 full items) with a 400, which throws. Carries a default body for the reader
     /// <see cref="ExportListAsync"/> gives.
     /// </para>
     /// </remarks>

@@ -20,6 +20,9 @@ internal sealed class BrowserListStore(IJSRuntime js) : IBrowserListStore, IAsyn
     public Task<BrowserListStatus?> RemoveAsync(VariableDatasamlingKey key) =>
         _interop.AnonymousListRemoveAsync(key.VariableId, key.DatasamlingId);
 
+    public Task<BrowserListStatus?> RemoveKeysAsync(IReadOnlyCollection<VariableDatasamlingKey> keys) =>
+        _interop.AnonymousListRemoveKeysAsync([.. keys.Select(BrowserListKeys.Spell)]);
+
     public Task<BrowserListStatus?> ClearAsync() => _interop.AnonymousListClearAsync();
 
     public async Task<IReadOnlyList<VariableDatasamlingKey>?> KeysAsync(int offset, int count) =>

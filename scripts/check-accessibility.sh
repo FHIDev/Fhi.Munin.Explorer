@@ -270,7 +270,8 @@ else
 fi
 
 echo "==> checking browser state preparation"
-node --test "$ROOT/scripts/test-axe-states.mjs" "$ROOT/scripts/test-scan-shard.mjs" "$ROOT/scripts/test-axe-pages.mjs" || {
+node --test "$ROOT/scripts/test-axe-states.mjs" "$ROOT/scripts/test-scan-shard.mjs" "$ROOT/scripts/test-axe-pages.mjs" \
+  "$ROOT/scripts/test-anonymous-list.mjs" || {
   echo "the state-preparation tests failed - TOOLING failure, so nothing was scanned." >&2
   exit 2
 }

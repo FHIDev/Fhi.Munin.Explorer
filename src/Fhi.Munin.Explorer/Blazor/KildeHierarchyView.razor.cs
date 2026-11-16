@@ -44,8 +44,8 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
     /// <para>
     /// A way of drawing the tree rather than something the reader is looking at, so like
     /// <see cref="VariableSearch.LevelLines"/> it is read once at mount and the package remembers
-    /// no choice of its own: it keeps no reader's preference in Web Storage (only what
-    /// <see cref="KildeSearch.ExpandedKildeIds"/> lists), and what is remembered about a reader is the host's policy to set.
+    /// no choice of its own: this one is not among what it keeps in the reader's browser (the README's «What the
+    /// package keeps in the reader's browser»), and what is remembered about a reader is the host's policy to set.
     /// </para>
     /// </remarks>
     [Parameter] public bool ShowNodeIcons { get; set; } = true;

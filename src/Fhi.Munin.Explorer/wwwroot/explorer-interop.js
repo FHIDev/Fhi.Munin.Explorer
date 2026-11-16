@@ -847,16 +847,33 @@ export function writePreference(key, value) {
 // and nothing returns more than a small chunk, since a JS answer to Blazor Server is capped at 32 KB by default.
 const anonymousListKey = 'Fhi.Munin.Explorer:anonymous-list';
 const anonymousListVersion = 1;
+const anonymousPageBytes = 16_000;
 
-// The visit's copy while storage refuses, or while the key holds something this package did not write.
+// This page's changes while storage refuses them: rows it added, and keys it removed, laid over the stored list.
 let anonymousMemory = null;
+let anonymousRemoved = new Set();
 let anonymousForeign = false;
 let anonymousReadable = true;
 let anonymousWatcher = null;
 
 const anonymousRowKey = row => `${row.variabelId}|${row.datasamlingId ?? ''}`;
+const anonymousEmpty = () => ({ v: anonymousListVersion, items: [] });
+const anonymousIsRow = item => item !== null && typeof item === 'object' && typeof item.variabelId === 'string';
 
-// The current list; foreign when the key holds a value that is not ours, which is then neither read nor overwritten.
+// Ours only as v:1 with an array of rows; anything else is foreign, and is then neither read nor overwritten.
+function anonymousParse(raw) {
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.v === anonymousListVersion && Array.isArray(parsed.items) && parsed.items.every(anonymousIsRow)) {
+      return parsed;
+    }
+  } catch {
+    // Unparsable: not ours either.
+  }
+  return null;
+}
+
+// The stored list with this page's unsaved changes laid over it, so a newer list from another tab is never hidden.
 function anonymousLoad() {
   let raw;
   try {
@@ -864,48 +881,58 @@ function anonymousLoad() {
     anonymousReadable = true;
   } catch {
     anonymousReadable = false;
-    return anonymousMemory ?? { v: anonymousListVersion, items: [] };
+    return anonymousMemory ?? anonymousEmpty();
   }
-  anonymousForeign = false;
-  if (raw === null) {
-    return anonymousMemory ?? { v: anonymousListVersion, items: [] };
+  const stored = raw === null ? anonymousEmpty() : anonymousParse(raw);
+  anonymousForeign = stored === null;
+  if (stored === null) {
+    return anonymousMemory ?? anonymousEmpty();
   }
-  try {
-    const parsed = JSON.parse(raw);
-    if (parsed && parsed.v === anonymousListVersion && Array.isArray(parsed.items)) {
-      return anonymousMemory ?? parsed;
+  if (anonymousMemory === null) {
+    return stored;
+  }
+  const items = stored.items.filter(item => !anonymousRemoved.has(anonymousRowKey(item)));
+  const seen = new Set(items.map(anonymousRowKey));
+  for (const item of anonymousMemory.items) {
+    if (!seen.has(anonymousRowKey(item))) {
+      seen.add(anonymousRowKey(item));
+      items.push(item);
     }
-  } catch {
-    // Unparsable: not ours either.
   }
-  anonymousForeign = true;
-  return anonymousMemory ?? { v: anonymousListVersion, items: [] };
+  return { v: anonymousListVersion, items };
 }
 
-// Stored where the browser lets it be; otherwise held for the visit. A later write that works makes it kept again.
+// Stored where the browser lets it be; otherwise held for this page. A later write that works makes it kept again.
 function anonymousSave(list) {
-  if (anonymousForeign || !anonymousReadable) {
-    anonymousMemory = list;
-    return false;
-  }
-  try {
-    if (list.items.length === 0) {
-      localStorage.removeItem(anonymousListKey);
-    } else {
-      localStorage.setItem(anonymousListKey, JSON.stringify({ v: anonymousListVersion, items: list.items }));
+  if (!anonymousForeign && anonymousReadable) {
+    try {
+      if (list.items.length === 0) {
+        localStorage.removeItem(anonymousListKey);
+      } else {
+        localStorage.setItem(anonymousListKey, JSON.stringify({ v: anonymousListVersion, items: list.items }));
+      }
+      anonymousMemory = null;
+      anonymousRemoved = new Set();
+      return true;
+    } catch {
+      // Refused: held below.
     }
-    anonymousMemory = null;
-    return true;
-  } catch {
-    anonymousMemory = list;
-    return false;
   }
+  anonymousMemory = list;
+  return false;
 }
 
 const anonymousKept = () => anonymousReadable && anonymousMemory === null && !anonymousForeign;
 
 function anonymousStatus(list, ok, kept, full) {
   return { ok, count: list.items.length, kept, full, foreign: anonymousForeign };
+}
+
+function anonymousWithout(keys) {
+  const list = anonymousLoad();
+  keys.forEach(key => anonymousRemoved.add(key));
+  const next = { v: anonymousListVersion, items: list.items.filter(item => !keys.has(anonymousRowKey(item))) };
+  return anonymousStatus(next, true, anonymousSave(next), false);
 }
 
 export function anonymousListCount() {
@@ -922,21 +949,22 @@ export function anonymousListAdd(row, max) {
   if (list.items.length >= max) {
     return anonymousStatus(list, false, anonymousKept(), true);
   }
+  anonymousRemoved.delete(key);
   const next = { v: anonymousListVersion, items: [...list.items, row] };
   return anonymousStatus(next, true, anonymousSave(next), false);
 }
 
 export function anonymousListRemove(variabelId, datasamlingId) {
-  const list = anonymousLoad();
-  const key = anonymousRowKey({ variabelId, datasamlingId });
-  const next = { v: anonymousListVersion, items: list.items.filter(item => anonymousRowKey(item) !== key) };
-  return anonymousStatus(next, true, anonymousSave(next), false);
+  return anonymousWithout(new Set([anonymousRowKey({ variabelId, datasamlingId })]));
+}
+
+// The rows a carry-over saved, and only those: a row another tab added meanwhile stays.
+export function anonymousListRemoveKeys(keys) {
+  return anonymousWithout(new Set(keys));
 }
 
 export function anonymousListClear() {
-  const next = { v: anonymousListVersion, items: [] };
-  anonymousLoad();
-  return anonymousStatus(next, true, anonymousSave(next), false);
+  return anonymousWithout(new Set(anonymousLoad().items.map(anonymousRowKey)));
 }
 
 // "variabelId|datasamlingId" per row, the datasamling empty when there is none: about 75 bytes a key.
@@ -944,14 +972,25 @@ export function anonymousListKeys(offset, count) {
   return anonymousLoad().items.slice(offset, offset + count).map(anonymousRowKey);
 }
 
+// At most `count` rows and about 16 KB, at least one: the caller moves on by the rows it got.
 export function anonymousListPage(offset, count) {
-  return { items: anonymousLoad().items.slice(offset, offset + count) };
+  const items = [];
+  let bytes = 0;
+  for (const item of anonymousLoad().items.slice(offset, offset + count)) {
+    bytes += JSON.stringify(item).length;
+    if (items.length > 0 && bytes > anonymousPageBytes) {
+      break;
+    }
+    items.push(item);
+  }
+  return { items };
 }
 
-// Another tab changed the list: .NET reads its keys again rather than being handed them.
+// Another tab changed the list: .NET reads its keys again. The newest listener replaces the last, so a circuit that
+// replaced an earlier one in the same page is the one told.
 export function watchAnonymousList(listener) {
   if (anonymousWatcher !== null) {
-    return;
+    window.removeEventListener('storage', anonymousWatcher);
   }
   anonymousWatcher = event => {
     if (event.key === anonymousListKey || event.key === null) {

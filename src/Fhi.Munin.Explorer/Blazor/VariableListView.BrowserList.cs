@@ -1,3 +1,4 @@
+using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
@@ -17,11 +18,16 @@ public sealed partial class VariableListView
     private bool _carryingOver;
     private bool _carryOverFailed;
     private string? _carriedOverAs;
+    private bool _carriedOverButStillHere;
     private bool _browserShareTooLong;
+    private bool _browserPageFailed;
 
     // The page on screen and what it was read for: the list's version and the page number.
     private IReadOnlyList<VariableListItem> _browserPage = [];
     private (int Version, int Page, int Size)? _browserPageFor;
+
+    // A failed read is not retried for the same page and version, or every render would ask again; a change does.
+    private (int Version, int Page, int Size)? _browserPageFailedFor;
     private int _browserVersionSeen = -1;
 
     private string ClearBrowserListId => $"munin-explorer-clear-browser-list-{_instance}";
@@ -38,14 +44,19 @@ public sealed partial class VariableListView
 
     private string? BrowserListMessage =>
         !ShowsBrowserCopy ? null
-        : _browserShareTooLong ? T.BrowserListTooLongToShare(VariableListState.MaxBrowserShareRows)
+        : _browserShareTooLong ? T.BrowserListTooLongToShare
+        : _browserPageFailed ? T.BrowserListReadError
         : ShareMessage ?? DownloadMessage;
 
-    private string? CarriedOverMessage => _carriedOverAs is { } name ? T.BrowserListSavedAs(name) : null;
+    private string? CarriedOverMessage =>
+        _carriedOverAs is not { } name ? null
+        : _carriedOverButStillHere ? T.BrowserListSavedButStillHere(name)
+        : T.BrowserListSavedAs(name);
 
     /// <summary>The sentence over the browser list: kept, kept for this page only, or not there at all.</summary>
     private string BrowserListStorageSentence =>
         State?.BrowserListAvailable == false ? T.BrowserListUnavailable
+        : State?.BrowserListForeign == true ? T.BrowserListForeign
         : State?.BrowserListKept == false ? T.BrowserListNotKept
         : T.BrowserListKeptHere;
 
@@ -73,13 +84,16 @@ public sealed partial class VariableListView
 
         var wanted = (state.BrowserVersion, _sharedPageNumber, PageSize);
 
-        if (ShowsBrowserCopy && state.BrowserListRead && _browserPageFor != wanted)
+        if (ShowsBrowserCopy && state.BrowserListRead && _browserPageFor != wanted && _browserPageFailedFor != wanted)
         {
             _browserPageFor = wanted;
             var rows = await state.ReadBrowserRowsAsync((_sharedPageNumber - 1) * PageSize, PageSize);
 
             if (_browserPageFor == wanted)
             {
+                // A failure is remembered for this page and version only, so the next change reads it again.
+                _browserPageFailed = rows is null;
+                _browserPageFailedFor = rows is null ? wanted : null;
                 _browserPage = rows ?? [];
                 StateHasChanged();
             }
@@ -155,14 +169,6 @@ public sealed partial class VariableListView
 
         ForgetFailures();
         _browserShareTooLong = false;
-
-        if (BrowserRowCount > VariableListState.MaxBrowserShareRows)
-        {
-            _browserShareTooLong = true;
-            _sharingBrowserList = false;
-            return;
-        }
-
         _sharingBrowserList = !_sharingBrowserList;
 
         if (!_sharingBrowserList || _browserShare is not null)
@@ -171,18 +177,41 @@ public sealed partial class VariableListView
         }
 
         _shareInFlight = true;
+        var version = State.BrowserVersion;
 
         try
         {
-            if (await State.ReadBrowserRowsAsync(0, VariableListState.MaxBrowserShareRows) is not { Count: > 0 } rows)
+            // Every row, or no share: a list cut short at the read would be sent as though it were whole.
+            var count = State.BrowserCount;
+
+            if (await State.ReadBrowserRowsAsync(0, count) is not { Count: > 0 } rows || rows.Count < count)
             {
                 _shareFailure = ListActionFailure.Failed;
                 _sharingBrowserList = false;
                 return;
             }
 
+            if (MuninExplorerClient.ShareSnapshotLength(T.FirstListName, rows) > MuninExplorerClient.MaxShareSnapshotChars)
+            {
+                RefuseShareAsTooLong();
+                return;
+            }
+
             var code = await Client.ShareListAsync(T.FirstListName, rows);
+
+            // The list changed while the share was out: the code holds rows the reader no longer has.
+            if (State.BrowserVersion != version)
+            {
+                _sharingBrowserList = false;
+                return;
+            }
+
             _browserShare = new ShareMade(Guid.Empty, code, SharedListHref?.Invoke(code));
+        }
+        catch (SharedSnapshotTooLargeException ex)
+        {
+            Log?.LogWarning(ex, "the API refused sharing the browser list as too large");
+            RefuseShareAsTooLong();
         }
         catch (MuninExplorerRateLimitedException ex)
         {
@@ -200,6 +229,12 @@ public sealed partial class VariableListView
         {
             _shareInFlight = false;
         }
+    }
+
+    private void RefuseShareAsTooLong()
+    {
+        _browserShareTooLong = true;
+        _sharingBrowserList = false;
     }
 
     /// <summary>The browser list's rows as one file, through the anonymous export by (variable, datasamling).</summary>
@@ -265,11 +300,14 @@ public sealed partial class VariableListView
         _carryingOver = true;
         _carryOverFailed = false;
         ForgetFailures();
-        VariableList? created;
+
+        // Before the first await, as a create does: a form the reader opens meanwhile keeps the focus.
+        var formsOpenAtStart = OpenForms();
+        VariableListState.CarryOver? carried;
 
         try
         {
-            created = await State.CarryBrowserListOverAsync(FreeListName(T.FirstListName));
+            carried = await State.CarryBrowserListOverAsync(FreeListName(T.FirstListName));
         }
         catch (Exception ex)
         {
@@ -282,14 +320,14 @@ public sealed partial class VariableListView
                 Log?.LogError(ex, "could not save the browser list as a new list");
             }
 
-            created = null;
+            carried = null;
         }
         finally
         {
             _carryingOver = false;
         }
 
-        if (created is null)
+        if (carried is not { List: var created })
         {
             _carryOverFailed = true;
             return;
@@ -317,9 +355,10 @@ public sealed partial class VariableListView
         await LoadPageAsync();
 
         // The button left with its offer: focus goes where a created list sends it, and the alert says what happened.
-        _formsOpenAtCreate = OpenForms();
+        _formsOpenAtCreate = formsOpenAtStart;
         _focusAfterCreate = true;
         _carriedOverAs = created.Name;
+        _carriedOverButStillHere = !carried.LeftTheBrowser;
     }
 
     // The list's name, made free among the reader's lists the way a reader would: «Navn (2)».

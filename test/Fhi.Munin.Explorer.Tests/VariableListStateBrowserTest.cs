@@ -83,6 +83,59 @@ public class VariableListStateBrowserTest
     }
 
     [Fact]
+    public async Task ToggleInBrowserListAsync_WhenTwoPressesOverlapAndAnswerOutOfOrder_ThenBothRowsAndTheCountHold()
+    {
+        // Without the turn each press sends at once, and the older answer, landing last, publishes its older count.
+        var browser = new FakeBrowserList();
+        var state = await TabAsync(browser);
+        var first = FakeBrowserList.Row("Alder");
+        var second = FakeBrowserList.Row("Kjønn");
+        browser.Hold = true;
+
+        var presses = Task.WhenAll(
+            state.ToggleInBrowserListAsync(first, drawnAsSaved: false),
+            state.ToggleInBrowserListAsync(second, drawnAsSaved: false));
+        await ReleaseUntilAsync(browser, presses);
+
+        Assert.True(state.IsSaved(VariableDatasamlingKey.Of(first)));
+        Assert.True(state.IsSaved(VariableDatasamlingKey.Of(second)));
+        Assert.Equal(2, state.BrowserCount);
+    }
+
+    [Fact]
+    public async Task SyncBrowserListAsync_WhenAnotherTabsChangeArrivesMidToggle_ThenNoStaleListIsPublished()
+    {
+        // The re-read was asked before the press; answered after it, without the turn it would put back the list before it.
+        var browser = new FakeBrowserList();
+        var state = await TabAsync(browser);
+        var row = FakeBrowserList.Row("Alder");
+        browser.Hold = true;
+
+        var sync = browser.ChangedElsewhereAsync();
+        var press = state.ToggleInBrowserListAsync(row, drawnAsSaved: false);
+        await ReleaseUntilAsync(browser, Task.WhenAll(sync, press));
+
+        Assert.True(state.IsSaved(VariableDatasamlingKey.Of(row)));
+        Assert.Equal(1, state.BrowserCount);
+    }
+
+    // Answers the newest held call until the work is done, as a network that delivers the later answer first.
+    private static async Task ReleaseUntilAsync(FakeBrowserList browser, Task work)
+    {
+        while (!work.IsCompleted)
+        {
+            if (browser.Pending.Count > 0)
+            {
+                browser.ReleaseNewest();
+            }
+
+            await Task.Delay(5);
+        }
+
+        await work;
+    }
+
+    [Fact]
     public void MaxBrowserListRows_WhenCompared_ThenItIsTheExportsCeiling() =>
         Assert.Equal(Client.MuninExplorerClient.MaxExportItems, VariableListState.MaxBrowserListRows);
 }

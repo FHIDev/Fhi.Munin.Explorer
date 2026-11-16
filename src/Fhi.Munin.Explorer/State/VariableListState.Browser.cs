@@ -19,9 +19,6 @@ public sealed partial class VariableListState : IDisposable
     /// <summary>The anonymous export's ceiling, which the browser list therefore cannot pass.</summary>
     internal const int MaxBrowserListRows = MuninExplorerClient.MaxExportItems;
 
-    /// <summary>The most rows a share is offered for: at about 550 bytes a row, more nears the API's 1 MB snapshot cap.</summary>
-    internal const int MaxBrowserShareRows = 1500;
-
     // Each chunk well under the 32 KB a JS answer may carry: a key is about 75 bytes, a row about 550.
     private const int KeysPerCall = 100;
     internal const int RowsPerCall = 20;
@@ -65,6 +62,15 @@ public sealed partial class VariableListState : IDisposable
 
     /// <summary>False while the browser holds the list for this page only: storage refused, or the key is not ours.</summary>
     internal bool BrowserListKept { get; private set; } = true;
+
+    /// <summary>The key holds something this version cannot read, which is left alone; the list lives for this page.</summary>
+    internal bool BrowserListForeign { get; private set; }
+
+    /// <summary>
+    /// True once a carry-over saved the rows to Munin but could not take them out of the browser: offering it again
+    /// would save them twice.
+    /// </summary>
+    internal bool BrowserCarryOverStuck { get; private set; }
 
     /// <summary>Moves on every change to the browser list, so a view can tell its page is stale.</summary>
     internal int BrowserVersion { get; private set; }
@@ -190,6 +196,7 @@ public sealed partial class VariableListState : IDisposable
         _browserKeys = keys;
         BrowserCount = status.Count;
         BrowserListKept = status.Kept;
+        BrowserListForeign = status.Foreign;
         BrowserListAvailable = true;
     }
 
@@ -348,11 +355,14 @@ public sealed partial class VariableListState : IDisposable
         }).ConfigureAwait(false);
     }
 
+    /// <summary>What a carry-over made, and whether the rows it saved also left the browser.</summary>
+    internal sealed record CarryOver(VariableList List, bool LeftTheBrowser);
+
     /// <summary>
-    /// Saves the browser list as a new list of the signed-in reader's, then empties it. Null when nothing was made;
-    /// a failure leaves the browser list as it was, and throws what the API threw.
+    /// Saves the browser list as a new list of the signed-in reader's, then takes those rows, and only those, out of
+    /// the browser. Null when nothing was made; a failure leaves the browser list as it was, and throws what the API threw.
     /// </summary>
-    internal async Task<VariableList?> CarryBrowserListOverAsync(string name, CancellationToken cancellationToken = default)
+    internal async Task<CarryOver?> CarryBrowserListOverAsync(string name, CancellationToken cancellationToken = default)
     {
         if (!IsAuthenticated || await ReadBrowserKeysAsync().ConfigureAwait(false) is not { Count: > 0 } keys)
         {
@@ -390,8 +400,42 @@ public sealed partial class VariableListState : IDisposable
             return null;
         }
 
-        await ClearBrowserListAsync().ConfigureAwait(false);
-        return created;
+        var left = await RemoveBrowserKeysAsync(keys).ConfigureAwait(false);
+        BrowserCarryOverStuck = !left;
+        return new CarryOver(created, left);
+    }
+
+    /// <summary>Takes these rows out of the browser list in one call, leaving any another tab added. Never throws.</summary>
+    private async Task<bool> RemoveBrowserKeysAsync(IReadOnlyCollection<VariableDatasamlingKey> keys)
+    {
+        if (_browserStore is not { } store)
+        {
+            return false;
+        }
+
+        var removed = await InTurnAsync(async () =>
+        {
+            try
+            {
+                if (await store.RemoveKeysAsync(keys).ConfigureAwait(false) is { } status)
+                {
+                    await RereadKeysAsync(store, status).ConfigureAwait(false);
+                    return true;
+                }
+
+                BrowserListAvailable = false;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "could not take the carried rows out of the browser's variable list");
+                BrowserListAvailable = false;
+            }
+
+            return false;
+        }).ConfigureAwait(false);
+
+        BrowserChanged();
+        return removed;
     }
 
     private async Task DeleteQuietlyAsync(Guid id)
@@ -437,6 +481,9 @@ internal interface IBrowserListStore
 
     Task<BrowserListStatus?> ClearAsync();
 
+    /// <summary>Takes out exactly these rows, in one call.</summary>
+    Task<BrowserListStatus?> RemoveKeysAsync(IReadOnlyCollection<VariableDatasamlingKey> keys);
+
     /// <summary>Keys from <paramref name="offset"/>; an empty answer is the end of the list.</summary>
     Task<IReadOnlyList<VariableDatasamlingKey>?> KeysAsync(int offset, int count);
 
@@ -463,6 +510,8 @@ internal sealed record BrowserListStatus(
 /// <summary>The module's spelling of a row's key: <c>variabelId|datasamlingId</c>, the datasamling empty for none.</summary>
 internal static class BrowserListKeys
 {
+    internal static string Spell(VariableDatasamlingKey key) => $"{key.VariableId}|{key.DatasamlingId}";
+
     internal static VariableDatasamlingKey? Parse(string? key)
     {
         var parts = key?.Split('|');

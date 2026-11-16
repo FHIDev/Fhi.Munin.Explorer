@@ -465,12 +465,10 @@ public sealed partial class VariableSearch : ComponentBase
     /// as on and off — and pressing it raises <see cref="LevelLinesChanged"/>.
     /// </para>
     /// <para>
-    /// The package does not remember the choice, by decision rather than by omission. It keeps no
-    /// reader's preference in Web Storage — it has to run inside a static-SSR host as well as an
-    /// interactive one, and what is remembered about a reader is the host's own policy to set. What it
-    /// does write there is the kilde list's scroll position, per tab, and with
-    /// <c>MuninExplorer:Features:AnonymousLists</c> on a signed-out reader's list, as
-    /// <see cref="KildeSearch.ExpandedKildeIds"/> says. Like <see cref="Search"/> and <see cref="Filter"/>
+    /// The package does not remember the choice, by decision rather than by omission — it has to run inside a
+    /// static-SSR host as well as an interactive one, and what is remembered about a reader is the host's own
+    /// policy to set. What the package does keep in the reader's browser is listed in the README, under «What the
+    /// package keeps in the reader's browser», and this choice is not among it. Like <see cref="Search"/> and <see cref="Filter"/>
     /// it is read once at mount and owned by the component afterwards, so a host that wants it remembered
     /// stores what this raises and supplies it at the next mount; a later change to the parameter on
     /// a mounted component does nothing. A host that stores nothing gets the lines on at every
@@ -516,9 +514,8 @@ public sealed partial class VariableSearch : ComponentBase
     /// </para>
     /// <para>
     /// Remembered by the host and never by the package, exactly as <see cref="LevelLines"/> is:
-    /// the package keeps no reader's preference in Web Storage (only the scroll position and, with
-    /// <c>AnonymousLists</c> on, a signed-out reader's list), and what is remembered about a
-    /// reader is the host's own policy to set. It is read once at
+    /// the package does not keep it in the reader's browser (the README lists what it does keep, under «What the
+    /// package keeps in the reader's browser»), and what is remembered about a reader is the host's own policy to set. It is read once at
     /// mount and owned by the component afterwards, so a host stores what
     /// <see cref="ShowNodeIconsChanged"/> raises and supplies it at the next mount; changing the
     /// parameter on a component that is already mounted does nothing. A host that stores nothing

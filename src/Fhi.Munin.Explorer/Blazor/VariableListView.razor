@@ -777,7 +777,7 @@ else if (ShowsBrowserCopy)
 
     // Signed in with rows still in the browser: one press saves them as a new list, never on its own (Fhi.Metadata-emsc0.3.12).
     private RenderFragment CarryOverOffer => @<text>
-        @if (State is { IsAuthenticated: true, BrowserCount: > 0 and var rows } && !ShowsSharedList)
+        @if (State is { IsAuthenticated: true, BrowserCount: > 0 and var rows, BrowserCarryOverStuck: false } && !ShowsSharedList)
         {
             <div>
                 <p class="caption">@T.BrowserListWaiting(rows)</p>

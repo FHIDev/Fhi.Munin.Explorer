@@ -1358,6 +1358,19 @@ already is the component's type; they carry ids, page numbers and the like, neve
 response body or anything the reader typed — the user's access token reaches the wire through `BearerTokenHandler`'s
 `Authorization` header, which no exception message here repeats.
 
+### What the package keeps in the reader's browser
+
+Three things, each only where the host serves the package's browser module, and none of them about the reader:
+
+| Where | Key | What | When |
+| --- | --- | --- | --- |
+| `sessionStorage`, per tab | `Fhi.Munin.Explorer:scroll:` + the page's path and query | the kildeutforsker list's scroll position | written when the reader leaves the list, removed when read back |
+| `localStorage` | `munin-explorer.filters-collapsed` | whether the filter panel is folded on a wide screen | when the reader folds or unfolds it |
+| `localStorage` | `Fhi.Munin.Explorer:anonymous-list` | a signed-out reader's variable list: each row's ids, code, names, kilde and datasamling, period | only with `MuninExplorer:Features:AnonymousLists` on |
+
+Nothing else — no other choice a reader makes, such as the level lines or the node icons, is remembered by the
+package; a host that wants one remembered stores what the component raises.
+
 ### Turning features on per environment
 
 Features a host may want on in one environment before another are switched under `MuninExplorer:Features`,
@@ -1387,12 +1400,14 @@ leave `AnonymousLists` off; the gates turn it on for one state of their own. Tod
   owns the list and changes it a row at a time, so two tabs do not undo each other, and another tab's change is
   picked up through the browser's `storage` event. The save button a signed-in reader has adds a row to it, the
   list tab shows it through the shared-list view, and it can be downloaded (`ExportItemsAsync`, Munin's anonymous
-  export), shared as a code up to 1500 rows (the share endpoint's 1 MB cap), or emptied. Signed in with rows still
+  export), shared as a code while its snapshot stays under the share endpoint's 512 KB (about 990 full rows), or
+  emptied. Signed in with rows still
   in the browser, the list tab offers one button that saves them as a new list in Mine lister. Where the browser
   refuses storage the list lasts while the page is open and the view says so; a host that does not serve the module
   has no list, and the save button and the list tab say it cannot be kept in this browser. With it off, a
-  signed-out reader has no save button and no list tab, as before. The browser gates scan it in `list-browser-list`, on a host
-  started with it on and with the samples' `Sample:SignedOut` switch, which mounts the composed explorer signed out.
+  signed-out reader has no save button and no list tab, as before. `check-accessibility.sh` scans it with axe in `list-browser-list`, on
+  a host started with it on and with the samples' `Sample:SignedOut` switch, which mounts the composed explorer signed
+  out; `check-hostile-host.sh` measures the same state when it runs, nightly or by hand, not on a pull request.
 
 A new feature gets its own entry, off by default, and the entry is removed once the feature is on for every host.
 
@@ -1493,9 +1508,8 @@ A row opened on its datasamlinger is in the address too, as `?expanded=<kilde id
 row, so a link opens the same rows in either language and Back from the variable explorer comes
 back to them. Opening or closing a row replaces the history entry rather than adding one. Where the
 host serves the package's browser module, the list also returns to the scroll position the reader
-left it at — kept per tab in `sessionStorage`, keyed by the address (the other things the package writes
-to Web Storage are the filter panel's fold and, with `AnonymousLists` on, a signed-out reader's list) —
-or, for a link nobody has scrolled, brings the first open row into view.
+left it at — kept per tab in `sessionStorage`, keyed by the address (see «What the package keeps in the
+reader's browser») — or, for a link nobody has scrolled, brings the first open row into view.
 A link opens at most twenty rows by itself, the rows its marks open counted among them.
 
 `?datasamling=` is read beside `?kilde=` and never instead of it: a datasamling opens in place of

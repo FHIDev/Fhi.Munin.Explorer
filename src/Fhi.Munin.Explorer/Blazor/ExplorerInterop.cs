@@ -346,6 +346,9 @@ internal sealed class ExplorerInterop : IAsyncDisposable
     internal Task<BrowserListStatus?> AnonymousListRemoveAsync(Guid variableId, Guid? datasamlingId) =>
         AnonymousCallAsync<BrowserListStatus>("anonymousListRemove", variableId, datasamlingId);
 
+    internal Task<BrowserListStatus?> AnonymousListRemoveKeysAsync(IReadOnlyCollection<string> keys) =>
+        AnonymousCallAsync<BrowserListStatus>("anonymousListRemoveKeys", keys);
+
     internal Task<BrowserListStatus?> AnonymousListClearAsync() => AnonymousCallAsync<BrowserListStatus>("anonymousListClear");
 
     internal Task<string[]?> AnonymousListKeysAsync(int offset, int count) =>

@@ -536,7 +536,9 @@ against real Stiler with geometry at the six widths, 320 and 1279 and axe at 144
 (`Fhi.Metadata-l9l2n.172`, `Fhi.Metadata-l9l2n.174`).
 A signed-out reader's list in the browser gets the same treatment in `list-browser-list`, on one more host start with
 `MuninExplorer__Features__AnonymousLists=true` and the samples' `Sample__SignedOut=true`, which mounts the composed
-explorer signed out; both samples stay signed in by default (`Fhi.Metadata-emsc0.3.12`).
+explorer signed out; both samples stay signed in by default (`Fhi.Metadata-emsc0.3.12`). A pull request's CI runs only
+the axe half: `check-hostile-host.sh` does not run on pull requests, so the state's geometry against real Stiler is
+measured when that script runs — nightly, or by hand.
 
 **It scans states, not only pages.** A page in its default state is not the page a reader uses,
 and for a while the default state was the whole of this check: the level lines shipped at 1.16:1
