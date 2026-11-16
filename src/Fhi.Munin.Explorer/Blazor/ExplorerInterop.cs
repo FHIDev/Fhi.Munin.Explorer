@@ -279,6 +279,25 @@ internal sealed class ExplorerInterop : IAsyncDisposable
         }
     }
 
+    // Null means unknown: the module is not loaded or the call failed.
+    internal async Task<bool?> IsTypingInFieldAsync()
+    {
+        if (_module is not { } module)
+        {
+            return null;
+        }
+
+        try
+        {
+            return await Tolerated<object>(async () => await module.InvokeAsync<bool>("isTypingInField").ConfigureAwait(false))
+                .ConfigureAwait(false) is bool typing ? typing : null;
+        }
+        catch (JSException)
+        {
+            return null;
+        }
+    }
+
     /// <summary>A setting the reader made in this browser, or null where there is none or storage is off.</summary>
     internal async Task<string?> ReadPreferenceAsync(string key)
     {

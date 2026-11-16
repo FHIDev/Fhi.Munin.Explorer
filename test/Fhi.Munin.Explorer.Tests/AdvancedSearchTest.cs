@@ -598,6 +598,143 @@ public class AdvancedSearchTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.True(client.Searches[^1]!.IsEmpty));
     }
 
+    // A removed chip's row must go with it, or «Vis treff» on the open form applies the condition again.
+    [Fact]
+    public void Chip_WhenRemovedWhileTheFormIsOpen_ThenShowHitsDoesNotApplyItAgain()
+    {
+        var client = new ConditionClient();
+        var cut = RenderWith(client, filter: new VariableFilter
+        {
+            Conditions = [Condition("navn:inneholder:blod"), Condition("kode:begynnerMed:V_")]
+        });
+        cut.WaitForAssertion(() => Assert.NotEmpty(client.Searches));
+        Button(cut, "Endre avansert søk").Click();
+        cut.WaitForAssertion(() => Assert.Equal(2, Rows(cut).Count));
+
+        cut.FindAll("button").Single(b => b.GetAttribute("aria-label") == "Fjern filteret Navn inneholder «blod»").Click();
+        cut.WaitForAssertion(() => Assert.Single(Rows(cut)));
+        Button(cut, "Vis treff").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal([Condition("kode:begynnerMed:V_")], client.Searches[^1]!.Conditions));
+    }
+
+    [Fact]
+    public void Chip_WhenItsRowWasEditedBeforeTheRemoval_ThenTheEditedRowStaysAndApplies()
+    {
+        var client = new ConditionClient();
+        var cut = RenderWith(client, filter: new VariableFilter { Conditions = [Condition("navn:inneholder:blod")] });
+        cut.WaitForAssertion(() => Assert.NotEmpty(client.Searches));
+        Button(cut, "Endre avansert søk").Click();
+        cut.WaitForAssertion(() => Assert.Single(Rows(cut)));
+        Rows(cut)[0].QuerySelector("input[type=text]")!.Change("blodtrykk");
+
+        cut.FindAll("button").Single(b => b.GetAttribute("aria-label") == "Fjern filteret Navn inneholder «blod»").Click();
+        Button(cut, "Vis treff").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal([Condition("navn:inneholder:blodtrykk")], client.Searches[^1]!.Conditions));
+    }
+
+    [Theory]
+    [InlineData("navn:inneholder:blod", "navn:erLik:blod")]
+    [InlineData("navn:inneholder:blod", "beskrivelse:inneholder:blod")]
+    public void Chip_WhenAnotherRowDiffersOnlyInOperatorOrField_ThenThatRowStays(string removed, string kept)
+    {
+        var client = new ConditionClient();
+        var cut = RenderWith(client, filter: new VariableFilter { Conditions = [Condition(removed), Condition(kept)] });
+        cut.WaitForAssertion(() => Assert.NotEmpty(client.Searches));
+        Button(cut, "Endre avansert søk").Click();
+        cut.WaitForAssertion(() => Assert.Equal(2, Rows(cut).Count));
+
+        cut.FindAll("button").Single(b => b.GetAttribute("aria-label") == $"Fjern filteret {ConditionText(removed)}").Click();
+
+        cut.WaitForAssertion(() => Assert.Single(Rows(cut)));
+        Button(cut, "Vis treff").Click();
+        cut.WaitForAssertion(() => Assert.Equal([Condition(kept)], client.Searches[^1]!.Conditions));
+    }
+
+    private static string ConditionText(string condition) => condition switch
+    {
+        "navn:inneholder:blod" => "Navn inneholder «blod»",
+        _ => throw new ArgumentException(condition)
+    };
+
+    [Fact]
+    public void Chip_WhenTheLinkListsCodesInAnotherOrder_ThenItsRowStillGoes()
+    {
+        var client = new ConditionClient();
+        var cut = RenderWith(client, filter: new VariableFilter
+        {
+            Conditions = [Condition("tilgangsniva:erEnAv:APNE-DATA,statistikkbank"), Condition("navn:inneholder:blod")]
+        });
+        cut.WaitForAssertion(() => Assert.NotEmpty(client.Searches));
+        Button(cut, "Endre avansert søk").Click();
+        cut.WaitForAssertion(() => Assert.Equal(2, Rows(cut).Count));
+
+        cut.FindAll("button").Single(b => b.GetAttribute("aria-label")?.StartsWith("Fjern filteret Tilgangsnivå", StringComparison.Ordinal) == true).Click();
+
+        cut.WaitForAssertion(() => Assert.Single(Rows(cut)));
+        Button(cut, "Vis treff").Click();
+        cut.WaitForAssertion(() => Assert.Equal([Condition("navn:inneholder:blod")], client.Searches[^1]!.Conditions));
+    }
+
+    [Fact]
+    public void Chip_WhenAKeptChipReadsTheSameOnceCanonical_ThenShowHitsStillAppliesIt()
+    {
+        var client = new ConditionClient();
+        var cut = RenderWith(client, filter: new VariableFilter
+        {
+            Conditions = [Condition("tilgangsniva:erEnAv:apne-data,statistikkbank"), Condition("tilgangsniva:erEnAv:statistikkbank,apne-data")]
+        });
+        cut.WaitForAssertion(() => Assert.NotEmpty(client.Searches));
+        Button(cut, "Endre avansert søk").Click();
+        cut.WaitForAssertion(() => Assert.Equal(2, Rows(cut).Count));
+
+        cut.FindAll("button").First(b => b.GetAttribute("aria-label")?.StartsWith("Fjern filteret Tilgangsnivå", StringComparison.Ordinal) == true).Click();
+        Button(cut, "Vis treff").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("tilgangsniva", Assert.Single(client.Searches[^1]!.Conditions).Field));
+    }
+
+    [Fact]
+    public async Task Chip_WhenRemovedWhileTheOpeningStillLoads_ThenTheRowsAreTheConditionsLeft()
+    {
+        var held = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new ConditionClient { HeldVocabulary = held };
+        var cut = RenderWith(client, filter: new VariableFilter
+        {
+            Conditions = [Condition("navn:inneholder:blod"), Condition("kode:begynnerMed:V_")]
+        });
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+
+        cut.FindAll("button").Single(b => b.GetAttribute("aria-label") == "Fjern filteret Navn inneholder «blod»").Click();
+        Assert.Empty(Rows(cut));
+        await cut.InvokeAsync(held.SetResult);
+
+        cut.WaitForAssertion(() => Assert.Equal("V_", Assert.Single(Rows(cut)).QuerySelector("input[type=text]")!.GetAttribute("value")));
+    }
+
+    [Fact]
+    public void ClearAll_WhenPressedWhileTheFormIsOpen_ThenShowHitsAppliesNoneOfTheOldConditions()
+    {
+        var client = new ConditionClient();
+        var cut = RenderWith(client, filter: new VariableFilter
+        {
+            Conditions = [Condition("navn:inneholder:blod"), Condition("kode:begynnerMed:V_")]
+        });
+        cut.WaitForAssertion(() => Assert.NotEmpty(client.Searches));
+        Button(cut, "Endre avansert søk").Click();
+        cut.WaitForAssertion(() => Assert.Equal(2, Rows(cut).Count));
+
+        cut.FindAll(".munin-explorer-filters__active button").Single(b => b.TextContent == "Fjern alle filtre").Click();
+        cut.WaitForAssertion(() => Assert.True(client.Searches[^1]!.IsEmpty));
+        Assert.Equal("", Assert.Single(Rows(cut)).QuerySelector("input[type=text]")!.GetAttribute("value") ?? "");
+        Button(cut, "Vis treff").Click();
+
+        cut.WaitForAssertion(() => Assert.True(client.Searches[^1]!.IsEmpty));
+        Assert.DoesNotContain(cut.FindAll("button"), b => b.GetAttribute("aria-label")?.StartsWith("Fjern filteret", StringComparison.Ordinal) == true);
+    }
+
     [Fact]
     public void Edit_WhenPressedFromTheChipRow_ThenTheFormOpensOnTheConditionsInForce()
     {
@@ -785,6 +922,40 @@ public class AdvancedSearchTest : ExplorerTestContext
 
         AssertFocusOn(cut, () => FieldList(Rows(cut)[0]));
     }
+
+    // A slow field list must not pull focus out of the field the reader is typing in.
+    [Fact]
+    public void Open_WhenTheReaderIsTypingElsewhereAsTheRowsArrive_ThenFocusStaysWhereItIs()
+    {
+        JSInterop.SetupModule(ExplorerInterop.ModulePath).Setup<bool>("isTypingInField").SetResult(true);
+        var cut = RenderWith(new ConditionClient());
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        var focusesBefore = FocusCalls();
+
+        Toggle(cut)!.Click();
+        cut.WaitForAssertion(() => Assert.Single(Rows(cut)));
+
+        Assert.Equal(focusesBefore, FocusCalls());
+    }
+
+    [Fact]
+    public void AddCondition_WhenTheReaderWasTypingAsTheRowsArrived_ThenThePressStillMovesFocus()
+    {
+        JSInterop.SetupModule(ExplorerInterop.ModulePath).Setup<bool>("isTypingInField").SetResult(true);
+        var cut = RenderWith(new ConditionClient());
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+        cut.WaitForAssertion(() => Assert.Single(Rows(cut)));
+        Remember(cut);
+
+        Button(cut, "Legg til betingelse").Click();
+        Remember(cut);
+
+        AssertFocusOn(cut, () => FieldList(Rows(cut)[1]));
+    }
+
+    private int FocusCalls() =>
+        JSInterop.Invocations.Count(call => call.Identifier == "Blazor._internal.domWrapper.focus");
 
     [Fact]
     public void AddCondition_WhenARowIsAdded_ThenFocusGoesToItsFieldList()

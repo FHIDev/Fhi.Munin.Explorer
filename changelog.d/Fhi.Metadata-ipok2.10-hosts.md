@@ -1,0 +1,2 @@
+category: Notes for hosts
+- **Avansert søk's «Verdi» text field no longer wears `input__field--small`.** It wears `input__field` alone, like the date fields beside it, so it fills the column. For the text and date fields to be as tall as the Felt and Operator lists, a host needs `.munin-explorer-advanced-search input.input__field { height: 2.75rem; padding: 0 1rem }`, the 2.75rem of `.munin-explorer select`. Stiler has that rule from 0.1.215. On an older Stiler, the fields are full width and about 60px tall.
