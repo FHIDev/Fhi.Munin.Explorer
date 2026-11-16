@@ -1461,7 +1461,8 @@ datasamling, and the code with `datasamlingId` for a row of another. It writes a
 one, so against a Munin without the route, or a client on the contract's default body, its links keep naming the
 variable by id as before. A `datasamlingId` the variable does not have, such as one from another environment, opens
 the primary row instead and says so, when the variable has more than one datasamling. A `variabelId` link keeps
-working. Declining `variabel` or `variabelId` keeps the open variable out of the address altogether.
+working. Declining `variabel` keeps codes out of the address, which then names the open variable by `variabelId` as
+before; declining `variabelId` keeps the open variable out of the address altogether.
 
 `KildeExplorer` is the kildeutforsker's equivalent, and `Language` is all it takes:
 

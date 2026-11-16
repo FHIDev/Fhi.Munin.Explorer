@@ -323,8 +323,9 @@ public sealed record ExplorerUrlState
     /// component to leave alone. <c>variabelId</c> and <c>instrumentId</c> are in here for that
     /// reason too: a host with a variable or instrument page of its own plausibly already means
     /// something by either, and so is <c>delekode</c>, which a host may already use for sharing
-    /// of its own. <c>variabel</c> is the variable's code and goes with <c>variabelId</c>: declining either leaves the
-    /// open variable out altogether, <c>datasamlingId</c> with it. Declining <c>datasamlingId</c> leaves out only that.
+    /// of its own. <c>variabel</c> is the variable's code: declining it keeps codes out of the address, which then names the
+    /// open variable by <c>variabelId</c> as before. Declining <c>variabelId</c> leaves the open variable out altogether,
+    /// its code and <c>datasamlingId</c> with it. Declining <c>datasamlingId</c> leaves out only that.
     /// </remarks>
     public static IReadOnlySet<string> ScalarQueryKeys { get; } =
         new HashSet<string>(

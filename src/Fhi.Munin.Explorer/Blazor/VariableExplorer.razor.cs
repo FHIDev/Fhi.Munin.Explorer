@@ -265,7 +265,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
         if (!_known.TryGetValue(id, out var known))
         {
-            if (!DeclinedVariable)
+            if (!NoCodes)
             {
                 Learn(id);
             }
@@ -571,7 +571,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             return null;
         }
 
-        if (_codesResolve is true && VariableCodes.IsLinkCode(code))
+        if (!NoCodes && _codesResolve is true && VariableCodes.IsLinkCode(code))
         {
             // Only an open row's link is drawn, so asking its primary here is one lookup per row opened.
             if (!_known.ContainsKey(variableId))
@@ -588,7 +588,10 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             });
         }
 
-        Learn(variableId, code.Trim());
+        if (!NoCodes)
+        {
+            Learn(variableId, code.Trim());
+        }
 
         return Declined("search")
             ? null
@@ -610,14 +613,16 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
     private void OnShareCodeChanged(string? code) => _state.ShareCode = code;
 
-    // Declining either variable key leaves both unread, or a code would be read in and never written back out.
+    // A code is not read where it would never be written back out.
     private bool Owns(string key) =>
         ExplorerUrlState.QueryKeys.Contains(key) && !Declined(key)
-        && !(DeclinedVariable && (string.Equals(key, "variabel", StringComparison.OrdinalIgnoreCase)
-                                  || string.Equals(key, "variabelId", StringComparison.OrdinalIgnoreCase)));
+        && !(NoCodes && string.Equals(key, "variabel", StringComparison.OrdinalIgnoreCase));
 
-    // The variable's id and its code are one part of the view: declining either keeps the open variable out of the address.
-    private bool DeclinedVariable => Declined("variabelId") || Declined("variabel");
+    // Declining variabelId keeps the open variable out of the address, its code and datasamling with it.
+    private bool DeclinedVariable => Declined("variabelId");
+
+    // Declining variabel keeps codes out: the open variable is named by its id, as before codes (Fhi.Metadata-l9l2n.182).
+    private bool NoCodes => DeclinedVariable || Declined("variabel");
 
     private bool Declined(string key) =>
         DeclinedKeys?.Contains(key, StringComparer.OrdinalIgnoreCase) == true;
@@ -634,7 +639,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         {
             Search = Declined("search") ? null : state.Search,
             SelectedVariableId = DeclinedVariable ? null : state.SelectedVariableId,
-            SelectedVariableCode = DeclinedVariable ? null : state.SelectedVariableCode,
+            SelectedVariableCode = NoCodes ? null : state.SelectedVariableCode,
             SelectedDatasamlingId = DeclinedVariable || Declined("datasamlingId") ? null : state.SelectedDatasamlingId,
             SelectedInstrumentId = Declined("instrumentId") ? null : state.SelectedInstrumentId,
             ShareCode = Declined("delekode") ? null : state.ShareCode,

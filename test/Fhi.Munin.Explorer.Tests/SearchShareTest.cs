@@ -533,12 +533,51 @@ public class SearchShareTest : ExplorerTestContext
         Assert.Contains($"variabelId={VariableId}", Address(cut));
     }
 
-    [Theory]
-    [InlineData("variabel")]
-    [InlineData("variabelId")]
-    public void OpenRow_WhenTheHostDeclinesAnAddressKey_ThenNeitherTheRowNorTheWholeVariableOffersSharing(string key)
+    [Fact]
+    public void OpenRow_WhenTheHostDeclinesVariabel_ThenTheSharedLinkAndTheAddressNameTheVariableById()
     {
-        var cut = RenderExplorer(declined: [key]);
+        // The host that means something else by ?variabel= keeps the id links the explorer wrote before codes.
+        var client = new ShareClient();
+        var cut = RenderExplorer(client, declined: ["variabel"]);
+
+        OpenRow(cut);
+
+        var query = QueryHelpers.ParseQuery(new Uri(MailLink(ShareGroup(cut.Find(".munin-explorer-detail")))).Query);
+        Assert.Equal((Code, VariableId.ToString()), (query["search"].ToString(), query["variabelId"].ToString()));
+        Assert.False(query.ContainsKey("variabel"));
+        Assert.Contains($"variabelId={VariableId}", Address(cut));
+        Assert.Empty(client.CodesAsked);
+    }
+
+    [Fact]
+    public void Arrive_WhenTheHostDeclinesVariabel_ThenAnIdLinkStillOpensItsVariable()
+    {
+        var client = new ShareClient();
+        var cut = RenderExplorer(client,
+            $"http://localhost/variabler?search={Code}&variabelId={VariableId}&datasamlingId={DatasamlingId}", declined: ["variabel"]);
+
+        cut.WaitForElement(".munin-explorer-detail");
+        Assert.Empty(client.CodesAsked);
+        Assert.Contains($"variabelId={VariableId}", Address(cut));
+    }
+
+    [Fact]
+    public void Arrive_WhenTheHostDeclinesVariabel_ThenItsOwnValueIsCarriedAndNothingIsLookedUp()
+    {
+        var client = new ShareClient();
+        var cut = RenderExplorer(client, "http://localhost/variabler?variabel=vertens-egen&search=kjonn", declined: ["variabel"]);
+
+        cut.WaitForElement("ul.munin-explorer-data-list");
+        Assert.Empty(client.CodesAsked);
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+        Assert.NotEmpty(_history!.Written);
+        Assert.All(_history.Written, url => Assert.Contains("variabel=vertens-egen", url, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void OpenRow_WhenTheHostDeclinesVariabelId_ThenNeitherTheRowNorTheWholeVariableOffersSharing()
+    {
+        var cut = RenderExplorer(declined: ["variabelId"]);
 
         OpenRow(cut);
         Assert.DoesNotContain("Del variabel", cut.Find(".munin-explorer-detail").TextContent);

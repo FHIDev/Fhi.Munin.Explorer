@@ -1558,9 +1558,9 @@ public class ListRowPanelTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Explorer_WhenMuninAnswersTheCodeAndTheHostDeclinesTheVariable_ThenThePanelOffersNoLink()
+    public void Explorer_WhenMuninAnswersTheCodeAndTheHostDeclinesVariabelId_ThenThePanelOffersNoLink()
     {
-        var cut = OpenInExplorer(new PanelClient(DatabaseVersion) { AnswersCodes = true }, declined: ["variabel"]);
+        var cut = OpenInExplorer(new PanelClient(DatabaseVersion) { AnswersCodes = true }, declined: ["variabelId"]);
 
         Assert.DoesNotContain("Del variabel", cut.Find("[role=region][id^='munin-explorer-list-panel-']").TextContent);
     }
