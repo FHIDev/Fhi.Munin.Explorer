@@ -1,5 +1,7 @@
+using System.Text.Json;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
+using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
@@ -44,6 +46,11 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
         public TaskCompletionSource? FirstSearchGate { get; init; }
 
         public bool GroupSearchFails { get; init; }
+
+        public IReadOnlyList<ConditionField> ConditionFields { get; init; } = [];
+
+        public override Task<IReadOnlyList<ConditionField>> GetConditionFieldsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(ConditionFields);
 
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<VariableList>>(ShownListDeleted
@@ -269,6 +276,34 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
             Assert.Equal("true", cut.FindAll("[role=tab]")
                 .Single(t => t.TextContent.Trim() == "Søkeresultat").GetAttribute("aria-selected"));
         });
+    }
+
+    // The group replaces every condition, so the avansert søk form left open must not apply them again.
+    [Fact]
+    public void InTheExplorer_AGroupPressedWithTheFormOpen_LeavesNoConditionForVisTreff()
+    {
+        var client = new OwnersClient
+        {
+            ConditionFields = JsonSerializer.Deserialize<IReadOnlyList<ConditionField>>(TestData.Read("vilkar.json"), MuninExplorerClient.Json)!
+        };
+        Services.AddSingleton<IMuninExplorerClient>(client);
+        Services.AddScoped<VariableListState>();
+        Services.AddSingleton(new AdvancedSearchSwitch(true));
+        this.SetRendererInfo(new RendererInfo("Server", true));
+        Services.GetRequiredService<NavigationManager>().NavigateTo("/variabler?vilkar=navn%3Ainneholder%3Ablod");
+
+        var cut = Render<VariableExplorer>(p => p.Add(c => c.IsAuthenticated, true));
+        cut.WaitForElement("button[aria-expanded]");
+        cut.FindAll("button[aria-expanded]").First(b => b.TextContent.StartsWith("Avansert søk", StringComparison.Ordinal)).Click();
+        cut.WaitForAssertion(() => Assert.Equal("blod", cut.Find(".munin-explorer-advanced-search input[type=text]").GetAttribute("value")));
+        cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Variabelliste").Click();
+        cut.WaitForElement("th[scope=row] button").Click();
+
+        GroupButton(cut).Click();
+        cut.WaitForAssertion(() => Assert.Equal(VariableFilter.None with { VariabelgruppeIds = [GroupId] }, client.Searches[^1].Filter));
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Vis treff").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(VariableFilter.None with { VariabelgruppeIds = [GroupId] }, client.Searches[^1].Filter));
     }
 
     [Fact]
