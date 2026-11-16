@@ -105,10 +105,16 @@ internal sealed class FakeBrowserList : IBrowserListStore
         return Status();
     });
 
+    /// <summary>A removal storage refused while the rows are in the stored value, where another page still finds them.</summary>
+    public bool KeepsStored { get; set; }
+
+    /// <summary>Rows the module hands back as their ids and code alone, too long to send whole.</summary>
+    public HashSet<VariableDatasamlingKey> Truncates { get; } = [];
+
     public Task<BrowserListStatus?> RemoveKeysAsync(IReadOnlyCollection<VariableDatasamlingKey> keys) => Answer("removeKeys", () =>
     {
         Rows.RemoveAll(r => keys.Contains(VariableDatasamlingKey.Of(r)));
-        return Status();
+        return Status() with { StillStored = KeepsStored };
     });
 
     public Task<BrowserListStatus?> ClearAsync() => Answer("clear", () =>
@@ -121,8 +127,9 @@ internal sealed class FakeBrowserList : IBrowserListStore
         Answer<IReadOnlyList<VariableDatasamlingKey>>(
             "keys", () => [.. Rows.Skip(offset).Take(count).Select(VariableDatasamlingKey.Of)], offset, count);
 
-    public Task<IReadOnlyList<VariableListItem>?> PageAsync(int offset, int count) =>
-        Answer<IReadOnlyList<VariableListItem>>("page", () => [.. Rows.Skip(offset).Take(count)], offset, count);
+    public Task<IReadOnlyList<BrowserRow>?> PageAsync(int offset, int count) =>
+        Answer<IReadOnlyList<BrowserRow>>("page", () =>
+            [.. Rows.Skip(offset).Take(count).Select(r => new BrowserRow(r, Truncates.Contains(VariableDatasamlingKey.Of(r))))], offset, count);
 
     public Task<bool> WatchAsync(Func<Task> changedElsewhere)
     {

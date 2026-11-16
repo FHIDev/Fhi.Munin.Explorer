@@ -1403,11 +1403,10 @@ leave `AnonymousLists` off; the gates turn it on for one state of their own. Tod
 - `AnonymousLists`, a variable list for a reader who is not signed in, kept only in their browser's local storage
   under `Fhi.Munin.Explorer:anonymous-list`: each row's catalogue fields, exactly those named under «What the package
   keeps in the reader's browser», no name for the list and nothing about the reader, at most 2000 rows. The package's
-  `explorer-interop.js` owns the list and changes it a row at a time, re-reading the stored list on every call, so
-  another tab's change is never overwritten. Where storage refuses a write, the page keeps only its own unsaved adds
-  and removals and lays them over the stored list on the next call: another tab's rows, removals and «Tøm listen» hold
-  for every row this page did not touch, and for a row it did touch its own unsaved change wins. Another tab's change
-  is picked up through the browser's `storage` event. The save button a signed-in reader has adds a row to it, the
+  `explorer-interop.js` owns the list and changes it a row at a time. Every call re-reads the stored list, so another
+  tab's change stands for every row this page has not touched; for a row this page changed while writes were refused,
+  its unsaved change wins. A write that would pass 2000 rows keeps the stored rows and drops this page's newest unsaved
+  adds. Another tab's change is picked up through the browser's `storage` event. The save button a signed-in reader has adds a row to it, the
   list tab shows it through the shared-list view, and it can be downloaded (`ExportItemsAsync`, Munin's anonymous
   export), shared as a code while its snapshot stays under the share endpoint's 512 KB (about 990 full rows), or
   emptied. Signed in with rows still

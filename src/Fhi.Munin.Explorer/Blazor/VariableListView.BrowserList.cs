@@ -21,6 +21,7 @@ public sealed partial class VariableListView
     private bool _carriedOverButStillHere;
     private bool _browserShareTooLong;
     private bool _browserPageFailed;
+    private bool _browserShareUnreadable;
 
     // The page on screen and what it was read for: the list's version and the page number.
     private IReadOnlyList<VariableListItem> _browserPage = [];
@@ -45,7 +46,7 @@ public sealed partial class VariableListView
     private string? BrowserListMessage =>
         !ShowsBrowserCopy ? null
         : _browserShareTooLong ? T.BrowserListTooLongToShare
-        : _browserPageFailed ? T.BrowserListReadError
+        : _browserPageFailed || _browserShareUnreadable ? T.BrowserListReadError
         : ShareMessage ?? DownloadMessage;
 
     private string? CarriedOverMessage =>
@@ -94,7 +95,7 @@ public sealed partial class VariableListView
                 // A failure is remembered for this page and version only, so the next change reads it again.
                 _browserPageFailed = rows is null;
                 _browserPageFailedFor = rows is null ? wanted : null;
-                _browserPage = rows ?? [];
+                _browserPage = rows is null ? [] : [.. rows.Select(r => r.Item)];
                 StateHasChanged();
             }
         }
@@ -170,6 +171,7 @@ public sealed partial class VariableListView
 
         ForgetFailures();
         _browserShareTooLong = false;
+        _browserShareUnreadable = false;
         _sharingBrowserList = !_sharingBrowserList;
 
         if (!_sharingBrowserList || _browserShare is not null)
@@ -185,12 +187,22 @@ public sealed partial class VariableListView
             // Every row, or no share: a list cut short at the read would be sent as though it were whole.
             var count = State.BrowserCount;
 
-            if (await State.ReadBrowserRowsAsync(0, count) is not { Count: > 0 } rows || rows.Count < count)
+            if (await State.ReadBrowserRowsAsync(0, count) is not { Count: > 0 } read || read.Count < count)
             {
                 _shareFailure = ListActionFailure.Failed;
                 _sharingBrowserList = false;
                 return;
             }
+
+            // A row too long to hand over whole came back as its code: shared, it would read as the whole row.
+            if (read.Any(r => r.Truncated))
+            {
+                _browserShareUnreadable = true;
+                _sharingBrowserList = false;
+                return;
+            }
+
+            var rows = read.Select(r => r.Item).ToList();
 
             if (MuninExplorerClient.ShareSnapshotLength(T.FirstListName, rows) > MuninExplorerClient.MaxShareSnapshotChars)
             {

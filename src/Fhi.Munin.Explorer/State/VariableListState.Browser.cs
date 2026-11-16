@@ -320,7 +320,7 @@ public sealed partial class VariableListState : IDisposable
         ReadInChunksAsync(KeysPerCall, (store, offset, count) => store.KeysAsync(offset, count), int.MaxValue);
 
     /// <summary>Rows from <paramref name="offset"/>, at most <paramref name="count"/>, with their catalogue fields.</summary>
-    internal Task<IReadOnlyList<VariableListItem>?> ReadBrowserRowsAsync(int offset, int count) =>
+    internal Task<IReadOnlyList<BrowserRow>?> ReadBrowserRowsAsync(int offset, int count) =>
         ReadInChunksAsync(RowsPerCall, (store, at, size) => store.PageAsync(at, size), count, offset);
 
     private async Task<IReadOnlyList<T>?> ReadInChunksAsync<T>(
@@ -411,7 +411,9 @@ public sealed partial class VariableListState : IDisposable
         }
 
         var left = await RemoveBrowserKeysAsync(keys).ConfigureAwait(false);
-        BrowserCarryOverStuck = !left;
+
+        // Rows left only where no other page reads them, or none left at all, cannot be saved twice.
+        BrowserCarryOverStuck = !left && BrowserCount > 0;
         return new CarryOver(created, left);
     }
 
@@ -431,8 +433,8 @@ public sealed partial class VariableListState : IDisposable
                 {
                     await RereadKeysAsync(store, status).ConfigureAwait(false);
 
-                    // Held only by this page, the removal is gone at the next load in another page.
-                    return status.Kept;
+                    // Still in the stored value, the rows reach another page, which would offer them again.
+                    return !status.StillStored;
                 }
 
                 BrowserListAvailable = false;
@@ -500,7 +502,7 @@ internal interface IBrowserListStore
     Task<IReadOnlyList<VariableDatasamlingKey>?> KeysAsync(int offset, int count);
 
     /// <summary>Rows from <paramref name="offset"/>; an empty answer is the end of the list.</summary>
-    Task<IReadOnlyList<VariableListItem>?> PageAsync(int offset, int count);
+    Task<IReadOnlyList<BrowserRow>?> PageAsync(int offset, int count);
 
     /// <summary>Calls <paramref name="changedElsewhere"/> when another tab changes the list; false when it could not listen.</summary>
     Task<bool> WatchAsync(Func<Task> changedElsewhere);
@@ -512,12 +514,17 @@ internal interface IBrowserListStore
 /// <param name="Kept">Whether storage holds the list; false while it lives in the page alone.</param>
 /// <param name="Full">The add was refused at the ceiling.</param>
 /// <param name="Foreign">The key holds a value this package did not write, which is neither read nor overwritten.</param>
+/// <param name="StillStored">After a removal: some removed row is still in the stored value, where another page finds it.</param>
 internal sealed record BrowserListStatus(
     [property: JsonPropertyName("ok")] bool Ok,
     [property: JsonPropertyName("count")] int Count,
     [property: JsonPropertyName("kept")] bool Kept,
     [property: JsonPropertyName("full")] bool Full,
-    [property: JsonPropertyName("foreign")] bool Foreign);
+    [property: JsonPropertyName("foreign")] bool Foreign,
+    [property: JsonPropertyName("stillStored")] bool StillStored = false);
+
+/// <summary>One row as the browser handed it over: whole, or as its ids and code alone when it was too long to send.</summary>
+internal sealed record BrowserRow(VariableListItem Item, bool Truncated);
 
 /// <summary>The module's spelling of a row's key: <c>variabelId|datasamlingId</c>, the datasamling empty for none.</summary>
 internal static class BrowserListKeys

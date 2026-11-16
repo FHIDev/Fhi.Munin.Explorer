@@ -141,25 +141,49 @@ public class VariableListStateBrowserTest
 
     private sealed class ListsClient : EmptyMuninExplorerClient
     {
+        public Action? BeforeAdd { get; init; }
+
         public override Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default) =>
             Task.FromResult(new VariableList { Id = Guid.NewGuid(), Name = name });
 
         public override Task<bool> AddItemsToMyListAsync(
-            Guid id, IReadOnlyCollection<VariableDatasamlingKey> items, CancellationToken cancellationToken = default) =>
-            Task.FromResult(true);
+            Guid id, IReadOnlyCollection<VariableDatasamlingKey> items, CancellationToken cancellationToken = default)
+        {
+            BeforeAdd?.Invoke();
+            return Task.FromResult(true);
+        }
     }
 
-    [Fact]
-    public async Task CarryBrowserListOverAsync_WhenTheRemovalIsHeldOnlyByThisPage_ThenItCountsAsStuck()
+    private static async Task<VariableListState> SignedInAsync(FakeBrowserList browser, ListsClient? client = null)
     {
-        // kept:false means the removal lives in this page's memory; another page still holds the rows to save twice.
-        var browser = new FakeBrowserList();
-        browser.Rows.Add(FakeBrowserList.Row("Alder"));
-        var state = new VariableListState(new ListsClient());
+        var state = new VariableListState(client ?? new ListsClient());
         state.OfferBrowserList(browser);
         await state.ReadBrowserListAsync();
         state.SetAuthenticated(true);
-        browser.Refuses = true;
+        return state;
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenTheRowsWereOnlyInThisPagesMemory_ThenTheyLeftAndNothingIsStuck()
+    {
+        // Storage never held them, so no other page can offer them again: not «still here», and no flag.
+        var browser = new FakeBrowserList { Refuses = true };
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var state = await SignedInAsync(browser);
+
+        var carried = await state.CarryBrowserListOverAsync("Min variabelliste");
+
+        Assert.True(carried!.LeftTheBrowser);
+        Assert.False(state.BrowserCarryOverStuck);
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenTheRowsAreStillStoredAndOthersRemain_ThenItIsStuck()
+    {
+        // Another page still finds the carried rows, and this one still shows a list to offer again.
+        var browser = new FakeBrowserList { KeepsStored = true };
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var state = await SignedInAsync(browser, new ListsClient { BeforeAdd = () => browser.Rows.Add(FakeBrowserList.Row("Kjønn")) });
 
         var carried = await state.CarryBrowserListOverAsync("Min variabelliste");
 
@@ -167,29 +191,46 @@ public class VariableListStateBrowserTest
         Assert.True(state.BrowserCarryOverStuck);
     }
 
-    [Theory]
-    [InlineData("sign-out")]
-    [InlineData("clear")]
-    public async Task BrowserCarryOverStuck_WhenTheReaderChangesOrTheListEmpties_ThenItIsClearedAgain(string what)
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenTheRowsAreStillStoredButNoneShowsHere_ThenItSaysSoWithoutTheFlag()
+    {
+        var browser = new FakeBrowserList { KeepsStored = true };
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var state = await SignedInAsync(browser);
+
+        var carried = await state.CarryBrowserListOverAsync("Min variabelliste");
+
+        Assert.False(carried!.LeftTheBrowser);
+        Assert.False(state.BrowserCarryOverStuck);
+    }
+
+    private static async Task<VariableListState> StuckAsync()
     {
         var browser = new FakeBrowserList();
         browser.Rows.Add(FakeBrowserList.Row("Alder"));
         browser.Failing.Add("removeKeys");
-        var state = new VariableListState(new ListsClient());
-        state.OfferBrowserList(browser);
-        await state.ReadBrowserListAsync();
-        state.SetAuthenticated(true);
+        var state = await SignedInAsync(browser);
         await state.CarryBrowserListOverAsync("Min variabelliste");
         Assert.True(state.BrowserCarryOverStuck);
+        return state;
+    }
 
-        if (what == "sign-out")
-        {
-            state.SetAuthenticated(false);
-        }
-        else
-        {
-            await state.ClearBrowserListAsync();
-        }
+    [Fact]
+    public async Task SetAuthenticated_WhenTheReaderChanges_ThenAStuckCarryOverIsOfferedAfresh()
+    {
+        var state = await StuckAsync();
+
+        state.SetAuthenticated(false);
+
+        Assert.False(state.BrowserCarryOverStuck);
+    }
+
+    [Fact]
+    public async Task ClearBrowserListAsync_WhenTheListEmpties_ThenAStuckCarryOverIsForgotten()
+    {
+        var state = await StuckAsync();
+
+        await state.ClearBrowserListAsync();
 
         Assert.False(state.BrowserCarryOverStuck);
     }

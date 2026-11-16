@@ -466,6 +466,54 @@ public class AnonymousListTest : ExplorerTestContext
     }
 
     [Fact]
+    public void VariableListView_WhenARowCameBackAsItsCodeOnly_ThenTheShareIsRefusedRatherThanSentShort()
+    {
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange([FakeBrowserList.Row("Alder"), FakeBrowserList.Row("Kjønn")]);
+        browser.Truncates.Add(VariableDatasamlingKey.Of(browser.Rows[1]));
+        var client = new Client();
+        var cut = ListView(client, browser);
+        cut.WaitForAssertion(() => Assert.Equal(2, RowNames(cut).Count));
+
+        ButtonSaying(cut, No.ShareList).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListReadError, cut.Markup));
+        Assert.Empty(client.Shared);
+    }
+
+    [Fact]
+    public async Task VariableListView_WhenTheListChangesWhileClearIsAsked_ThenTheQuestionIsWithdrawn()
+    {
+        // The question was about the rows on screen when it was asked; another tab changed them.
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var cut = ListView(new Client(), browser);
+        cut.WaitForAssertion(() => Assert.Single(RowNames(cut)));
+        ButtonSaying(cut, No.ClearBrowserList).Click();
+        Assert.Contains(No.ConfirmClearBrowserList, cut.Markup);
+
+        browser.Rows.Add(FakeBrowserList.Row("Kjønn"));
+        await cut.InvokeAsync(browser.ChangedElsewhereAsync);
+
+        cut.WaitForAssertion(() => Assert.DoesNotContain(No.ConfirmClearBrowserList, cut.Markup));
+        Assert.Equal("false", ButtonSaying(cut, No.ClearBrowserList).GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheCarriedRowsWereOnlyInThisPagesMemory_ThenItSaysSavedAndNothingElse()
+    {
+        var browser = new FakeBrowserList { Refuses = true };
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var cut = ListView(new Client(), browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
+
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListSavedAs(No.FirstListName), cut.Markup));
+        Assert.DoesNotContain(No.BrowserListSavedButStillHere(No.FirstListName), cut.Markup);
+    }
+
+    [Fact]
     public void VariableListView_WhenMuninRefusesTheShareAsTooLarge_ThenTheReaderGetsTheSameSentence()
     {
         var browser = new FakeBrowserList();

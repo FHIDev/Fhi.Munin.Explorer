@@ -279,6 +279,10 @@ node --test "$ROOT/scripts/test-axe-states.mjs" "$ROOT/scripts/test-scan-shard.m
 echo "==> checking the package's browser list module"
 module_status=0
 node --test "$ROOT/scripts/test-anonymous-list.mjs" || module_status=1
+module_failed() {
+  echo "The browser list module's own tests failed (scripts/test-anonymous-list.mjs): a defect in the package's" >&2
+  echo "explorer-interop.js, not in a page and not in the tooling. See the node test output above." >&2
+}
 
 set +e
 # Each state again at a phone's two widths once reached, resized in place (Fhi.Metadata-mhqx0.1).
@@ -290,6 +294,11 @@ set -e
 # 2 is the scanner saying it could not run. Passing that through unchanged keeps a
 # broken toolchain from reading as a broken page.
 if [ "$scan_status" -eq 2 ]; then
+  # A product defect already found is not hidden behind a broken scanner.
+  if [ "$module_status" -ne 0 ]; then
+    module_failed
+    exit 1
+  fi
   exit 2
 fi
 
@@ -399,7 +408,6 @@ fi
 # Anything non-zero is a finding, except the one code that means the step never ran.
 findings=0
 [ "$scan_status" -ne 0 ] && findings=1
-[ "$module_status" -ne 0 ] && findings=1
 if [ "$off_status" -ne 0 ] && [ "$off_status" -ne 2 ]; then
   findings=1
 fi
@@ -417,6 +425,9 @@ if [ -n "${AXE_RESULTS_FILE:-}" ] && [ "$scan_status" -le 1 ] && [ "$off_status"
 fi
 
 echo
+if [ "$module_status" -ne 0 ]; then
+  module_failed
+fi
 if [ "$findings" -ne 0 ]; then
   cat >&2 <<'EOF'
 Accessibility violations found. See the output above; an axe entry names the rule, the
@@ -437,7 +448,7 @@ fi
 if [ "$off_status" -eq 2 ]; then
   echo "the code-picker-off pass could not run - TOOLING failure, so that state was not scanned." >&2
 
-  if [ "$findings" -eq 0 ]; then
+  if [ "$findings" -eq 0 ] && [ "$module_status" -eq 0 ]; then
     exit 2
   fi
 fi
@@ -445,7 +456,7 @@ fi
 if [ "$browser_status" -eq 2 ]; then
   echo "the browser-list pass could not run - TOOLING failure, so that state was not scanned." >&2
 
-  if [ "$findings" -eq 0 ]; then
+  if [ "$findings" -eq 0 ] && [ "$module_status" -eq 0 ]; then
     exit 2
   fi
 fi
@@ -453,12 +464,12 @@ fi
 if [ "$reflow_status" -eq 2 ]; then
   echo "the 320px measurement could not run - TOOLING failure, so nothing was measured there." >&2
 
-  if [ "$findings" -eq 0 ]; then
+  if [ "$findings" -eq 0 ] && [ "$module_status" -eq 0 ]; then
     exit 2
   fi
 fi
 
-if [ "$findings" -ne 0 ]; then
+if [ "$findings" -ne 0 ] || [ "$module_status" -ne 0 ]; then
   exit 1
 fi
 

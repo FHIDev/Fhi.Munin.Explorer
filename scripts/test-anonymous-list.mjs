@@ -38,7 +38,7 @@ beforeEach(() => {
 
 test('Status_WhenAnyCallAnswers_ThenItCarriesTheFieldsDotNetReads', async () => {
   const m = await tab();
-  assert.deepEqual(Object.keys(m.anonymousListCount()).sort(), ['count', 'foreign', 'full', 'kept', 'ok']);
+  assert.deepEqual(Object.keys(m.anonymousListCount()).sort(), ['count', 'foreign', 'full', 'kept', 'ok', 'stillStored']);
 });
 
 test('Keys_WhenRead_ThenTheyAreSpelledAsBrowserListKeysParsesThem', async () => {
@@ -66,7 +66,7 @@ test('AddRemoveClear_WhenCalled_ThenStorageFollowsAndARepeatIsNotADuplicate', as
   assert.equal(m.anonymousListAdd(row('b'), 10).count, 2);
   assert.deepEqual(stored(), { v: 1, items: [row('a', 'd'), row('b')] });
   assert.equal(m.anonymousListRemove('a', 'd').count, 1);
-  assert.deepEqual(m.anonymousListRemoveKeys(['b|']), { ok: true, count: 0, kept: true, full: false, foreign: false });
+  assert.deepEqual(m.anonymousListRemoveKeys(['b|']), { ok: true, count: 0, kept: true, full: false, foreign: false, stillStored: false });
   assert.equal(store.has(KEY), false);
   m.anonymousListAdd(row('c'), 10);
   assert.equal(m.anonymousListClear().count, 0);
@@ -77,7 +77,7 @@ test('Add_WhenTheListIsAtItsCeiling_ThenItIsRefusedAndNothingChanges', async () 
   const m = await tab();
   m.anonymousListAdd(row('a'), 2);
   m.anonymousListAdd(row('b'), 2);
-  assert.deepEqual(m.anonymousListAdd(row('c'), 2), { ok: false, count: 2, kept: true, full: true, foreign: false });
+  assert.deepEqual(m.anonymousListAdd(row('c'), 2), { ok: false, count: 2, kept: true, full: true, foreign: false, stillStored: false });
   assert.equal(stored().items.length, 2);
 });
 
@@ -92,7 +92,7 @@ for (const [name, raw] of [
   test(`Load_WhenTheKeyHolds${name}_ThenItIsForeignAndNeverOverwritten`, async () => {
     const m = await tab();
     store.set(KEY, raw);
-    assert.deepEqual(m.anonymousListCount(), { ok: true, count: 0, kept: false, full: false, foreign: true });
+    assert.deepEqual(m.anonymousListCount(), { ok: true, count: 0, kept: false, full: false, foreign: true, stillStored: false });
     const added = m.anonymousListAdd(row('a'), 10);
     assert.equal(added.foreign, true);
     assert.equal(added.kept, false);
@@ -169,7 +169,7 @@ test('Page_WhenOneRowIsOverTheBoundAlone_ThenItComesBackAsItsIdsAndCodeAndTheNex
   m.anonymousListAdd(row('huge', 'd', { variabelCode: 'V_HUGE', variabelName: 'å'.repeat(20_000) }), 10);
   m.anonymousListAdd(row('next', null, { variabelName: 'Neste' }), 10);
   const page = m.anonymousListPage(0, 10);
-  assert.deepEqual(page.items[0], { variabelId: 'huge', datasamlingId: 'd', variabelCode: 'V_HUGE' });
+  assert.deepEqual(page.items[0], { variabelId: 'huge', datasamlingId: 'd', variabelCode: 'V_HUGE', truncated: true });
   assert.equal(page.items[1].variabelName, 'Neste');
   assert.ok(utf8(page) <= 16_000);
 });
@@ -243,12 +243,54 @@ test('Watch_WhenASecondCircuitListens_ThenItReplacesTheFirstAndOnlyItIsTold', as
   assert.deepEqual(told, ['second ChangedElsewhere']);
 });
 
+test('RemoveKeys_WhenTheRowsWereOnlyEverInThisPagesMemory_ThenNoneIsStillStored', async () => {
+  // A carry-over of rows storage never held: nothing is left behind for another page to save twice.
+  const m = await tab();
+  failing.set = true;
+  m.anonymousListAdd(row('a'), 10);
+  const status = m.anonymousListRemoveKeys(['a|']);
+  assert.equal(status.kept, false);
+  assert.equal(status.stillStored, false);
+  assert.equal(status.count, 0);
+});
+
+test('RemoveKeys_WhenTheRemovalIsRefusedForStoredRows_ThenTheyAreStillStored', async () => {
+  const m = await tab();
+  m.anonymousListAdd(row('a'), 10);
+  failing.set = true;
+  assert.equal(m.anonymousListRemoveKeys(['a|']).stillStored, true);
+});
+
+test('Write_WhenThisPagesUnsavedAddsMeetAnotherTabsFullList_ThenTheStoredRowsStayAndTheExcessAddsGo', async () => {
+  // The ceiling holds in storage: another tab's rows are kept, and this page's newest unsaved adds are dropped.
+  const a = await tab();
+  const b = await tab();
+  failing.set = true;
+  a.anonymousListAdd(row('mine'), 2);
+  failing.set = false;
+  b.anonymousListAdd(row('x'), 2);
+  b.anonymousListAdd(row('y'), 2);
+  const status = a.anonymousListRemove('nothing', null);
+  assert.equal(status.full, true);
+  assert.equal(status.count, 2);
+  assert.deepEqual(stored().items.map(i => i.variabelId), ['x', 'y']);
+  assert.equal(status.kept, true);
+});
+
 // Many random runs of two tabs, each sometimes refused, against a small model of the rule the module states: the stored
 // list stands for every key a tab has no unsaved change to, and a tab's unsaved change stands for the keys it touched.
 test('TwoTabs_WhenRandomRefusalsInterleave_ThenStorageAlwaysMatchesTheModel', async () => {
-  let seed = 7;
-  const random = n => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed % n; };
+  // mulberry32: an LCG's low bits alternate, which once sent nearly every step to one tab.
+  let seed = 0x9e3779b9;
+  const random = n => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return Math.floor((((t ^ (t >>> 14)) >>> 0) / 4294967296) * n);
+  };
   const keysOf = () => (stored()?.items ?? []).map(i => i.variabelId);
+  const acted = [0, 0];
+  let steps = 0;
 
   for (let run = 0; run < 200; run++) {
     store.clear();
@@ -259,40 +301,65 @@ test('TwoTabs_WhenRandomRefusalsInterleave_ThenStorageAlwaysMatchesTheModel', as
 
     for (let step = 0; step < 30; step++) {
       const t = random(2);
+      acted[t]++;
+      steps++;
       const d = model.deltas[t];
+      const touched = new Set([...d.added, ...d.removed]);
       const key = `k${random(5)}`;
       const op = random(5);
       failing.set = random(3) === 0;
       const before = view(d);
+      const storedBefore = [...model.stored];
       let next = null;
+      let status;
 
       if (op <= 1) {
-        tabs[t].anonymousListAdd(row(key), 100);
+        status = tabs[t].anonymousListAdd(row(key), 100);
         if (!before.includes(key)) {
           d.removed.delete(key);
           d.added = [...d.added.filter(k => k !== key), key];
           next = [...before, key];
         }
       } else if (op <= 3) {
-        tabs[t].anonymousListRemove(key, null);
+        status = tabs[t].anonymousListRemove(key, null);
         d.added = d.added.filter(k => k !== key);
         d.removed.add(key);
         next = before.filter(k => k !== key);
       } else {
-        tabs[t].anonymousListClear();
+        status = tabs[t].anonymousListClear();
         d.added = [];
         before.forEach(k => d.removed.add(k));
         next = [];
       }
+      touched.add(key);
+      if (op > 3) before.forEach(k => touched.add(k));
 
-      if (next !== null && !failing.set) {
+      const wrote = next !== null && !failing.set;
+      if (wrote) {
         model.stored = next;
         model.deltas[t] = { added: [], removed: new Set() };
       }
-
       failing.set = false;
-      assert.deepEqual(keysOf(), model.stored, `run ${run} step ${step}`);
-      assert.equal(new Set(keysOf()).size, keysOf().length, `duplicate in run ${run} step ${step}`);
+
+      const where = `run ${run} step ${step}`;
+      assert.deepEqual(keysOf(), model.stored, where);
+      assert.equal(new Set(keysOf()).size, keysOf().length, `duplicate in ${where}`);
+      assert.equal(status.count, (next ?? before).length, `count in ${where}`);
+      const unsaved = model.deltas[t].added.length > 0 || model.deltas[t].removed.size > 0;
+      assert.equal(status.kept, !unsaved, `kept in ${where}`);
+      const other = 1 - t;
+      assert.deepEqual(tabs[other].anonymousListKeys(0, 100), view(model.deltas[other]).map(k => `${k}|`), `other tab in ${where}`);
+
+      // The rule itself, beside the formula: a good write moves only the keys the writer touched.
+      if (wrote) {
+        for (const k of ['k0', 'k1', 'k2', 'k3', 'k4'].filter(k => !touched.has(k))) {
+          assert.equal(keysOf().includes(k), storedBefore.includes(k), `untouched ${k} moved in ${where}`);
+        }
+      }
     }
   }
+
+  // Each tab acts often enough for the interleavings to mean something; the counts are printed for the report.
+  console.log(`steps per tab: ${acted[0]} and ${acted[1]} of ${steps}`);
+  assert.ok(acted.every(n => n >= steps * 0.3), `steps per tab ${acted}`);
 });

@@ -842,9 +842,9 @@ export function writePreference(key, value) {
   }
 }
 
-// A signed-out reader's one variable list, in this browser only (Fhi.Metadata-emsc0.3.12). The list lives here, not
-// on the server: every change is read, modified and written in one call, so two tabs cannot lose each other's rows,
-// and nothing returns more than a small chunk, since a JS answer to Blazor Server is capped at 32 KB by default.
+// A signed-out reader's one variable list, in this browser only (Fhi.Metadata-emsc0.3.12). Every call re-reads the
+// stored list, so another tab's change stands for every row this page has not touched; nothing returns more than a
+// small chunk, since a JS answer to Blazor Server is capped at 32 KB by default.
 const anonymousListKey = 'Fhi.Munin.Explorer:anonymous-list';
 const anonymousListVersion = 1;
 const anonymousPageBytes = 16_000;
@@ -858,6 +858,7 @@ let anonymousRemoved = new Set();
 let anonymousForeign = false;
 let anonymousReadable = true;
 let anonymousWatcher = null;
+let anonymousMax = Infinity;
 
 const anonymousRowKey = row => `${row.variabelId}|${row.datasamlingId ?? ''}`;
 const anonymousIsRow = item => item !== null && typeof item === 'object' && typeof item.variabelId === 'string';
@@ -899,6 +900,35 @@ function anonymousLoad() {
   return items;
 }
 
+// Over the ceiling, as when another tab filled the list, the stored rows stay and this page's newest unsaved adds go.
+function anonymousCap(items) {
+  let excess = items.length - anonymousMax;
+  if (excess <= 0) {
+    return { items, full: false };
+  }
+  const kept = [...items];
+  for (let i = kept.length - 1; i >= 0 && excess > 0; i--) {
+    const key = anonymousRowKey(kept[i]);
+    if (anonymousAdded.has(key)) {
+      anonymousAdded.delete(key);
+      kept.splice(i, 1);
+      excess--;
+    }
+  }
+  return { items: kept, full: true };
+}
+
+// Whether any of these keys is in the stored value itself, where another page would still find it.
+function anonymousStillStored(keys) {
+  try {
+    const raw = localStorage.getItem(anonymousListKey);
+    const parsed = raw === null ? [] : anonymousParse(raw) ?? [];
+    return parsed.some(item => keys.has(anonymousRowKey(item)));
+  } catch {
+    return false;
+  }
+}
+
 // Writes the merged list where the browser lets it; then nothing is unsaved. Refused, the changes stay in the delta.
 function anonymousSave(items) {
   if (!anonymousForeign && anonymousReadable) {
@@ -920,8 +950,8 @@ function anonymousSave(items) {
 
 const anonymousKept = () => anonymousReadable && !anonymousForeign && !anonymousUnsaved();
 
-function anonymousStatus(items, ok, full) {
-  return { ok, count: items.length, kept: anonymousKept(), full, foreign: anonymousForeign };
+function anonymousStatus(items, ok, full, stillStored = false) {
+  return { ok, count: items.length, kept: anonymousKept(), full, foreign: anonymousForeign, stillStored };
 }
 
 function anonymousWithout(keys) {
@@ -930,9 +960,9 @@ function anonymousWithout(keys) {
     anonymousAdded.delete(key);
     anonymousRemoved.add(key);
   }
-  const items = before.filter(item => !keys.has(anonymousRowKey(item)));
+  const { items, full } = anonymousCap(before.filter(item => !keys.has(anonymousRowKey(item))));
   anonymousSave(items);
-  return anonymousStatus(items, true, false);
+  return anonymousStatus(items, true, full, anonymousStillStored(keys));
 }
 
 export function anonymousListCount() {
@@ -940,6 +970,7 @@ export function anonymousListCount() {
 }
 
 export function anonymousListAdd(row, max) {
+  anonymousMax = max;
   const items = anonymousLoad();
   const key = anonymousRowKey(row);
   if (items.some(item => anonymousRowKey(item) === key)) {
@@ -982,7 +1013,7 @@ export function anonymousListPage(offset, count) {
     let row = item;
     let size = anonymousEncoder.encode(JSON.stringify(row)).length;
     if (size > anonymousPageBytes) {
-      row = { variabelId: item.variabelId, datasamlingId: item.datasamlingId ?? null, variabelCode: String(item.variabelCode ?? '').slice(0, 200) };
+      row = { variabelId: item.variabelId, datasamlingId: item.datasamlingId ?? null, variabelCode: String(item.variabelCode ?? '').slice(0, 200), truncated: true };
       size = anonymousEncoder.encode(JSON.stringify(row)).length;
     }
     if (bytes + size > anonymousPageBytes) {

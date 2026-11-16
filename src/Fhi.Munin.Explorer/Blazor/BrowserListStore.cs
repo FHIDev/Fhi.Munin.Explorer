@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
@@ -30,12 +31,28 @@ internal sealed class BrowserListStore(IJSRuntime js) : IBrowserListStore, IAsyn
             ? [.. keys.Select(BrowserListKeys.Parse).OfType<VariableDatasamlingKey>()]
             : null;
 
-    public async Task<IReadOnlyList<VariableListItem>?> PageAsync(int offset, int count)
+    public async Task<IReadOnlyList<BrowserRow>?> PageAsync(int offset, int count)
     {
         using var page = await _interop.AnonymousListPageAsync(offset, count).ConfigureAwait(false);
 
-        return page is null ? null : SharedSnapshot.Read(page.RootElement).Items;
+        if (page is null)
+        {
+            return null;
+        }
+
+        var truncated = page.RootElement.TryGetProperty("items", out var items) && items.ValueKind == JsonValueKind.Array
+            ? items.EnumerateArray()
+                .Where(i => i.ValueKind == JsonValueKind.Object && i.TryGetProperty("truncated", out var t) && t.ValueKind == JsonValueKind.True)
+                .Select(i => BrowserListKeys.Parse($"{Text(i, "variabelId")}|{Text(i, "datasamlingId")}"))
+                .OfType<VariableDatasamlingKey>()
+                .ToHashSet()
+            : [];
+
+        return [.. SharedSnapshot.Read(page.RootElement).Items.Select(i => new BrowserRow(i, truncated.Contains(VariableDatasamlingKey.Of(i))))];
     }
+
+    private static string? Text(JsonElement element, string name) =>
+        element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
 
     public Task<bool> WatchAsync(Func<Task> changedElsewhere)
     {

@@ -33,6 +33,7 @@ public partial class StoredRowFieldsTest
             Notes = "private",
             DesiredDataFreeText = "private",
             DesiredDataType = "freeText",
+            DesiredDataCodes = [new DesiredCodeView { KodeverkType = "t", KodeverkReference = "r", Kind = "code", Code = "1" }],
             ItemId = Guid.NewGuid(),
             DatasamlingCode = "dc",
             HasKodeverk = true,

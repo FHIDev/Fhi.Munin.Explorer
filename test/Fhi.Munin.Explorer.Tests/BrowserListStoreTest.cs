@@ -20,9 +20,9 @@ public class BrowserListStoreTest : ExplorerTestContext
     {
         // The module answers in camelCase; a renamed field reads as false or 0 and the list silently looks empty.
         var status = JsonSerializer.Deserialize<BrowserListStatus>(
-            """{"ok":false,"count":3,"kept":true,"full":true,"foreign":true}""");
+            """{"ok":false,"count":3,"kept":true,"full":true,"foreign":true,"stillStored":true}""");
 
-        Assert.Equal(new BrowserListStatus(false, 3, true, true, true), status);
+        Assert.Equal(new BrowserListStatus(false, 3, true, true, true, true), status);
     }
 
     [Theory]
@@ -63,14 +63,17 @@ public class BrowserListStoreTest : ExplorerTestContext
         var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
         module.Setup<string[]>("anonymousListKeys", _ => true).SetResult([$"{Variable}|{Datasamling}", $"{Variable}|"]);
         module.Setup<JsonDocument>("anonymousListPage", _ => true).SetResult(JsonDocument.Parse(
-            $$"""{"items":[{"variabelId":"{{Variable}}","datasamlingId":"{{Datasamling}}","variabelName":"Alder"}]}"""));
+            $$"""{"items":[{"variabelId":"{{Variable}}","datasamlingId":"{{Datasamling}}","variabelName":"Alder"},{"variabelId":"{{Variable}}","datasamlingId":null,"variabelCode":"V","truncated":true}]}"""));
         var store = new BrowserListStore(JSInterop.JSRuntime);
 
         var keys = await store.KeysAsync(0, 100);
         var page = await store.PageAsync(0, 20);
 
         Assert.Equal([new VariableDatasamlingKey(Variable, Datasamling), new VariableDatasamlingKey(Variable, null)], keys);
-        Assert.Equal("Alder", Assert.Single(page!).VariableName);
+        Assert.Equal(2, page!.Count);
+        Assert.Equal("Alder", page[0].Item.VariableName);
+        Assert.False(page[0].Truncated);
+        Assert.True(page[1].Truncated);
     }
 
     [Fact]
