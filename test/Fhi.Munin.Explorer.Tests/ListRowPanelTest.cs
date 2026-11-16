@@ -1471,7 +1471,7 @@ public class ListRowPanelTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Explorer_WhenARowIsShared_ThenTheLinkSearchesItsCodeWithinItsKilde()
+    public void Explorer_WhenARowIsShared_ThenTheLinkNamesTheVariableByCodeAndItsDatasamlingById()
     {
         var cut = OpenInExplorer(new PanelClient(DatabaseVersion));
 
@@ -1480,16 +1480,20 @@ public class ListRowPanelTest : ExplorerTestContext
         var link = new Uri(body["Databaseversjon: ".Length..]);
         var state = ExplorerUrlState.Parse(link.Query);
 
+        // A list row is not open, so nothing has said which datasamling is the primary one: its own goes by id
+        // (Fhi.Metadata-l9l2n.182). The search and the kilde are the arrival's to work out from the code.
         Assert.True(link.IsAbsoluteUri);
-        Assert.Equal("V_HKR.VERSJON_DATABASE", state.Search);
-        Assert.Equal([HeartKildeId], state.Filter.KildeIds);
-        Assert.Equal(DatabaseVersion.VariableId, state.SelectedVariableId);
+        Assert.Equal("V_HKR.VERSJON_DATABASE", state.SelectedVariableCode);
+        Assert.Equal(DatabaseVersion.DatasamlingId, state.SelectedDatasamlingId);
+        Assert.Null(state.SelectedVariableId);
+        Assert.Null(state.Search);
+        Assert.Empty(state.Filter.KildeIds);
     }
 
     [Fact]
-    public void Explorer_WhenTheHostDeclinesSearch_ThenThePanelOffersNoLinkThatCouldNotOpenIt()
+    public void Explorer_WhenTheHostDeclinesTheVariableKey_ThenThePanelOffersNoLinkThatCouldNotOpenIt()
     {
-        var cut = OpenInExplorer(new PanelClient(DatabaseVersion), declined: ["search"]);
+        var cut = OpenInExplorer(new PanelClient(DatabaseVersion), declined: ["variabel"]);
 
         Assert.DoesNotContain("Del variabel", cut.Find("[role=region][id^='munin-explorer-list-panel-']").TextContent);
     }
@@ -1497,19 +1501,14 @@ public class ListRowPanelTest : ExplorerTestContext
     [Theory]
     [InlineData("Historical")]
     [InlineData("historisk")]
-    public void Explorer_WhenTheVariableIsHistorical_ThenTheLinkShowsHistoricalVariables(string status)
+    [InlineData("Active")]
+    public void Explorer_WhateverTheVariablesStatus_ThenTheLinkCarriesItsCodeAndNotTheHistoricalFilter(string status)
     {
+        // Whether historical variables are shown is the arrival's to work out from the variable (Fhi.Metadata-l9l2n.182).
         var cut = OpenInExplorer(new PanelClient(DatabaseVersion with { VersionStatus = status }));
 
-        Assert.True(SharedLinkState(cut).Filter.IncludeHistorical);
-    }
-
-    [Fact]
-    public void Explorer_WhenTheVariableIsActive_ThenTheLinkLeavesHistoricalVariablesOut()
-    {
-        var cut = OpenInExplorer(new PanelClient(DatabaseVersion with { VersionStatus = "Active" }));
-
         Assert.False(SharedLinkState(cut).Filter.IncludeHistorical);
+        Assert.Equal("V_HKR.VERSJON_DATABASE", SharedLinkState(cut).SelectedVariableCode);
     }
 
     private static ExplorerUrlState SharedLinkState(IRenderedComponent<VariableExplorer> cut)

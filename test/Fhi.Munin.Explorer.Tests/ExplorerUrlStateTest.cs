@@ -152,6 +152,36 @@ public class ExplorerUrlStateTest
         Assert.Null(ExplorerUrlState.Parse(query).SelectedVariableId);
     }
 
+    /// <summary>A variable by its code, the same link in every environment (Fhi.Metadata-l9l2n.182).</summary>
+    [Fact]
+    public void RoundTrip_WhenTheVariableIsNamedByCode_ThenTheCodeIsWrittenInPlaceOfTheId()
+    {
+        var variable = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        Assert.Equal("variabel=V_MFR.KJONN",
+            new ExplorerUrlState { SelectedVariableId = variable, SelectedVariableCode = "V_MFR.KJONN" }.ToQueryString());
+
+        var row = new ExplorerUrlState { SelectedVariableCode = "V_MFR.KJONN", SelectedDatasamlingId = datasamling };
+        Assert.Equal($"variabel=V_MFR.KJONN&datasamlingId={datasamling}", row.ToQueryString());
+        Assert.Equal(row, ExplorerUrlState.Parse(row.ToQueryString()));
+        Assert.Contains("variabel", ExplorerUrlState.ScalarQueryKeys);
+    }
+
+    [Theory]
+    [InlineData("?variabel=V_MFR/../x")]
+    [InlineData("?variabel=V%20MFR")]
+    public void Parse_WhenTheVariableCodeIsNotOne_ThenNoCodeIsRead(string query)
+    {
+        Assert.Null(ExplorerUrlState.Parse(query).SelectedVariableCode);
+    }
+
+    [Fact]
+    public void Parse_WhenACodeIsTooLong_ThenNoCodeIsRead()
+    {
+        Assert.Null(ExplorerUrlState.Parse("?variabel=" + new string('A', 101)).SelectedVariableCode);
+    }
+
     /// <summary>The facets are the filter's own business, and must survive the trip through here.</summary>
     [Fact]
     public void RoundTrip_WhenTheFilterCarriesFacets_ThenTheySurvive()

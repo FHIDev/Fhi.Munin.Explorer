@@ -1,4 +1,5 @@
 using System.Text;
+using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Parsing;
 
 namespace Fhi.Munin.Explorer.Contracts;
@@ -51,6 +52,18 @@ public sealed record ExplorerUrlState
     /// search the sender was looking at, but not the variable they were looking at in it.
     /// </remarks>
     public Guid? SelectedVariableId { get; init; }
+
+    /// <summary>
+    /// The open variable's code, written as <c>variabel</c> in place of <c>variabelId</c>: a code is the same in every
+    /// environment, where an id is not (Fhi.Metadata-l9l2n.182). <see cref="Blazor.VariableExplorer"/> resolves an arriving code
+    /// through Munin before it opens anything; a code that names no variable opens as a search for the code.
+    /// </summary>
+    /// <remarks>
+    /// Written whenever it is set, with <see cref="SelectedDatasamlingId"/> beside it when that is set too: a link to the
+    /// row of another of the variable's datasamlinger still names that datasamling by its id. A link with
+    /// <c>variabelId</c> keeps working, and wins when both arrive.
+    /// </remarks>
+    public string? SelectedVariableCode { get; init; }
 
     /// <summary>
     /// The datasamling of the open row, written as <c>datasamlingId</c> beside <c>variabelId</c>: a
@@ -163,7 +176,16 @@ public sealed record ExplorerUrlState
             Append(query, "pageSize", PageSize.ToString());
         }
 
-        if (SelectedVariableId is { } selected)
+        if (SelectedVariableCode is { } code)
+        {
+            Append(query, "variabel", code);
+
+            if (SelectedDatasamlingId is { } datasamling)
+            {
+                Append(query, "datasamlingId", datasamling.ToString());
+            }
+        }
+        else if (SelectedVariableId is { } selected)
         {
             Append(query, "variabelId", selected.ToString());
 
@@ -259,6 +281,12 @@ public sealed record ExplorerUrlState
             return Guid.TryParse(value, out var variable) ? state with { SelectedVariableId = variable } : state;
         }
 
+        // A code is checked for shape only; VariableExplorer asks Munin what it names (Fhi.Metadata-l9l2n.182).
+        if (Is(name, "variabel"))
+        {
+            return VariableCodes.IsLinkCode(value) ? state with { SelectedVariableCode = value.Trim() } : state;
+        }
+
         // On the same terms as the variable; a datasamling it has no row in leaves the row closed.
         if (Is(name, "datasamlingId"))
         {
@@ -293,11 +321,12 @@ public sealed record ExplorerUrlState
     /// component to leave alone. <c>variabelId</c> and <c>instrumentId</c> are in here for that
     /// reason too: a host with a variable or instrument page of its own plausibly already means
     /// something by either, and so is <c>delekode</c>, which a host may already use for sharing
-    /// of its own. <c>datasamlingId</c> goes with <c>variabelId</c>; declining either leaves both out.
+    /// of its own. <c>variabel</c> (the variable's code) and <c>datasamlingId</c> go with <c>variabelId</c>; declining any
+    /// of the three leaves all three out.
     /// </remarks>
     public static IReadOnlySet<string> ScalarQueryKeys { get; } =
         new HashSet<string>(
-            ["search", "sort", "sortDir", "page", "pageSize", "variabelId", "datasamlingId", "instrumentId", "delekode"],
+            ["search", "sort", "sortDir", "page", "pageSize", "variabelId", "variabel", "datasamlingId", "instrumentId", "delekode"],
             StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The keys this type reads and writes, so a host can tell them from its own.</summary>

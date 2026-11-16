@@ -32,6 +32,9 @@ public class SearchShareTest : ExplorerTestContext
         /// <summary>The datasamling the record answers with, which can differ from the row's.</summary>
         public Guid? DetailDatasamlingId { get; init; } = DatasamlingId;
 
+        /// <summary>The variable's datasamlinger as its record lists them.</summary>
+        public IReadOnlyList<Guid> AllDatasamlinger { get; init; } = [DatasamlingId, OtherDatasamlingId];
+
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default, SortDirection direction = SortDirection.Ascending,
@@ -63,7 +66,19 @@ public class SearchShareTest : ExplorerTestContext
 
         public override Task<VariableDetail?> GetVariableAsync(
             Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default) =>
-            Task.FromResult<VariableDetail?>(new VariableDetail
+            Task.FromResult<VariableDetail?>(Detail());
+
+        public List<string> CodesAsked { get; } = [];
+
+        // Munin's by-code route: the code in any case finds the one variable (Fhi.Metadata-9huq2.27).
+        public Task<VariableDetail?> GetVariableByCodeAsync(string code, CancellationToken cancellationToken = default)
+        {
+            CodesAsked.Add(code);
+            return Task.FromResult(string.Equals(code, Code, StringComparison.OrdinalIgnoreCase) ? Detail() : null);
+        }
+
+        private VariableDetail Detail() =>
+            new()
             {
                 Id = VariableId,
                 Code = Code,
@@ -74,13 +89,15 @@ public class SearchShareTest : ExplorerTestContext
                 DatasamlingId = DetailDatasamlingId,
                 DatasamlingName = "Hjerteinfarkt",
                 VersionStatus = VersionStatus,
-            });
+                AllDatasamlinger = [.. AllDatasamlinger.Select(id => new DatasamlingReference { Id = id })],
+            };
     }
 
     private IRenderedComponent<VariableExplorer> RenderExplorer(
         ShareClient? client = null, string address = "http://localhost/variabler?search=kjonn", string[]? declined = null)
     {
         Services.AddSingleton<IMuninExplorerClient>(client ?? new ShareClient());
+        Services.AddSingleton<IJSRuntime>(_history = new HistoryRecorder(JSInterop.JSRuntime));
         Services.AddScoped<VariableListState>();
         SetRendererInfo(new RendererInfo("Server", true));
         Services.GetRequiredService<NavigationManager>().NavigateTo(address);
@@ -106,16 +123,22 @@ public class SearchShareTest : ExplorerTestContext
         public string Status => Group.QuerySelector("[role=status]")!.TextContent.Trim();
     }
 
-    private static void AssertTheLinkOpensThisVariable(string link, bool historical = false)
+    /// <summary>
+    /// The variable by its code, the same in every environment (Fhi.Metadata-l9l2n.182): nothing else, unless the row is
+    /// another of the variable's datasamlinger than its primary one, which is then named by id.
+    /// </summary>
+    private static void AssertTheLinkOpensThisVariable(string link, Guid? datasamling = null)
     {
         var uri = new Uri(link);
         Assert.True(uri.IsAbsoluteUri);
         var query = QueryHelpers.ParseQuery(uri.Query);
-        Assert.Equal(Code, query["search"].ToString());
-        Assert.Equal(KildeId.ToString(), query["kildeIds"].ToString());
-        Assert.Equal(VariableId.ToString(), query["variabelId"].ToString());
-        Assert.Equal(DatasamlingId.ToString(), query["datasamlingId"].ToString());
-        Assert.Equal(historical ? "true" : "", query.TryGetValue("includeHistorical", out var h) ? h.ToString() : "");
+        Assert.Equal(Code, query["variabel"].ToString());
+        var expected = datasamling is { } ds ? new[] { "variabel", "datasamlingId" } : ["variabel"];
+        Assert.Equal(expected.Order(), query.Keys.Order());
+        if (datasamling is { } named)
+        {
+            Assert.Equal(named.ToString(), query["datasamlingId"].ToString());
+        }
     }
 
     private static string MailLink(IElementLike share)
@@ -135,7 +158,7 @@ public class SearchShareTest : ExplorerTestContext
         Assert.Equal("Kopier lenke", share.Copy.TextContent.Trim());
         Assert.StartsWith("Åpner e-postprogrammet ditt.", cut.Find($"#{share.Mail.GetAttribute("aria-describedby")}").TextContent.Trim());
         Assert.Single(share.Group.QuerySelectorAll("[role=status][aria-live=polite]"));
-        AssertTheLinkOpensThisVariable(MailLink(share));
+        cut.WaitForAssertion(() => AssertTheLinkOpensThisVariable(MailLink(ShareGroup(cut.Find(".munin-explorer-detail")))));
     }
 
     [Fact]
@@ -185,25 +208,26 @@ public class SearchShareTest : ExplorerTestContext
     }
 
     [Fact]
-    public void ShowWholeVariable_WhenTheRecordNamesAnotherDatasamling_ThenTheLinkKeepsTheRowsOwn()
+    public void ShowWholeVariable_WhenTheRowIsNotThePrimaryDatasamling_ThenTheLinkNamesTheRowsDatasamling()
     {
+        // The record answers with another datasamling as the primary one, so the row's own must travel by id.
         var cut = RenderExplorer(new ShareClient { DetailDatasamlingId = OtherDatasamlingId });
         OpenRow(cut);
 
         cut.FindAll(".munin-explorer-detail button").Single(b => b.TextContent == "Vis hele variabelen").Click();
-        var share = ShareGroup(cut.WaitForElement("[id^='munin-variable-'][role=region]"));
-
-        AssertTheLinkOpensThisVariable(MailLink(share));
+        cut.WaitForAssertion(() => AssertTheLinkOpensThisVariable(
+            MailLink(ShareGroup(cut.Find("[id^='munin-variable-'][role=region]"))), DatasamlingId));
     }
 
     [Fact]
-    public void OpenRow_WhenTheVariableIsHistorical_ThenTheLinkSearchesHistoricalVariablesToo()
+    public void OpenRow_WhenTheVariableIsHistorical_ThenTheLinkStillNamesItByCodeAlone()
     {
+        // Whether to show historical variables is the arrival's to work out from the variable, not the link's to carry.
         var cut = RenderExplorer(new ShareClient { VersionStatus = "Historical" }, "http://localhost/variabler?search=kjonn&includeHistorical=true");
 
         OpenRow(cut);
 
-        AssertTheLinkOpensThisVariable(MailLink(ShareGroup(cut.Find(".munin-explorer-detail"))), historical: true);
+        cut.WaitForAssertion(() => AssertTheLinkOpensThisVariable(MailLink(ShareGroup(cut.Find(".munin-explorer-detail")))));
     }
 
     [Fact]
@@ -226,15 +250,111 @@ public class SearchShareTest : ExplorerTestContext
         {
             var (search, filter) = client.Searches[^1];
             Assert.Equal(Code, search);
-            Assert.Equal([KildeId], filter!.KildeIds);
+            Assert.Empty(filter!.KildeIds);
+            Assert.Equal([Code], client.CodesAsked);
             Assert.Contains("1 variabel funnet", cut.Markup);
             Assert.Equal("true", cut.Find("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name").GetAttribute("aria-expanded"));
             Assert.NotNull(cut.Find(".munin-explorer-detail"));
         });
     }
 
+    // Fhi.Metadata-l9l2n.182: a variable linked by its code, the same link in every environment.
+    private HistoryRecorder? _history;
+
+    // What the explorer last wrote to the address bar.
+    private string Address(IRenderedComponent<VariableExplorer> _) => _history!.Written.LastOrDefault() ?? "";
+
+    private static string Note(IRenderedComponent<VariableExplorer> cut) =>
+        cut.FindAll("p.infobox.infobox--bg-yellow[role=status]").SingleOrDefault()?.TextContent.Trim() ?? "";
+
     [Theory]
-    [InlineData("search")]
+    [InlineData("V_HKR.KJONN")]
+    [InlineData("v_hkr.kjonn")]
+    public void Arrive_WhenTheAddressNamesAVariableByCode_ThenItOpensThatVariableAndTheAddressKeepsTheCode(string code)
+    {
+        var client = new ShareClient();
+        var cut = RenderExplorer(client, $"http://localhost/variabler?variabel={code}");
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal([code], client.CodesAsked);
+            Assert.Equal((Code, false), (client.Searches[^1].Search, client.Searches[^1].Filter!.IncludeHistorical));
+            Assert.Equal("true", cut.Find("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name").GetAttribute("aria-expanded"));
+            Assert.NotNull(cut.Find(".munin-explorer-detail"));
+
+            // The primary row: the code alone, as Munin spells it, and no search, since the arrival makes that again.
+            Assert.EndsWith($"/variabler?variabel={Code}", Address(cut));
+        });
+        Assert.Equal("", Note(cut));
+    }
+
+    [Fact]
+    public void Arrive_WhenTheCodeNamesNoVariable_ThenTheExplorerSearchesForTheCode()
+    {
+        var client = new ShareClient();
+        var cut = RenderExplorer(client, "http://localhost/variabler?variabel=V_HKR.FINNES_IKKE");
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal("V_HKR.FINNES_IKKE", client.Searches[^1].Search);
+            Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+            Assert.EndsWith("/variabler?search=V_HKR.FINNES_IKKE", Address(cut));
+        });
+    }
+
+    [Fact]
+    public void Arrive_WhenTheVariableIsHistorical_ThenItsCodeLinkShowsHistoricalVariables()
+    {
+        var client = new ShareClient { VersionStatus = "Historical" };
+        var cut = RenderExplorer(client, $"http://localhost/variabler?variabel={Code}");
+
+        cut.WaitForAssertion(() => Assert.True(client.Searches[^1].Filter!.IncludeHistorical));
+    }
+
+    [Fact]
+    public void Arrive_WhenTheLinksDatasamlingIsNotTheVariables_ThenThePrimaryRowOpensWithANote()
+    {
+        // A datasamling id from another environment: the variable has two datasamlinger, so the reader is told.
+        var client = new ShareClient();
+        var cut = RenderExplorer(client, $"http://localhost/variabler?variabel={Code}&datasamlingId={Guid.NewGuid()}");
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.NotNull(cut.Find(".munin-explorer-detail"));
+            Assert.Equal("Fant ikke datasamlingen lenken viste til. Variabelen vises i sin hoveddatasamling.", Note(cut));
+            Assert.EndsWith($"/variabler?variabel={Code}", Address(cut));
+        });
+    }
+
+    [Fact]
+    public void Arrive_WhenTheVariableHasOneDatasamling_ThenAMissingDatasamlingOpensItQuietly()
+    {
+        // With one datasamling, a missing id can only have meant that one.
+        var client = new ShareClient { AllDatasamlinger = [DatasamlingId] };
+        var cut = RenderExplorer(client, $"http://localhost/variabler?variabel={Code}&datasamlingId={Guid.NewGuid()}");
+
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find(".munin-explorer-detail")));
+        Assert.Equal("", Note(cut));
+    }
+
+    [Fact]
+    public void Navigate_WhenBackOrForwardReachesACodeLink_ThenTheCodeIsResolvedAgain()
+    {
+        var client = new ShareClient();
+        var cut = RenderExplorer(client);
+        cut.WaitForElement("ul.munin-explorer-data-list");
+
+        Services.GetRequiredService<NavigationManager>().NavigateTo($"http://localhost/variabler?variabel={Code}");
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal([Code], client.CodesAsked);
+            Assert.NotNull(cut.Find(".munin-explorer-detail"));
+        });
+    }
+
+    [Theory]
+    [InlineData("variabel")]
     [InlineData("variabelId")]
     public void OpenRow_WhenTheHostDeclinesAnAddressKey_ThenNeitherTheRowNorTheWholeVariableOffersSharing(string key)
     {
