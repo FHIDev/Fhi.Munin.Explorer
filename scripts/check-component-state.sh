@@ -67,14 +67,14 @@
 #         assertion) pairs, as CI does with 4; unset runs everything)
 # Needs:  dotnet, node (for npx), and a Chrome/Chromium on PATH. No feed credentials: a control's
 #         own state does not depend on a stylesheet. PLAYWRIGHT_BROWSER_CHANNEL=msedge runs an
-#         installed browser where `playwright install chromium` cannot complete, which on Node 26 is
-#         always (Fhi.Metadata-2nfvm); the run says which it used and CI sets neither.
+#         installed browser instead of the bundled chromium; the run says which it used and CI sets
+#         neither.
 
 set -euo pipefail
 
 # Pinned, for the reason check-accessibility.sh pins it: an unpinned npx resolves to whatever is
 # newest on the day, which turns an unrelated PR red for a reason nobody changed.
-PLAYWRIGHT_VERSION="1.49.1"
+PLAYWRIGHT_VERSION="1.62.1"
 
 PORT="${STATE_PORT:-5095}"
 BASE="http://localhost:${PORT}"
@@ -227,13 +227,12 @@ npm install --prefix "$ROOT" --no-save --silent "playwright@${PLAYWRIGHT_VERSION
   exit 2
 }
 
-# Skipped when a channel is set: that browser is already installed, and on Node 26 this step cannot
-# succeed at all - the pinned fetcher calls fs.rmdir(recursive), removed in that version, which
-# leaves a half-written cache with a chrome.dll and no chrome.exe (Fhi.Metadata-2nfvm).
+# Skipped when a channel is set: that browser is already installed. Playwright 1.49.1's install could
+# not finish on Node 26 (Fhi.Metadata-2nfvm, -l9l2n.131); the pinned 1.62.1's does.
 if [ -z "${PLAYWRIGHT_BROWSER_CHANNEL:-}" ]; then
   npx --prefix "$ROOT" --yes playwright install chromium >/tmp/state-pw-install.log 2>&1 || {
     echo "could not install chromium - TOOLING failure." >&2
-    echo "on Node 26 try PLAYWRIGHT_BROWSER_CHANNEL=msedge to use an installed browser." >&2
+    echo "PLAYWRIGHT_BROWSER_CHANNEL=msedge uses an installed browser instead (a different engine build)." >&2
     tail -10 /tmp/state-pw-install.log >&2
     exit 2
   }

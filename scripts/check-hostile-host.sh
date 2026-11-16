@@ -36,7 +36,7 @@ set -euo pipefail
 
 # Pinned, for the reason check-accessibility.sh pins them: an unpinned npx resolves to whatever is
 # newest on the day, which turns an unrelated PR red for a reason nobody changed.
-PLAYWRIGHT_VERSION="1.49.1"
+PLAYWRIGHT_VERSION="1.62.1"
 AXE_PLAYWRIGHT_VERSION="4.10.1"
 
 PORT="${HOSTILE_PORT:-5097}"
@@ -277,13 +277,12 @@ npm install --prefix "$ROOT" --no-save --silent \
   exit 2
 }
 
-# Skipped when a channel is set: that browser is already installed, and on Node 26 this step
-# cannot succeed at all - the pinned fetcher calls fs.rmdir(recursive), removed in that version,
-# which leaves a half-written cache with a chrome.dll and no chrome.exe (Fhi.Metadata-wgwa0).
+# Skipped when a channel is set: that browser is already installed. Playwright 1.49.1's install could
+# not finish on Node 26 (Fhi.Metadata-wgwa0, -l9l2n.131); the pinned 1.62.1's does.
 if [ -z "${PLAYWRIGHT_BROWSER_CHANNEL:-}" ]; then
   npx --prefix "$ROOT" --yes playwright install chromium >/tmp/hostile-pw-install.log 2>&1 || {
     echo "could not install chromium - TOOLING failure." >&2
-    echo "on Node 26 try PLAYWRIGHT_BROWSER_CHANNEL=msedge to use an installed browser." >&2
+    echo "PLAYWRIGHT_BROWSER_CHANNEL=msedge uses an installed browser instead (a different engine build)." >&2
     tail -10 /tmp/hostile-pw-install.log >&2
     exit 2
   }

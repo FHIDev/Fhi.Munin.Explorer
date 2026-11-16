@@ -101,8 +101,8 @@ read-only), `Fhi.Metadata-dfy9u` (v2 login and variable lists), `Fhi.Metadata-2f
   to this package by law, and green means no detected regression rather than accessible — what the
   gate cannot see is under "Accessibility is a requirement, not a preference". CI runs
   the same script, so a red check there is never a surprise. It takes
-  `PLAYWRIGHT_BROWSER_CHANNEL=msedge` on the same terms as the layout gate below, for the same
-  Node 26 reason — a different engine build from CI's, so the run says which it used. On a Linux
+  `PLAYWRIGHT_BROWSER_CHANNEL=msedge` on the same terms as the layout gate below — a different
+  engine build from CI's, so the run says which it used. On a Linux
   box with no root and no browser libraries, the Forge's, every browser gate unpacks them into a
   user prefix itself; see `docs/running-locally.md`.
 - **If the change touches layout, run `./scripts/check-hostile-host.sh` as well.** It renders the
@@ -111,8 +111,8 @@ read-only), `Fhi.Metadata-dfy9u` (v2 login and variable lists), `Fhi.Metadata-2f
   through every one. It does **not** need Azure Artifacts credentials any more:
   `STILER_FROM_SOURCE=1 ./scripts/check-hostile-host.sh` builds Stiler from a checkout beside
   this repository instead of restoring the pinned package. Add
-  `PLAYWRIGHT_BROWSER_CHANNEL=msedge` if `playwright install chromium` will not complete — on
-  Node 26 it cannot. Both flags change what is being measured and CI sets neither; the run prints
+  `PLAYWRIGHT_BROWSER_CHANNEL=msedge` to use an installed browser instead of the bundled chromium.
+  Both flags change what is being measured and CI sets neither; the run prints
   which it used. See `docs/running-locally.md`.
 - **If the change touches a control the reader presses, run `./scripts/check-component-state.sh`.**
   It drives a real browser and asks whether the DOM and the component still agree after a press the

@@ -31,8 +31,10 @@ libxkbcommon0 libxrandr2 libxrender1 libxshmfence1 libxtst6 libzstd1 zlib1g"
 # Unresolved libraries across every bundled chromium build in the cache, headless shell included.
 chromium_deps_missing() {
   local cache="${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}" bin n=0 c
+  # Both layouts: Playwright 1.49's chrome-linux/ and the chrome-*-linux64/ of later builds.
   for bin in "$cache"/chromium_headless_shell-*/chrome-linux/headless_shell \
-             "$cache"/chromium-*/chrome-linux/chrome; do
+             "$cache"/chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell \
+             "$cache"/chromium-*/chrome-linux/chrome "$cache"/chromium-*/chrome-linux64/chrome; do
     [ -x "$bin" ] || continue
     c=$(ldd "$bin" 2>/dev/null | grep -c 'not found' || true)
     n=$((n + c))
