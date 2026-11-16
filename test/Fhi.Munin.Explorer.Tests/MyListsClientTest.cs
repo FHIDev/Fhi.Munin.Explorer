@@ -718,6 +718,25 @@ public class MyListsClientTest
         AssertAuthenticated(handler);
     }
 
+    [Theory]
+    [InlineData("""{"error":"Hver variabel må lagres med en av sine egne datasamlinger.","variabelIds":["b7c1f4a2-5d38-4e6b-9c02-8a1e3f7d5b90"]}""", true)]
+    [InlineData("""{"error":"Hver variabel må lagres med en av sine egne datasamlinger.","variabelIds":[]}""", false)]
+    [InlineData("""{"errors":{"Items":["The Items field is required."]}}""", false)]
+    [InlineData("not json", false)]
+    [InlineData("", false)]
+    public async Task AddItemsToMyListAsync_WhenTheApiRefusesTheBatch_ThenItNamesTheRefusedVariablesWhereItsAnswerDoes(string body, bool named)
+    {
+        // Munin's body, as MyListsController writes it: a caller resends the rest at once rather than row by row.
+        var handler = StubHttpHandler.Answering(HttpStatusCode.BadRequest, body);
+        var variable = new Guid("b7c1f4a2-5d38-4e6b-9c02-8a1e3f7d5b90");
+
+        var thrown = await Assert.ThrowsAsync<ListItemsRefusedException>(
+            () => Client(handler).AddItemsToMyListAsync(ListId, [new VariableDatasamlingKey(variable, Guid.NewGuid())]));
+
+        Assert.Equal(HttpStatusCode.BadRequest, thrown.StatusCode);
+        Assert.Equal(named ? [variable] : null, thrown.VariableIds);
+    }
+
     [Fact]
     public async Task RemoveItemsFromMyListAsync_WhenAnItemWithNoDatasamlingIsRemoved_ThenItsNullIsSent()
     {

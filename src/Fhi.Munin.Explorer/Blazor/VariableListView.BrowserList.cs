@@ -20,6 +20,8 @@ public sealed partial class VariableListView
     private string? _carriedOverAs;
     private bool _carriedOverButStillHere;
     private int _notCarried;
+    private bool _carryOverCutShort;
+    private bool? _refusedRemoved;
     private bool _browserShareTooLong;
     private bool _browserPageFailed;
     private bool _browserShareUnreadable;
@@ -51,9 +53,11 @@ public sealed partial class VariableListView
         : ShareMessage ?? DownloadMessage;
 
     private string? CarriedOverMessage =>
-        _carriedOverAs is not { } name ? null
+        _refusedRemoved is { } removed ? (removed ? T.BrowserListRefusedRemoved : T.BrowserListRefusedNotRemoved)
+        : _carriedOverAs is not { } name ? (_notCarried > 0 ? T.BrowserListNotCarried(_notCarried) : null)
         : (_carriedOverButStillHere ? T.BrowserListSavedButStillHere(name) : T.BrowserListSavedAs(name))
-          + (_notCarried > 0 ? " " + T.BrowserListNotCarried(_notCarried) : "");
+          + (_notCarried > 0 ? " " + T.BrowserListNotCarried(_notCarried) : "")
+          + (_carryOverCutShort ? " " + T.BrowserListCarryOverCutShort : "");
 
     /// <summary>The sentence over the browser list: kept, kept for this page only, or not there at all.</summary>
     private string BrowserListStorageSentence =>
@@ -301,8 +305,8 @@ public sealed partial class VariableListView
     }
 
     /// <summary>
-    /// Saves the browser list as a new list of the reader's and shows it. A failure leaves the browser list as it
-    /// was and says so; nothing is merged into a list the reader already has.
+    /// Saves the browser list as a new list of the reader's and shows it, or finishes the one a cut-short press made.
+    /// A failure that saved nothing leaves the browser list as it was and says so; nothing else is merged into.
     /// </summary>
     private async Task CarryBrowserListOverAsync()
     {
@@ -348,9 +352,16 @@ public sealed partial class VariableListView
             return;
         }
 
-        if (carried is not { List: var created })
+        if (carried is null)
         {
             _carryOverFailed = true;
+            return;
+        }
+
+        if (carried.List is not { } created)
+        {
+            // Munin refused every row: they stay in the browser, and the offer to remove them says how.
+            _notCarried = carried.NotCarried;
             return;
         }
 
@@ -358,6 +369,11 @@ public sealed partial class VariableListView
         _holdingReloads = true;
         await CountTheAddsAsync(created.Id);
         _holdingReloads = false;
+
+        if (State.Reader != reader)
+        {
+            return;
+        }
 
         _shownList = created.Id;
         _shownListMoves++;
@@ -373,7 +389,17 @@ public sealed partial class VariableListView
             Log?.LogWarning(ex, "could not read the new list {ListId} after saving the browser list", created.Id);
         }
 
+        if (State.Reader != reader)
+        {
+            return;
+        }
+
         await LoadPageAsync();
+
+        if (State.Reader != reader)
+        {
+            return;
+        }
 
         // The button left with its offer: focus goes where a created list sends it, and the alert says what happened.
         _formsOpenAtCreate = formsOpenAtStart;
@@ -381,6 +407,28 @@ public sealed partial class VariableListView
         _carriedOverAs = created.Name;
         _carriedOverButStillHere = !carried.LeftTheBrowser;
         _notCarried = carried.NotCarried;
+        _carryOverCutShort = carried.CutShort;
+    }
+
+    /// <summary>Takes the rows Munin refused out of the browser, which signed in has no «Tøm listen» to do it.</summary>
+    private async Task RemoveRefusedFromBrowserAsync()
+    {
+        if (State is null || !IsAuthenticated || _carryingOver)
+        {
+            return;
+        }
+
+        ForgetFailures();
+        var formsOpenAtStart = OpenForms();
+        var removed = await State.RemoveRefusedFromBrowserAsync();
+        _refusedRemoved = removed;
+
+        // The button leaves with its rows; focus goes where a created list's would.
+        if (removed)
+        {
+            _formsOpenAtCreate = formsOpenAtStart;
+            _focusAfterCreate = true;
+        }
     }
 
     // The list's name, made free among the reader's lists the way a reader would: «Navn (2)».

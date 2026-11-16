@@ -78,6 +78,12 @@ public class AnonymousListTest : ExplorerTestContext
         public Action? BeforeAdd { get; set; }
         public VariableDatasamlingKey? Stale { get; init; }
 
+        /// <summary>The 400 names the stale row's variable, as Munin's body does.</summary>
+        public bool NamesStale { get; init; }
+
+        /// <summary>Munin's write limiter: every add after this many answers 429.</summary>
+        public int? ThrottleAfter { get; set; }
+
         /// <summary>When set, every add waits for it: the round trip a test changes the reader during.</summary>
         public Task<bool>? HoldAdds { get; init; }
 
@@ -94,9 +100,16 @@ public class AnonymousListTest : ExplorerTestContext
                 return await hold;
             }
 
+            if (AddCalls > ThrottleAfter)
+            {
+                throw new MuninExplorerRateLimitedException();
+            }
+
             if (Stale is { } stale && items.Contains(stale))
             {
-                throw new HttpRequestException("stale datasamling", null, System.Net.HttpStatusCode.BadRequest);
+                throw NamesStale
+                    ? new ListItemsRefusedException([stale.VariableId])
+                    : new HttpRequestException("stale datasamling", null, System.Net.HttpStatusCode.BadRequest);
             }
 
             if (AddThrows)
@@ -788,6 +801,81 @@ public class AnonymousListTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Contains(No.BrowserListNotCarried(1), cut.Markup));
         Assert.Contains(No.BrowserListSavedAs(No.FirstListName), cut.Markup);
+        Assert.Single(browser.Rows);
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheOnlyRowIsRefused_ThenTheReaderIsToldHowManyAndCanRemoveIt()
+    {
+        // Not the transient «Kunne ikke … nå»: pressing again would be refused again, and signed in there is no «Tøm listen».
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Gammel"));
+        var client = new Client { Stale = VariableDatasamlingKey.Of(browser.Rows[0]), NamesStale = true };
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
+
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListNotCarried(1), cut.Find("[role=alert]:not(:empty)").TextContent));
+        Assert.DoesNotContain(No.CarryBrowserListOverError, cut.Markup);
+        Assert.DoesNotContain(No.CarryBrowserListOver, cut.Markup);
+        Assert.Empty(client.Lists);
+
+        ButtonSaying(cut, No.RemoveRefusedFromBrowser(1)).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListRefusedRemoved, cut.Markup));
+        Assert.Empty(browser.Rows);
+        Assert.DoesNotContain(No.RemoveRefusedFromBrowser(1), cut.Markup);
+    }
+
+    [Fact]
+    public async Task VariableListView_WhenARowArrivesAfterAStaleOneWasRefused_ThenTheSecondPressSendsOnlyTheNewRow()
+    {
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange([FakeBrowserList.Row("Alder"), FakeBrowserList.Row("Gammel")]);
+        var client = new Client { Stale = VariableDatasamlingKey.Of(browser.Rows[1]), NamesStale = true };
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(2), cut.Markup));
+
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListNotCarried(1), cut.Markup));
+
+        // The refused row alone is not a list to offer.
+        Assert.DoesNotContain(No.CarryBrowserListOver, cut.Markup);
+        Assert.Contains(No.RemoveRefusedFromBrowser(1), cut.Markup);
+
+        var late = FakeBrowserList.Row("Kjønn");
+        browser.Rows.Add(late);
+        await cut.InvokeAsync(browser.ChangedElsewhereAsync);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
+
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+
+        cut.WaitForAssertion(() => Assert.Equal([VariableDatasamlingKey.Of(late)], client.Added[^1]));
+        Assert.Equal(3, client.AddCalls);
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheLimiterStopsTheCarryOverPartWay_ThenTheSavedRowsStayAndTheNextPressMakesNoSecondList()
+    {
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange([FakeBrowserList.Row("Alder"), FakeBrowserList.Row("Kjønn"), FakeBrowserList.Row("Gammel")]);
+        var client = new Client { Stale = VariableDatasamlingKey.Of(browser.Rows[2]), ThrottleAfter = 2 };
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(3), cut.Markup));
+
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListCarryOverCutShort, cut.Markup));
+        Assert.Contains(No.BrowserListSavedAs(No.FirstListName), cut.Markup);
+        Assert.Single(client.Lists);
+        Assert.Equal(2, browser.Rows.Count);
+
+        client.ThrottleAfter = null;
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListNotCarried(1), cut.Markup));
+        Assert.Equal([No.FirstListName], client.Created);
         Assert.Single(browser.Rows);
     }
 

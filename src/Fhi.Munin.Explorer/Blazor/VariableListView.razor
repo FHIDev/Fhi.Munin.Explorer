@@ -776,8 +776,9 @@ else if (ShowsBrowserCopy)
     </text>;
 
     // Signed in with rows still in the browser: one press saves them as a new list, never on its own (Fhi.Metadata-emsc0.3.12).
+    // Rows Munin refused are not offered again; signed in there is no «Tøm listen», so they get a button of their own.
     private RenderFragment CarryOverOffer => @<text>
-        @if (State is { IsAuthenticated: true, BrowserCount: > 0 and var rows, BrowserCarryOverStuck: false } && !ShowsSharedList)
+        @if (State is { IsAuthenticated: true, BrowserRowsToCarry: > 0 and var rows, BrowserCarryOverStuck: false } && !ShowsSharedList)
         {
             <div>
                 <p class="caption">@T.BrowserListWaiting(rows)</p>
@@ -787,6 +788,15 @@ else if (ShowsBrowserCopy)
                         aria-busy="@(_carryingOver ? "true" : null)"
                         @onclick="CarryBrowserListOverAsync">@(_carryingOver ? T.SavingToList : T.CarryBrowserListOver)</button>
                 <p role="alert">@(_carryOverFailed ? T.CarryBrowserListOverError : null)</p>
+            </div>
+        }
+        @if (State is { IsAuthenticated: true, BrowserRefusedCount: > 0 and var refused } && !ShowsSharedList)
+        {
+            <div>
+                <button class="hd-button-square button-square--ghost-blue"
+                        type="button"
+                        aria-disabled="@AriaDisabled(!_carryingOver)"
+                        @onclick="RemoveRefusedFromBrowserAsync">@T.RemoveRefusedFromBrowser(refused)</button>
             </div>
         }
     </text>;

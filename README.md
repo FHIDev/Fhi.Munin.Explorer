@@ -1412,8 +1412,12 @@ leave `AnonymousLists` off; the gates turn it on for one state of their own. Tod
   one a signed-in reader has) adds a row to it, the list tab shows it through the shared-list view, and it can be
   downloaded (`ExportItemsAsync`, Munin's anonymous export), shared as a code while its snapshot stays under the share
   endpoint's 512 KB (about 990 full rows), or emptied. Signed in with rows still in the browser, the list tab offers one
-  button that saves them as a new list in Mine lister; a row Munin refuses, such as one whose datasamling is no longer
-  the variable's, stays in the browser and the reader is told how many. Where the browser refuses storage the list lasts while the page
+  button that saves them as a new list in Mine lister and then takes the saved rows out of the browser. A row Munin
+  refuses, such as one whose datasamling is no longer the variable's, stays in the browser and is not offered again
+  while the page is open: the reader is told how many, and a button of its own takes exactly those rows out of the browser. Munin's refusal
+  names its rows, so the rest are sent once more in one request; a refusal that names none is tried a row at a time,
+  for at most 20 rows, and past that saves nothing. Where Munin's write limiter stops it part way, the saved rows stay
+  in the new list, the rest stay in the browser, and the next press on that page adds them to that same list. Where the browser refuses storage the list lasts while the page
   is open and the view says so; a host that does not serve the module has no list, and the save button and the list tab
   say it cannot be kept in this browser. With it off, a signed-out reader has no save button and no list tab, as before.
   `check-accessibility.sh` scans it with axe in `list-browser-list`, on a host started with it on and with the samples'

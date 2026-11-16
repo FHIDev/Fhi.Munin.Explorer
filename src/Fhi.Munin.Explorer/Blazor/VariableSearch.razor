@@ -799,14 +799,9 @@ else
         <p class="caption">@T.SignInForVariableLists</p>
     }
 
-    @* The panel the results live in. Unclassed and role-less when there are no tabs, so a
-       signed-out reader without the browser list gets the same document they always got.
-
-       The contents are rendered only for the tab that is open, rather than drawn and hidden.
-       `hidden` is not enough: helsedata's stylesheet carries a bare `div { display: block }`,
-       and an author rule beats the browser's own `[hidden] { display: none }` — so a hidden panel
-       stayed on screen in the one host we ship to (measured: 3798px of it). The attribute is kept
-       anyway, because it is right everywhere else and costs nothing here. *@
+    @* Role-less without tabs. Only the open tab's contents are rendered: helsedata's bare
+       `div { display: block }` beats the browser's `[hidden] { display: none }`, so `hidden`
+       alone left a panel on screen there; the attribute stays, right everywhere else. *@
     <div role="@(ShowTabs ? "tabpanel" : null)"
          id="@(ShowTabs ? ResultTabPanelId(ExplorerTab.Search) : null)"
          aria-labelledby="@(ShowTabs ? ResultTabId(ExplorerTab.Search) : null)"

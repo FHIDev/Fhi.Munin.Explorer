@@ -945,6 +945,10 @@ internal sealed record Texts(
     Func<string, string> BrowserListSavedAs,
     Func<string, string> BrowserListSavedButStillHere,
     Func<int, string> BrowserListNotCarried,
+    string BrowserListCarryOverCutShort,
+    Func<int, string> RemoveRefusedFromBrowser,
+    string BrowserListRefusedRemoved,
+    string BrowserListRefusedNotRemoved,
     Func<int, string> BrowserListFull,
     string ClearBrowserList,
     string ConfirmClearBrowserList,
@@ -1924,8 +1928,12 @@ internal sealed record Texts(
         BrowserListSavedAs: name => $"Lagret som «{name}» i Mine lister.",
         BrowserListSavedButStillHere: name => $"Listen ble lagret i Mine lister («{name}»), men den kunne ikke fjernes fra denne nettleseren. Tøm den når du er logget ut.",
         BrowserListNotCarried: rows => rows == 1
-            ? "1 rad kunne ikke lagres i Mine lister. Den ligger fortsatt i denne nettleseren."
-            : $"{rows} rader kunne ikke lagres i Mine lister. De ligger fortsatt i denne nettleseren.",
+            ? "1 rad kunne ikke lagres i Mine lister og ligger fortsatt i denne nettleseren. «Fjern raden fra denne nettleseren» tar den bort."
+            : $"{rows} rader kunne ikke lagres i Mine lister og ligger fortsatt i denne nettleseren. «Fjern radene fra denne nettleseren» tar dem bort.",
+        BrowserListCarryOverCutShort: "Resten ligger fortsatt i denne nettleseren. Prøv igjen om et minutt.",
+        RemoveRefusedFromBrowser: rows => rows == 1 ? "Fjern raden fra denne nettleseren" : "Fjern radene fra denne nettleseren",
+        BrowserListRefusedRemoved: "Radene som ikke kunne lagres, er fjernet fra denne nettleseren.",
+        BrowserListRefusedNotRemoved: "Kunne ikke fjerne radene fra denne nettleseren nå.",
         BrowserListFull: max => $"Listen kan ha høyst {max} rader. Fjern noen før du legger til flere.",
         ClearBrowserList: "Tøm listen",
         ConfirmClearBrowserList: "Fjerne alle variabler fra listen i denne nettleseren? Det kan ikke angres.",
@@ -2601,8 +2609,12 @@ internal sealed record Texts(
         BrowserListSavedAs: name => $"Saved as «{name}» in My lists.",
         BrowserListSavedButStillHere: name => $"The list was saved in My lists («{name}»), but it could not be removed from this browser. Empty it when you are signed out.",
         BrowserListNotCarried: rows => rows == 1
-            ? "1 row could not be saved in My lists. It is still in this browser."
-            : $"{rows} rows could not be saved in My lists. They are still in this browser.",
+            ? "1 row could not be saved in My lists and is still in this browser. «Remove the row from this browser» takes it away."
+            : $"{rows} rows could not be saved in My lists and are still in this browser. «Remove the rows from this browser» takes them away.",
+        BrowserListCarryOverCutShort: "The rest is still in this browser. Try again in a minute.",
+        RemoveRefusedFromBrowser: rows => rows == 1 ? "Remove the row from this browser" : "Remove the rows from this browser",
+        BrowserListRefusedRemoved: "The rows that could not be saved are removed from this browser.",
+        BrowserListRefusedNotRemoved: "Could not remove the rows from this browser just now.",
         BrowserListFull: max => $"The list can hold at most {max} rows. Remove some before adding more.",
         ClearBrowserList: "Empty the list",
         ConfirmClearBrowserList: "Remove every variable from the list in this browser? It cannot be undone.",

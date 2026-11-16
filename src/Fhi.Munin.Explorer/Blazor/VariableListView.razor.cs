@@ -1331,6 +1331,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _carriedOverAs = null;
         _carriedOverButStillHere = false;
         _notCarried = 0;
+        _carryOverCutShort = false;
+        _refusedRemoved = null;
         _createFailure = ListActionFailure.None;
         _actionFailure = ListActionFailure.None;
         _downloadFailure = DownloadFailure.None;

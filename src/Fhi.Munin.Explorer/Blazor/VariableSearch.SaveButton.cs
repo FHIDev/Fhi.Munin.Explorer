@@ -13,9 +13,10 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Drawn only for a signed-in reader, or signed out with <c>MuninExplorer:Features:AnonymousLists</c> on, when
-/// the row goes to the list kept in the reader's browser. Otherwise there is no button at all rather than a
-/// disabled one — a control that can never do anything is worse than no control.
+/// Drawn only for a signed-in reader, or signed out with <c>MuninExplorer:Features:AnonymousLists</c> on and a
+/// <see cref="VariableSearch.VariableList"/> fragment passed, when the row goes to the list kept in the reader's
+/// browser and that fragment's tab shows it. Otherwise there is no button at all rather than a disabled one — a
+/// control that can never do anything is worse than no control.
 /// </para>
 /// <para>
 /// Whether a variable is saved is read from <see cref="VariableListState"/> on every render and
