@@ -152,6 +152,49 @@ public class ExplorerUrlStateTest
         Assert.Null(ExplorerUrlState.Parse(query).SelectedVariableId);
     }
 
+    /// <summary>A variable by its code, the same link in every environment (Fhi.Metadata-l9l2n.182).</summary>
+    [Fact]
+    public void RoundTrip_WhenTheVariableIsNamedByCode_ThenTheCodeIsWrittenInPlaceOfTheId()
+    {
+        var variable = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        Assert.Equal("variabel=V_MFR.KJONN",
+            new ExplorerUrlState { SelectedVariableId = variable, SelectedVariableCode = "V_MFR.KJONN" }.ToQueryString());
+
+        var row = new ExplorerUrlState { SelectedVariableCode = "V_MFR.KJONN", SelectedDatasamlingId = datasamling };
+        Assert.Equal($"variabel=V_MFR.KJONN&datasamlingId={datasamling}", row.ToQueryString());
+        Assert.Equal(row, ExplorerUrlState.Parse(row.ToQueryString()));
+        Assert.Contains("variabel", ExplorerUrlState.ScalarQueryKeys);
+    }
+
+    [Fact]
+    public void Parse_WhenALinkNamesTheVariableByIdAndByCode_ThenTheIdWinsAndWritesBackTheSame()
+    {
+        var variable = Guid.NewGuid();
+
+        var state = ExplorerUrlState.Parse($"?variabel=V_MFR.KJONN&variabelId={variable}");
+
+        Assert.Equal((variable, null), (state.SelectedVariableId, state.SelectedVariableCode));
+        Assert.Equal($"variabelId={variable}", state.ToQueryString());
+    }
+
+    [Theory]
+    [InlineData("?variabel=..")]
+    [InlineData("?variabel=V_MFR/../x")]
+    [InlineData("?variabel=V%20MFR")]
+    public void Parse_WhenTheVariableCodeIsNotOne_ThenNoCodeIsRead(string query)
+    {
+        Assert.Null(ExplorerUrlState.Parse(query).SelectedVariableCode);
+    }
+
+    [Fact]
+    public void Parse_WhenACodeIsTooLong_ThenNoCodeIsRead()
+    {
+        Assert.Null(ExplorerUrlState.Parse("?variabel=" + new string('A', 256)).SelectedVariableCode);
+        Assert.NotNull(ExplorerUrlState.Parse("?variabel=" + new string('A', 255)).SelectedVariableCode);
+    }
+
     /// <summary>The facets are the filter's own business, and must survive the trip through here.</summary>
     [Fact]
     public void RoundTrip_WhenTheFilterCarriesFacets_ThenTheySurvive()

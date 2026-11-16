@@ -676,6 +676,9 @@ internal sealed record Texts(
     string ClearSearch,
     // A shared link to one variable shows only its row; this returns to everything the search and filters match.
     string ShowAllMatches,
+    // A variable link's datasamling was not among the variable's (an id from another environment): the primary row is
+    // shown instead (Fhi.Metadata-l9l2n.182).
+    string LinkedDatasamlingNotFound,
     string SelectAllKilder,
     string ClearSelection,
     // One button, three payloads — see Handover in KildeSearch.Selection.cs. "Alle" over a
@@ -1718,6 +1721,7 @@ internal sealed record Texts(
         AllVariablesForKilde: name => $"Vis alle variabler i {name}",
         ClearSearch: "Tøm søket",
         ShowAllMatches: "Vis alle treff",
+        LinkedDatasamlingNotFound: "Fant ikke datasamlingen lenken viste til. Variabelen vises i sin hoveddatasamling.",
         SelectAllKilder: "Velg alle synlige kilder",
         ClearSelection: "Nullstill utvalg",
         ExploreVariables: "Utforsk variabler for utvalget",
@@ -2373,6 +2377,7 @@ internal sealed record Texts(
         AllVariablesForKilde: name => $"Show all variables in {name}",
         ClearSearch: "Clear search",
         ShowAllMatches: "Show all matches",
+        LinkedDatasamlingNotFound: "The data collection the link pointed to was not found. The variable is shown in its main data collection.",
         SelectAllKilder: "Select all visible sources",
         ClearSelection: "Clear selection",
         ExploreVariables: "Explore variables for this selection",

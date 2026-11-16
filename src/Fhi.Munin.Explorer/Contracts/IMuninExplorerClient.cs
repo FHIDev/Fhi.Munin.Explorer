@@ -272,6 +272,18 @@ public interface IMuninExplorerClient
         GetVariableAsync(id, includeHistorical, cancellationToken);
 
     /// <summary>
+    /// The detail of the variable a link's code names (<c>?variabel=V_MFR.KJONN</c>), in any case and with the reader's
+    /// ÆØÅ, as by its id. Null when no published variable has it, or its one-letter fold names two.
+    /// </summary>
+    /// <remarks>
+    /// Carries a default body, answering null, so a host implementing this contract itself keeps building. While this
+    /// answers null, <see cref="Blazor.VariableExplorer"/> writes no code into its own links and keeps naming variables
+    /// by id; a code link that arrives anyway opens as a search for the code.
+    /// </remarks>
+    Task<VariableDetail?> GetVariableByCodeAsync(string code, CancellationToken cancellationToken = default) =>
+        Task.FromResult<VariableDetail?>(null);
+
+    /// <summary>
     /// Fetch every published version of a variable, newest and oldest alike. Empty when the
     /// variable does not exist.
     /// </summary>

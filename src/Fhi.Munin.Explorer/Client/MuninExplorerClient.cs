@@ -188,6 +188,26 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         return GetOrNullAsync<VariableDetail>(url, cancellationToken);
     }
 
+    public async Task<VariableDetail?> GetVariableByCodeAsync(string code, CancellationToken cancellationToken = default)
+    {
+        if (!VariableCodes.IsLinkCode(code))
+        {
+            return null;
+        }
+
+        try
+        {
+            return await GetOrNullAsync<VariableDetail>(
+                // Historical variables too: the link names one variable, whatever its versions' status.
+                $"api/explorer/variables/code/{Uri.EscapeDataString(code.Trim())}?includeHistorical=true", cancellationToken);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Conflict)
+        {
+            // 409: the code's one-letter fold names two variables, so the link names neither (Fhi.Metadata-9huq2.27).
+            return null;
+        }
+    }
+
     public async Task<IReadOnlyList<VariableVersion>> GetVariableTimelineAsync(
         Guid id,
         CancellationToken cancellationToken = default) =>

@@ -1448,8 +1448,21 @@ it is delivered from, so the pair names the open row and the list shows only tha
 the reader searches, filters, sorts, changes the page size or presses «Vis alle treff». A host that
 mirrors the open row therefore reopens a reloaded page on that one row. A link with the variable alone
 opens its first row over the whole list. The full set is `ExplorerUrlState.ScalarQueryKeys` — `search`, `sort`, `sortDir`,
-`page`, `pageSize`, `variabelId`, `datasamlingId`, `instrumentId` and `delekode` — plus
+`page`, `pageSize`, `variabelId`, `variabel`, `datasamlingId`, `instrumentId` and `delekode` — plus
 `VariableFilter.QueryKeys`, and any of the scalars can be declined.
+
+`?variabel=` names a variable by its code (`?variabel=V_MFR.KJONN`), which is the same in every environment, where an
+id is not. `VariableExplorer` asks Munin's `api/explorer/variables/code/{code}` what it names, then opens the
+variable as a search for its code with the row of its primary datasamling open. An address that carries a search or
+filters of its own beside the code, such as one the explorer wrote for a reader, keeps them. A code that names no
+variable opens as a search for the code, so the list's own empty state is the not-found view. The links it writes, in
+the address and in «Kopier lenke», name the open variable by its code: the code alone for the row of its primary
+datasamling, and the code with `datasamlingId` for a row of another. It writes a code only once Munin has answered
+one, so against a Munin without the route, or a client on the contract's default body, its links keep naming the
+variable by id as before. A `datasamlingId` the variable does not have, such as one from another environment, opens
+the primary row instead and says so, when the variable has more than one datasamling. A `variabelId` link keeps
+working. Declining `variabel` keeps codes out of the address, which then names the open variable by `variabelId` as
+before; declining `variabelId` keeps the open variable out of the address altogether.
 
 `KildeExplorer` is the kildeutforsker's equivalent, and `Language` is all it takes:
 

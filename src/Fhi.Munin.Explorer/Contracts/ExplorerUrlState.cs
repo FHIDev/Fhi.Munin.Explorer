@@ -1,4 +1,5 @@
 using System.Text;
+using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Parsing;
 
 namespace Fhi.Munin.Explorer.Contracts;
@@ -53,9 +54,22 @@ public sealed record ExplorerUrlState
     public Guid? SelectedVariableId { get; init; }
 
     /// <summary>
-    /// The datasamling of the open row, written as <c>datasamlingId</c> beside <c>variabelId</c>: a
+    /// The open variable's code, written as <c>variabel</c> in place of <c>variabelId</c>: a code is the same in every
+    /// environment, where an id is not (Fhi.Metadata-l9l2n.182). <see cref="Blazor.VariableExplorer"/> resolves an arriving code
+    /// through Munin before it opens anything; a code that names no variable opens as a search for the code.
+    /// </summary>
+    /// <remarks>
+    /// Written whenever it is set, with <see cref="SelectedDatasamlingId"/> beside it when that is set too: a link to the
+    /// row of another of the variable's datasamlinger still names that datasamling by its id. A link with
+    /// <c>variabelId</c> keeps working, and wins when both arrive.
+    /// </remarks>
+    public string? SelectedVariableCode { get; init; }
+
+    /// <summary>
+    /// The datasamling of the open row, written as <c>datasamlingId</c> beside <c>variabelId</c> or <c>variabel</c>: a
     /// variable has a row per datasamling, so the variable alone does not name the row. A link without
-    /// it opens the variable's first row. Never written without <see cref="SelectedVariableId"/>.
+    /// it opens the variable's first row. Never written without <see cref="SelectedVariableId"/> or
+    /// <see cref="SelectedVariableCode"/>.
     /// </summary>
     public Guid? SelectedDatasamlingId { get; init; }
 
@@ -163,7 +177,16 @@ public sealed record ExplorerUrlState
             Append(query, "pageSize", PageSize.ToString());
         }
 
-        if (SelectedVariableId is { } selected)
+        if (SelectedVariableCode is { } code)
+        {
+            Append(query, "variabel", code);
+
+            if (SelectedDatasamlingId is { } datasamling)
+            {
+                Append(query, "datasamlingId", datasamling.ToString());
+            }
+        }
+        else if (SelectedVariableId is { } selected)
         {
             Append(query, "variabelId", selected.ToString());
 
@@ -210,7 +233,8 @@ public sealed record ExplorerUrlState
             state = Apply(state, name, value);
         }
 
-        return state;
+        // An id names the variable outright, so a code beside it is not read: ToQueryString would write the code instead.
+        return state.SelectedVariableId is null ? state : state with { SelectedVariableCode = null };
     }
 
     private static ExplorerUrlState Apply(ExplorerUrlState state, string name, string value)
@@ -259,6 +283,12 @@ public sealed record ExplorerUrlState
             return Guid.TryParse(value, out var variable) ? state with { SelectedVariableId = variable } : state;
         }
 
+        // A code is checked for shape only; VariableExplorer asks Munin what it names (Fhi.Metadata-l9l2n.182).
+        if (Is(name, "variabel"))
+        {
+            return VariableCodes.IsLinkCode(value) ? state with { SelectedVariableCode = value.Trim() } : state;
+        }
+
         // On the same terms as the variable; a datasamling it has no row in leaves the row closed.
         if (Is(name, "datasamlingId"))
         {
@@ -293,11 +323,13 @@ public sealed record ExplorerUrlState
     /// component to leave alone. <c>variabelId</c> and <c>instrumentId</c> are in here for that
     /// reason too: a host with a variable or instrument page of its own plausibly already means
     /// something by either, and so is <c>delekode</c>, which a host may already use for sharing
-    /// of its own. <c>datasamlingId</c> goes with <c>variabelId</c>; declining either leaves both out.
+    /// of its own. <c>variabel</c> is the variable's code: declining it keeps codes out of the address, which then names the
+    /// open variable by <c>variabelId</c> as before. Declining <c>variabelId</c> leaves the open variable out altogether,
+    /// its code and <c>datasamlingId</c> with it. Declining <c>datasamlingId</c> leaves out only that.
     /// </remarks>
     public static IReadOnlySet<string> ScalarQueryKeys { get; } =
         new HashSet<string>(
-            ["search", "sort", "sortDir", "page", "pageSize", "variabelId", "datasamlingId", "instrumentId", "delekode"],
+            ["search", "sort", "sortDir", "page", "pageSize", "variabelId", "variabel", "datasamlingId", "instrumentId", "delekode"],
             StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The keys this type reads and writes, so a host can tell them from its own.</summary>

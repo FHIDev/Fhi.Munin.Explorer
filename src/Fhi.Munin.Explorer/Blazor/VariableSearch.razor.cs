@@ -612,6 +612,13 @@ public sealed partial class VariableSearch : ComponentBase
 
     [Inject] private IMuninExplorerClient Client { get; set; } = null!;
 
+    /// <summary>The name <see cref="VariableExplorer"/> cascades a note about the link it opened under.</summary>
+    internal const string LinkNoteName = "MuninExplorerLinkNote";
+
+    // Said beside «Vis alle treff» while the linked row is pinned: the datasamling the link named was not found.
+    [CascadingParameter(Name = LinkNoteName)]
+    private bool LinkNote { get; set; }
+
     private string? _search;
 
     // Held so the clear control can hand focus back to the field it emptied. The control is drawn

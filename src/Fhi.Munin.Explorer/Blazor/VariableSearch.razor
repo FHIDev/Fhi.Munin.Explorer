@@ -871,6 +871,10 @@ else
         <p class="screenreader-only" role="status" aria-live="polite" aria-atomic="true">@(_loadingSaid ? T.Loading : "")</p>
 
         @* A shared link shows only the row it names; this is the way back to every match. *@
+        @if (_pinnedRow is not null && LinkNote)
+        {
+            <p class="infobox infobox--bg-yellow" role="status">@T.LinkedDatasamlingNotFound</p>
+        }
         @if (_pinnedRow is not null && _result is { Items.Count: > 0 } && !_rowsLoading)
         {
             <button class="hd-button-square button-square--secondary" type="button" @onclick="ShowAllMatchesAsync">@T.ShowAllMatches</button>

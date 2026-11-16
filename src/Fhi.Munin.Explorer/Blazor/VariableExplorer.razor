@@ -12,7 +12,11 @@
 @* The bindings write the state this search was mounted with: one a remount replaced, finishing
    a slow request after Back, writes into the old object rather than over the restored list. *@
 @{ var state = _state; }
+@* A code in the address is resolved first: VariableSearch reads the open variable once (Fhi.Metadata-l9l2n.182). *@
+@if (!_resolving)
+{
 <CascadingValue Name="@DetailToc.PageAddressName" Value="@PageAddress">
+<CascadingValue Name="@VariableSearch.LinkNoteName" Value="@_linkNote">
     <VariableSearch @key="_arrival"
                     @bind-Search="state.Search"
                     @bind-Filter="state.Filter"
@@ -37,6 +41,8 @@
                     VariableList="@ReaderLists"
                     VariableListFilters="@ReaderListFilters" />
 </CascadingValue>
+</CascadingValue>
+}
 
 @code {
     // Passed as a fragment rather than mounted beside the search, so the list sits inside the tab
