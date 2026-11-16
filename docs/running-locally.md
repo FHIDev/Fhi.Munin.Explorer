@@ -180,7 +180,7 @@ helsedata's private Azure Artifacts feed. So:
   The earlier pin, 1.49.1, could not: on Windows its fetcher aborted with `ERR_INVALID_ARG_VALUE`
   and left a half-written `chromium-<n>` folder, and on the devbox and its nightly sidecar it hung
   in «extracting archive» until the run was killed (`Fhi.Metadata-wgwa0`, `Fhi.Metadata-l9l2n.131`).
-  1.62.1 is verified on the devbox and CI's Linux runners; Windows has not been re-tested.
+  1.62.1 is verified on the devbox (Linux); Windows has not been re-tested.
   `PLAYWRIGHT_BROWSER_CHANNEL=msedge` still runs an installed browser instead: opt-in, unset in CI,
   and a different engine build, so its geometry numbers are not interchangeable with the bundled
   chromium's. All three browser gates take it, skip the install when it is set, and name the
