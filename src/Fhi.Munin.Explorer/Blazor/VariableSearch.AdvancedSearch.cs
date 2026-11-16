@@ -488,7 +488,7 @@ public partial class VariableSearch
             ? new SearchCondition(field.Field, draft.Operator, value)
             : condition;
 
-    /// <summary>With the form open, drop the rows that state a condition the chip row removed.</summary>
+    /// <summary>With the form open, drop the rows that state a condition the filter is about to lose.</summary>
     /// <remarks>Left in, «Vis treff» would apply the removed condition again.</remarks>
     private void DropDraftsStating(IReadOnlyCollection<SearchCondition> removed)
     {
