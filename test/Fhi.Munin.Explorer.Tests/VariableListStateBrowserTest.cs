@@ -146,8 +146,10 @@ public class VariableListStateBrowserTest
         /// <summary>Rows Munin refuses, as it does a datasamling that is no longer the variable's: a 400 for any batch holding one.</summary>
         public HashSet<VariableDatasamlingKey> Stale { get; } = [];
 
-        /// <summary>When set, the first add waits for it, so a test can change the reader mid-call.</summary>
+        /// <summary>When set, the add numbered <see cref="HeldAdd"/> waits for it, so a test can change the reader mid-call.</summary>
         public TaskCompletionSource<bool>? HoldFirstAdd { get; init; }
+
+        public int HeldAdd { get; init; } = 1;
 
         public List<(Guid List, int Rows)> Adds { get; } = [];
         public List<Guid> Deleted { get; } = [];
@@ -161,7 +163,7 @@ public class VariableListStateBrowserTest
             BeforeAdd?.Invoke();
             Adds.Add((id, items.Count));
 
-            if (Adds.Count == 1 && HoldFirstAdd is { } hold)
+            if (Adds.Count == HeldAdd && HoldFirstAdd is { } hold)
             {
                 return await hold.Task;
             }
@@ -293,6 +295,45 @@ public class VariableListStateBrowserTest
         Assert.Equal(IMuninExplorerClient.MaxVariablesPerBatch + 1, browser.Rows.Count);
         Assert.Null(state.ActiveListId);
         Assert.DoesNotContain(browser.Calls, c => c.Call == "removeKeys");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CarryBrowserListOverAsync_WhenAnotherReaderSignsInDuringARowByRowAdd_ThenNoFurtherRowIsSent(bool rowRefused)
+    {
+        // The batch is refused for its stale row, so the rows go one at a time; the reader changes on the first of them.
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange([FakeBrowserList.Row("Gammel"), FakeBrowserList.Row("Alder"), FakeBrowserList.Row("Kjønn")]);
+        var hold = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new ListsClient { HoldFirstAdd = hold, HeldAdd = 2 };
+        client.Stale.Add(VariableDatasamlingKey.Of(browser.Rows[0]));
+        var state = await SignedInAsync(browser, client);
+
+        var carrying = state.CarryBrowserListOverAsync("Min variabelliste");
+        while (client.Adds.Count < 2)
+        {
+            await Task.Delay(5);
+        }
+
+        state.SetAuthenticated(false);
+        state.SetAuthenticated(true);
+
+        if (rowRefused)
+        {
+            hold.SetException(new HttpRequestException("stale", null, System.Net.HttpStatusCode.BadRequest));
+        }
+        else
+        {
+            hold.SetResult(true);
+        }
+
+        var outcome = await Record.ExceptionAsync(() => carrying);
+
+        Assert.Equal(2, client.Adds.Count);
+        Assert.Equal(3, browser.Rows.Count);
+        Assert.DoesNotContain(browser.Calls, c => c.Call == "removeKeys");
+        Assert.True(rowRefused ? outcome is HttpRequestException : outcome is null);
     }
 
     private static async Task<VariableListState> StuckAsync()

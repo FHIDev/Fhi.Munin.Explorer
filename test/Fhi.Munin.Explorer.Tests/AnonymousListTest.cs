@@ -78,10 +78,21 @@ public class AnonymousListTest : ExplorerTestContext
         public Action? BeforeAdd { get; set; }
         public VariableDatasamlingKey? Stale { get; init; }
 
-        public override Task<bool> AddItemsToMyListAsync(
+        /// <summary>When set, every add waits for it: the round trip a test changes the reader during.</summary>
+        public Task<bool>? HoldAdds { get; init; }
+
+        public int AddCalls { get; private set; }
+
+        public override async Task<bool> AddItemsToMyListAsync(
             Guid id, IReadOnlyCollection<VariableDatasamlingKey> items, CancellationToken cancellationToken = default)
         {
             BeforeAdd?.Invoke();
+            AddCalls++;
+
+            if (HoldAdds is { } hold)
+            {
+                return await hold;
+            }
 
             if (Stale is { } stale && items.Contains(stale))
             {
@@ -94,7 +105,7 @@ public class AnonymousListTest : ExplorerTestContext
             }
 
             Added.Add(items);
-            return Task.FromResult(true);
+            return true;
         }
 
         public override Task<bool> DeleteMyListAsync(Guid id, CancellationToken cancellationToken = default)
@@ -721,6 +732,47 @@ public class AnonymousListTest : ExplorerTestContext
         Assert.DoesNotContain(No.BrowserListSavedAs(No.FirstListName), cut.Markup);
         Assert.DoesNotContain(No.CarryBrowserListOver, cut.Markup);
         Assert.Single(client.Created);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task VariableListView_WhenTheReaderChangesDuringTheCarryOver_ThenThePressLeavesNothingBehind(bool anotherSignsIn)
+    {
+        // The press belongs to the reader who made it: whoever is at the screen when it ends is told nothing and moved nowhere.
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var hold = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new Client { HoldAdds = hold.Task };
+        client.Lists.Add(new VariableList { Id = OwnListId, Name = "Mine hjertevariabler" });
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
+        var state = Services.GetRequiredService<VariableListState>();
+
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+        cut.WaitForAssertion(() => Assert.Equal(1, client.AddCalls));
+        var focusCalls = JSInterop.Invocations[Focus].Count;
+
+        cut.Render(p => p.Add(c => c.IsAuthenticated, false));
+        if (anotherSignsIn)
+        {
+            cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+            cut.WaitForAssertion(() => Assert.Equal(OwnListId, state.ActiveListId));
+        }
+
+        var activeBefore = state.ActiveListId;
+        hold.SetResult(true);
+        await cut.InvokeAsync(() => Task.Delay(200));
+
+        Assert.DoesNotContain(No.CarryBrowserListOverError, cut.Markup);
+        Assert.DoesNotContain(No.BrowserListSavedAs(No.FirstListName), cut.Markup);
+        Assert.Equal(activeBefore, state.ActiveListId);
+        Assert.Equal(focusCalls, JSInterop.Invocations[Focus].Count);
+        Assert.Single(browser.Rows);
+        if (anotherSignsIn)
+        {
+            Assert.Contains("Mine hjertevariabler", cut.Find("[id^=munin-explorer-list-heading]").TextContent);
+        }
     }
 
     [Fact]
