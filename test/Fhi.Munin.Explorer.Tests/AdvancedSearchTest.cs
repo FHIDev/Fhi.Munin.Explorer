@@ -678,6 +678,24 @@ public class AdvancedSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Chip_WhenAKeptChipReadsTheSameOnceCanonical_ThenShowHitsStillAppliesIt()
+    {
+        var client = new ConditionClient();
+        var cut = RenderWith(client, filter: new VariableFilter
+        {
+            Conditions = [Condition("tilgangsniva:erEnAv:apne-data,statistikkbank"), Condition("tilgangsniva:erEnAv:statistikkbank,apne-data")]
+        });
+        cut.WaitForAssertion(() => Assert.NotEmpty(client.Searches));
+        Button(cut, "Endre avansert søk").Click();
+        cut.WaitForAssertion(() => Assert.Equal(2, Rows(cut).Count));
+
+        cut.FindAll("button").First(b => b.GetAttribute("aria-label")?.StartsWith("Fjern filteret Tilgangsnivå", StringComparison.Ordinal) == true).Click();
+        Button(cut, "Vis treff").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("tilgangsniva", Assert.Single(client.Searches[^1]!.Conditions).Field));
+    }
+
+    [Fact]
     public async Task Chip_WhenRemovedWhileTheOpeningStillLoads_ThenTheRowsAreTheConditionsLeft()
     {
         var held = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

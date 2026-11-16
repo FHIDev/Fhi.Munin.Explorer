@@ -477,7 +477,7 @@ public partial class VariableSearch
             return Task.CompletedTask;
         }
 
-        DropDraftsStating([condition]);
+        DropDraftsStating([condition], conditions);
         return ApplyFilterAsync(Pending with { Conditions = conditions });
     }
 
@@ -490,14 +490,16 @@ public partial class VariableSearch
 
     /// <summary>With the form open, drop the rows that state a condition the filter is about to lose.</summary>
     /// <remarks>Left in, «Vis treff» would apply the removed condition again.</remarks>
-    private void DropDraftsStating(IReadOnlyCollection<SearchCondition> removed)
+    private void DropDraftsStating(IReadOnlyCollection<SearchCondition> removed, IReadOnlyCollection<SearchCondition>? kept = null)
     {
         if (!_advancedOpen || removed.Count == 0)
         {
             return;
         }
 
-        var canonical = removed.Select(CanonicalCondition).ToList();
+        // A kept chip that reads the same once canonical still needs its row.
+        var canonical = removed.Select(CanonicalCondition)
+            .Except((kept ?? []).Select(CanonicalCondition), SameCondition.Instance).ToList();
         var stating = _drafts.Where(draft => DraftField(draft) is { } field
             && DraftValue(draft, field).Value is { } value
             && canonical.Contains(new SearchCondition(field.Field, draft.Operator, value), SameCondition.Instance)).ToList();
