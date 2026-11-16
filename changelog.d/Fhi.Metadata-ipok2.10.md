@@ -1,0 +1,4 @@
+category: Fixed
+- **Avansert søk's «Verdi» text field is as wide as the Felt and Operator lists above it.** It no longer wears `input__field--small`, which held it at 12.75rem. Its height, and that of the date fields, comes from Stiler's rule for `munin-explorer-advanced-search`, so it matches the lists once the host runs a Stiler with that rule.
+- **Removing a condition's chip while avansert søk is open also removes its row.** Before, «Vis treff» applied the removed condition again. «Fjern alle filtre» removes every row that states a condition in force, and leaves one empty row. A row the reader has edited since it opened stays as edited.
+- **The form no longer takes focus from a field the reader is typing in when its field list arrives.** Opening avansert søk while the field list loads, then typing in the search field, used to move focus to the first row's field list mid-word. A press in the form still moves focus as before.

@@ -598,6 +598,63 @@ public class AdvancedSearchTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.True(client.Searches[^1]!.IsEmpty));
     }
 
+    // Without the row going too, «Vis treff» on the still-open form put the removed condition back.
+    [Fact]
+    public void Chip_WhenRemovedWhileTheFormIsOpen_ThenShowHitsDoesNotApplyItAgain()
+    {
+        var client = new ConditionClient();
+        var cut = RenderWith(client, filter: new VariableFilter
+        {
+            Conditions = [Condition("navn:inneholder:blod"), Condition("kode:begynnerMed:V_")]
+        });
+        cut.WaitForAssertion(() => Assert.NotEmpty(client.Searches));
+        Button(cut, "Endre avansert søk").Click();
+        cut.WaitForAssertion(() => Assert.Equal(2, Rows(cut).Count));
+
+        cut.FindAll("button").Single(b => b.GetAttribute("aria-label") == "Fjern filteret Navn inneholder «blod»").Click();
+        cut.WaitForAssertion(() => Assert.Single(Rows(cut)));
+        Button(cut, "Vis treff").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal([Condition("kode:begynnerMed:V_")], client.Searches[^1]!.Conditions));
+    }
+
+    [Fact]
+    public void Chip_WhenItsRowWasEditedBeforeTheRemoval_ThenTheEditedRowStaysAndApplies()
+    {
+        var client = new ConditionClient();
+        var cut = RenderWith(client, filter: new VariableFilter { Conditions = [Condition("navn:inneholder:blod")] });
+        cut.WaitForAssertion(() => Assert.NotEmpty(client.Searches));
+        Button(cut, "Endre avansert søk").Click();
+        cut.WaitForAssertion(() => Assert.Single(Rows(cut)));
+        Rows(cut)[0].QuerySelector("input[type=text]")!.Change("blodtrykk");
+
+        cut.FindAll("button").Single(b => b.GetAttribute("aria-label") == "Fjern filteret Navn inneholder «blod»").Click();
+        Button(cut, "Vis treff").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal([Condition("navn:inneholder:blodtrykk")], client.Searches[^1]!.Conditions));
+    }
+
+    [Fact]
+    public void ClearAll_WhenPressedWhileTheFormIsOpen_ThenShowHitsAppliesNoneOfTheOldConditions()
+    {
+        var client = new ConditionClient();
+        var cut = RenderWith(client, filter: new VariableFilter
+        {
+            Conditions = [Condition("navn:inneholder:blod"), Condition("kode:begynnerMed:V_")]
+        });
+        cut.WaitForAssertion(() => Assert.NotEmpty(client.Searches));
+        Button(cut, "Endre avansert søk").Click();
+        cut.WaitForAssertion(() => Assert.Equal(2, Rows(cut).Count));
+
+        cut.FindAll(".munin-explorer-filters__active button").Single(b => b.TextContent == "Fjern alle filtre").Click();
+        cut.WaitForAssertion(() => Assert.True(client.Searches[^1]!.IsEmpty));
+        Assert.Equal("", Assert.Single(Rows(cut)).QuerySelector("input[type=text]")!.GetAttribute("value") ?? "");
+        Button(cut, "Vis treff").Click();
+
+        cut.WaitForAssertion(() => Assert.True(client.Searches[^1]!.IsEmpty));
+        Assert.DoesNotContain(cut.FindAll("button"), b => b.GetAttribute("aria-label")?.StartsWith("Fjern filteret", StringComparison.Ordinal) == true);
+    }
+
     [Fact]
     public void Edit_WhenPressedFromTheChipRow_ThenTheFormOpensOnTheConditionsInForce()
     {
@@ -785,6 +842,40 @@ public class AdvancedSearchTest : ExplorerTestContext
 
         AssertFocusOn(cut, () => FieldList(Rows(cut)[0]));
     }
+
+    // A slow field list used to pull focus out of the search field mid-word.
+    [Fact]
+    public void Open_WhenTheReaderIsTypingElsewhereAsTheRowsArrive_ThenFocusStaysWhereItIs()
+    {
+        JSInterop.SetupModule(ExplorerInterop.ModulePath).Setup<bool>("isTypingInField").SetResult(true);
+        var cut = RenderWith(new ConditionClient());
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        var focusesBefore = FocusCalls();
+
+        Toggle(cut)!.Click();
+        cut.WaitForAssertion(() => Assert.Single(Rows(cut)));
+
+        Assert.Equal(focusesBefore, FocusCalls());
+    }
+
+    [Fact]
+    public void AddCondition_WhenTheReaderWasTypingAsTheRowsArrived_ThenThePressStillMovesFocus()
+    {
+        JSInterop.SetupModule(ExplorerInterop.ModulePath).Setup<bool>("isTypingInField").SetResult(true);
+        var cut = RenderWith(new ConditionClient());
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+        cut.WaitForAssertion(() => Assert.Single(Rows(cut)));
+        Remember(cut);
+
+        Button(cut, "Legg til betingelse").Click();
+        Remember(cut);
+
+        AssertFocusOn(cut, () => FieldList(Rows(cut)[1]));
+    }
+
+    private int FocusCalls() =>
+        JSInterop.Invocations.Count(call => call.Identifier == "Blazor._internal.domWrapper.focus");
 
     [Fact]
     public void AddCondition_WhenARowIsAdded_ThenFocusGoesToItsFieldList()
