@@ -1411,16 +1411,17 @@ leave `AnonymousLists` off; the gates turn it on for one state of their own. Tod
   `VariableSearch` offers a signed-out reader no save button. A signed-out reader's save button (the one a signed-in
   reader has) adds a row to it, the list tab shows it through the shared-list view, and it can be downloaded
   (`ExportItemsAsync`, Munin's anonymous export), shared as a code while its snapshot stays under the share endpoint's
-  512 KB (about 990 full rows), or emptied. Signed in with rows still in the browser, the list tab offers one button
-  that creates a new list in Mine lister and adds every row to it in one request, so Munin saves all of them or none;
-  the new list is offered nowhere else until the rows are in it, and once saved, the rows leave the browser. When
-  Munin refuses the request and names variables, such as one whose row's datasamling is no longer its own, nothing is
-  saved: the new list is deleted again, every row stays in the browser, the reader is told how many rows of how many
-  variables Munin refused, and a button described by that sentence, «Fjern disse radene», takes every row of those
-  variables out of the browser; the button goes with the sentence. The offer then counts the rows that are left and
-  takes focus; with no rows left there is no offer, and focus goes to the list picker, or to creating a list when the
-  reader has one list or none. A refused row is not remembered: kept, the next press is refused the same way. Any
-  other failure (a refusal that names nothing, the write limiter, a lapsed sign-in, a list gone, an error) also saves
+  512 KB (about 990 full rows), or emptied. Signed in with rows still in the browser, the list tab offers one button,
+  «Lagre i Mine lister», beside a sentence saying the rows become a new list there. The press creates a new list in
+  Mine lister and adds every row to it in one request, so Munin saves all of them or none; the new list is offered
+  nowhere else until the rows are in it, and once saved, the rows leave the browser. When Munin refuses the request
+  and names variables, such as one whose row's datasamling is no longer its own, nothing is saved: the new list is
+  deleted again, every row stays in the browser, the reader is told how many rows of how many variables Munin
+  refused, and a button described by that sentence, «Fjern disse radene» («Fjern denne raden» for one row), takes
+  every row of those variables out of the browser; the button goes with the sentence. The offer then counts the rows
+  that are left and takes focus; with no rows left there is no offer, and focus goes to the list picker, or to
+  creating a list when the reader has one list or none. A refused row is not remembered: if the reader keeps it, the
+  next press is refused the same way. Any other failure (a refusal that names nothing, the write limiter, a lapsed sign-in, a list gone, an error) also saves
   nothing, deletes the new list and keeps every row. A press only ever deletes the list it created. When that delete
   fails, as it can under the same write limiter, or the reader signs out during the press, the new list can be left in
   Mine lister, and the reader can delete it. Saving only the rows Munin accepts, and leaving the refused ones behind,

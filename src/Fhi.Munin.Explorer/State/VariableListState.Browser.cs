@@ -32,8 +32,12 @@ public sealed partial class VariableListState : IDisposable
     private IReadOnlySet<VariableDatasamlingKey> _browserKeys = new HashSet<VariableDatasamlingKey>();
     private Task? _browserRead;
 
-    // The list a carry-over is filling, kept out of Lists until the add succeeds: a save into it would go with a discard.
-    private Guid? _carryingInto;
+    // The lists carry-overs are filling, kept out of Lists until each add succeeds: a save into one would go with a discard.
+    // Swapped whole, as two mounted views can press at once.
+    private IReadOnlySet<Guid> _carryingInto = new HashSet<Guid>();
+
+    // Lists a failed discard put back in Lists, which a lists read begun before that must not drop.
+    private IReadOnlyList<VariableList> _leftBehind = [];
 
     /// <summary>What a press on the save button did to the browser list.</summary>
     internal enum BrowserListOutcome
@@ -416,7 +420,7 @@ public sealed partial class VariableListState : IDisposable
             return null;
         }
 
-        _carryingInto = target.Id;
+        _carryingInto = new HashSet<Guid>(_carryingInto) { target.Id };
         _lists = [.. _lists.Where(l => l.Id != target.Id)];
 
         try
@@ -425,9 +429,11 @@ public sealed partial class VariableListState : IDisposable
         }
         finally
         {
-            _carryingInto = null;
+            StopCarryingInto(target.Id);
         }
     }
+
+    private void StopCarryingInto(Guid list) => _carryingInto = _carryingInto.Where(id => id != list).ToHashSet();
 
     private async Task<CarryOver?> FillCarriedListAsync(
         VariableList target, List<VariableDatasamlingKey> keys, int reader, CancellationToken cancellationToken)
@@ -478,7 +484,7 @@ public sealed partial class VariableListState : IDisposable
             return null;
         }
 
-        _carryingInto = null;
+        StopCarryingInto(target.Id);
         _lists = [.. _lists, target];
         RaiseChanged(target.Id, affectsRows: true);
 
@@ -557,6 +563,7 @@ public sealed partial class VariableListState : IDisposable
             if (StillCurrent(reader))
             {
                 _lists = [.. _lists.Where(l => l.Id != list.Id), list];
+                _leftBehind = [.. _leftBehind, list];
                 RaiseChanged(list.Id, affectsRows: false);
             }
         }

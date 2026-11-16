@@ -7,6 +7,7 @@ using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -69,6 +70,15 @@ public class AnonymousListTest : ExplorerTestContext
         public bool ReadReached { get; private set; }
 
         public int NewListPageReads { get; private set; }
+
+        /// <summary>Every page read, of any list; the membership walk's reads are not counted.</summary>
+        public int PageReads { get; private set; }
+
+        /// <summary>A page read fails, as the view's own read of the list on screen can.</summary>
+        public bool PageThrows { get; set; }
+
+        /// <summary>What every page read answers with; empty unless a test needs rows to act on.</summary>
+        public IReadOnlyList<VariableListItem> PageItems { get; init; } = [];
 
         private async Task HoldIfAsync(string read)
         {
@@ -169,7 +179,18 @@ public class AnonymousListTest : ExplorerTestContext
                 await HoldIfAsync(pageSize == 1000 ? "membership" : "page");
             }
 
-            return new Page<VariableListItem> { Items = [], TotalCount = 0, PageNumber = 1, Size = pageSize, TotalPages = 1 };
+            if (pageSize != 1000)
+            {
+                PageReads++;
+
+                if (PageThrows)
+                {
+                    throw new HttpRequestException("nede");
+                }
+            }
+
+            var items = pageSize == 1000 ? [] : PageItems;
+            return new Page<VariableListItem> { Items = items, TotalCount = items.Count, PageNumber = 1, Size = pageSize, TotalPages = 1 };
         }
 
         public override Task<ExportedList> ExportItemsAsync(
@@ -1335,5 +1356,167 @@ public class AnonymousListTest : ExplorerTestContext
         await cut.InvokeAsync(() => Task.Delay(100));
         Assert.Single(client.Created);
         Assert.Equal(1, client.AddCalls);
+    }
+
+    private static ElementReference Field(IRenderedComponent<VariableListView> cut, string name) =>
+        (ElementReference)typeof(VariableListView)
+            .GetField(name, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(cut.Instance)!;
+
+    [Fact]
+    public async Task VariableListView_WhenAPageReadFailsUnderARefusal_ThenTheRemoveButtonAndItsSentenceIdLeave()
+    {
+        // The alert then says the read failed; the button would be described by that sentence and remove rows it never named.
+        var (browser, client) = NamedRefusal();
+        client.Lists.Add(new VariableList { Id = OwnListId, Name = "Mine hjertevariabler" });
+        var cut = RefusedView(browser, client);
+        Assert.Contains(No.RemoveRefusedFromBrowser(2), cut.Markup);
+        client.PageThrows = true;
+
+        await cut.InvokeAsync(() => Services.GetRequiredService<VariableListState>().RefreshAsync());
+
+        cut.WaitForAssertion(() => Assert.Contains(No.ListLoadError, cut.Markup));
+        Assert.DoesNotContain(No.RemoveRefusedFromBrowser(2), cut.Markup);
+        Assert.Empty(cut.FindAll("[id^=munin-explorer-browser-list-refusal-]"));
+    }
+
+    [Fact]
+    public void VariableListView_WhenADownloadFailsAfterASavedCarryOver_ThenTheDownloadsSentenceShows()
+    {
+        // The saved sentence answered the press before; left standing, it would answer for the download too.
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var client = new Client { PageItems = [Stored(Alder)] };
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListSavedAs(No.FirstListName), cut.Markup));
+
+        cut.WaitForAssertion(() => cut.Find("button[id^=munin-explorer-list-download-toggle]").Click());
+        cut.FindAll("[id^=munin-explorer-list-download-] button.munin-explorer-list-menu__item")[0].Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.DownloadError, cut.Markup));
+        Assert.DoesNotContain(No.BrowserListSavedAs(No.FirstListName), cut.Markup);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void VariableListView_WhenAFailedPressIsFollowedByARefusal_ThenOnlyTheRefusalIsSaid(bool anotherReaderPresses)
+    {
+        // Each press says its own outcome: the earlier failure, the same reader's or the last reader's, is not this one's.
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange([FakeBrowserList.Row("Gammel"), FakeBrowserList.Row("Alder")]);
+        var client = new Client { Stale = VariableDatasamlingKey.Of(browser.Rows[0]), NamesStale = true, ThrottleAfter = 0 };
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(2), cut.Markup));
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+        cut.WaitForAssertion(() => Assert.Contains(No.CarryBrowserListOverError, cut.Markup));
+        client.ThrottleAfter = null;
+        if (anotherReaderPresses)
+        {
+            cut.Render(p => p.Add(c => c.IsAuthenticated, false));
+            cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+            cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(2), cut.Markup));
+        }
+
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListRefused(1, 1), cut.Markup));
+        Assert.DoesNotContain(No.CarryBrowserListOverError, cut.Markup);
+    }
+
+    [Theory]
+    [InlineData("throttled", LogLevel.Warning)]
+    [InlineData("unauthorised", LogLevel.Warning)]
+    [InlineData("failed", LogLevel.Error)]
+    public void VariableListView_WhenTheCarryOverFails_ThenALimiterOrSignInRefusalIsAWarningAndAFaultAnError(string failure, LogLevel level)
+    {
+        // One catch folds the three into one sentence; the level is what still tells throttling apart from a fault.
+        var recorder = new RecordingLoggerProvider();
+        Services.AddLogging(b => b.AddProvider(recorder).SetMinimumLevel(LogLevel.Trace));
+        Exception thrown = failure switch
+        {
+            "throttled" => new MuninExplorerRateLimitedException(),
+            "unauthorised" => new MuninExplorerUnauthorizedException(),
+            _ => new HttpRequestException("nede"),
+        };
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var cut = ListView(new Client { HoldAdds = Task.FromException<bool>(thrown) }, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
+
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.CarryBrowserListOverError, cut.Markup));
+        var entry = Assert.Single(recorder.Entries, e => e.Category == typeof(VariableListView).FullName && e.Exception == thrown);
+        Assert.Equal(level, entry.Level);
+    }
+
+    [Fact]
+    public async Task VariableListView_WhenAnotherReaderSignsInWhileTheNewListIsMadeActive_ThenNothingIsReadForThem()
+    {
+        // The press stops at the reader change rather than reading a page that is the next reader's to ask for.
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var client = new Client();
+        client.Lists.Add(new VariableList { Id = OwnListId, Name = "Mine hjertevariabler" });
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
+        var state = Services.GetRequiredService<VariableListState>();
+        cut.WaitForAssertion(() => Assert.Equal(OwnListId, state.ActiveListId));
+        client.HoldRead = "membership";
+
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+        cut.WaitForAssertion(() => Assert.True(client.ReadReached));
+        cut.Render(p => p.Add(c => c.IsAuthenticated, false));
+        cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+        cut.WaitForAssertion(() => Assert.Equal(OwnListId, state.ActiveListId));
+        await cut.InvokeAsync(() => Task.Delay(100));
+        var pageReads = client.PageReads;
+        client.ReadHeld.SetResult();
+        await cut.InvokeAsync(() => Task.Delay(200));
+
+        Assert.Equal(pageReads, client.PageReads);
+    }
+
+    [Fact]
+    public async Task VariableListView_WhenTheReaderOpensAFormWhileTheCarryOverSaves_ThenFocusStaysInTheForm()
+    {
+        // The saved list's focus target must not take focus from a field the reader moved to while the press was out.
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var hold = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new Client { HoldAdds = hold.Task };
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+        cut.WaitForAssertion(() => Assert.Equal(1, client.AddCalls));
+
+        cut.Find("button[id^='munin-explorer-create-toggle-']").Click();
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("input.munin-explorer-list-create__field")));
+        await cut.InvokeAsync(() => Task.Delay(100));
+        var focusCalls = JSInterop.Invocations[Focus].Count;
+        hold.SetResult(true);
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListSavedAs(No.FirstListName), cut.Markup));
+        await cut.InvokeAsync(() => Task.Delay(100));
+
+        Assert.Equal(focusCalls, JSInterop.Invocations[Focus].Count);
+    }
+
+    [Fact]
+    public void VariableListView_WhenEveryRefusedRowIsRemovedWithListsToChooseFrom_ThenFocusGoesToThePicker()
+    {
+        var (browser, client) = NamedRefusal(onlyRefused: true);
+        client.Lists.Add(new VariableList { Id = OwnListId, Name = "Mine hjertevariabler" });
+        client.Lists.Add(new VariableList { Id = Guid.NewGuid(), Name = "Kreft" });
+        var cut = RefusedView(browser, client);
+        var focusesBefore = JSInterop.Invocations[Focus].Count;
+
+        ButtonSaying(cut, No.RemoveRefusedFromBrowser(2)).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListRefusedRemoved(2, 0), cut.Markup));
+        cut.WaitForAssertion(() => Assert.Equal(focusesBefore + 1, JSInterop.Invocations[Focus].Count));
+        Assert.Equal(Field(cut, "_listPicker").Id, ((ElementReference)JSInterop.Invocations[Focus][^1].Arguments[0]!).Id);
     }
 }

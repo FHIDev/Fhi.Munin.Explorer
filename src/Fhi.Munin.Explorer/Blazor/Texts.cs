@@ -1937,9 +1937,9 @@ internal sealed record Texts(
         ClearBrowserList: "Tøm listen",
         ConfirmClearBrowserList: "Fjerne alle variabler fra listen i denne nettleseren? Det kan ikke angres.",
         BrowserListWaiting: rows => rows == 1
-            ? "Denne nettleseren har en liste fra før du logget inn, med 1 rad."
-            : $"Denne nettleseren har en liste fra før du logget inn, med {rows} rader.",
-        CarryBrowserListOver: "Lagre som ny liste i Mine lister",
+            ? "Denne nettleseren har en liste fra før du logget inn, med 1 rad. Lagrer du den i Mine lister, blir den en ny liste der."
+            : $"Denne nettleseren har en liste fra før du logget inn, med {rows} rader. Lagrer du den i Mine lister, blir den en ny liste der.",
+        CarryBrowserListOver: "Lagre i Mine lister",
         CarryBrowserListOverError: "Kunne ikke lagre listen i Mine lister nå. Den ligger fortsatt i denne nettleseren.");
 
     private static readonly Texts En = new(
@@ -2618,9 +2618,9 @@ internal sealed record Texts(
         ClearBrowserList: "Empty the list",
         ConfirmClearBrowserList: "Remove every variable from the list in this browser? It cannot be undone.",
         BrowserListWaiting: rows => rows == 1
-            ? "This browser holds a list from before you signed in, with 1 row."
-            : $"This browser holds a list from before you signed in, with {rows} rows.",
-        CarryBrowserListOver: "Save as a new list in My lists",
+            ? "This browser holds a list from before you signed in, with 1 row. Saved to My lists, it becomes a new list there."
+            : $"This browser holds a list from before you signed in, with {rows} rows. Saved to My lists, it becomes a new list there.",
+        CarryBrowserListOver: "Save to My lists",
         CarryBrowserListOverError: "Could not save the list to My lists just now. It is still in this browser.")
     {
         Reader = ReaderLanguage.English,

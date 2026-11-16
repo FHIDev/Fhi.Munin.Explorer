@@ -141,6 +141,7 @@ public sealed partial class VariableListState(
 
         var startedAt = _generation;
         var activeAtStart = _activeListId;
+        var leftAtStart = _leftBehind;
         _readingFor = startedAt;
         ListsReadFailed = false;
 
@@ -200,7 +201,10 @@ public sealed partial class VariableListState(
             return;
         }
 
-        _lists = _carryingInto is { } carrying ? [.. lists.Where(l => l.Id != carrying)] : lists;
+        // A list left behind after this read began is missing from its answer only because the read was early.
+        var leftSince = _leftBehind.Where(l => !leftAtStart.Contains(l) && !lists.Any(a => a.Id == l.Id));
+        _lists = [.. lists.Where(l => !_carryingInto.Contains(l.Id)), .. leftSince];
+        _leftBehind = [.. _leftBehind.Where(l => !leftAtStart.Contains(l))];
         _loaded = true;
         ListsReadFailed = false;
 
@@ -317,6 +321,7 @@ public sealed partial class VariableListState(
         }
 
         _lists = [.. _lists.Where(l => l.Id != id)];
+        _leftBehind = [.. _leftBehind.Where(l => l.Id != id)];
 
         // Left pointing at the list just deleted, the next ask would read the membership of a list
         // the API no longer has, and the save button would offer to remove variables from it.

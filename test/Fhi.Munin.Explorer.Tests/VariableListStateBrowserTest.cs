@@ -155,6 +155,15 @@ public class VariableListStateBrowserTest
         /// <summary>When set, the create waits for it, so a test can change the reader mid-call.</summary>
         public TaskCompletionSource? HoldCreate { get; init; }
 
+        /// <summary>When set, the second add waits for it: a second press under way beside the first.</summary>
+        public TaskCompletionSource<bool>? HoldSecondAdd { get; init; }
+
+        /// <summary>When set, the delete waits for it and answers what it is given.</summary>
+        public TaskCompletionSource<bool>? HoldDelete { get; init; }
+
+        /// <summary>When set, a lists read answers with the lists made before it began, once this is done.</summary>
+        public TaskCompletionSource? HoldLists { get; set; }
+
         /// <summary>Thrown by every add, unless a stale row answers first.</summary>
         public Exception? AddThrows { get; set; }
 
@@ -184,8 +193,17 @@ public class VariableListStateBrowserTest
             return list;
         }
 
-        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<VariableList>>([.. Made]);
+        public override async Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default)
+        {
+            IReadOnlyList<VariableList> made = [.. Made];
+
+            if (HoldLists is { } hold)
+            {
+                await hold.Task;
+            }
+
+            return made;
+        }
 
         public override async Task<bool> AddItemsToMyListAsync(
             Guid id, IReadOnlyCollection<VariableDatasamlingKey> items, CancellationToken cancellationToken = default)
@@ -196,6 +214,11 @@ public class VariableListStateBrowserTest
             if (Adds.Count == 1 && HoldFirstAdd is { } hold)
             {
                 return await hold.Task;
+            }
+
+            if (Adds.Count == 2 && HoldSecondAdd is { } second)
+            {
+                return await second.Task;
             }
 
             if (!items.Any(Stale.Contains))
@@ -211,7 +234,8 @@ public class VariableListStateBrowserTest
         public override Task<bool> DeleteMyListAsync(Guid id, CancellationToken cancellationToken = default)
         {
             Deleted.Add(id);
-            return DeleteThrows ? throw new MuninExplorerRateLimitedException() : Task.FromResult(true);
+            return HoldDelete is { } hold ? hold.Task
+                : DeleteThrows ? throw new MuninExplorerRateLimitedException() : Task.FromResult(true);
         }
     }
 
@@ -418,7 +442,7 @@ public class VariableListStateBrowserTest
     }
 
     [Fact]
-    public async Task CarryBrowserListOverAsync_WhileTheAddIsOut_ThenTheNewListIsOfferedNowhereEvenAfterARead()
+    public async Task CarryBrowserListOverAsync_WhenTheAddIsOut_ThenTheNewListIsOfferedNowhereEvenAfterARead()
     {
         // Offered, it could take a save of the reader's own, which deleting it after a refusal would take with it.
         var browser = new FakeBrowserList();
@@ -441,6 +465,89 @@ public class VariableListStateBrowserTest
         var carried = await carrying;
 
         Assert.Contains(state.Lists, l => l.Id == carried!.List!.Id);
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenTwoPressesAreOut_ThenEachListIsOfferedNowhereUntilItsOwnAddIsIn()
+    {
+        // Two mounted views can press at once: the first add landing must not offer the second press's list.
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange(Rows(2));
+        var first = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var second = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new ListsClient { HoldFirstAdd = first, HoldSecondAdd = second };
+        var state = await SignedInAsync(browser, client);
+
+        var pressing = state.CarryBrowserListOverAsync("Min variabelliste");
+        var alsoPressing = state.CarryBrowserListOverAsync("Min variabelliste (2)");
+        while (client.Adds.Count < 2)
+        {
+            await Task.Delay(5);
+        }
+
+        first.SetResult(true);
+        var carried = await pressing;
+        await state.RefreshAsync();
+
+        Assert.Contains(state.Lists, l => l.Id == carried!.List!.Id);
+        Assert.DoesNotContain(state.Lists, l => l.Id == client.Adds[1].List);
+
+        second.SetResult(true);
+        var alsoCarried = await alsoPressing;
+
+        Assert.Contains(state.Lists, l => l.Id == alsoCarried!.List!.Id);
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenAListsReadBegunEarlierLandsAfterAFailedDiscard_ThenTheLeftListStays()
+    {
+        // The read was answered before the list existed; it says nothing about a list the discard could not delete.
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange(Rows(2));
+        var client = new ListsClient { AddThrows = new MuninExplorerRateLimitedException(), DeleteThrows = true };
+        var state = await SignedInAsync(browser, client);
+        await state.EnsureLoadedAsync();
+        client.HoldLists = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reading = state.RefreshAsync();
+
+        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => state.CarryBrowserListOverAsync("Min variabelliste"));
+        var left = client.Adds[0].List;
+        Assert.Contains(state.Lists, l => l.Id == left);
+        client.HoldLists.SetResult();
+        await reading;
+
+        Assert.Contains(state.Lists, l => l.Id == left);
+
+        // The next read began after the list was left, so its answer speaks for it: deleted elsewhere, it goes.
+        client.HoldLists = null;
+        client.Made.Clear();
+        await state.RefreshAsync();
+
+        Assert.DoesNotContain(state.Lists, l => l.Id == left);
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenAnotherReaderSignsInWhileTheDiscardIsOut_ThenTheFailedDeleteLeavesThemNoList()
+    {
+        // The list the delete could not take is the pressing reader's; shown to the next one, it would be a disclosure.
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange(Rows(2));
+        var delete = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new ListsClient { AddThrows = new MuninExplorerRateLimitedException(), HoldDelete = delete };
+        var state = await SignedInAsync(browser, client);
+
+        var carrying = state.CarryBrowserListOverAsync("Min variabelliste");
+        while (client.Deleted.Count == 0)
+        {
+            await Task.Delay(5);
+        }
+
+        state.SetAuthenticated(false);
+        state.SetAuthenticated(true);
+        delete.SetException(new MuninExplorerRateLimitedException());
+
+        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => carrying);
+        Assert.DoesNotContain(state.Lists, l => l.Id == client.Adds[0].List);
     }
 
     [Fact]
