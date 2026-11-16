@@ -47,9 +47,16 @@ public class VariableCodeLinkHeldOutTest : ExplorerTestContext
             Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default) =>
             Task.FromResult<VariableDetail?>(Detail());
 
-        public async Task<VariableDetail?> GetVariableByCodeAsync(string code, CancellationToken cancellationToken = default)
+        public Task<VariableDetail?>? LastAnswer { get; private set; }
+
+        public Task<VariableDetail?> GetVariableByCodeAsync(string code, CancellationToken cancellationToken = default)
         {
             CodesAsked.Add(code);
+            return LastAnswer = AnswerAsync(code);
+        }
+
+        private async Task<VariableDetail?> AnswerAsync(string code)
+        {
             if (Gate is { } gate)
             {
                 await gate.Task;
@@ -120,7 +127,7 @@ public class VariableCodeLinkHeldOutTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Arrive_WhenTheReaderLeavesForThePlainPageBeforeTheCodeAnswers_ThenTheLateAnswerOpensNothingAndWritesNoVariable()
+    public async Task Arrive_WhenTheReaderLeavesForThePlainPageBeforeTheCodeAnswers_ThenTheLateAnswerOpensNothingAndWritesNoVariable()
     {
         // The answer must not drag a reader who has moved on back into a variable they never asked for.
         var client = new CodeClient { Gate = new(TaskCreationOptions.RunContinuationsAsynchronously) };
@@ -131,6 +138,9 @@ public class VariableCodeLinkHeldOutTest : ExplorerTestContext
         cut.WaitForElement("ul.munin-explorer-data-list");
         client.Gate.SetResult();
 
+        // The answer, then one turn of the renderer, which runs after the explorer's own continuation.
+        await client.LastAnswer!;
+        await cut.InvokeAsync(() => { });
         cut.WaitForElement("ul.munin-explorer-data-list");
         Assert.Empty(cut.FindAll(".munin-explorer-detail"));
         Assert.DoesNotContain(_history.Written, url => url?.Contains("variabel", StringComparison.Ordinal) is true);

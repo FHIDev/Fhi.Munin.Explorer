@@ -91,10 +91,18 @@ public class SearchShareTest : ExplorerTestContext
         /// <summary>Holds every answer to a code until the test releases it.</summary>
         public TaskCompletionSource? CodeGate { get; set; }
 
+        /// <summary>The last answer handed out, so a test can wait until the explorer has had it.</summary>
+        public Task<VariableDetail?>? LastAnswer { get; private set; }
+
         // Munin's by-code route: the code in any case finds the one variable (Fhi.Metadata-9huq2.27).
-        public async Task<VariableDetail?> GetVariableByCodeAsync(string code, CancellationToken cancellationToken = default)
+        public Task<VariableDetail?> GetVariableByCodeAsync(string code, CancellationToken cancellationToken = default)
         {
             CodesAsked.Add(code);
+            return LastAnswer = AnswerAsync(code);
+        }
+
+        private async Task<VariableDetail?> AnswerAsync(string code)
+        {
             if (CodeGate is { } gate)
             {
                 await gate.Task;
@@ -379,6 +387,13 @@ public class SearchShareTest : ExplorerTestContext
         });
     }
 
+    // The answer, then one turn of the renderer: the explorer's own continuation was queued first, so it has run.
+    private static async Task SettleAsync(IRenderedComponent<VariableExplorer> cut, ShareClient client)
+    {
+        await client.LastAnswer!;
+        await cut.InvokeAsync(() => { });
+    }
+
     private int Pushes => JSInterop.Invocations.Count(i => i.Identifier == "history.pushState");
 
     private int Backs => JSInterop.Invocations.Count(i => i.Identifier == "history.back");
@@ -400,7 +415,7 @@ public class SearchShareTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Arrive_WhenTheReaderNavigatesWhileTheCodeIsLookedUp_ThenTheLateAnswerChangesNothing()
+    public async Task Arrive_WhenTheReaderNavigatesWhileTheCodeIsLookedUp_ThenTheLateAnswerChangesNothing()
     {
         var client = new ShareClient { CodeGate = new(TaskCreationOptions.RunContinuationsAsynchronously) };
         var cut = RenderExplorer(client, $"http://localhost/variabler?variabel={Code}");
@@ -409,6 +424,7 @@ public class SearchShareTest : ExplorerTestContext
         Services.GetRequiredService<NavigationManager>().NavigateTo("http://localhost/variabler?search=foo");
         cut.WaitForAssertion(() => Assert.Equal("foo", client.Searches[^1].Search));
         client.CodeGate.SetResult();
+        await SettleAsync(cut, client);
 
         // The browser already shows the arrival, so nothing is written: least of all the variable the answer named.
         cut.WaitForAssertion(() => Assert.Equal("foo", client.Searches[^1].Search));
@@ -419,7 +435,7 @@ public class SearchShareTest : ExplorerTestContext
     [Theory]
     [InlineData("", "http://localhost/variabler")]
     [InlineData("search=kjonn&", "http://localhost/variabler?search=kjonn")]
-    public void Arrive_WhenTheReaderLeavesForTheViewWithoutTheVariableWhileItIsLookedUp_ThenTheLateAnswerChangesNothing(
+    public async Task Arrive_WhenTheReaderLeavesForTheViewWithoutTheVariableWhileItIsLookedUp_ThenTheLateAnswerChangesNothing(
         string own, string left)
     {
         // Without the variable, a code arrival still being looked up reads as that view: the leaving is still a leaving.
@@ -430,6 +446,7 @@ public class SearchShareTest : ExplorerTestContext
         Services.GetRequiredService<NavigationManager>().NavigateTo(left);
         cut.WaitForAssertion(() => Assert.NotEmpty(client.Searches));
         client.CodeGate.SetResult();
+        await SettleAsync(cut, client);
 
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("ul.munin-explorer-data-list")));
         Assert.Empty(cut.FindAll(".munin-explorer-detail"));
