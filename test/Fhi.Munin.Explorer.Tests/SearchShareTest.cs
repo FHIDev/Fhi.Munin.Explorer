@@ -437,6 +437,19 @@ public class SearchShareTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Arrive_WhenTheHostDeclinesVariabelId_ThenACodeInTheAddressIsNeitherReadNorRewritten()
+    {
+        // Declining either variable key leaves the open variable out of the address, so the code is not read in either.
+        var client = new ShareClient();
+        var cut = RenderExplorer(client, $"http://localhost/variabler?variabel={Code}", declined: ["variabelId"]);
+
+        cut.WaitForElement("ul.munin-explorer-data-list");
+        Assert.Empty(client.CodesAsked);
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+        Assert.DoesNotContain(_history!.Written, url => url is not null && !url.Contains($"variabel={Code}", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Arrive_WhenTheLinkNamesAnotherOfTheVariablesDatasamlinger_ThenThatRowOpensWithoutANote()
     {
         // The link the explorer writes for a row that is not the primary one, read back.

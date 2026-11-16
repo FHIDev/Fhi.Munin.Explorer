@@ -1538,6 +1538,26 @@ public class ListRowPanelTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Explorer_WhenASecondVariableIsOpenedAfterCodesResolve_ThenItsLinkLeavesItsPrimaryDatasamlingOut()
+    {
+        // Every opened row asks its own primary: the first answer to a code is not the last one a link needs.
+        var first = DatabaseVersion with { DatasamlingId = Guid.NewGuid() };
+        var second = Age with { DatasamlingId = Guid.NewGuid(), KildeId = HeartKildeId };
+        var cut = OpenInExplorer(new PanelClient(first, second) { AnswersCodes = true });
+        cut.WaitForAssertion(() => Assert.Equal(first.VariableCode, SharedLinkState(cut).SelectedVariableCode));
+
+        cut.FindAll("th[scope=row] button").Single(b => b.TextContent.Contains("Alder", StringComparison.Ordinal)).Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            var mail = cut.FindAll("a[href^='mailto:']").Single(a => Uri.UnescapeDataString(a.GetAttribute("href")!).Contains("V_HKR.ALDER", StringComparison.Ordinal));
+            var body = Uri.UnescapeDataString(mail.GetAttribute("href")!).Split("&body=")[1];
+            var state = ExplorerUrlState.Parse(new Uri(body[body.IndexOf("http", StringComparison.Ordinal)..]).Query);
+            Assert.Equal(("V_HKR.ALDER", (Guid?)null), (state.SelectedVariableCode, state.SelectedDatasamlingId));
+        });
+    }
+
+    [Fact]
     public void Explorer_WhenMuninAnswersTheCodeAndTheHostDeclinesTheVariable_ThenThePanelOffersNoLink()
     {
         var cut = OpenInExplorer(new PanelClient(DatabaseVersion) { AnswersCodes = true }, declined: ["variabel"]);

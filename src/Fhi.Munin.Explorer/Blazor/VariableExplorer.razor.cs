@@ -573,6 +573,12 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
         if (_codesResolve is true && VariableCodes.IsLinkCode(code))
         {
+            // Only an open row's link is drawn, so asking its primary here is one lookup per row opened.
+            if (!_known.ContainsKey(variableId))
+            {
+                Learn(variableId, code.Trim());
+            }
+
             return Absolute(new ExplorerUrlState
             {
                 SelectedVariableCode = code.Trim(),
@@ -604,8 +610,11 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
     private void OnShareCodeChanged(string? code) => _state.ShareCode = code;
 
+    // Declining either variable key leaves both unread, or a code would be read in and never written back out.
     private bool Owns(string key) =>
-        ExplorerUrlState.QueryKeys.Contains(key) && !Declined(key);
+        ExplorerUrlState.QueryKeys.Contains(key) && !Declined(key)
+        && !(DeclinedVariable && (string.Equals(key, "variabel", StringComparison.OrdinalIgnoreCase)
+                                  || string.Equals(key, "variabelId", StringComparison.OrdinalIgnoreCase)));
 
     // The variable's id and its code are one part of the view: declining either keeps the open variable out of the address.
     private bool DeclinedVariable => Declined("variabelId") || Declined("variabel");
