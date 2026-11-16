@@ -19,6 +19,7 @@ public sealed partial class VariableListView
     private bool _carryOverFailed;
     private string? _carriedOverAs;
     private bool _carriedOverButStillHere;
+    private int _notCarried;
     private bool _browserShareTooLong;
     private bool _browserPageFailed;
     private bool _browserShareUnreadable;
@@ -51,8 +52,8 @@ public sealed partial class VariableListView
 
     private string? CarriedOverMessage =>
         _carriedOverAs is not { } name ? null
-        : _carriedOverButStillHere ? T.BrowserListSavedButStillHere(name)
-        : T.BrowserListSavedAs(name);
+        : (_carriedOverButStillHere ? T.BrowserListSavedButStillHere(name) : T.BrowserListSavedAs(name))
+          + (_notCarried > 0 ? " " + T.BrowserListNotCarried(_notCarried) : "");
 
     /// <summary>The sentence over the browser list: kept, kept for this page only, or not there at all.</summary>
     private string BrowserListStorageSentence =>
@@ -316,6 +317,7 @@ public sealed partial class VariableListView
 
         // Before the first await, as a create does: a form the reader opens meanwhile keeps the focus.
         var formsOpenAtStart = OpenForms();
+        var reader = State.Reader;
         VariableListState.CarryOver? carried;
 
         try
@@ -338,6 +340,12 @@ public sealed partial class VariableListView
         finally
         {
             _carryingOver = false;
+        }
+
+        // Another reader is at the screen now: nothing of this press is theirs to see or be moved to.
+        if (State.Reader != reader)
+        {
+            return;
         }
 
         if (carried is not { List: var created })
@@ -372,6 +380,7 @@ public sealed partial class VariableListView
         _focusAfterCreate = true;
         _carriedOverAs = created.Name;
         _carriedOverButStillHere = !carried.LeftTheBrowser;
+        _notCarried = carried.NotCarried;
     }
 
     // The list's name, made free among the reader's lists the way a reader would: «Navn (2)».

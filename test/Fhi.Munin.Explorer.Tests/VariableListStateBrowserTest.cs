@@ -143,13 +143,37 @@ public class VariableListStateBrowserTest
     {
         public Action? BeforeAdd { get; init; }
 
+        /// <summary>Rows Munin refuses, as it does a datasamling that is no longer the variable's: a 400 for any batch holding one.</summary>
+        public HashSet<VariableDatasamlingKey> Stale { get; } = [];
+
+        /// <summary>When set, the first add waits for it, so a test can change the reader mid-call.</summary>
+        public TaskCompletionSource<bool>? HoldFirstAdd { get; init; }
+
+        public List<(Guid List, int Rows)> Adds { get; } = [];
+        public List<Guid> Deleted { get; } = [];
+
         public override Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default) =>
             Task.FromResult(new VariableList { Id = Guid.NewGuid(), Name = name });
 
-        public override Task<bool> AddItemsToMyListAsync(
+        public override async Task<bool> AddItemsToMyListAsync(
             Guid id, IReadOnlyCollection<VariableDatasamlingKey> items, CancellationToken cancellationToken = default)
         {
             BeforeAdd?.Invoke();
+            Adds.Add((id, items.Count));
+
+            if (Adds.Count == 1 && HoldFirstAdd is { } hold)
+            {
+                return await hold.Task;
+            }
+
+            return items.Any(Stale.Contains)
+                ? throw new HttpRequestException("Each variable must be saved with one of its own datasamlinger.", null, System.Net.HttpStatusCode.BadRequest)
+                : true;
+        }
+
+        public override Task<bool> DeleteMyListAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            Deleted.Add(id);
             return Task.FromResult(true);
         }
     }
@@ -202,6 +226,73 @@ public class VariableListStateBrowserTest
 
         Assert.False(carried!.LeftTheBrowser);
         Assert.False(state.BrowserCarryOverStuck);
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenOneRowIsStale_ThenTheOthersAreCarriedAndItStaysBehind()
+    {
+        // A refused batch is tried a row at a time, so one stale row no longer costs the reader the whole list.
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange([FakeBrowserList.Row("Alder"), FakeBrowserList.Row("Gammel"), FakeBrowserList.Row("Kjønn")]);
+        var stale = VariableDatasamlingKey.Of(browser.Rows[1]);
+        var client = new ListsClient();
+        client.Stale.Add(stale);
+        var state = await SignedInAsync(browser, client);
+
+        var carried = await state.CarryBrowserListOverAsync("Min variabelliste");
+
+        Assert.Equal(1, carried!.NotCarried);
+        Assert.Equal([stale], browser.Rows.Select(VariableDatasamlingKey.Of));
+        Assert.Empty(client.Deleted);
+        Assert.False(state.BrowserCarryOverStuck);
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenEveryRowIsStale_ThenTheNewListIsDeletedAndNothingLeaves()
+    {
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Gammel"));
+        var client = new ListsClient();
+        client.Stale.Add(VariableDatasamlingKey.Of(browser.Rows[0]));
+        var state = await SignedInAsync(browser, client);
+
+        Assert.Null(await state.CarryBrowserListOverAsync("Min variabelliste"));
+
+        Assert.Single(client.Deleted);
+        Assert.Single(browser.Rows);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CarryBrowserListOverAsync_WhenTheReaderChangesMidway_ThenItStopsAndLeavesTheBrowserRows(bool anotherSignsIn)
+    {
+        // The rows and the list belong to the reader who pressed: no further batch, no removal, no list made active.
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange(Enumerable.Range(0, IMuninExplorerClient.MaxVariablesPerBatch + 1).Select(n => FakeBrowserList.Row($"v{n}")));
+        var hold = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new ListsClient { HoldFirstAdd = hold };
+        var state = await SignedInAsync(browser, client);
+
+        var carrying = state.CarryBrowserListOverAsync("Min variabelliste");
+        while (client.Adds.Count == 0)
+        {
+            await Task.Delay(5);
+        }
+
+        state.SetAuthenticated(false);
+        if (anotherSignsIn)
+        {
+            state.SetAuthenticated(true);
+        }
+
+        hold.SetResult(true);
+
+        Assert.Null(await carrying);
+        Assert.Single(client.Adds);
+        Assert.Equal(IMuninExplorerClient.MaxVariablesPerBatch + 1, browser.Rows.Count);
+        Assert.Null(state.ActiveListId);
+        Assert.DoesNotContain(browser.Calls, c => c.Call == "removeKeys");
     }
 
     private static async Task<VariableListState> StuckAsync()

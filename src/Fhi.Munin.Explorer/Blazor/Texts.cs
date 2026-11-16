@@ -944,6 +944,7 @@ internal sealed record Texts(
     string BrowserListTooLongToShare,
     Func<string, string> BrowserListSavedAs,
     Func<string, string> BrowserListSavedButStillHere,
+    Func<int, string> BrowserListNotCarried,
     Func<int, string> BrowserListFull,
     string ClearBrowserList,
     string ConfirmClearBrowserList,
@@ -1922,6 +1923,9 @@ internal sealed record Texts(
         BrowserListTooLongToShare: "Listen er for lang til å deles som kode. Last den ned i stedet.",
         BrowserListSavedAs: name => $"Lagret som «{name}» i Mine lister.",
         BrowserListSavedButStillHere: name => $"Listen ble lagret i Mine lister («{name}»), men den kunne ikke fjernes fra denne nettleseren. Tøm den når du er logget ut.",
+        BrowserListNotCarried: rows => rows == 1
+            ? "1 rad kunne ikke lagres, fordi katalogen har endret seg. Den ligger fortsatt i denne nettleseren."
+            : $"{rows} rader kunne ikke lagres, fordi katalogen har endret seg. De ligger fortsatt i denne nettleseren.",
         BrowserListFull: max => $"Listen kan ha høyst {max} rader. Fjern noen før du legger til flere.",
         ClearBrowserList: "Tøm listen",
         ConfirmClearBrowserList: "Fjerne alle variabler fra listen i denne nettleseren? Det kan ikke angres.",
@@ -2596,6 +2600,9 @@ internal sealed record Texts(
         BrowserListTooLongToShare: "The list is too long to share as a code. Download it instead.",
         BrowserListSavedAs: name => $"Saved as «{name}» in My lists.",
         BrowserListSavedButStillHere: name => $"The list was saved in My lists («{name}»), but it could not be removed from this browser. Empty it when you are signed out.",
+        BrowserListNotCarried: rows => rows == 1
+            ? "1 row could not be saved, because the catalogue has changed. It is still in this browser."
+            : $"{rows} rows could not be saved, because the catalogue has changed. They are still in this browser.",
         BrowserListFull: max => $"The list can hold at most {max} rows. Remove some before adding more.",
         ClearBrowserList: "Empty the list",
         ConfirmClearBrowserList: "Remove every variable from the list in this browser? It cannot be undone.",

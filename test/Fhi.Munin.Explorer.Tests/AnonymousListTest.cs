@@ -76,11 +76,17 @@ public class AnonymousListTest : ExplorerTestContext
         }
 
         public Action? BeforeAdd { get; set; }
+        public VariableDatasamlingKey? Stale { get; init; }
 
         public override Task<bool> AddItemsToMyListAsync(
             Guid id, IReadOnlyCollection<VariableDatasamlingKey> items, CancellationToken cancellationToken = default)
         {
             BeforeAdd?.Invoke();
+
+            if (Stale is { } stale && items.Contains(stale))
+            {
+                throw new HttpRequestException("stale datasamling", null, System.Net.HttpStatusCode.BadRequest);
+            }
 
             if (AddThrows)
             {
@@ -208,6 +214,18 @@ public class AnonymousListTest : ExplorerTestContext
         var cut = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, false));
 
         Assert.Equal("", cut.Markup.Trim());
+    }
+
+    [Fact]
+    public void VariableSearch_WhenMountedWithoutAListTab_ThenASignedOutReaderGetsNoSaveButton()
+    {
+        // A save nothing on the page can show is a control that seems to do nothing.
+        Register(new Client(Alder), flag: true, new FakeBrowserList());
+        var cut = Render<VariableSearch>(p => p.Add(c => c.IsAuthenticated, false));
+
+        cut.Find("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name").Click(new MouseEventArgs { Detail = 1 });
+
+        Assert.Empty(cut.FindAll(".munin-explorer-detail button[aria-pressed]"));
     }
 
     [Fact]
@@ -703,6 +721,22 @@ public class AnonymousListTest : ExplorerTestContext
         Assert.DoesNotContain(No.BrowserListSavedAs(No.FirstListName), cut.Markup);
         Assert.DoesNotContain(No.CarryBrowserListOver, cut.Markup);
         Assert.Single(client.Created);
+    }
+
+    [Fact]
+    public void VariableListView_WhenOneRowIsStale_ThenTheRestIsSavedAndTheReaderIsToldHowManyStayed()
+    {
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange([FakeBrowserList.Row("Alder"), FakeBrowserList.Row("Gammel")]);
+        var client = new Client { Stale = VariableDatasamlingKey.Of(browser.Rows[1]) };
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(2), cut.Markup));
+
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListNotCarried(1), cut.Markup));
+        Assert.Contains(No.BrowserListSavedAs(No.FirstListName), cut.Markup);
+        Assert.Single(browser.Rows);
     }
 
     [Fact]

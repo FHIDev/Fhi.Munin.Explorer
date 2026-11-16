@@ -26,7 +26,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </remarks>
 public partial class VariableSearch
 {
-    private bool ShowSaveButton => ListState is { IsAuthenticated: true } or { UsesBrowserList: true };
+    // Signed out, only where a list tab can show what the press saved.
+    private bool ShowSaveButton => ListState is { IsAuthenticated: true } || (ListState is { UsesBrowserList: true } && VariableList is not null);
 
     /// <summary>How a row's last save attempt ended, when it ended badly.</summary>
     /// <remarks>
