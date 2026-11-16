@@ -930,7 +930,20 @@ internal sealed record Texts(
     Func<string, string> PickerRetryFor,
     Func<string, string, string> PickerLevelCut,
     // The share view's column of chosen codes.
-    string CodeSummaryHeading)
+    string CodeSummaryHeading,
+
+    // A signed-out reader's list in the browser (Fhi.Metadata-emsc0.3.12). Says what is kept where and what needs
+    // sign-in, in a sentence each; no consent text until Robin answers.
+    string BrowserListKeptHere,
+    string BrowserListApplication,
+    string BrowserListSignInFor,
+    string BrowserListNotKept,
+    Func<int, string> BrowserListFull,
+    string ClearBrowserList,
+    string ConfirmClearBrowserList,
+    Func<int, string> BrowserListWaiting,
+    string CarryBrowserListOver,
+    string CarryBrowserListOverError)
 {
     /// <summary>
     /// The label for a sort order. Every one that names a field uses the same words the result
@@ -1892,7 +1905,19 @@ internal sealed record Texts(
         PickerRetry: "Prøv igjen",
         PickerRetryFor: code => $"Prøv igjen for {code}",
         PickerLevelCut: (level, whole) => $"{level} har for mange koder til at én kan tas ut her. Fjern haken for {whole} og velg kodene du vil ha, for eksempel med søket.",
-        CodeSummaryHeading: "Ønskede verdier");
+        CodeSummaryHeading: "Ønskede verdier",
+        BrowserListKeptHere: "Listen er lagret bare i denne nettleseren: variabelkodene og navnene, ingen opplysninger om deg.",
+        BrowserListApplication: "Du kan laste ned listen som Excel og legge den ved en søknad om tilgang.",
+        BrowserListSignInFor: "Logg inn for å skrive ønskede data og notater, og for å ha flere lister.",
+        BrowserListNotKept: "Nettleseren lar ikke listen lagres, så den finnes bare til du lukker siden.",
+        BrowserListFull: max => $"Listen kan ha høyst {max} rader. Fjern noen før du legger til flere.",
+        ClearBrowserList: "Tøm listen",
+        ConfirmClearBrowserList: "Fjerne alle variabler fra listen i denne nettleseren? Det kan ikke angres.",
+        BrowserListWaiting: rows => rows == 1
+            ? "Denne nettleseren har en liste fra før du logget inn, med 1 rad."
+            : $"Denne nettleseren har en liste fra før du logget inn, med {rows} rader.",
+        CarryBrowserListOver: "Lagre som ny liste i Mine lister",
+        CarryBrowserListOverError: "Kunne ikke lagre listen i Mine lister nå. Den ligger fortsatt i denne nettleseren.");
 
     private static readonly Texts En = new(
         Title: "Variable explorer",
@@ -2548,7 +2573,19 @@ internal sealed record Texts(
         PickerRetry: "Try again",
         PickerRetryFor: code => $"Try again for {code}",
         PickerLevelCut: (level, whole) => $"{level} has too many codes to leave one out here. Untick {whole} and choose the codes you want, for example with the search.",
-        CodeSummaryHeading: "Desired values")
+        CodeSummaryHeading: "Desired values",
+        BrowserListKeptHere: "The list is stored only in this browser: the variable codes and names, nothing about you.",
+        BrowserListApplication: "You can download the list as Excel and attach it to an application for access.",
+        BrowserListSignInFor: "Sign in to write desired data and notes, and to keep several lists.",
+        BrowserListNotKept: "This browser does not let the list be stored, so it lasts only until you close the page.",
+        BrowserListFull: max => $"The list can hold at most {max} rows. Remove some before adding more.",
+        ClearBrowserList: "Empty the list",
+        ConfirmClearBrowserList: "Remove every variable from the list in this browser? It cannot be undone.",
+        BrowserListWaiting: rows => rows == 1
+            ? "This browser holds a list from before you signed in, with 1 row."
+            : $"This browser holds a list from before you signed in, with {rows} rows.",
+        CarryBrowserListOver: "Save as a new list in My lists",
+        CarryBrowserListOverError: "Could not save the list to My lists just now. It is still in this browser.")
     {
         Reader = ReaderLanguage.English,
     };

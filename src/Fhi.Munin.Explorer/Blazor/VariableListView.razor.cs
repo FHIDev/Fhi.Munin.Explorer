@@ -744,6 +744,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 StateHasChanged();
             }
         }
+
+        await AfterBrowserListRenderAsync();
     }
 
     // Into the name field when the form opens, back to its button when the reader shuts it.
@@ -819,6 +821,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         State.SetAuthenticated(IsAuthenticated);
+        OfferBrowserList();
 
         // Caught: an exception out of a lifecycle method takes the circuit, in helsedata's legacy host the
         // whole CMS page. The mount fires this read with the search and facet refresh, the burst the
@@ -867,7 +870,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         // Nothing is asked for a reader who is not signed in. This view renders nothing for them, and
         // a call whose answer nobody sees is still a call the limiter counts - the same reason the
         // list itself is not read either.
-        if (!IsAuthenticated && _openCode is null)
+        if (!IsAuthenticated && _openCode is null && State?.UsesBrowserList != true)
         {
             return;
         }
@@ -955,6 +958,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 _downloadDone = false;
                 _pageNumber = 1;
             }
+
+            FollowBrowserListChange();
 
             // A fresh read of the lists supersedes this view's last failure; its own outcome is told when it lands.
             if (State is { IsReadingLists: true })
@@ -1793,6 +1798,12 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// </summary>
     private async Task DownloadAsync(ExportFormat format)
     {
+        if (ShowsBrowserCopy)
+        {
+            await DownloadBrowserListAsync(format);
+            return;
+        }
+
         if (_shownList is null || _downloading)
         {
             return;

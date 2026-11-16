@@ -475,6 +475,12 @@ public partial class VariableSearch
         }
 
         await MarkMixedAsync();
+
+        // Once per circuit; the read raises Changed, which draws the rows' buttons against it.
+        if (!_disposed && ListState is { OffersBrowserList: true } lists)
+        {
+            await lists.ReadBrowserListAsync();
+        }
     }
 
     private ExplorerInterop? _interop;

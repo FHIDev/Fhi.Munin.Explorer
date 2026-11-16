@@ -4,6 +4,7 @@ using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -115,6 +116,15 @@ public partial class VariableSearch : IDisposable, IAsyncDisposable
         return _interop?.DisposeAsync() ?? ValueTask.CompletedTask;
     }
 
+    // GetService for both, as for the list state: a host with neither still draws the explorer, without the list.
+    private void OfferBrowserList()
+    {
+        if (ServiceProvider.GetService<AnonymousListsSwitch>()?.On == true && ServiceProvider.GetService<IJSRuntime>() is { } js)
+        {
+            ListState?.OfferBrowserList(new BrowserListStore(js));
+        }
+    }
+
     private string? _followedShareCode;
 
     /// <summary>A code that arrives opens its list; one that leaves a signed-out reader goes back
@@ -132,7 +142,7 @@ public partial class VariableSearch : IDisposable, IAsyncDisposable
         {
             _resultsTab = ExplorerTab.VariableList;
         }
-        else if (ShareCode is null && !IsAuthenticated)
+        else if (ShareCode is null && !IsAuthenticated && ListState?.UsesBrowserList != true)
         {
             _resultsTab = ExplorerTab.Search;
         }
@@ -150,6 +160,7 @@ public partial class VariableSearch : IDisposable, IAsyncDisposable
         }
 
         ListState.SetAuthenticated(IsAuthenticated);
+        OfferBrowserList();
 
         // Read what is already in the reader's list before the rows draw their buttons. Without it
         // the set is empty on the first render, so a variable saved earlier offers "save" and the

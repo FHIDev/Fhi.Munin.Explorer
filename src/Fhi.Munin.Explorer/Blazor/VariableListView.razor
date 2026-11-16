@@ -1,14 +1,15 @@
 @namespace Fhi.Munin.Explorer.Blazor
 @using Fhi.Munin.Explorer.Contracts
 
-@* A shared list takes the view, signed in or out, and is read-only — see SharedListView. *@
+@* A shared list takes the view, signed in or out, and is read-only — see SharedListView. So does a signed-out
+   reader's list in the browser, with its own few controls (Fhi.Metadata-emsc0.3.12). *@
 <CascadingValue Name="@CatalogueLink.ReaderName" Value="@Reader">
 @if (ShowsSharedList)
 {
     @SharedListView
 }
-@* Signed out there is nothing else here at all — not an empty frame, not a sign-in prompt this
-   package has no business wording. The host knows how its readers sign in; the package does not. *@
+@* Signed out there is nothing else here at all, unless the host offers the browser list — not an empty frame,
+   not a sign-in prompt this package has no business wording. The host knows how its readers sign in. *@
 else if (State?.IsAuthenticated == true)
 {
     @* Still the version, and still on the root: a host may mount this view on a page of its own,
@@ -41,6 +42,8 @@ else if (State?.IsAuthenticated == true)
         </Header>
         <ChildContent>
 
+            @CarryOverOffer
+
             @if (_openingShared)
             {
                 <div>
@@ -72,7 +75,7 @@ else if (State?.IsAuthenticated == true)
                     }
 
                     <p class="caption">@T.ShareValidity</p>
-                    <a href="@ShareMailTo(made)" aria-describedby="@ShareMailHintId">@T.ShareByEmail</a>
+                    <a href="@ShareMailTo(made, ShownList?.Name ?? "")" aria-describedby="@ShareMailHintId">@T.ShareByEmail</a>
                     @* A mailto opens nothing for a webmail reader; the fields above are the way (Fhi.Metadata-eeuey.4.34). *@
                     <p class="caption margin--none" id="@ShareMailHintId">@T.ShareByEmailHint(made.Link is not null)</p>
                 </div>
@@ -456,6 +459,10 @@ else if (State?.IsAuthenticated == true)
         </ChildContent>
     </DetailPage>
 }
+else if (ShowsBrowserCopy)
+{
+    @SharedListView
+}
 </CascadingValue>
 
 @code {
@@ -485,9 +492,9 @@ else if (State?.IsAuthenticated == true)
                     @DetailBlocks.Heading(TitleLevel, SharedListName, "headline headline-s margin--bottom",
                                           ListHeadingId)
 
-                    @if (_sharedList is not null)
+                    @if (ShownSnapshot is { } snapshot)
                     {
-                        <p class="caption">@T.ListVariableCount(_sharedList.Items.Count)</p>
+                        <p class="caption">@T.ListVariableCount(snapshot.Items.Count)</p>
                     }
                 </div>
             </Header>
@@ -502,10 +509,18 @@ else if (State?.IsAuthenticated == true)
                                 @onclick="ToggleSavingSharedFromControl">@T.SaveSharedList</button>
                     }
 
-                    <button class="hd-button-square button-square--ghost-blue"
-                            type="button"
-                            @onclick="CloseSharedListAsync">@T.CloseSharedList</button>
+                    @if (!ShowsBrowserCopy)
+                    {
+                        <button class="hd-button-square button-square--ghost-blue"
+                                type="button"
+                                @onclick="CloseSharedListAsync">@T.CloseSharedList</button>
+                    }
                 </div>
+
+                @if (ShowsBrowserCopy)
+                {
+                    @BrowserListControls
+                }
 
                 @* Text, not a login control, for the reason VariableSearch gives beside its tabs. *@
                 @if (_sharedList is not null && !IsAuthenticated)
@@ -534,14 +549,18 @@ else if (State?.IsAuthenticated == true)
                 }
 
                 <div role="alert" aria-live="assertive" aria-atomic="true">
-                    @(SharedListMessage ?? SaveSharedMessage)
+                    @(SharedListMessage ?? SaveSharedMessage ?? BrowserListMessage)
                 </div>
 
-                @if (_sharedList is { Items.Count: 0 })
+                @if (ShowsBrowserCopy && State is { BrowserListRead: true, BrowserItems.Count: 0 })
+                {
+                    @EmptyPanel(T.EmptyList)
+                }
+                else if (ShownSnapshot is { Items.Count: 0 } && !ShowsBrowserCopy)
                 {
                     <p>@T.EmptyList</p>
                 }
-                else if (_sharedList is not null)
+                else if (ShownSnapshot is { Items.Count: > 0 })
                 {
                     <div class="munin-explorer-results__toolbar">@ListColumnPicker()</div>
 
@@ -620,6 +639,158 @@ else if (State?.IsAuthenticated == true)
         </DetailPage>
     </text>;
 
+    // Drawn by the action row and by the browser list alike.
+    private RenderFragment DownloadMenu => @<text>
+        @* Folded the way «Flere valg» is, so the row has one way of opening things. The panel is the
+           named group: three controls that only make sense together, named as the fold is. *@
+        <div class="munin-explorer-list-menu" @onkeydown="CloseDownloadOnEscape">
+            <button class="hd-button-square button-square--ghost-blue"
+                    type="button"
+                    id="@DownloadToggleId"
+                    aria-expanded="@Expanded(_downloadOpen)"
+                    aria-controls="@DownloadPanelId"
+                    aria-busy="@(_downloading ? "true" : null)"
+                    @ref="_downloadToggle"
+                    @onclick="ToggleDownloadFromControl">@(_downloading ? T.Downloading : T.DownloadList)</button>
+
+            <div class="munin-explorer-list-menu__panel munin-explorer-list-menu__panel--rows"
+                 id="@DownloadPanelId"
+                 role="group"
+                 aria-label="@T.DownloadList"
+                 hidden="@(!_downloadOpen)">
+                <label class="munin-explorer-list-menu__check">
+                    <input type="checkbox"
+                           checked="@_includeKodeverk"
+                           disabled="@_downloading"
+                           @onchange="e => _includeKodeverk = e.Value is true" />
+                    @T.IncludeKodeverk
+                </label>
+
+                @* aria-disabled while a download is in flight rather than disabled, for the reason
+                   the pager gives: disabling the element that has focus drops focus to <body>. *@
+                <button class="munin-explorer-list-menu__item"
+                        type="button"
+                        aria-disabled="@AriaDisabled(!_downloading)"
+                        aria-busy="@(_downloadingFormat == ExportFormat.Xlsx ? "true" : null)"
+                        @onclick="() => DownloadAsync(ExportFormat.Xlsx)">
+                    @if (_downloadingFormat == ExportFormat.Xlsx)
+                    {
+                        @T.DownloadingXlsx
+                    }
+                    else
+                    {
+                        @T.DownloadXlsx<span class="munin-explorer-list-menu__hint" aria-hidden="true">@T.DownloadXlsxHint</span>
+                    }
+                </button>
+
+                <button class="munin-explorer-list-menu__item"
+                        type="button"
+                        aria-disabled="@AriaDisabled(!_downloading)"
+                        aria-busy="@(_downloadingFormat == ExportFormat.Csv ? "true" : null)"
+                        @onclick="() => DownloadAsync(ExportFormat.Csv)">
+                    @if (_downloadingFormat == ExportFormat.Csv)
+                    {
+                        @T.DownloadingCsv
+                    }
+                    else
+                    {
+                        @T.DownloadCsv<span class="munin-explorer-list-menu__hint" aria-hidden="true">@T.DownloadCsvHint</span>
+                    }
+                </button>
+
+                @* Only while the panel is open, and empty then, so a closed panel adds no status region to the page. *@
+                @if (_downloadOpen)
+                {
+                    <p class="munin-explorer-list-menu__note" role="status" aria-live="polite" aria-atomic="true">@DownloadStatus</p>
+                }
+                @* Shown only while the panel is a phone's bottom sheet; explorer-interop.js shows it and acts on it.
+               Inline display: none, so no host rule on a button can show it while [hidden]. *@
+                <button class="munin-explorer-list-menu__close" type="button" hidden style="display: none">@T.CloseMenu</button>
+            </div>
+        </div>
+    </text>;
+
+    // A signed-out reader's list in the browser: what is kept where, what needs sign-in, and the three things it can
+    // do. One sentence each rather than a hidden control: «Ønskede data» and notes are not offered here at all.
+    private RenderFragment BrowserListControls => @<text>
+        <p class="caption">@(State?.BrowserListKept == false ? T.BrowserListNotKept : T.BrowserListKeptHere)</p>
+        <p class="caption">@T.BrowserListApplication</p>
+        <p class="caption">@T.BrowserListSignInFor</p>
+
+        <div class="munin-explorer-page__actions">
+            @if (BrowserRowCount > 0)
+            {
+                @DownloadMenu
+
+                <button class="hd-button-square button-square--ghost-blue"
+                        type="button"
+                        id="@ShareToggleId"
+                        aria-expanded="@Expanded(_sharingBrowserList)"
+                        aria-busy="@(_shareInFlight ? "true" : null)"
+                        @onclick="ToggleSharingBrowserListAsync">@T.ShareList</button>
+            }
+
+            @* Two steps, as «Slett liste»: one control, so neither step removes the element under the reader's focus.
+               Refused rather than gone on an empty list, so focus has somewhere to stay once it is emptied. *@
+            <button class="hd-button-square button-square--ghost-blue"
+                    type="button"
+                    id="@ClearBrowserListId"
+                    aria-expanded="@Expanded(_confirmingClear)"
+                    aria-disabled="@AriaDisabled(BrowserRowCount > 0)"
+                    aria-describedby="@(BrowserRowCount > 0 ? null : ListEmptyReasonId)"
+                    @ref="_clearToggle"
+                    @onclick="ToggleConfirmingClear">@(_confirmingClear ? T.ConfirmDeleteNo : T.ClearBrowserList)</button>
+
+            @if (BrowserRowCount == 0)
+            {
+                <span id="@ListEmptyReasonId" class="screenreader-only">@T.ListIsEmpty</span>
+            }
+        </div>
+
+        @if (_confirmingClear && BrowserRowCount > 0)
+        {
+            <p class="caption" id="@ConfirmClearId">@T.ConfirmClearBrowserList</p>
+            <button class="hd-button-square button-square--ghost-blue"
+                    type="button"
+                    aria-describedby="@ConfirmClearId"
+                    @onclick="ClearBrowserListAsync">@T.ConfirmEmptyYes</button>
+        }
+
+        @if (_sharingBrowserList && _browserShare is { } made)
+        {
+            <div>
+                <label class="form-element__label" for="@ShareCodeFieldId">@T.ShareCodeLabel</label>
+                <input type="text" id="@ShareCodeFieldId" readonly value="@made.Code" @ref="_shareCodeField" />
+
+                @if (made.Link is { } link)
+                {
+                    <label class="form-element__label" for="@ShareLinkFieldId">@T.ShareLinkLabel</label>
+                    <input type="text" id="@ShareLinkFieldId" readonly value="@link" />
+                }
+
+                <p class="caption">@T.ShareValidity</p>
+                <a href="@ShareMailTo(made, SharedListName)" aria-describedby="@ShareMailHintId">@T.ShareByEmail</a>
+                <p class="caption margin--none" id="@ShareMailHintId">@T.ShareByEmailHint(made.Link is not null)</p>
+            </div>
+        }
+    </text>;
+
+    // Signed in with rows still in the browser: one press saves them as a new list, never on its own (Fhi.Metadata-emsc0.3.12).
+    private RenderFragment CarryOverOffer => @<text>
+        @if (State is { IsAuthenticated: true, BrowserItems.Count: > 0 and var rows } && !ShowsSharedList)
+        {
+            <div>
+                <p class="caption">@T.BrowserListWaiting(rows)</p>
+                <button class="hd-button-square button-square--secondary"
+                        type="button"
+                        aria-disabled="@AriaDisabled(!_carryingOver)"
+                        aria-busy="@(_carryingOver ? "true" : null)"
+                        @onclick="CarryBrowserListOverAsync">@(_carryingOver ? T.SavingToList : T.CarryBrowserListOver)</button>
+                <p role="alert">@(_carryOverFailed ? T.CarryBrowserListOverError : null)</p>
+            </div>
+        }
+    </text>;
+
     // The chassis's action row: the picker, creating, downloading and the fold holding the rest.
     private RenderFragment ActionRow => @<text>
         @* The picker is only a choice when there is one to make. With a single list it
@@ -643,73 +814,7 @@ else if (State?.IsAuthenticated == true)
            produce a file with a header row and nothing under it. *@
         @if (_page is not null && _page.TotalCount > 0)
         {
-            @* Folded the way «Flere valg» is, so the row has one way of opening things. The panel is the
-               named group: three controls that only make sense together, named as the fold is. *@
-            <div class="munin-explorer-list-menu" @onkeydown="CloseDownloadOnEscape">
-                <button class="hd-button-square button-square--ghost-blue"
-                        type="button"
-                        id="@DownloadToggleId"
-                        aria-expanded="@Expanded(_downloadOpen)"
-                        aria-controls="@DownloadPanelId"
-                        aria-busy="@(_downloading ? "true" : null)"
-                        @ref="_downloadToggle"
-                        @onclick="ToggleDownloadFromControl">@(_downloading ? T.Downloading : T.DownloadList)</button>
-
-                <div class="munin-explorer-list-menu__panel munin-explorer-list-menu__panel--rows"
-                     id="@DownloadPanelId"
-                     role="group"
-                     aria-label="@T.DownloadList"
-                     hidden="@(!_downloadOpen)">
-                    <label class="munin-explorer-list-menu__check">
-                        <input type="checkbox"
-                               checked="@_includeKodeverk"
-                               disabled="@_downloading"
-                               @onchange="e => _includeKodeverk = e.Value is true" />
-                        @T.IncludeKodeverk
-                    </label>
-
-                    @* aria-disabled while a download is in flight rather than disabled, for the reason
-                       the pager gives: disabling the element that has focus drops focus to <body>. *@
-                    <button class="munin-explorer-list-menu__item"
-                            type="button"
-                            aria-disabled="@AriaDisabled(!_downloading)"
-                            aria-busy="@(_downloadingFormat == ExportFormat.Xlsx ? "true" : null)"
-                            @onclick="() => DownloadAsync(ExportFormat.Xlsx)">
-                        @if (_downloadingFormat == ExportFormat.Xlsx)
-                        {
-                            @T.DownloadingXlsx
-                        }
-                        else
-                        {
-                            @T.DownloadXlsx<span class="munin-explorer-list-menu__hint" aria-hidden="true">@T.DownloadXlsxHint</span>
-                        }
-                    </button>
-
-                    <button class="munin-explorer-list-menu__item"
-                            type="button"
-                            aria-disabled="@AriaDisabled(!_downloading)"
-                            aria-busy="@(_downloadingFormat == ExportFormat.Csv ? "true" : null)"
-                            @onclick="() => DownloadAsync(ExportFormat.Csv)">
-                        @if (_downloadingFormat == ExportFormat.Csv)
-                        {
-                            @T.DownloadingCsv
-                        }
-                        else
-                        {
-                            @T.DownloadCsv<span class="munin-explorer-list-menu__hint" aria-hidden="true">@T.DownloadCsvHint</span>
-                        }
-                    </button>
-
-                    @* Only while the panel is open, and empty then, so a closed panel adds no status region to the page. *@
-                    @if (_downloadOpen)
-                    {
-                        <p class="munin-explorer-list-menu__note" role="status" aria-live="polite" aria-atomic="true">@DownloadStatus</p>
-                    }
-                    @* Shown only while the panel is a phone's bottom sheet; explorer-interop.js shows it and acts on it.
-                   Inline display: none, so no host rule on a button can show it while [hidden]. *@
-                    <button class="munin-explorer-list-menu__close" type="button" hidden style="display: none">@T.CloseMenu</button>
-                </div>
-            </div>
+            @DownloadMenu
         }
 
         @* Everything but creating and downloading, so the row is one line at 1280 and the extras

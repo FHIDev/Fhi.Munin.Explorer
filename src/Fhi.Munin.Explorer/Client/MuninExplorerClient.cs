@@ -590,6 +590,14 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         [property: JsonPropertyName("includeKodeverk")] bool IncludeKodeverk,
         [property: JsonPropertyName("kildeIdFilter")] Guid? KildeIdFilter);
 
+    /// <summary>The export by (variable, datasamling) items; the API reads <c>items</c> and ignores the ids beside them.</summary>
+    private sealed record ExportItemsBody(
+        [property: JsonPropertyName("variabelIds")] IReadOnlyCollection<Guid> VariableIds,
+        [property: JsonPropertyName("items")] IReadOnlyCollection<VariableDatasamlingKey> Items,
+        [property: JsonPropertyName("format")] string Format,
+        [property: JsonPropertyName("includeKodeverk")] bool IncludeKodeverk,
+        [property: JsonPropertyName("explorerPageUrl")] Uri? ExplorerPageUrl);
+
     /// <summary>
     /// The spelling the API accepts for <c>format</c>.
     /// </summary>
@@ -1069,6 +1077,42 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         return new ExportedList(bytes, contentType, fileName);
     }
 
+    /// <summary>The API's <c>MaxVariabelCount</c> for an export by items.</summary>
+    private const int MaxExportItems = 2000;
+
+    /// <inheritdoc />
+    public async Task<ExportedList> ExportItemsAsync(
+        IReadOnlyCollection<VariableDatasamlingKey> items,
+        Uri? explorerPageUrl = null,
+        ExportFormat format = ExportFormat.Xlsx,
+        bool includeKodeverk = false,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+
+        if (items.Count > MaxExportItems)
+        {
+            throw new ArgumentException($"At most {MaxExportItems} items can be exported at once; got {items.Count}.", nameof(items));
+        }
+
+        // The ids beside the items, which replace them, so an API older than items still exports the variables.
+        var body = new ExportItemsBody(
+            [.. items.Select(i => i.VariableId).Distinct()], items, WireName(format), includeKodeverk,
+            UsablePageUrl(explorerPageUrl));
+
+        using var response = await SendAsync(
+            HttpMethod.Post, "api/explorer/lists/export", body, cancellationToken, ExportTimeout);
+        response.EnsureSuccessStatusCode();
+
+        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+        var contentType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
+        var fileName = response.Content.Headers.ContentDisposition?.FileNameStar
+            ?? response.Content.Headers.ContentDisposition?.FileName?.Trim('"')
+            ?? "variabelliste";
+
+        return new ExportedList(bytes, contentType, fileName);
+    }
+
     // The API's own rule (absolute http or https, no credentials, no fragment, at most 4096 characters). It
     // answers 400 to anything else, so an address it would refuse is left out: the file comes without links.
     private static Uri? UsablePageUrl(Uri? page) =>
@@ -1334,7 +1378,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     /// holding it, so the free text and notes stay behind, as Runa's stripPrivateAnnotations does. The
     /// chosen codes go with it (Fhi.Metadata-emsc0.3.5), left out when there are none.
     /// </summary>
-    private sealed record SharedItemBody(
+    internal sealed record SharedItemBody(
         [property: JsonPropertyName("variabelId")] Guid VariableId,
         [property: JsonPropertyName("variabelCode")] string? VariableCode,
         [property: JsonPropertyName("variabelName")] string? VariableName,

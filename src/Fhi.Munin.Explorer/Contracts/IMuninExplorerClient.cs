@@ -726,6 +726,33 @@ public interface IMuninExplorerClient
             "Consume MuninExplorerClient, or implement the member.");
 
     /// <summary>
+    /// A list nobody has saved — say a signed-out reader's — as a file, one line per (variable, datasamling): xlsx,
+    /// csv, or a zip when codebooks come too. The supported successor to <see cref="ExportListAsync"/>.
+    /// </summary>
+    /// <remarks>
+    /// Anonymous, like <see cref="ExportListAsync"/>, and on the same route: the items travel in the body. The API's
+    /// ceiling is 2000 items; more is refused with an <see cref="ArgumentException"/> before anything is sent.
+    /// Carries a default body for the reader <see cref="ExportListAsync"/> names.
+    /// </remarks>
+    /// <param name="items">The rows to export, each a variable and the datasamling it was chosen from.</param>
+    /// <param name="explorerPageUrl">The host's Explorer page, for links in the file; null leaves them out.</param>
+    /// <param name="format">Xlsx or Csv. Csv with codebooks answers with a zip.</param>
+    /// <param name="includeKodeverk">Whether to include the codebooks alongside the variables.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away.</param>
+    /// <returns>The file, named and typed by the API.</returns>
+    /// <exception cref="MuninExplorerRateLimitedException">The API's rate limiter refused the request.</exception>
+    /// <exception cref="HttpRequestException">The API refused or failed the export.</exception>
+    Task<ExportedList> ExportItemsAsync(
+        IReadOnlyCollection<VariableDatasamlingKey> items,
+        Uri? explorerPageUrl = null,
+        ExportFormat format = ExportFormat.Xlsx,
+        bool includeKodeverk = false,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"This {nameof(IMuninExplorerClient)} does not implement {nameof(ExportItemsAsync)}. " +
+            "Consume MuninExplorerClient, or implement the member.");
+
+    /// <summary>
     /// One of the signed-in reader's lists as a file, with each variable's "Ønskede data" filled in: xlsx, csv,
     /// or a zip when codebooks come too.
     /// </summary>

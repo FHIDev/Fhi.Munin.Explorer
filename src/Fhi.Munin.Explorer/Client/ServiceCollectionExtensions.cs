@@ -59,6 +59,12 @@ public sealed class MuninExplorerFeatures
     /// of it is drawn and a link's <c>vilkar</c> are dropped, so nothing narrows the list that the reader cannot
     /// see or remove.</summary>
     public bool? AdvancedSearch { get; set; }
+
+    /// <summary>A variable list for a reader who is not signed in, kept only in their browser's local storage; key
+    /// <c>MuninExplorer:Features:AnonymousLists</c>. The save button adds a row to it, the list tab shows it, and it can be
+    /// downloaded, shared or emptied; at sign-in the reader may save it as a new list of their own. It holds catalogue
+    /// fields only, never anything about the reader. Off: a signed-out reader has no list and no save button, as before.</summary>
+    public bool? AnonymousLists { get; set; }
 }
 
 /// <summary>The one call a host makes to use the explorer components.</summary>
@@ -165,6 +171,10 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton(provider => new Blazor.AdvancedSearchSwitch(
             advancedSearch ?? FeatureOn(provider.GetService<IConfiguration>(), nameof(MuninExplorerFeatures.AdvancedSearch))));
 
+        var anonymousLists = options.Features.AnonymousLists;
+        services.TryAddSingleton(provider => new Blazor.AnonymousListsSwitch(
+            anonymousLists ?? FeatureOn(provider.GetService<IConfiguration>(), nameof(MuninExplorerFeatures.AnonymousLists))));
+
         services.AddHttpClient<IMuninExplorerClient, MuninExplorerClient>(client =>
         {
             // Trailing slash so relative routes ("api/explorer/...") resolve against the
@@ -227,6 +237,7 @@ public static class ServiceCollectionExtensions
             o.AccessLinks = accessLinks;
             o.Features.CodePicker = FeatureOn(configuration, nameof(MuninExplorerFeatures.CodePicker));
             o.Features.AdvancedSearch = FeatureOn(configuration, nameof(MuninExplorerFeatures.AdvancedSearch));
+            o.Features.AnonymousLists = FeatureOn(configuration, nameof(MuninExplorerFeatures.AnonymousLists));
         });
     }
 

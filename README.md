@@ -1371,8 +1371,8 @@ Both `AddMuninExplorer` overloads read these keys from the host's configuration 
 registered `IConfiguration`, and nothing else from the section). The configuration overload reads them when it is
 called, the delegate overload when the first component needs them; either way a change takes a restart. `true` turns a feature on; absent or any other value is off. `options.Features.<Name>` set in
 the delegate wins over the key. The sample hosts turn both on in `appsettings.Development.json`, which is what
-the browser gates run; `check-accessibility.sh` also scans an opened list row once with `CodePicker` off. Today there
-are two:
+the browser gates run; `check-accessibility.sh` also scans an opened list row once with `CodePicker` off. The samples
+leave `AnonymousLists` off. Today there are three:
 
 - `CodePicker`, the code picker under «Ønskede data» in a saved list; with it off, «Ønskede data» is
   one free-text field and codes saved through Munin show read-only.
@@ -1381,6 +1381,13 @@ are two:
   `VariableFilter.Conditions`, written as the API's repeated `vilkar`, so a link with them restores the search. With
   it off, none of that is drawn and conditions a link carries are dropped, and `FilterChanged` tells the host so its
   address loses them too.
+- `AnonymousLists`, a variable list for a reader who is not signed in, kept only in their browser's local storage
+  under `Fhi.Munin.Explorer:anonymous-list`: the catalogue fields of each row (ids, code, names, period), nothing
+  about the reader, at most 2000 rows. The save button a signed-in reader has adds a row to it, the list tab shows
+  it through the shared-list view, and it can be downloaded (`ExportItemsAsync`, Munin's anonymous export), shared
+  as a code, or emptied. Signed in with rows still in the browser, the list tab offers one button that saves them as
+  a new list in Mine lister. Where the browser refuses storage the list lasts for the visit and the view says so.
+  With it off, a signed-out reader has no save button and no list tab, as before.
 
 A new feature gets its own entry, off by default, and the entry is removed once the feature is on for every host.
 

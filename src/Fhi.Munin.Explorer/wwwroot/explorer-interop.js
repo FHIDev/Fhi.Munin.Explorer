@@ -841,3 +841,28 @@ export function writePreference(key, value) {
     // Not kept, and nothing else depends on it.
   }
 }
+
+// A signed-out reader's one variable list, in this browser only (Fhi.Metadata-emsc0.3.12). Unlike a preference,
+// both answer whether storage worked, so the page can say a list is only held for this visit.
+const anonymousListKey = 'Fhi.Munin.Explorer:anonymous-list';
+
+export function readAnonymousList() {
+  try {
+    return { kept: true, json: localStorage.getItem(anonymousListKey) };
+  } catch {
+    return { kept: false, json: null };
+  }
+}
+
+export function writeAnonymousList(json) {
+  try {
+    if (json === null) {
+      localStorage.removeItem(anonymousListKey);
+    } else {
+      localStorage.setItem(anonymousListKey, json);
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}

@@ -48,6 +48,15 @@ internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
         throw new NotSupportedException("This fake does not export.");
 
     /// <inheritdoc cref="ExportListAsync"/>
+    public virtual Task<ExportedList> ExportItemsAsync(
+        IReadOnlyCollection<VariableDatasamlingKey> items,
+        Uri? explorerPageUrl = null,
+        ExportFormat format = ExportFormat.Xlsx,
+        bool includeKodeverk = false,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This fake does not export.");
+
+    /// <inheritdoc cref="ExportListAsync"/>
     public virtual Task<ExportedList> ExportVariablesAsync(
         string? search,
         VariableFilter? filter,

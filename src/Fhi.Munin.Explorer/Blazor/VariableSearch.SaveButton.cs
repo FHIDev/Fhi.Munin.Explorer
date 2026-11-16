@@ -26,7 +26,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </remarks>
 public partial class VariableSearch
 {
-    private bool ShowSaveButton => ListState?.IsAuthenticated == true;
+    private bool ShowSaveButton => ListState is { IsAuthenticated: true } or { UsesBrowserList: true };
 
     /// <summary>How a row's last save attempt ended, when it ended badly.</summary>
     /// <remarks>
@@ -46,7 +46,13 @@ public partial class VariableSearch
         Throttled,
 
         /// <summary>The API refused the save as unauthenticated (HTTP 401/403), despite the host's own claim that the reader is signed in.</summary>
-        SignInRequired
+        SignInRequired,
+
+        /// <summary>The browser list is full, so the row was not added.</summary>
+        BrowserListFull,
+
+        /// <summary>The row is in the browser list, but the browser would not store it past this visit.</summary>
+        BrowserListNotKept
     }
 
     /// <summary>
@@ -185,6 +191,8 @@ public partial class VariableSearch
             SaveFailure.Throttled => T.RateLimitError,
             SaveFailure.SignInRequired => T.SignInRequiredError,
             SaveFailure.Failed => T.SaveError,
+            SaveFailure.BrowserListFull => T.BrowserListFull(VariableListState.MaxBrowserListRows),
+            SaveFailure.BrowserListNotKept => T.BrowserListNotKept,
             _ => null
         });
         builder.CloseElement();
@@ -197,8 +205,27 @@ public partial class VariableSearch
 
     // A row from an API older than rows per datasamling names its variable's primary datasamling, which that
     // API's lists do not store: it saves and reads by variable, as before (Fhi.Metadata-d07al.1).
+    // The browser list always saves the row, so it is asked by row.
     private bool IsRowSaved(VariableSummary v) =>
-        v.RowKey is null ? ListState!.IsSaved(v.Id) : ListState!.IsSaved(VariableDatasamlingKey.Of(v));
+        v.RowKey is null && !ListState!.UsesBrowserList ? ListState!.IsSaved(v.Id) : ListState!.IsSaved(VariableDatasamlingKey.Of(v));
+
+    // What the browser list keeps of a row: the catalogue's fields as the row shows them, nothing of the reader's.
+    private static VariableListItem BrowserListRow(VariableSummary v) => new()
+    {
+        VariableId = v.Id,
+        VariableCode = v.Code,
+        VariableName = v.PreferredTerm,
+        KildeId = v.KildeId,
+        KildeName = v.KildeName,
+        KildeShortName = v.KildeShortName,
+        DatasamlingId = v.DatasamlingId,
+        DatasamlingName = v.DatasamlingName,
+        VariabelgruppeName = v.VariabelgruppeName,
+        DataType = v.DataType,
+        DataFrom = v.DataFrom,
+        DataTo = v.DataTo,
+        VersionStatus = v.VersionStatus,
+    };
 
     private async Task ToggleSavedAsync(VariableSummary v)
     {
@@ -212,7 +239,9 @@ public partial class VariableSearch
         // failed save than a line of text beside the button.
         var row = VariableDatasamlingKey.Of(v);
 
-        if (!_savingRows.TryAdd(row, IsRowSaved(v)))
+        var drawnAsSaved = IsRowSaved(v);
+
+        if (!_savingRows.TryAdd(row, drawnAsSaved))
         {
             return;
         }
@@ -220,9 +249,26 @@ public partial class VariableSearch
         try
         {
             _saveError.Remove(row);
-            _ = v.RowKey is null
-                ? await ListState.ToggleSavedAsync(v.Id, T.FirstListName, KildeOf(v))
-                : await ListState.ToggleSavedAsync(row, T.FirstListName, KildeOf(v));
+
+            if (ListState.UsesBrowserList)
+            {
+                var outcome = await ListState.ToggleInBrowserListAsync(BrowserListRow(v), drawnAsSaved, T.FirstListName);
+
+                if (outcome == VariableListState.BrowserListOutcome.Full)
+                {
+                    _saveError[row] = SaveFailure.BrowserListFull;
+                }
+                else if (!ListState.BrowserListKept)
+                {
+                    _saveError[row] = SaveFailure.BrowserListNotKept;
+                }
+            }
+            else
+            {
+                _ = v.RowKey is null
+                    ? await ListState.ToggleSavedAsync(v.Id, T.FirstListName, KildeOf(v))
+                    : await ListState.ToggleSavedAsync(row, T.FirstListName, KildeOf(v));
+            }
         }
         catch (MuninExplorerRateLimitedException ex)
         {

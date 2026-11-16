@@ -1,3 +1,4 @@
+using Fhi.Munin.Explorer.State;
 using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Blazor;
@@ -332,6 +333,51 @@ internal sealed class ExplorerInterop : IAsyncDisposable
         {
             // Not kept; the reader's choice still holds for this page.
         }
+    }
+
+    /// <summary>The signed-out reader's stored list, or null where the module or the browser is out of reach.</summary>
+    /// <remarks>A <see cref="JSException"/> travels on: the caller says the list is not kept and logs it.</remarks>
+    internal async Task<StoredBrowserList?> ReadAnonymousListAsync()
+    {
+        if (_module is not { } module)
+        {
+            return null;
+        }
+
+        return await Tolerated(() => module.InvokeAsync<StoredBrowserList>("readAnonymousList")).ConfigureAwait(false);
+    }
+
+    /// <summary>Stores the signed-out reader's list, or forgets it for null. False where the browser did not keep it.</summary>
+    /// <remarks>On <see cref="ReadAnonymousListAsync()"/>'s terms, a <see cref="JSException"/> included.</remarks>
+    internal async Task<bool> WriteAnonymousListAsync(string? json)
+    {
+        if (_module is not { } module)
+        {
+            return false;
+        }
+
+        return await Tolerated<object>(async () =>
+            await module.InvokeAsync<bool>("writeAnonymousList", json).ConfigureAwait(false) ? true : null!)
+            .ConfigureAwait(false) is not null;
+    }
+
+    /// <summary>The same read, for a caller that holds no module of its own; null where the module is not there.</summary>
+    internal static async Task<StoredBrowserList?> ReadAnonymousListAsync(IJSRuntime js)
+    {
+        await using var interop = new ExplorerInterop(js);
+
+        return await interop.TryLoadAsync().ConfigureAwait(false)
+            ? await interop.ReadAnonymousListAsync().ConfigureAwait(false)
+            : null;
+    }
+
+    /// <summary>The same write, for a caller that holds no module of its own; false where the module is not there.</summary>
+    internal static async Task<bool> WriteAnonymousListAsync(IJSRuntime js, string? json)
+    {
+        await using var interop = new ExplorerInterop(js);
+
+        return await interop.TryLoadAsync().ConfigureAwait(false)
+            && await interop.WriteAnonymousListAsync(json).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

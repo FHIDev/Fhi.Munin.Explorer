@@ -40,7 +40,7 @@ public sealed partial class VariableListView
     private SharedList? _sharedList;
 
     // The column only when some item has codes: a share from before codes, or without any, looks as it did.
-    private bool SharedHasCodes => _sharedList?.Items.Any(item => item.DesiredDataCodes.Count > 0) == true;
+    private bool SharedHasCodes => ShownSnapshot?.Items.Any(item => item.DesiredDataCodes.Count > 0) == true;
     private int _sharedPageNumber = 1;
     private SharedListFailure _sharedListFailure;
     private string _failedCode = "";
@@ -102,7 +102,7 @@ public sealed partial class VariableListView
     private bool ShownListIsEmpty => ShownList is { VariableCount: 0 };
 
     private string SharedListName =>
-        _sharedList?.Name is { Length: > 0 } name ? name : T.SharedListEyebrow;
+        ShownSnapshot?.Name is { Length: > 0 } name ? name : T.SharedListEyebrow;
 
     private string? SharedListMessage => _sharedListFailure switch
     {
@@ -129,16 +129,16 @@ public sealed partial class VariableListView
     private string? SaveNameMessage => NameProblemMessage(_saveNameProblem);
 
     private IReadOnlyList<VariableListItem> SharedPageItems =>
-        _sharedList is null
+        ShownSnapshot is not { } shown
             ? []
-            : [.. _sharedList.Items.Skip((_sharedPageNumber - 1) * PageSize).Take(PageSize)];
+            : [.. shown.Items.Skip((_sharedPageNumber - 1) * PageSize).Take(PageSize)];
 
     private int SharedTotalPages =>
-        _sharedList is null ? 1 : Math.Max(1, (_sharedList.Items.Count + PageSize - 1) / Math.Max(1, PageSize));
+        ShownSnapshot is not { } shown ? 1 : Math.Max(1, (shown.Items.Count + PageSize - 1) / Math.Max(1, PageSize));
 
-    private string ShareMailTo(ShareMade made)
+    private string ShareMailTo(ShareMade made, string listName)
     {
-        var subject = T.ShareMailSubject(ShownList?.Name ?? "");
+        var subject = T.ShareMailSubject(listName);
         var body = T.ShareMailBody(made.Code, made.Link);
 
         return $"mailto:?subject={Uri.EscapeDataString(subject)}&body={Uri.EscapeDataString(body)}";

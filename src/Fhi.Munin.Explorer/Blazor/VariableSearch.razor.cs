@@ -1400,9 +1400,11 @@ public sealed partial class VariableSearch : ComponentBase
 
     /// <summary>
     /// Whether there is a second tab worth drawing. A signed-out reader has no lists, so the
-    /// tablist would name a panel with nothing in it — unless a shared list is being opened.
+    /// tablist would name a panel with nothing in it — unless a shared list is being opened, or
+    /// the host offers the list in the browser.
     /// </summary>
-    private bool ShowTabs => VariableList is not null && (IsAuthenticated || ShareCode is not null);
+    private bool ShowTabs =>
+        VariableList is not null && (IsAuthenticated || ShareCode is not null || ListState?.UsesBrowserList == true);
 
     private string ResultTabId(ExplorerTab tab) => $"munin-explorer-tab-{_instance}-{tab}";
 
