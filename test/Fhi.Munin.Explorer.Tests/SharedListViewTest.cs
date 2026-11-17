@@ -298,6 +298,27 @@ public class SharedListViewTest : ExplorerTestContext
         Assert.Contains("Mine hjertevariabler", opened.Markup);
     }
 
+    // Fhi.Metadata-l9l2n.190: the shared table draws the same name cell, so a historical row says so there too.
+    [Fact]
+    public void Share_WhenASharedListHoldsAHistoricalVariable_ThenItsRowSaysHistorisk()
+    {
+        var store = new ShareStore();
+        var items = new[] { Three[0] with { VersionStatus = "Historical" }, Three[1], Three[2] };
+        var cut = RenderView(new ShareClient(store) { OwnItems = items });
+
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+        Button(cut, "Del liste").Click();
+        var code = "";
+        cut.WaitForAssertion(() => code = Labelled(cut, "Delekode").GetAttribute("value") ?? "");
+
+        using var other = new ExplorerTestContext();
+        var opened = RenderExplorer(other, new ShareClient(store), $"/variabler?delekode={code.ToLowerInvariant()}", signedIn: false);
+
+        opened.WaitForAssertion(() => Assert.Equal(3, RowNames(opened).Count));
+        var marks = opened.FindAll("tbody th[scope=row] .munin-explorer-list-status");
+        Assert.Equal("Historisk", Assert.Single(marks).TextContent.Trim());
+    }
+
     // Fhi.Metadata-9huq2.10: the shown list is a saved one, so it is shared by id and never through the anonymous route.
     [Fact]
     public void Share_WhenASavedListIsShared_ThenItIsSharedByIdAndTheCaptionSaysTheCodeDiesWithTheList()

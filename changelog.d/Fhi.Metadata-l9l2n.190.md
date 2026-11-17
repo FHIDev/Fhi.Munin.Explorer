@@ -1,0 +1,2 @@
+category: Added
+- **A historical variable in a saved or shared variable list says so on its row.** `VariableListView` draws «Historisk» / «Historical» in the row header, after the name and its code if it has one, when the row's version status is historical: as Munin reports it for the reader's own list, and as it stood when the list was shared for a shared one. It is the same word the search results' status column uses, and a screen reader reads it with the row header. An active row draws nothing new.
