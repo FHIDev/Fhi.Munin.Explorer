@@ -300,11 +300,6 @@ When the diff adds or widens one, check it against `VariableFilter`'s establishe
   is class 1 again.
 - A theory covering the boundaries and the rubbish (`0`, negative, one past the maximum, a huge
   number, a non-number), in both directions.
-- **A code from a link, looked up beside an existing lookup.** When the diff adds a lookup by a code, id or key beside one that
-  exists (kilde code, then datasamling code), read the existing lookup's normalisation (case fold, a prefix such as
-  `K_`, trim) and require the new one to apply the same, or the PR to say why not. Ask for one test per spelling the
-  existing lookup accepts. #746 fixed #744: `?datasamling=KREG.CRC` opened nothing, because the kilde lookup (#702)
-  takes a code with or without `K_` and the new datasamling lookup required it. **Important**.
 
 ## 10. Accessibility
 
@@ -381,6 +376,14 @@ code, and ask for a test where none reaches it:
   data has it (a code from the list) is not proof that the link opens: a host on the contract's default body, or an
   older API, would turn a working link into not found. Write the new form only after the API has confirmed it, and
   test the host that cannot confirm.
+
+- **A lookup beside an existing one takes the same spellings.** When the diff adds a lookup by a code, id or key
+  beside one that exists (kilde code, then datasamling code), find the existing lookup's normalisation (case fold, a
+  prefix such as `K_`, trim) and require the new one to apply the same, or the PR to say why not. Where the existing
+  lookup is an API call, its normalisation is the API's: read the client's doc (`KildeCodes`) or Munin's endpoint, not
+  only the call site here. Ask for one test per spelling the existing lookup accepts. #746 fixed #744:
+  `?kilde=kreg&datasamling=KREG.CRC` opened nothing, because the kilde lookup (#702) takes a code with or without `K_`
+  and the new datasamling lookup required it.
 
 Each miss is **Important**.
 
