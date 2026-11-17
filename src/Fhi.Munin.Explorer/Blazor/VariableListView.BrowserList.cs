@@ -15,6 +15,9 @@ public sealed partial class VariableListView
     private ShareMade? _browserShare;
     private bool _confirmingClear;
     private bool _focusClearToggle;
+
+    // Into the share code once the panel shows one, as a signed-in share does (Fhi.Metadata-emsc0.3.18).
+    private bool _focusBrowserShareCode;
     private ElementReference _clearToggle;
     private bool _carryingOver;
     private bool _removing;
@@ -142,6 +145,23 @@ public sealed partial class VariableListView
             }
         }
 
+        if (_focusBrowserShareCode)
+        {
+            _focusBrowserShareCode = false;
+
+            if (ShowsBrowserCopy && _sharingBrowserList && _browserShare is not null)
+            {
+                try
+                {
+                    await _shareCodeField.FocusAsync();
+                }
+                catch (Exception ex)
+                {
+                    Log?.LogWarning(ex, "could not move focus to the browser list's share code");
+                }
+            }
+        }
+
         if (_focusClearToggle && ShowsBrowserCopy)
         {
             _focusClearToggle = false;
@@ -218,11 +238,13 @@ public sealed partial class VariableListView
 
         if (!_sharingBrowserList || _browserShare is not null)
         {
+            _focusBrowserShareCode = _sharingBrowserList;
             return;
         }
 
         _shareInFlight = true;
         var version = State.BrowserVersion;
+        var moves = _readerMoves;
 
         try
         {
@@ -262,6 +284,9 @@ public sealed partial class VariableListView
             }
 
             _browserShare = new ShareMade(Guid.Empty, code, SharedListHref?.Invoke(code));
+
+            // A reader who opened or closed something while the share was out keeps focus where they put it.
+            _focusBrowserShareCode = _readerMoves == moves;
         }
         catch (SharedSnapshotTooLargeException ex)
         {
