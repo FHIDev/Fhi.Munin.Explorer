@@ -351,7 +351,7 @@ else if (State?.IsAuthenticated == true)
                                                       lang="@CatalogueLang(item.VariableName)">@RowName(item)</span>
                                             </button>
                                         }
-                                        @CodeUnderName(item)
+                                        @UnderName(item)
                                     </th>
 
                                     @* The six columns the result list draws too and the two coverage
@@ -570,7 +570,7 @@ else if (State?.IsAuthenticated == true)
                                             <span class="munin-explorer-dataitem-main__column__text"
                                                   id="@RowNameId(item)"
                                                   lang="@CatalogueLang(item.VariableName)">@RowName(item)</span>
-                                            @CodeUnderName(item)
+                                            @UnderName(item)
                                         </th>
                                         @if (SharedHasCodes)
                                         {
@@ -832,12 +832,17 @@ else if (State?.IsAuthenticated == true)
 
 @code {
     // The code under the name rather than a column of its own: it was the widest, and copies whole where it wraps.
-    private RenderFragment CodeUnderName(VariableListItem item) => __builder =>
+    private RenderFragment UnderName(VariableListItem item) => __builder =>
     {
         if (!string.IsNullOrWhiteSpace(item.VariableCode))
         {
             @* Not lang="no": a code is an identifier, not Norwegian to pronounce (Fhi.Metadata-e1qeo). *@
             <span class="munin-explorer-list-code">@item.VariableCode</span>
+        }
+        @* In the row header, so it is read with the name; text, not a colour, and the search's word (Fhi.Metadata-l9l2n.190). *@
+        @if (VersionStatusRule.IsHistorical(item.VersionStatus))
+        {
+            <span class="munin-explorer-list-status">@T.VersionStatusLabel(item.VersionStatus!)</span>
         }
     };
 

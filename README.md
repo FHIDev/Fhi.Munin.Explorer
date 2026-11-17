@@ -688,6 +688,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     a host owes it `display: block`; Stiler also sets it small and grey, and lets it break in the
     cards and in a search row's name cell, where a long code would otherwise be cut off or run
     over the next column.
+    `munin-explorer-list-status` is the «Historisk» mark under a list row's code when the variable
+    is historical (`Fhi.Metadata-l9l2n.190`). Undrawn, it runs on after the code at the name's size;
+    Stiler draws it as the version history's small grey badge, on a line of its own.
     `munin-explorer-list-head` is the saved-list view's top row: the name block and the action row,
     side by side (`Fhi.Metadata-fc7ie`). Undrawn, the actions stand under the name, which reads
     well enough; a host owes it a wrapping flex row and one rule line under the pair.
@@ -1080,6 +1083,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-kodeverk__item` | handle |
   | `munin-explorer-kodeverk__name` | handle |
   | `munin-explorer-list-code` | meaning |
+  | `munin-explorer-list-status` | meaning |
   | `munin-explorer-list-create` | meaning |
   | `munin-explorer-list-create__field` | meaning |
   | `munin-explorer-list-create__row` | meaning |
