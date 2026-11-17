@@ -51,7 +51,7 @@ public sealed record ListImportNotFound
     /// <summary>The reader's desired data on the row, or null.</summary>
     [JsonPropertyName("desiredDataFreeText")] public string? DesiredDataFreeText { get; init; }
 
-    /// <summary>The row's fields left off for Munin's limits: <see cref="ListImportFields"/>. Empty when none were.</summary>
+    /// <summary>The row's fields the import left off: <see cref="ListImportFields"/>. Empty when none were.</summary>
     [JsonPropertyName("skipped")] public IReadOnlyList<string> Skipped { get; init; } = [];
 }
 

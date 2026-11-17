@@ -15,7 +15,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <remarks>The choices are a draft until <see cref="Save"/> answers: a refusal leaves them on screen to fix.</remarks>
 public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 {
-    /// <summary>The most choices the API stores for one item.</summary>
+    /// <summary>The most choices one save accepts for an item; an import may store more.</summary>
     internal const int MaxChoices = 200;
     internal const int FoldAfter = 10;
 
@@ -50,6 +50,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     private int _tab;
     private string? _status;
     private string? _alert;
+    private bool _alertOverCap;
     private ElementReference _counter;
     private bool _focusTab;
     private bool _focusCounter;
@@ -125,6 +126,15 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     private bool OverFromImport => _choices.Count > MaxChoices;
 
     private string FullMessage => OverFromImport ? T.PickerOverFromImport(MaxChoices, _choices.Count) : T.PickerFull(MaxChoices);
+
+    // The over-cap refusal is read from the live count, so no removal path can leave it stating an old one or outlive the excess.
+    private string? Alert => _alertOverCap ? (OverFromImport ? FullMessage : null) : _alert;
+
+    private void AnnounceFull()
+    {
+        Announce(FullMessage, error: true);
+        _alertOverCap = OverFromImport;
+    }
 
     // The summary keys its lines on the value, so two equal choices would end the circuit; saved data may repeat one.
     private bool Insert(int at, Choice choice)
@@ -370,6 +380,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
         _tab = index;
         _alert = null;
+        _alertOverCap = false;
         if (Current is { } link)
         {
             await OpenAsync(link);
@@ -517,7 +528,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
             if (!Choose(link, state, hit))
             {
-                Announce(FullMessage, error: true);
+                AnnounceFull();
                 break;
             }
         }
@@ -751,7 +762,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         {
             if (!Choose(link, state, hit))
             {
-                Announce(FullMessage, error: true);
+                AnnounceFull();
                 return;
             }
         }
@@ -785,6 +796,13 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     // Every level is read first; a failed read changes nothing.
     private async Task<bool> UntickUnderAsync(KodeverkLink link, ListState state, KodeverkCodeHit hit)
     {
+        // Refused before any read, so a failed read cannot announce first; the check after the reads is for a count that moved.
+        if (OverFromImport)
+        {
+            AnnounceFull();
+            return false;
+        }
+
         var ancestors = AncestorsOf(state, hit);
         if (WholeOver(link, ancestors) is not { } whole)
         {
@@ -858,7 +876,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         added = [.. added.DistinctBy(c => c.Value).Where(c => !kept.Contains(c.Value))];
         if (OverFromImport || _choices.Count - gone.Count + added.Count > MaxChoices)
         {
-            Announce(FullMessage, error: true);
+            AnnounceFull();
             return false;
         }
 
@@ -1101,7 +1119,6 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         _noCount.Remove(choice.Value);
         _notInTree.Remove(choice.Value);
         _focusCounter = true;
-        Announce(null, error: false);
         await RecountAsync();
     }
 
@@ -1167,6 +1184,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     {
         _status = error ? null : text;
         _alert = error ? text : null;
+        _alertOverCap = false;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -1210,7 +1228,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
         if (OverFromImport)
         {
-            Announce(T.PickerOverFromImport(MaxChoices, _choices.Count), error: true);
+            AnnounceFull();
             return;
         }
 

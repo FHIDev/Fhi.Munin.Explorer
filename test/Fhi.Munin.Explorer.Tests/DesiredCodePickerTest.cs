@@ -1586,6 +1586,24 @@ public class DesiredCodePickerTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Untick_WhenOverTheCapAndTheWholeParentsLevelIsUnread_ThenNothingIsReadAndTheImportIsSaid()
+    {
+        // Every level under the top fails, so a read before the refusal would say «Kunne ikke hente kodelisten» in its place.
+        var client = new TreeClient();
+        client.Failing.UnionWith(["IV", "E10-E14"]);
+        var cut = Picker(new Saves(), [Icd10], [Saved(DesiredCodeKinds.Node, "E10-E14", null, 10, "IV"), .. ManyCodes(201)], client: client);
+        SearchFor(cut, "e1");
+        cut.WaitForAssertion(() => Assert.Equal("true", RowOf(HitsTree(cut), "E11")!.GetAttribute("aria-checked")));
+        var asked = client.Asked.Count;
+
+        TickHit(cut, "E11");
+
+        Assert.Equal(asked, client.Asked.Count);
+        Assert.Contains(OverFromImport(202), cut.Find("[role=alert]").TextContent);
+        Assert.Contains("202 av 200 valg", Text(cut));
+    }
+
+    [Fact]
     public void Render_WhenOverTheCap_ThenAChoiceTheTreeShowsHalfTickedHasItsOwnRemove()
     {
         var saves = new Saves();

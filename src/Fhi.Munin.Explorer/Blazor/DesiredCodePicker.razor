@@ -97,7 +97,7 @@
 
     @* Present from the first render, so a late answer (a search, a refusal) is a change a screen reader reads. *@
     <p class="caption" role="status" aria-live="polite" aria-atomic="true">@_status</p>
-    <p class="caption" role="alert" aria-atomic="true">@_alert</p>
+    <p class="caption" role="alert" aria-atomic="true">@Alert</p>
 
     @if (_choices.Count > 0)
     {
@@ -202,7 +202,8 @@
     }
 
     // A line of the read-only summary: the code opens the tree to it. Only what no box in the tree stands for can be
-    // removed here: a range the tree has no block for, and a choice the tree cannot show.
+    // removed here (a range the tree has no block for, a choice the tree cannot show), and every line while an imported
+    // item is over the cap.
     private RenderFragment SummaryLine(Choice choice) => @<span>
         @if (IsOlderRange(choice))
         {
