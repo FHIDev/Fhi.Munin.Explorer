@@ -10,29 +10,32 @@
 
 # Bump the suffix when PACKAGES changes: a prefix is never rebuilt in place, since another worktree
 # on the same box may be running a browser out of it.
-CHROMIUM_DEPS_PREFIX="${CHROMIUM_DEPS_PREFIX:-$HOME/.cache/munin-explorer/chromium-deps-v1}"
+CHROMIUM_DEPS_PREFIX="${CHROMIUM_DEPS_PREFIX:-$HOME/.cache/munin-explorer/chromium-deps-v2}"
 CHROMIUM_DEPS_MIRROR="${CHROMIUM_DEPS_MIRROR:-http://archive.ubuntu.com/ubuntu}"
 
 # Ubuntu 24.04 names. The t64 suffixes are noble's time_t transition: libglib2.0-0 does not exist
 # there. Anything dpkg already reports installed is skipped, so the prefix never shadows the host.
-CHROMIUM_DEPS_PACKAGES="fonts-dejavu-core fonts-liberation libasound2t64 libatk-bridge2.0-0t64
-libatk1.0-0t64 libatomic1 libatspi2.0-0t64 libavahi-client3 libavahi-common3 libblkid1 libbrotli1
-libbsd0 libcairo-gobject2 libcairo2 libcap2 libcups2t64 libdatrie1 libdbus-1-3 libdrm2 libepoxy0
+CHROMIUM_DEPS_PACKAGES="fonts-dejavu-core fonts-liberation libasound2t64 libatk-bridge2.0-0t64 libatk1.0-0t64 libatomic1
+libatspi2.0-0t64 libavahi-client3 libavahi-common3 libblkid1 libbrotli1 libbsd0 libbz2-1.0
+libcairo-gobject2 libcairo2 libcap2 libcom-err2 libcups2t64 libdatrie1 libdbus-1-3 libdrm2 libepoxy0
 libexpat1 libffi8 libfontconfig1 libfreetype6 libfribidi0 libgbm1 libgcrypt20 libgdk-pixbuf-2.0-0
 libgl1 libglib2.0-0t64 libglvnd0 libglx0 libgmp10 libgnutls30t64 libgpg-error0 libgraphite2-3
-libgtk-3-0t64 libharfbuzz0b libhogweed6t64 libice6 libidn2-0 liblzma5 libmd0 libmount1
-libnettle8t64 libnspr4 libnss3 libp11-kit0 libpango-1.0-0 libpangocairo-1.0-0 libpangoft2-1.0-0
-libpcre2-8-0 libpixman-1-0 libpng16-16t64 libselinux1 libsm6 libsystemd0 libtasn1-6 libthai0
-libudev1 libunistring5 libuuid1 libwayland-client0 libwayland-server0 libx11-6 libxau6
-libxcb-dri2-0 libxcb-dri3-0 libxcb-glx0 libxcb-present0 libxcb-render0 libxcb-shm0 libxcb-sync1
-libxcb-xfixes0 libxcb1 libxcomposite1 libxcursor1 libxdamage1 libxdmcp6 libxext6 libxfixes3 libxi6
-libxkbcommon0 libxrandr2 libxrender1 libxshmfence1 libxtst6 libzstd1 zlib1g"
+libgssapi-krb5-2 libgtk-3-0t64 libharfbuzz0b libhogweed6t64 libice6 libidn2-0 libk5crypto3
+libkeyutils1 libkrb5-3 libkrb5support0 liblz4-1 liblzma5 libmd0 libmount1 libnettle8t64 libnspr4
+libnss3 libp11-kit0 libpango-1.0-0 libpangocairo-1.0-0 libpangoft2-1.0-0 libpcre2-8-0 libpixman-1-0
+libpng16-16t64 libselinux1 libsm6 libsystemd0 libtasn1-6 libthai0 libudev1 libunistring5 libuuid1
+libwayland-client0 libwayland-server0 libx11-6 libxau6 libxcb-dri2-0 libxcb-dri3-0 libxcb-glx0
+libxcb-present0 libxcb-render0 libxcb-shm0 libxcb-sync1 libxcb-xfixes0 libxcb1 libxcomposite1
+libxcursor1 libxdamage1 libxdmcp6 libxext6 libxfixes3 libxi6 libxkbcommon0 libxrandr2 libxrender1
+libxshmfence1 libxtst6 libzstd1 zlib1g"
 
 # Unresolved libraries across every bundled chromium build in the cache, headless shell included.
 chromium_deps_missing() {
   local cache="${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}" bin n=0 c
+  # Both layouts: Playwright 1.49's chrome-linux/ and the chrome-*-linux64/ of later builds.
   for bin in "$cache"/chromium_headless_shell-*/chrome-linux/headless_shell \
-             "$cache"/chromium-*/chrome-linux/chrome; do
+             "$cache"/chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell \
+             "$cache"/chromium-*/chrome-linux/chrome "$cache"/chromium-*/chrome-linux64/chrome; do
     [ -x "$bin" ] || continue
     c=$(ldd "$bin" 2>/dev/null | grep -c 'not found' || true)
     n=$((n + c))
