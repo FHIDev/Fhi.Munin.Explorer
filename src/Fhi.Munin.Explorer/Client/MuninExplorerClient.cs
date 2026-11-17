@@ -307,7 +307,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         return count?.Count;
     }
 
-    // The API's own ceiling on one union count, the picker's ceiling on choices.
+    // The API's own ceiling on one union count; the picker skips the count while an imported item is over it.
     private const int MaxUnionChoices = 200;
 
     private static string CodesRoute(Guid variableId, string kodeverkType, string kodeverkReference) =>

@@ -119,7 +119,7 @@
     <p class="caption" tabindex="-1" @ref="_counter">@T.PickerChoiceCount(_choices.Count, MaxChoices)</p>
     @if (Full)
     {
-        <p class="caption">@T.PickerFull(MaxChoices)</p>
+        <p class="caption">@FullMessage</p>
     }
 
 </div>
@@ -202,7 +202,8 @@
     }
 
     // A line of the read-only summary: the code opens the tree to it. Only what no box in the tree stands for can be
-    // removed here: a range the tree has no block for, and a choice the tree cannot show.
+    // removed here (a range the tree has no block for, a choice the tree cannot show), and every line while an imported
+    // item is over the cap.
     private RenderFragment SummaryLine(Choice choice) => @<span>
         @if (IsOlderRange(choice))
         {

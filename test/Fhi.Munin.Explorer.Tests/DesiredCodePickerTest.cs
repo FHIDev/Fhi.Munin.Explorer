@@ -1443,4 +1443,237 @@ public class DesiredCodePickerTest : ExplorerTestContext
         var markup = cut.Markup;
         Assert.InRange(markup.IndexOf("munin-explorer-codetree-scroll", StringComparison.Ordinal), 0, markup.IndexOf(">Lagre</button>", StringComparison.Ordinal));
     }
+
+    // An imported item can hold more than the cap (Fhi.Metadata-9huq2.33); a cut on load would drop the rest on the next save.
+    private static IReadOnlyList<DesiredCodeView> ManyCodes(int count, int? each = 1) =>
+        [.. Enumerable.Range(1, count).Select(i => Saved(DesiredCodeKinds.Code, $"C{i:000}", null, each))];
+
+    [Fact]
+    public void Save_WhenAnImportedItemHoldsMoreThanTheCap_ThenEveryChoiceIsKeptAndSavingIsRefusedWithWhy()
+    {
+        var saves = new Saves();
+        var cut = Picker(saves, [Icd10], ManyCodes(203));
+
+        Assert.Contains("203 av 200 valg", cut.Markup);
+        var why = "Velg høyst 200 kodevalg; dette elementet har 203 fra importen. Fjern noen før du lagrer.";
+        Assert.Contains(cut.FindAll("p.caption"), p => p.TextContent.Trim() == why);
+        Assert.DoesNotContain("Du har valgt 200", cut.Markup);
+
+        Press(cut, "Lagre");
+
+        Assert.Empty(saves.Calls);
+        Assert.Contains(why, cut.Find("[role=alert]").TextContent);
+    }
+
+    [Fact]
+    public void Save_WhenAnImportedItemIsBroughtUnderTheCap_ThenAllThatIsLeftIsSaved()
+    {
+        var saves = new Saves();
+        // No count and no loaded tree: each line carries its own «Fjern», as an imported code the tree has not shown does.
+        var cut = Picker(saves, [Icd10], ManyCodes(201, each: null));
+
+        Press(cut, "Fjern C001");
+        Press(cut, "Lagre");
+
+        var sent = Assert.Single(saves.Calls);
+        Assert.Equal(200, sent.Count);
+        Assert.Equal("C002", sent[0].Code);
+        Assert.Equal("C201", sent[^1].Code);
+    }
+
+    [Fact]
+    public void Save_WhenAnItemHoldsExactlyTheCap_ThenItSavesAndSaysNothingOfTheImport()
+    {
+        var saves = new Saves();
+        var cut = Picker(saves, [Icd10], ManyCodes(200));
+
+        Assert.DoesNotContain("fra importen", cut.Markup);
+        Assert.Contains("Du har valgt 200", cut.Markup);
+        Press(cut, "Lagre");
+
+        Assert.Equal(200, Assert.Single(saves.Calls).Count);
+    }
+
+    private static string Live(IRenderedComponent<DesiredCodePicker> cut) =>
+        string.Join(" ", cut.FindAll("[role=status], [role=alert]").Select(e => e.TextContent));
+
+    private static string OverFromImport(int count) =>
+        $"Velg høyst 200 kodevalg; dette elementet har {count} fra importen. Fjern noen før du lagrer.";
+
+    // E10-E14 and the six codes under it, so a tick of the block would fold them and end at or under the cap.
+    private static DesiredCodeView[] SixUnderE10E14() =>
+    [
+        Saved(DesiredCodeKinds.Code, "E10", null, 1, "IV", "E10-E14"), Saved(DesiredCodeKinds.Code, "E11", null, 1, "IV", "E10-E14"),
+        Saved(DesiredCodeKinds.Code, "E14", null, 1, "IV", "E10-E14"), Saved(DesiredCodeKinds.Code, "E100", null, 1, "IV", "E10-E14", "E10"),
+        Saved(DesiredCodeKinds.Code, "E101", null, 1, "IV", "E10-E14", "E10"), Saved(DesiredCodeKinds.Code, "E110", null, 1, "IV", "E10-E14", "E11"),
+    ];
+
+    [Fact]
+    public void Remove_WhenSavingWasRefusedOverTheCapAndOneIsRemoved_ThenTheRefusalIsNoLongerSaid()
+    {
+        var saves = new Saves();
+        var cut = Picker(saves, [Icd10], ManyCodes(201, each: null));
+        Assert.DoesNotContain("fra importen", Live(cut));
+
+        Press(cut, "Lagre");
+        Assert.Contains(OverFromImport(201), cut.Find("[role=alert]").TextContent);
+        Press(cut, "Fjern C001");
+
+        Assert.DoesNotContain("fra importen", Live(cut));
+        Assert.Contains("200 av 200 valg", Text(cut));
+        Press(cut, "Lagre");
+        Assert.Equal(200, Assert.Single(saves.Calls).Count);
+    }
+
+    // A later alert takes the over-cap mark off; left on, the next removal would clear an alert it did not answer.
+    [Fact]
+    public void Announce_WhenAnotherAlertFollowsTheOverCapRefusal_ThenItShowsAloneAndARemovalLeavesIt()
+    {
+        var client = new TreeClient();
+        var cut = Picker(new Saves(), [Icd10], ManyCodes(201), client: client);
+        Open(cut, "IV");
+        Tick(cut, "E15-E16");
+        Assert.Contains(OverFromImport(201), cut.Find("[role=alert]").TextContent);
+
+        client.SearchFails = true;
+        SearchFor(cut, "e1");
+        cut.WaitForAssertion(() => Assert.Equal("Kunne ikke hente kodelisten nå. Prøv igjen om litt.", cut.Find("[role=alert]").TextContent));
+
+        Press(cut, "Fjern C001");
+
+        Assert.Equal("Kunne ikke hente kodelisten nå. Prøv igjen om litt.", cut.Find("[role=alert]").TextContent);
+    }
+
+    // The refusal belongs to the tab it was said on; the next tab starts with nothing in the alert.
+    [Fact]
+    public void SelectTab_WhenTheOverCapRefusalStands_ThenTheNextTabsAlertIsEmpty()
+    {
+        var cut = Picker(new Saves(), [Icd10, Sivilstand], ManyCodes(201));
+        Open(cut, "IV");
+        Tick(cut, "E15-E16");
+        Assert.Contains(OverFromImport(201), cut.Find("[role=alert]").TextContent);
+
+        cut.FindAll("[role=tab]")[1].Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("true", cut.FindAll("[role=tab]")[1].GetAttribute("aria-selected")));
+        Assert.Empty(cut.Find("[role=alert]").TextContent);
+    }
+
+    [Fact]
+    public void Tick_WhenOverTheCapAndAParentWouldFoldEnoughToFit_ThenItIsRefused()
+    {
+        var cut = Picker(new Saves(), [Icd10], [.. SixUnderE10E14(), .. ManyCodes(197)]);
+        Open(cut, "IV");
+
+        Tick(cut, "E10-E14");
+
+        Assert.Contains("203 av 200 valg", Text(cut));
+        Assert.NotEqual("true", Checked(cut, "E10-E14"));
+        Assert.Contains(OverFromImport(203), cut.Find("[role=alert]").TextContent);
+    }
+
+    [Fact]
+    public void Tick_WhenOverTheCapAndTheCodeIsUnchosen_ThenItIsRefused()
+    {
+        var cut = Picker(new Saves(), [Icd10], ManyCodes(201));
+        Open(cut, "IV");
+
+        Tick(cut, "E15-E16");
+
+        Assert.Contains("201 av 200 valg", Text(cut));
+        Assert.Equal("false", Checked(cut, "E15-E16"));
+        Assert.Contains(OverFromImport(201), cut.Find("[role=alert]").TextContent);
+    }
+
+    [Fact]
+    public void ChooseHits_WhenOverTheCapAndAHitWouldFoldEnoughToFit_ThenNothingIsChosen()
+    {
+        var cut = Picker(new Saves(), [Icd10], [.. SixUnderE10E14(), .. ManyCodes(197)]);
+        SearchFor(cut, "diabetes");
+        cut.WaitForAssertion(() => Assert.NotNull(RowOf(HitsTree(cut), "E10-E14")));
+
+        Press(cut, "Velg treffene");
+
+        Assert.Contains("203 av 200 valg", Text(cut));
+        Assert.Contains(OverFromImport(203), cut.Find("[role=alert]").TextContent);
+    }
+
+    [Fact]
+    public void Untick_WhenOverTheCapAndSplittingAParentWouldEndUnderIt_ThenItIsRefused()
+    {
+        // Splitting E10-E14 round E11 takes out the block and the three picks under it and adds E10 and E14: 202 to 200.
+        DesiredCodeView[] chosen =
+        [
+            Saved(DesiredCodeKinds.Node, "E10-E14", null, 10, "IV"), Saved(DesiredCodeKinds.Code, "E100", null, 1, "IV", "E10-E14", "E10"),
+            Saved(DesiredCodeKinds.Code, "E101", null, 1, "IV", "E10-E14", "E10"), Saved(DesiredCodeKinds.Code, "E110", null, 1, "IV", "E10-E14", "E11"),
+            .. ManyCodes(198),
+        ];
+        var cut = Picker(new Saves(), [Icd10], chosen);
+        Open(cut, "IV");
+        Open(cut, "E10-E14");
+
+        Tick(cut, "E11");
+
+        cut.WaitForAssertion(() => Assert.Contains(OverFromImport(202), cut.Find("[role=alert]").TextContent));
+        Assert.Contains("202 av 200 valg", Text(cut));
+        Assert.Equal("true", Checked(cut, "E11"));
+    }
+
+    [Fact]
+    public void Untick_WhenOverTheCapAndTheWholeParentsLevelIsUnread_ThenNothingIsReadAndTheImportIsSaid()
+    {
+        // Every level under the top fails, so a read before the refusal would say «Kunne ikke hente kodelisten» in its place.
+        var client = new TreeClient();
+        client.Failing.UnionWith(["IV", "E10-E14"]);
+        var cut = Picker(new Saves(), [Icd10], [Saved(DesiredCodeKinds.Node, "E10-E14", null, 10, "IV"), .. ManyCodes(201)], client: client);
+        SearchFor(cut, "e1");
+        cut.WaitForAssertion(() => Assert.Equal("true", RowOf(HitsTree(cut), "E11")!.GetAttribute("aria-checked")));
+        var asked = client.Asked.Count;
+
+        TickHit(cut, "E11");
+
+        Assert.Equal(asked, client.Asked.Count);
+        Assert.Contains(OverFromImport(202), cut.Find("[role=alert]").TextContent);
+        Assert.Contains("202 av 200 valg", Text(cut));
+    }
+
+    [Fact]
+    public void Render_WhenOverTheCap_ThenAChoiceTheTreeShowsHalfTickedHasItsOwnRemove()
+    {
+        var saves = new Saves();
+        var cut = Picker(saves, [Icd10], [Saved(DesiredCodeKinds.Code, "E10", null, 1, "IV", "E10-E14"), .. ManyCodes(200)]);
+        Open(cut, "IV");
+        Open(cut, "E10-E14");
+        Assert.Equal("mixed", Checked(cut, "E10"));
+
+        Press(cut, "Fjern E10");
+
+        Assert.Contains("200 av 200 valg", Text(cut));
+        Press(cut, "Lagre");
+        Assert.DoesNotContain(Assert.Single(saves.Calls), v => v.Code == "E10");
+    }
+
+    [Theory]
+    [InlineData(201, false)]
+    [InlineData(200, true)]
+    public void Open_WhenTheItemIsOverTheCap_ThenTheUnionIsNotAskedFor(int count, bool asked)
+    {
+        var client = new TreeClient();
+        var cut = Picker(new Saves(), [Icd10], ManyCodes(count), client: client);
+
+        cut.WaitForAssertion(() => Assert.Contains($"{count} av 200 valg", Text(cut)));
+        Assert.Equal(asked, client.Unions.Count > 0);
+    }
+
+    [Fact]
+    public void Remove_WhenAnItemIsBroughtToTheCap_ThenTheUnionIsAskedForAgain()
+    {
+        var client = new TreeClient();
+        var cut = Picker(new Saves(), [Icd10], ManyCodes(201, each: null), client: client);
+        Assert.Empty(client.Unions);
+
+        Press(cut, "Fjern C001");
+
+        Assert.Equal(200, Assert.Single(client.Unions).Count);
+    }
 }

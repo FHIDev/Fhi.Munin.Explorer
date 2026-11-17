@@ -5,7 +5,7 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// <summary>
 /// What an imported list's import left behind, as returned by
 /// <c>GET /api/explorer/my/lists/{id}/import-report</c>: the rows that matched no variable, and the items whose
-/// notes or desired data were left off. Hiding it sets <see cref="Dismissed"/>; the report stays readable.
+/// notes, desired data or some of the picked codes were left off. Hiding it sets <see cref="Dismissed"/>; the report stays readable.
 /// </summary>
 public sealed record ListImportReport
 {
@@ -51,7 +51,7 @@ public sealed record ListImportNotFound
     /// <summary>The reader's desired data on the row, or null.</summary>
     [JsonPropertyName("desiredDataFreeText")] public string? DesiredDataFreeText { get; init; }
 
-    /// <summary>The row's fields left off for Munin's limits: <see cref="ListImportFields"/>. Empty when none were.</summary>
+    /// <summary>The row's fields the import left off: <see cref="ListImportFields"/>. Empty when none were.</summary>
     [JsonPropertyName("skipped")] public IReadOnlyList<string> Skipped { get; init; } = [];
 }
 
@@ -94,4 +94,10 @@ public static class ListImportFields
 
     /// <summary>The reader's desired data.</summary>
     public const string DesiredData = "desiredData";
+
+    /// <summary>
+    /// Some of the codes the reader had picked: they were not in the variable's code list and were dropped, while the
+    /// rest were kept as choices. The report carries no count of them.
+    /// </summary>
+    public const string Codes = "codes";
 }
