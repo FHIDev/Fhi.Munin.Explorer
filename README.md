@@ -694,6 +694,13 @@ These are not style preferences — each one is a host that breaks otherwise.
     its own line under a code Stiler draws as a block, or after the name, a space between, in a
     row with no code. A host styles it until then, as the samples do with the version history's
     small grey badge.
+    `munin-explorer-list-import` is the notice above an imported list's table, saying what the
+    import from the old helsedata did not bring over until the reader hides it, and
+    `munin-explorer-list-import__entry` one row in it: a code, its reason and the reader's words,
+    with «Fjern» beside them for a row not found (`Fhi.Metadata-9huq2.37`). No Stiler release
+    styles either yet (`Fhi.Metadata-9huq2.41`). Undrawn, the notice is unboxed text between the alert and the table and each
+    entry a bullet with its button under the words, which reads; a host owes the notice a box and
+    its lists `list-style: none`, and an entry a wrapping flex row.
     `munin-explorer-list-head` is the saved-list view's top row: the name block and the action row,
     side by side (`Fhi.Metadata-fc7ie`). Undrawn, the actions stand under the name, which reads
     well enough; a host owes it a wrapping flex row and one rule line under the pair.
@@ -1090,6 +1097,8 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-list-create__field` | meaning |
   | `munin-explorer-list-create__row` | meaning |
   | `munin-explorer-list-head` | meaning |
+  | `munin-explorer-list-import` | meaning |
+  | `munin-explorer-list-import__entry` | meaning |
   | `munin-explorer-list-menu` | meaning |
   | `munin-explorer-list-menu--end` | meaning |
   | `munin-explorer-list-menu__check` | meaning |

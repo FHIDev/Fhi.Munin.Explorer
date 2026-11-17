@@ -197,6 +197,80 @@ public class MyListsClientTest
         AssertAuthenticated(handler);
     }
 
+    // ------------------------------------------------------------------------ an import's report
+
+    private static readonly Guid EntryId = new("5b1e7a2c-9d40-4f3e-8a61-0c2d9e7f4b18");
+
+    [Fact]
+    public async Task GetMyListImportReportAsync_WhenTheApiAnswers_ThenTheReportIsReadFromTheListsReportRoute()
+    {
+        var handler = StubHttpHandler.Ok($$"""
+            {"importedFrom":"helsedata-legacy","importedAt":"2026-11-10T08:00:00+00:00","dismissed":false,
+             "notFound":[{"entryId":"{{EntryId}}","index":3,"status":"unknownVariable","variableCode":"V_GONE",
+                          "dataCollectionCode":null,"notes":"Spør om 2012","desiredDataFreeText":null,"skipped":["desiredData"]}],
+             "skipped":[{"itemId":"{{EntryId}}","variabelId":"{{ListId}}","variableCode":"V_ALDER","dataCollectionCode":"DS1","fields":["notes"]}]}
+            """);
+
+        var report = await Client(handler).GetMyListImportReportAsync(ListId);
+
+        Assert.Equal(HttpMethod.Get, handler.LastMethod);
+        Assert.Equal($"{Collection}/{ListId}/import-report", handler.LastUri?.AbsolutePath);
+        AssertAuthenticated(handler);
+        Assert.Equal("helsedata-legacy", report!.ImportedFrom);
+        var entry = Assert.Single(report.NotFound);
+        Assert.Equal((EntryId, 3, "unknownVariable", "V_GONE"), (entry.EntryId, entry.Index, entry.Status, entry.VariableCode));
+        Assert.Equal(["desiredData"], entry.Skipped);
+        var skipped = Assert.Single(report.Skipped);
+        Assert.Equal((ListId, "V_ALDER", "DS1"), (skipped.VariableId, skipped.VariableCode, skipped.DataCollectionCode));
+        Assert.Equal(["notes"], skipped.Fields);
+    }
+
+    [Fact]
+    public async Task GetMyListImportReportAsync_WhenTheListHasNoReport_ThenItIsNull()
+    {
+        var handler = StubHttpHandler.Status(HttpStatusCode.NotFound);
+
+        Assert.Null(await Client(handler).GetMyListImportReportAsync(ListId));
+    }
+
+    [Fact]
+    public async Task DismissMyListImportReportAsync_WhenTheListIsTheReaders_ThenItIsPutToTheDismissedRoute()
+    {
+        var handler = StubHttpHandler.Status(HttpStatusCode.NoContent);
+
+        Assert.True(await Client(handler).DismissMyListImportReportAsync(ListId));
+
+        Assert.Equal(HttpMethod.Put, handler.LastMethod);
+        Assert.Equal($"{Collection}/{ListId}/import-report/dismissed", handler.LastUri?.AbsolutePath);
+        Assert.Null(handler.LastBody);
+        AssertAuthenticated(handler);
+    }
+
+    [Fact]
+    public async Task RemoveMyListImportEntryAsync_WhenTheEntryIsTheReaders_ThenItIsDeletedFromTheEntrysRoute()
+    {
+        var handler = StubHttpHandler.Status(HttpStatusCode.NoContent);
+
+        Assert.True(await Client(handler).RemoveMyListImportEntryAsync(ListId, EntryId));
+
+        Assert.Equal(HttpMethod.Delete, handler.LastMethod);
+        Assert.Equal($"{Collection}/{ListId}/import-report/entries/{EntryId}", handler.LastUri?.AbsolutePath);
+        AssertAuthenticated(handler);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AnImportReportWrite_WhenTheApiAnswers404_ThenItIsFalse(bool dismissing)
+    {
+        var handler = StubHttpHandler.Status(HttpStatusCode.NotFound);
+        var client = Client(handler);
+
+        Assert.False(dismissing
+            ? await client.DismissMyListImportReportAsync(ListId)
+            : await client.RemoveMyListImportEntryAsync(ListId, EntryId));
+    }
+
     // ------------------------------------------------------------------- what is inside one list
 
     [Fact]
@@ -901,6 +975,28 @@ public class MyListsClientTest
         Assert.Equal(1, handler.Calls);
     }
 
+    [Theory]
+    [InlineData("report")]
+    [InlineData("dismiss")]
+    [InlineData("removeEntry")]
+    public async Task ImportReportCall_WhenTheApiRateLimits_ThenItThrowsRatherThanReadingAsNoReport(string call)
+    {
+        // A null or false here would hide the report from a reader who only asked too often.
+        var handler = StubHttpHandler.RateLimited(TimeSpan.FromSeconds(30));
+        var client = Client(handler);
+
+        var refused = await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => call switch
+        {
+            "report" => client.GetMyListImportReportAsync(ListId),
+            "dismiss" => client.DismissMyListImportReportAsync(ListId),
+            "removeEntry" => client.RemoveMyListImportEntryAsync(ListId, Guid.NewGuid()),
+            _ => throw new ArgumentOutOfRangeException(nameof(call), call, "No such call.")
+        });
+
+        Assert.Equal(TimeSpan.FromSeconds(30), refused.RetryAfter);
+        Assert.Equal(1, handler.Calls);
+    }
+
     [Fact]
     public async Task CreateMyListAsync_WhenTheApiRateLimits_ThenItThrowsItsOwnExceptionRatherThanTheGenericOne()
     {
@@ -1004,7 +1100,9 @@ public class MyListsClientTest
             {
                 return Answer(
                     HttpStatusCode.OK,
-                    path.EndsWith("/variables", StringComparison.Ordinal) ? EmptyVariablesPage : "[]");
+                    path.EndsWith("/variables", StringComparison.Ordinal) ? EmptyVariablesPage
+                    : path.EndsWith("/import-report", StringComparison.Ordinal) ? "{}"
+                    : "[]");
             }
 
             return new HttpResponseMessage(HttpStatusCode.NoContent);
@@ -1031,7 +1129,10 @@ public class MyListsClientTest
             ("SetMyListItemNotesAsync", () => client.SetMyListItemNotesAsync(ListId, ids[0], "Spør om 2012")),
             ("ExportMyListAsync", () => client.ExportMyListAsync(ListId)),
             ("ExportMyListAsync with host page", () => client.ExportMyListAsync(ListId, new Uri("https://host.example/variables/"))),
-            ("ShareMyListAsync", () => client.ShareMyListAsync(ListId))
+            ("ShareMyListAsync", () => client.ShareMyListAsync(ListId)),
+            ("GetMyListImportReportAsync", () => client.GetMyListImportReportAsync(ListId)),
+            ("DismissMyListImportReportAsync", () => client.DismissMyListImportReportAsync(ListId)),
+            ("RemoveMyListImportEntryAsync", () => client.RemoveMyListImportEntryAsync(ListId, ids[0]))
         };
 
         AssertEveryMyListsMethodIsSwept(calls.Length);
@@ -1081,7 +1182,10 @@ public class MyListsClientTest
             () => client.SetMyListItemNotesAsync(ListId, ids[0], "Spør om 2012"),
             () => client.ExportMyListAsync(ListId),
             () => client.ExportMyListAsync(ListId, new Uri("https://host.example/variables/")),
-            () => client.ShareMyListAsync(ListId)
+            () => client.ShareMyListAsync(ListId),
+            () => client.GetMyListImportReportAsync(ListId),
+            () => client.DismissMyListImportReportAsync(ListId),
+            () => client.RemoveMyListImportEntryAsync(ListId, ids[0])
         };
 
         AssertEveryMyListsMethodIsSwept(calls.Length);

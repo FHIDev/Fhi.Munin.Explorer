@@ -212,6 +212,96 @@ else if (State?.IsAuthenticated == true)
                 @DesiredDataRefusalMessage
             </div>
 
+            @* A region, not an alert: it stands on every visit until hidden, and is not to be read out each time. *@
+            @if (ShownImportReport is { } importReport)
+            {
+                var (skippedNamed, skippedElsewhere) = SkippedRows(importReport);
+
+                <section class="munin-explorer-list-import" aria-labelledby="@ImportHeadingId">
+                    @DetailBlocks.Heading(RowPanelLevel, T.ImportReportHeading(importReport.NotFound.Count),
+                                          "headline headline-xxs margin--none", ImportHeadingId)
+
+                    @if (importReport.NotFound.Count > 0)
+                    {
+                        <p>@T.ImportReportAdvice</p>
+                        <ul>
+                            @foreach (var entry in InOrder(importReport))
+                            {
+                                <li class="munin-explorer-list-import__entry" @key="entry.EntryId">
+                                    <div>
+                                        <strong id="@ImportCodesId(entry)">@ImportCodes(entry.VariableCode, entry.DataCollectionCode)</strong>
+                                        @if (ImportReason(entry.Status) is { } reason)
+                                        {
+                                            <p class="caption margin--none">@reason</p>
+                                        }
+                                        @if (Present(entry.Notes) is { } notes)
+                                        {
+                                            <p class="margin--none">@T.ImportNoteLabel: @notes</p>
+                                        }
+                                        @if (Present(entry.DesiredDataFreeText) is { } desired)
+                                        {
+                                            <p class="margin--none">@T.ImportDesiredDataLabel: @desired</p>
+                                        }
+                                        @if (entry.Skipped.Contains(ListImportFields.Notes))
+                                        {
+                                            <p class="caption margin--none">@T.ImportNoteLeftOff</p>
+                                        }
+                                        @if (entry.Skipped.Contains(ListImportFields.DesiredData))
+                                        {
+                                            <p class="caption margin--none">@T.ImportDesiredDataLeftOff</p>
+                                        }
+                                    </div>
+                                    @* Named as the rows' «Fjern» are: its own word, then the codes it removes. *@
+                                    <button class="hd-button-square button-square--ghost-blue"
+                                            type="button"
+                                            id="@ImportRemoveId(entry)"
+                                            @ref="_importRemoveButtons[entry.EntryId]"
+                                            aria-labelledby="@($"{ImportRemoveId(entry)} {ImportCodesId(entry)}")"
+                                            aria-disabled="@AriaDisabled(!_importWriting)"
+                                            @onclick="() => RemoveImportEntryAsync(entry)">@T.ImportRemoveEntry</button>
+                                </li>
+                            }
+                        </ul>
+                    }
+
+                    @if (importReport.Skipped.Count > 0)
+                    {
+                        <p>@T.ImportSkippedLead(importReport.Skipped.Count)</p>
+                        <ul>
+                            @foreach (var (row, item) in skippedNamed)
+                            {
+                                <li class="munin-explorer-list-import__entry" @key="row.ItemId">
+                                    <span>
+                                        @if (item is not null)
+                                        {
+                                            @(Present(item.VariableCode) is { } code ? $"{code} " : "")<span lang="@CatalogueLang(item.VariableName)">@RowName(item)</span>
+                                        }
+                                        else
+                                        {
+                                            @ImportCodes(row.VariableCode, row.DataCollectionCode)
+                                        }
+                                        @if (ImportSkippedFields(row.Fields) is { } fields)
+                                        {
+                                            @($": {fields}")
+                                        }
+                                    </span>
+                                </li>
+                            }
+                            @if (skippedElsewhere > 0)
+                            {
+                                <li class="munin-explorer-list-import__entry">@T.ImportSkippedElsewhere(skippedElsewhere)</li>
+                            }
+                        </ul>
+                    }
+
+                    <button class="hd-button-square button-square--ghost-blue"
+                            type="button"
+                            @ref="_importHideButton"
+                            aria-disabled="@AriaDisabled(!_importWriting)"
+                            @onclick="HideImportReportAsync">@T.ImportHide</button>
+                </section>
+            }
+
             @* Not while the read is known to have failed. The alert above already says so, and
                "du har ingen variabellister ennå" beside it answers the same question the other way —
                the reader cannot tell whether they have none or whether we never found out. The two

@@ -1765,6 +1765,29 @@ table.munin-explorer-data-list > tbody > :where(tr) > th[scope=row] > button > .
   padding: 1px 9px;
 }
 
+/* An imported list's notice of what did not come over, above its table (Fhi.Metadata-9huq2.37). No Stiler rule yet. */
+.munin-explorer-list-import {
+  background: var(--grey20);
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+}
+
+.munin-explorer-list-import ul {
+  list-style: none;
+  margin: 0.5rem 0 1rem;
+  padding: 0;
+}
+
+.munin-explorer-list-import__entry {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  justify-content: space-between;
+  padding: 0.25rem 0;
+}
+
 /* Stiler 0.1.208's rule: a search row's code under a shared name wraps, rather than stay on one line past the
    name column and over the next one (Fhi.Metadata-l9l2n.161). */
 .munin-explorer-dataitem-main__name .munin-explorer-list-code {
