@@ -29,6 +29,23 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 2.23.0 — 2026-11-17
+
+### Added
+
+- **A list imported from the old helsedata says what did not come over, until the reader hides it.** `VariableListView` draws a notice above an imported saved list's table when its import left something behind: each row that matched no variable, by its codes, with the reason in plain words, the reader's note and desired data, and «Fjern» to take it out of the report; and the items that came over without their note, their desired data or some of their picked codes (`ListImportFields.Codes`, Fhi.Metadata-9huq2.43). «Skjul» hides the notice for good. It is a region named by its heading, not an alert, so it is not read out on every visit. A list not imported asks for nothing more; an imported list's report is read when the list is shown (and again on each later page read until one gets an answer), unless Munin says both its not-found and its skipped counts are 0 (the skipped count comes with Fhi.Metadata-9huq2.40, and an API without it has the report read).
+- **`IMuninExplorerClient` gains `GetMyListImportReportAsync`, `DismissMyListImportReportAsync` and `RemoveMyListImportEntryAsync`, with default bodies.** A host's own implementation keeps building: the read answers null, so its readers see no notice, and the two writes throw `NotSupportedException` as `ShareMyListAsync` does. `VariableList` gains `ImportedFrom`, `ImportNotFoundCount`, `ImportSkippedCount` (null from an API that does not send it, meaning unknown rather than none) and `ImportReportDismissed`; the report is `ListImportReport`.
+- **A historical variable in a saved or shared variable list says so on its row.** `VariableListView` draws «Historisk» / «Historical» in the row header, after the name and its code if it has one, when the row's version status is historical: as Munin reports it for the reader's own list, and as it stood when the list was shared for a shared one. It is the same word the search results' status column uses, and a screen reader reads it with the row header. An active row draws nothing new.
+
+### Fixed
+
+- **The code picker no longer drops an item's choices past 200 when it is opened and saved.** It kept only the first 200 stored choices, so saving an imported item that holds more lost the rest. It now shows every choice, each with its own «Fjern», and refuses to save until the reader has removed enough: «Velg høyst 200 kodevalg; dette elementet har N fra importen. Fjern noen før du lagrer.» Until then removing is the only edit it allows: ticking a code, «Velg treffene» and unticking a code under a parent chosen whole are refused with the same sentence, even where they would bring the item to 200 or fewer. The 200 cap for choosing is unchanged.
+
+### Notes for hosts
+
+- **`munin-explorer-list-import` and `munin-explorer-list-import__entry` are new: the notice above an imported list's table, and one row in it.** No Stiler release styles them yet; the rules are tracked as Fhi.Metadata-9huq2.41. Undrawn, the notice is unboxed text between the alert region and the table, and each entry a bullet: a row not found has its «Fjern» button under its words, an item left without its note, its desired data or some of its codes has none, and either still reads. A host that wants the samples' look gives the notice a box and `overflow-wrap: anywhere`, so a long code or a pasted URL in a note wraps inside 320px; its lists `list-style: none`; and an entry a wrapping flex row with the button at the end, as the samples do.
+- **`munin-explorer-list-status` is new: the «Historisk» mark in a list row's header, after the name and its code if it has one.** No Stiler release styles it yet; the rule is tracked as Fhi.Metadata-l9l2n.191. Until a Stiler with it is pinned, the mark is plain text at the row header's size and weight, on its own line under a code Stiler draws as a block, or after the name, a space between, in a row with no code. A host that wants the badge styles the class itself, as the samples do (`.munin-explorer-list-status`, drawn like `.munin-explorer-versions__badge`).
+
 ## 2.22.0 — 2026-11-16
 
 ### Added
