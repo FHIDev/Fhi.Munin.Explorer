@@ -1,11 +1,9 @@
 // Held out: written from the behaviour, not the code (Fhi.Metadata-emsc0.3.18).
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
-using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
 using Fhi.Munin.Explorer.State;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;

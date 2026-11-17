@@ -9,7 +9,8 @@ public sealed partial class VariableListView
     private bool _menuOpen;
     private bool _downloadOpen;
 
-    // Moved by every disclosure press, CloseFolds, the clear question and a page turn, so a late share can tell the reader acted since.
+    // Moved by the folds' presses and Escape, CloseFolds, «Last ned»'s own controls, the clear question and a shared list's
+    // page turn, so a late share can tell the reader acted since.
     private int _readerMoves;
     private MenuFocus _menuFocus;
     private ElementReference _menuToggle;
@@ -85,6 +86,7 @@ public sealed partial class VariableListView
         {
             _downloadOpen = false;
             _menuFocus = MenuFocus.DownloadToggle;
+            _readerMoves++;
         }
     }
 

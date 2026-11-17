@@ -286,7 +286,7 @@ public sealed partial class VariableListView
 
             _browserShare = new ShareMade(Guid.Empty, code, SharedListHref?.Invoke(code));
 
-            // A reader who opened, closed or paged anything while the share was out keeps focus where they put it.
+            // A reader who acted in the list's menus, its clear question or its pager while the share was out keeps focus there.
             _focusBrowserShareCode = _readerMoves == moves;
         }
         catch (SharedSnapshotTooLargeException ex)
