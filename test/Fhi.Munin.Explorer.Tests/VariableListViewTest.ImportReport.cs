@@ -21,7 +21,7 @@ public partial class VariableListViewTest
     private static readonly Guid FourthEntry = new("a0000000-0000-0000-0000-000000000004");
 
     private static ListImportNotFound NotFound(Guid id, int index, string status, string? code, string? datasamling = null) =>
-        new() { EntryId = id, Index = index, Status = status, VariableCode = code, DataCollectionCode = datasamling };
+        new() { EntryId = id, Index = index, Status = status, VariableCode = code, DatasamlingCode = datasamling };
 
     /// <summary>All three reasons and one the package does not know, sent out of order.</summary>
     private static ListImportReport FourNotFound() => new()
@@ -58,6 +58,9 @@ public partial class VariableListViewTest
         /// <summary>Holds the first list's report read until released, so the reader can switch list meanwhile.</summary>
         public TaskCompletionSource<ListImportReport?>? HoldReport { get; init; }
 
+        /// <summary>Holds both writes until released, each recorded as asked before it waits.</summary>
+        public TaskCompletionSource<bool>? HoldWrite { get; set; }
+
         public List<Guid> ReportsAskedFor { get; } = [];
         public List<Guid> DismissedLists { get; } = [];
         public List<Guid> RemovedEntries { get; } = [];
@@ -82,7 +85,7 @@ public partial class VariableListViewTest
             return id == ListId ? Report : null;
         }
 
-        public override Task<bool> DismissMyListImportReportAsync(Guid id, CancellationToken cancellationToken = default)
+        public override async Task<bool> DismissMyListImportReportAsync(Guid id, CancellationToken cancellationToken = default)
         {
             if (DismissThrows is not null)
             {
@@ -90,10 +93,10 @@ public partial class VariableListViewTest
             }
 
             DismissedLists.Add(id);
-            return Task.FromResult(true);
+            return HoldWrite is null || await HoldWrite.Task;
         }
 
-        public override Task<bool> RemoveMyListImportEntryAsync(Guid id, Guid entryId, CancellationToken cancellationToken = default)
+        public override async Task<bool> RemoveMyListImportEntryAsync(Guid id, Guid entryId, CancellationToken cancellationToken = default)
         {
             if (EntryRemoveThrows is not null)
             {
@@ -101,7 +104,7 @@ public partial class VariableListViewTest
             }
 
             RemovedEntries.Add(entryId);
-            return Task.FromResult(true);
+            return HoldWrite is null || await HoldWrite.Task;
         }
 
         public override Task<SharedList?> GetSharedListAsync(string? code, CancellationToken cancellationToken = default) =>
@@ -293,7 +296,7 @@ public partial class VariableListViewTest
                     new ListImportSkipped { ItemId = onPage.ItemId!.Value, Fields = [ListImportFields.Notes] },
                     new ListImportSkipped
                     {
-                        ItemId = Guid.NewGuid(), VariableCode = "V_KJONN", DataCollectionCode = "DS1",
+                        ItemId = Guid.NewGuid(), VariableCode = "V_KJONN", DatasamlingCode = "DS1",
                         Fields = [ListImportFields.Notes, ListImportFields.DesiredData]
                     },
                     new ListImportSkipped { ItemId = Guid.NewGuid(), Fields = [ListImportFields.DesiredData] },
@@ -492,6 +495,7 @@ public partial class VariableListViewTest
     [Fact]
     public async Task ImportReport_WhenItsAnswerLandsAfterTheReaderSwitchedList_ThenItIsNotDrawn()
     {
+        // Inline on purpose: the answer must land, and be dropped, within the call below.
         var held = new TaskCompletionSource<ListImportReport?>();
         var client = new ImportClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2, HoldReport = held };
         var cut = RenderImport(client);
@@ -501,5 +505,205 @@ public partial class VariableListViewTest
         await cut.InvokeAsync(() => held.SetResult(FourNotFound()));
 
         Assert.Empty(cut.FindAll(ImportNotice));
+    }
+
+    private int FocusCalls() => JSInterop.Invocations.Count(i => i.Identifier == "Blazor._internal.domWrapper.focus");
+
+    [Fact]
+    public async Task ImportReport_WhenAWriteIsOut_ThenASecondPressSendsNothingAndTheButtonsSaySo()
+    {
+        var client = new ImportClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { HoldWrite = new TaskCompletionSource<bool>() };
+        var cut = RenderImport(client);
+        cut.WaitForElement(ImportNotice);
+
+        var removing = cut.InvokeAsync(() => cut.FindAll($"{ImportNotice} li button")[0].Click());
+        Assert.All(cut.FindAll($"{ImportNotice} button"), b => Assert.Equal("true", b.GetAttribute("aria-disabled")));
+        await cut.InvokeAsync(() => cut.FindAll($"{ImportNotice} li button")[1].Click());
+        await cut.InvokeAsync(() => cut.Find($"{ImportNotice} > button").Click());
+
+        Assert.Equal([FirstEntry], client.RemovedEntries);
+        Assert.Empty(client.DismissedLists);
+        await cut.InvokeAsync(() => client.HoldWrite.SetResult(true));
+        await removing;
+        Assert.All(cut.FindAll($"{ImportNotice} button"), b => Assert.Equal("false", b.GetAttribute("aria-disabled")));
+    }
+
+    [Fact]
+    public void ImportReport_WhenAFieldIsOnlyWhitespace_ThenItIsDrawnAsAbsent()
+    {
+        var client = new ImportClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            Report = new ListImportReport
+            {
+                NotFound =
+                [
+                    NotFound(FirstEntry, 0, ListImportStatuses.UnknownVariable, "  ", " \t") with { Notes = "  ", DesiredDataFreeText = "\n " }
+                ]
+            }
+        };
+
+        var cut = RenderImport(client);
+
+        var entry = cut.WaitForElement($"{ImportNotice} li");
+        Assert.Equal("Uten kode | Fant ikke variabelen i katalogen | Fjern", Lines(entry));
+        Assert.Equal("Fjern Uten kode", AccessibleName.Of(entry.QuerySelector("button")!));
+    }
+
+    [Fact]
+    public void ImportReport_WhenEntriesReadAlike_ThenEachRemoveSaysItsPlaceAndTheRestDoNot()
+    {
+        var client = new ImportClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            Report = new ListImportReport
+            {
+                NotFound =
+                [
+                    NotFound(FirstEntry, 0, ListImportStatuses.Ambiguous, "V_X"),
+                    NotFound(SecondEntry, 1, ListImportStatuses.UnknownVariable, null),
+                    NotFound(ThirdEntry, 2, ListImportStatuses.Ambiguous, "V_X"),
+                    NotFound(FourthEntry, 3, ListImportStatuses.UnknownDatasamling, null, "DS"),
+                    NotFound(Guid.NewGuid(), 4, ListImportStatuses.UnknownVariable, " "),
+                ]
+            }
+        };
+
+        var cut = RenderImport(client);
+
+        cut.WaitForElement(ImportNotice);
+        Assert.Equal(
+            ["Fjern V_X nr. 1", "Fjern Uten kode nr. 2", "Fjern V_X nr. 3", "Fjern Datasamlingen DS", "Fjern Uten kode nr. 5"],
+            cut.FindAll($"{ImportNotice} li button").Select(AccessibleName.Of));
+    }
+
+    [Fact]
+    public void ImportReport_WhenHideIsNamed_ThenItNamesTheNoticeItHides()
+    {
+        var cut = RenderImport(new ImportClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        var hide = cut.WaitForElement($"{ImportNotice} > button");
+        Assert.Equal("Skjul Importert fra den gamle listen: 4 variabler ble ikke funnet", AccessibleName.Of(hide));
+    }
+
+    [Fact]
+    public async Task ImportReport_WhenAnotherListIsShownWhileItsPageIsRead_ThenTheFirstListsNoticeIsNotDrawnUnderIt()
+    {
+        // Its «Fjern» under the second list's name would remove from a list the reader is not looking at.
+        var client = new ImportClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 };
+        var cut = RenderImport(client);
+        cut.WaitForElement(ImportNotice);
+        client.StallVariablesFor = ListClient.SecondListId;
+
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
+
+        Assert.Empty(cut.FindAll(ImportNotice));
+        client.ReleaseVariables();
+    }
+
+    [Fact]
+    public async Task ImportReport_WhenTheReadLandsAfterTheReaderSignedOutAndIn_ThenItIsNotDrawnForTheNewReader()
+    {
+        // Inline on purpose: the answer must land, and be dropped, within the call below.
+        var held = new TaskCompletionSource<ListImportReport?>();
+        var client = new ImportClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { HoldReport = held };
+        var cut = RenderImport(client);
+        cut.WaitForAssertion(() => Assert.Equal([ListId], client.ReportsAskedFor));
+
+        client.StallPageReads = true;
+        cut.Render(p => p.Add(c => c.IsAuthenticated, false));
+        cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+        await cut.InvokeAsync(() => held.SetResult(FourNotFound()));
+
+        Assert.Empty(cut.FindAll(ImportNotice));
+
+        // The new reader's own read, once their page is in.
+        client.ReleaseVariables();
+        cut.WaitForElement(ImportNotice);
+        Assert.Equal([ListId, ListId], client.ReportsAskedFor);
+    }
+
+    [Fact]
+    public void ImportReport_WhenTheReaderSignsOutAndIn_ThenThePreviousReadersNoticeIsNotDrawnWhileTheirPageIsRead()
+    {
+        var client = new ImportClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var cut = RenderImport(client);
+        cut.WaitForElement(ImportNotice);
+
+        client.StallPageReads = true;
+        cut.Render(p => p.Add(c => c.IsAuthenticated, false));
+        cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+
+        Assert.Empty(cut.FindAll(ImportNotice));
+        client.ReleaseVariables();
+    }
+
+    [Fact]
+    public async Task ImportReport_WhenAFormOpensWhileARemovalIsOut_ThenFocusStaysWhereTheReaderPutIt()
+    {
+        var client = new ImportClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { HoldWrite = new TaskCompletionSource<bool>() };
+        var cut = RenderImport(client);
+        cut.WaitForElement(ImportNotice);
+
+        var removing = cut.InvokeAsync(() => cut.FindAll($"{ImportNotice} li button")[0].Click());
+        await PressAsync(cut, "Flere valg");
+        var focuses = FocusCalls();
+        await cut.InvokeAsync(() => client.HoldWrite.SetResult(true));
+        await removing;
+
+        cut.WaitForAssertion(() => Assert.DoesNotContain("V_BORTE", Text(cut.Find(ImportNotice))));
+        Assert.Equal(focuses, FocusCalls());
+    }
+
+    [Fact]
+    public async Task ImportReport_WhenTheReaderOpensAndShutsAFoldWhileARemovalIsOut_ThenFocusStaysWhereTheReaderPutIt()
+    {
+        // Open and shut: no form is open when it lands, so only the move count can tell.
+        var client = new ImportClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { HoldWrite = new TaskCompletionSource<bool>() };
+        var cut = RenderImport(client);
+        cut.WaitForElement(ImportNotice);
+
+        var removing = cut.InvokeAsync(() => cut.FindAll($"{ImportNotice} li button")[0].Click());
+        await PressAsync(cut, "Flere valg");
+        await PressAsync(cut, "Flere valg");
+        var focuses = FocusCalls();
+        await cut.InvokeAsync(() => client.HoldWrite.SetResult(true));
+        await removing;
+
+        cut.WaitForAssertion(() => Assert.DoesNotContain("V_BORTE", Text(cut.Find(ImportNotice))));
+        Assert.Equal(focuses, FocusCalls());
+    }
+
+    [Fact]
+    public async Task ImportReport_WhenTheReaderSwitchedListWhileTheHideWasOut_ThenFocusIsNotMoved()
+    {
+        var client = new ImportClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2, HoldWrite = new TaskCompletionSource<bool>() };
+        var cut = RenderImport(client);
+        cut.WaitForElement(ImportNotice);
+
+        var hiding = cut.InvokeAsync(() => cut.Find($"{ImportNotice} > button").Click());
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
+        cut.WaitForAssertion(() => Assert.Contains(ListClient.SecondListId, client.VariablesAskedFor));
+        var focuses = FocusCalls();
+        await cut.InvokeAsync(() => client.HoldWrite.SetResult(true));
+        await hiding;
+
+        Assert.Equal([ListId], client.DismissedLists);
+        Assert.Equal(focuses, FocusCalls());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ImportReport_WhenAWriteFailsAfterTheReaderSwitchedList_ThenTheOtherListSaysNothing(bool hiding)
+    {
+        var client = new ImportClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2, HoldWrite = new TaskCompletionSource<bool>() };
+        var cut = RenderImport(client);
+        cut.WaitForElement(ImportNotice);
+
+        var writing = cut.InvokeAsync(() => (hiding ? cut.Find($"{ImportNotice} > button") : cut.Find($"{ImportNotice} li button")).Click());
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
+        await cut.InvokeAsync(() => client.HoldWrite.SetException(new HttpRequestException("down")));
+        await writing;
+
+        Assert.Equal("", cut.FindAll("[role=alert]")[0].TextContent.Trim());
     }
 }

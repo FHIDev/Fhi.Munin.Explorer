@@ -216,6 +216,7 @@ else if (State?.IsAuthenticated == true)
             @if (ShownImportReport is { } importReport)
             {
                 var (skippedNamed, skippedElsewhere) = SkippedRows(importReport);
+                var repeatedCodes = RepeatedImportCodes(importReport);
 
                 <section class="munin-explorer-list-import" aria-labelledby="@ImportHeadingId">
                     @DetailBlocks.Heading(RowPanelLevel, T.ImportReportHeading(importReport.NotFound.Count),
@@ -225,11 +226,18 @@ else if (State?.IsAuthenticated == true)
                     {
                         <p>@T.ImportReportAdvice</p>
                         <ul>
-                            @foreach (var entry in InOrder(importReport))
+                            @foreach (var (entry, place) in InOrder(importReport).Select((e, i) => (e, i + 1)))
                             {
+                                var codes = ImportCodes(entry.VariableCode, entry.DatasamlingCode);
+                                var placed = repeatedCodes.Contains(codes);
+
                                 <li class="munin-explorer-list-import__entry" @key="entry.EntryId">
                                     <div>
-                                        <strong id="@ImportCodesId(entry)">@ImportCodes(entry.VariableCode, entry.DataCollectionCode)</strong>
+                                        <strong id="@ImportCodesId(entry)">@codes</strong>
+                                        @if (placed)
+                                        {
+                                            <span id="@ImportPlaceId(entry)" hidden>@T.ImportEntryPlace(place)</span>
+                                        }
                                         @if (ImportReason(entry.Status) is { } reason)
                                         {
                                             <p class="caption margin--none">@reason</p>
@@ -256,7 +264,7 @@ else if (State?.IsAuthenticated == true)
                                             type="button"
                                             id="@ImportRemoveId(entry)"
                                             @ref="_importRemoveButtons[entry.EntryId]"
-                                            aria-labelledby="@($"{ImportRemoveId(entry)} {ImportCodesId(entry)}")"
+                                            aria-labelledby="@($"{ImportRemoveId(entry)} {ImportCodesId(entry)}{(placed ? $" {ImportPlaceId(entry)}" : "")}")"
                                             aria-disabled="@AriaDisabled(!_importWriting)"
                                             @onclick="() => RemoveImportEntryAsync(entry)">@T.ImportRemoveEntry</button>
                                 </li>
@@ -278,7 +286,7 @@ else if (State?.IsAuthenticated == true)
                                         }
                                         else
                                         {
-                                            @ImportCodes(row.VariableCode, row.DataCollectionCode)
+                                            @ImportCodes(row.VariableCode, row.DatasamlingCode)
                                         }
                                         @if (ImportSkippedFields(row.Fields) is { } fields)
                                         {
@@ -294,8 +302,11 @@ else if (State?.IsAuthenticated == true)
                         </ul>
                     }
 
+                    @* Named with its object, as «Fjern» is: «Skjul» alone does not say what it hides. *@
                     <button class="hd-button-square button-square--ghost-blue"
                             type="button"
+                            id="@ImportHideId"
+                            aria-labelledby="@($"{ImportHideId} {ImportHeadingId}")"
                             @ref="_importHideButton"
                             aria-disabled="@AriaDisabled(!_importWriting)"
                             @onclick="HideImportReportAsync">@T.ImportHide</button>

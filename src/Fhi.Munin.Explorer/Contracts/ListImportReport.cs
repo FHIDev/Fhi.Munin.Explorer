@@ -5,7 +5,7 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// <summary>
 /// What an imported list's import left behind, as returned by
 /// <c>GET /api/explorer/my/lists/{id}/import-report</c>: the rows that matched no variable, and the items whose
-/// notes or desired data were left off. Kept until the reader hides it.
+/// notes or desired data were left off. Hiding it sets <see cref="Dismissed"/>; the report stays readable.
 /// </summary>
 public sealed record ListImportReport
 {
@@ -43,7 +43,7 @@ public sealed record ListImportNotFound
     [JsonPropertyName("variableCode")] public string? VariableCode { get; init; }
 
     /// <summary>The datasamling code as imported, cut to 255 characters; null when the row had none.</summary>
-    [JsonPropertyName("dataCollectionCode")] public string? DataCollectionCode { get; init; }
+    [JsonPropertyName("dataCollectionCode")] public string? DatasamlingCode { get; init; }
 
     /// <summary>The reader's note on the row, or null.</summary>
     [JsonPropertyName("notes")] public string? Notes { get; init; }
@@ -67,7 +67,7 @@ public sealed record ListImportSkipped
     [JsonPropertyName("variableCode")] public string? VariableCode { get; init; }
 
     /// <summary>The item's datasamling code; null when the item has none, and from an API that does not send it.</summary>
-    [JsonPropertyName("dataCollectionCode")] public string? DataCollectionCode { get; init; }
+    [JsonPropertyName("dataCollectionCode")] public string? DatasamlingCode { get; init; }
 
     /// <summary>The fields left off: <see cref="ListImportFields"/>.</summary>
     [JsonPropertyName("fields")] public IReadOnlyList<string> Fields { get; init; } = [];

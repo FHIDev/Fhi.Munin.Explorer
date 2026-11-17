@@ -44,7 +44,10 @@ public sealed record VariableList
     /// </summary>
     [JsonPropertyName("importedFrom")] public string? ImportedFrom { get; init; }
 
-    /// <summary>How many of the imported rows matched no variable; 0 for a list made here, and from an older API.</summary>
+    /// <summary>
+    /// How many rows not found are still in the import report: removing one lowers it. 0 for a list made here, and from
+    /// an older API.
+    /// </summary>
     [JsonPropertyName("importNotFoundCount")] public int ImportNotFoundCount { get; init; }
 
     /// <summary>

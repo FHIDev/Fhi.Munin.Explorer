@@ -946,6 +946,7 @@ internal sealed record Texts(
     Func<bool, bool, string> ImportSkippedFields,
     Func<int, string> ImportSkippedElsewhere,
     string ImportRemoveEntry,
+    Func<int, string> ImportEntryPlace,
     string ImportHide)
 {
     /// <summary>
@@ -1943,6 +1944,7 @@ internal sealed record Texts(
             ? "1 variabel til, som ikke står på denne siden"
             : $"{count} variabler til, som ikke står på denne siden",
         ImportRemoveEntry: "Fjern",
+        ImportEntryPlace: place => $"nr. {place}",
         ImportHide: "Skjul");
 
     private static readonly Texts En = new(
@@ -2634,6 +2636,7 @@ internal sealed record Texts(
             ? "1 more variable, not on this page"
             : $"{count} more variables, not on this page",
         ImportRemoveEntry: "Remove",
+        ImportEntryPlace: place => $"no. {place}",
         ImportHide: "Hide")
     {
         Reader = ReaderLanguage.English,

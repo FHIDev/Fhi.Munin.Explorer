@@ -221,7 +221,7 @@ public class MyListsClientTest
         Assert.Equal((EntryId, 3, "unknownVariable", "V_GONE"), (entry.EntryId, entry.Index, entry.Status, entry.VariableCode));
         Assert.Equal(["desiredData"], entry.Skipped);
         var skipped = Assert.Single(report.Skipped);
-        Assert.Equal((ListId, "V_ALDER", "DS1"), (skipped.VariableId, skipped.VariableCode, skipped.DataCollectionCode));
+        Assert.Equal((ListId, "V_ALDER", "DS1"), (skipped.VariableId, skipped.VariableCode, skipped.DatasamlingCode));
         Assert.Equal(["notes"], skipped.Fields);
     }
 

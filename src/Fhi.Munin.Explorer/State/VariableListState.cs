@@ -495,7 +495,10 @@ public sealed partial class VariableListState(
     internal void RecordImportReportDismissed(Guid id) =>
         _lists = [.. _lists.Select(l => l.Id == id ? l with { ImportReportDismissed = true } : l)];
 
-    /// <summary>Records one row taken out of an import report, so a report with none left is not read again.</summary>
+    /// <summary>
+    /// Records one row taken out of an import report, so one with none left and a skipped count known to be 0 is not
+    /// read again.
+    /// </summary>
     internal void RecordImportEntryRemoved(Guid id) =>
         _lists =
         [

@@ -947,6 +947,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     {
         InvokeAsync(async () =>
         {
+            ForgetImportReportOfPreviousReader();
+
             // A narrowing shortens the list, so the page number has to go back to the start: a
             // reader on page 4 of ten who ticks a kilde with two pages would otherwise be handed
             // an empty page and no sign of why. Every other change leaves them where they stood.

@@ -29,6 +29,11 @@ public sealed partial class VariableListView
     private string ImportCodesId(ListImportNotFound entry) =>
         $"munin-explorer-list-import-codes-{_instance}-{entry.EntryId:N}";
 
+    private string ImportPlaceId(ListImportNotFound entry) =>
+        $"munin-explorer-list-import-place-{_instance}-{entry.EntryId:N}";
+
+    private string ImportHideId => $"munin-explorer-list-import-hide-{_instance}";
+
     private string? ImportReportMessage => _importFailure switch
     {
         ListActionFailure.Throttled => T.RateLimitError,
@@ -70,9 +75,19 @@ public sealed partial class VariableListView
         }
     }
 
+    // A previous reader's notes are not kept in memory for the next one to be shown.
+    private void ForgetImportReportOfPreviousReader()
+    {
+        if (State is not null && _importReportReader != State.Reader)
+        {
+            _importReport = null;
+        }
+    }
+
     private async Task ReadImportReportAsync(Guid list, int read)
     {
         ListImportReport? report;
+        var reader = State?.Reader;
 
         // A failed read draws nothing: the list itself is whole, and the report is an extra.
         try
@@ -95,8 +110,8 @@ public sealed partial class VariableListView
             return;
         }
 
-        // The reader switched list, or signed out and in, while it was out: the answer is another list's.
-        if (read != _importReportReads || _shownList != list)
+        // The reader switched list, or signed out and in, while it was out: the answer is another list's or reader's.
+        if (read != _importReportReads || _shownList != list || State?.Reader != reader)
         {
             return;
         }
@@ -107,6 +122,10 @@ public sealed partial class VariableListView
 
     private static IEnumerable<ListImportNotFound> InOrder(ListImportReport report) =>
         report.NotFound.OrderBy(entry => entry.Index);
+
+    // Entries whose codes read alike would share a «Fjern» name, so those also say their place in the notice.
+    private HashSet<string> RepeatedImportCodes(ListImportReport report) =>
+        [.. report.NotFound.GroupBy(e => ImportCodes(e.VariableCode, e.DatasamlingCode)).Where(g => g.Count() > 1).Select(g => g.Key)];
 
     private string? ImportReason(string status) => status switch
     {
@@ -171,12 +190,8 @@ public sealed partial class VariableListView
 
         try
         {
-            if (!await Client.RemoveMyListImportEntryAsync(list, entry.EntryId))
-            {
-                _importFailure = ListActionFailure.Failed;
-                return;
-            }
-
+            // False is Munin's 404: the entry is already gone, which is what the reader asked for.
+            await Client.RemoveMyListImportEntryAsync(list, entry.EntryId);
             State.RecordImportEntryRemoved(list);
 
             if (_importReportFor != list || _importReport is not { } current)
@@ -193,17 +208,17 @@ public sealed partial class VariableListView
         catch (MuninExplorerRateLimitedException ex)
         {
             Log?.LogWarning(ex, "the rate limiter refused removing entry {EntryId} from the import report of list {ListId}", entry.EntryId, list);
-            _importFailure = ListActionFailure.Throttled;
+            FailImportWrite(list, ListActionFailure.Throttled);
         }
         catch (MuninExplorerUnauthorizedException ex)
         {
             Log?.LogWarning(ex, "the API refused removing entry {EntryId} from the import report of list {ListId} as unauthorised", entry.EntryId, list);
-            _importFailure = ListActionFailure.Failed;
+            FailImportWrite(list, ListActionFailure.Failed);
         }
         catch (Exception ex)
         {
             Log?.LogError(ex, "could not remove entry {EntryId} from the import report of list {ListId}", entry.EntryId, list);
-            _importFailure = ListActionFailure.Failed;
+            FailImportWrite(list, ListActionFailure.Failed);
         }
         finally
         {
@@ -225,34 +240,38 @@ public sealed partial class VariableListView
 
         try
         {
-            if (!await Client.DismissMyListImportReportAsync(list))
-            {
-                _importFailure = ListActionFailure.Failed;
-                return;
-            }
-
-            // On the holder's copy too, so switching away and back does not read it again this circuit.
+            // False is Munin's 404, already gone. On the holder's copy too, so switching back does not read it again.
+            await Client.DismissMyListImportReportAsync(list);
             State.RecordImportReportDismissed(list);
             _importFocus = (true, null, false, since.Item1, since.Item2, list);
         }
         catch (MuninExplorerRateLimitedException ex)
         {
             Log?.LogWarning(ex, "the rate limiter refused hiding the import report of list {ListId}", list);
-            _importFailure = ListActionFailure.Throttled;
+            FailImportWrite(list, ListActionFailure.Throttled);
         }
         catch (MuninExplorerUnauthorizedException ex)
         {
             Log?.LogWarning(ex, "the API refused hiding the import report of list {ListId} as unauthorised", list);
-            _importFailure = ListActionFailure.Failed;
+            FailImportWrite(list, ListActionFailure.Failed);
         }
         catch (Exception ex)
         {
             Log?.LogError(ex, "could not hide the import report of list {ListId}", list);
-            _importFailure = ListActionFailure.Failed;
+            FailImportWrite(list, ListActionFailure.Failed);
         }
         finally
         {
             _importWriting = false;
+        }
+    }
+
+    // A failure is said only on the list it happened to: the reader may have switched while the write was out.
+    private void FailImportWrite(Guid list, ListActionFailure failure)
+    {
+        if (_shownList == list)
+        {
+            _importFailure = failure;
         }
     }
 

@@ -1770,6 +1770,7 @@ table.munin-explorer-data-list > tbody > :where(tr) > th[scope=row] > button > .
   background: var(--grey20);
   border-radius: 0.5rem;
   margin-bottom: 1rem;
+  overflow-wrap: anywhere;
   padding: 1rem;
 }
 
