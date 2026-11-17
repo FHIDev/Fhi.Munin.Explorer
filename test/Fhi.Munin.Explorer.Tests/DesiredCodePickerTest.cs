@@ -1525,6 +1525,40 @@ public class DesiredCodePickerTest : ExplorerTestContext
         Assert.Equal(200, Assert.Single(saves.Calls).Count);
     }
 
+    // A later alert takes the over-cap mark off; left on, the next removal would clear an alert it did not answer.
+    [Fact]
+    public void Announce_WhenAnotherAlertFollowsTheOverCapRefusal_ThenItShowsAloneAndARemovalLeavesIt()
+    {
+        var client = new TreeClient();
+        var cut = Picker(new Saves(), [Icd10], ManyCodes(201), client: client);
+        Open(cut, "IV");
+        Tick(cut, "E15-E16");
+        Assert.Contains(OverFromImport(201), cut.Find("[role=alert]").TextContent);
+
+        client.SearchFails = true;
+        SearchFor(cut, "e1");
+        cut.WaitForAssertion(() => Assert.Equal("Kunne ikke hente kodelisten nå. Prøv igjen om litt.", cut.Find("[role=alert]").TextContent));
+
+        Press(cut, "Fjern C001");
+
+        Assert.Equal("Kunne ikke hente kodelisten nå. Prøv igjen om litt.", cut.Find("[role=alert]").TextContent);
+    }
+
+    // The refusal belongs to the tab it was said on; the next tab starts with nothing in the alert.
+    [Fact]
+    public void SelectTab_WhenTheOverCapRefusalStands_ThenTheNextTabsAlertIsEmpty()
+    {
+        var cut = Picker(new Saves(), [Icd10, Sivilstand], ManyCodes(201));
+        Open(cut, "IV");
+        Tick(cut, "E15-E16");
+        Assert.Contains(OverFromImport(201), cut.Find("[role=alert]").TextContent);
+
+        cut.FindAll("[role=tab]")[1].Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("true", cut.FindAll("[role=tab]")[1].GetAttribute("aria-selected")));
+        Assert.Empty(cut.Find("[role=alert]").TextContent);
+    }
+
     [Fact]
     public void Tick_WhenOverTheCapAndAParentWouldFoldEnoughToFit_ThenItIsRefused()
     {

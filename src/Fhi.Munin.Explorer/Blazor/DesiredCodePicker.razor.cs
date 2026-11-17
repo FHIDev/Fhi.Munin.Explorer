@@ -127,13 +127,21 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
     private string FullMessage => OverFromImport ? T.PickerOverFromImport(MaxChoices, _choices.Count) : T.PickerFull(MaxChoices);
 
-    // The over-cap refusal is read from the live count, so no removal path can leave it stating an old one or outlive the excess.
-    private string? Alert => _alertOverCap ? (OverFromImport ? FullMessage : null) : _alert;
-
+    // Marked when it is the import's sentence, so a removal can clear it: its count goes stale, and the caption below
+    // keeps the live one. Any other refusal is not the removal's to answer and stays.
     private void AnnounceFull()
     {
         Announce(FullMessage, error: true);
         _alertOverCap = OverFromImport;
+    }
+
+    private void ClearOverCapRefusal()
+    {
+        if (_alertOverCap)
+        {
+            _alert = null;
+            _alertOverCap = false;
+        }
     }
 
     // The summary keys its lines on the value, so two equal choices would end the circuit; saved data may repeat one.
@@ -546,6 +554,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
             return;
         }
 
+        var before = _choices.Count;
         foreach (var hit in state.Hits.ToList())
         {
             var tick = TickOf(link, state, hit);
@@ -562,6 +571,12 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
             if (_saving || _disposed)
             {
                 return;
+            }
+
+            // Cleared after each removal rather than once at the end, so a refusal later in the run is not wiped.
+            if (_choices.Count < before)
+            {
+                ClearOverCapRefusal();
             }
         }
 
@@ -796,7 +811,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     // Every level is read first; a failed read changes nothing.
     private async Task<bool> UntickUnderAsync(KodeverkLink link, ListState state, KodeverkCodeHit hit)
     {
-        // Refused before any read, so a failed read cannot announce first; the check after the reads is for a count that moved.
+        // Refused before any read, so a failed read cannot announce first.
         if (OverFromImport)
         {
             AnnounceFull();
@@ -874,7 +889,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
             .ToHashSet();
         var kept = _choices.Where(c => !gone.Contains(c)).Select(c => c.Value).ToHashSet();
         added = [.. added.DistinctBy(c => c.Value).Where(c => !kept.Contains(c.Value))];
-        if (OverFromImport || _choices.Count - gone.Count + added.Count > MaxChoices)
+        if (_choices.Count - gone.Count + added.Count > MaxChoices)
         {
             AnnounceFull();
             return false;
@@ -1118,6 +1133,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         _choices.Remove(choice);
         _noCount.Remove(choice.Value);
         _notInTree.Remove(choice.Value);
+        ClearOverCapRefusal();
         _focusCounter = true;
         await RecountAsync();
     }
