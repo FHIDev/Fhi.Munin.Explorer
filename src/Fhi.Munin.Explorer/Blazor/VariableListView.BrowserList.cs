@@ -206,6 +206,7 @@ public sealed partial class VariableListView
         }
 
         _confirmingClear = !_confirmingClear;
+        _readerMoves++;
     }
 
     private async Task ClearBrowserListAsync()
@@ -285,7 +286,7 @@ public sealed partial class VariableListView
 
             _browserShare = new ShareMade(Guid.Empty, code, SharedListHref?.Invoke(code));
 
-            // A reader who opened or closed something while the share was out keeps focus where they put it.
+            // A reader who opened, closed or paged anything while the share was out keeps focus where they put it.
             _focusBrowserShareCode = _readerMoves == moves;
         }
         catch (SharedSnapshotTooLargeException ex)
