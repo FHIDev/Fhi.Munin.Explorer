@@ -343,6 +343,8 @@ public partial class VariableListViewTest
     [InlineData(null, new[] { "notes", "desiredData", "codes" }, "V_KJONN: notatet, ønskede data og noen av kodene")]
     [InlineData(null, new[] { "codes" }, "V_KJONN: noen av kodene")]
     [InlineData("en", new[] { "notes", "codes" }, "V_KJONN: the note and some of the codes")]
+    [InlineData("en", new[] { "notes", "desiredData", "codes" }, "V_KJONN: the note, the desired data and some of the codes")]
+    [InlineData(null, new[] { "notes", "codes" }, "V_KJONN: notatet og noen av kodene")]
     public void ImportReport_WhenSomeOfAnItemsCodesWereDropped_ThenItsLineSaysSo(string? language, string[] fields, string expected)
     {
         var client = new ImportClient(Item("Alder ved diagnose", "V_BDR.ALDER"))

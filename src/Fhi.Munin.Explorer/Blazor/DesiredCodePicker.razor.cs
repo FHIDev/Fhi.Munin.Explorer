@@ -118,14 +118,10 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
                 _noCount.Add(choice.Value);
             }
         }
-
-        if (OverFromImport)
-        {
-            Announce(T.PickerOverFromImport(MaxChoices, _choices.Count), error: false);
-        }
     }
 
-    // Only an import stores more than the cap; the reader can remove choices, and nothing else, until it fits.
+    // Only an import stores more than the cap. Until it fits, removal is the one edit allowed: every line gets «Fjern»,
+    // and a tick, a search's «Velg treffene» and a parent's split are refused even where they would end at or under it.
     private bool OverFromImport => _choices.Count > MaxChoices;
 
     private string FullMessage => OverFromImport ? T.PickerOverFromImport(MaxChoices, _choices.Count) : T.PickerFull(MaxChoices);
@@ -717,7 +713,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     private bool Choose(KodeverkLink link, ListState state, KodeverkCodeHit hit)
     {
         var under = ChoicesIn(link).Where(c => IsUnder(c, hit.Value) || IsOwnCodeOnly(c, hit)).ToList();
-        if (_choices.Count - under.Count + 1 > MaxChoices)
+        if (OverFromImport || _choices.Count - under.Count + 1 > MaxChoices)
         {
             return false;
         }
@@ -860,7 +856,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
             .ToHashSet();
         var kept = _choices.Where(c => !gone.Contains(c)).Select(c => c.Value).ToHashSet();
         added = [.. added.DistinctBy(c => c.Value).Where(c => !kept.Contains(c.Value))];
-        if (_choices.Count - gone.Count + added.Count > MaxChoices)
+        if (OverFromImport || _choices.Count - gone.Count + added.Count > MaxChoices)
         {
             Announce(FullMessage, error: true);
             return false;
@@ -1080,9 +1076,9 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
     private bool AnyFolded => !ShowAllChosen && ShownChoices.Count() < _choices.Count;
 
-    // What the summary can remove: whatever no box in the tree stands for.
+    // What the summary can remove: whatever no box in the tree stands for, and every choice while over the cap.
     private bool Removable(Choice choice) =>
-        IsOlderRange(choice) || !CanReveal(choice) || _notInTree.Contains(choice.Value)
+        OverFromImport || IsOlderRange(choice) || !CanReveal(choice) || _notInTree.Contains(choice.Value)
         || (_noCount.Contains(choice.Value) && !InLoadedTree(choice));
 
     // A search hit is not enough: only a level read from the tree shows the code where the reader can find it again.
@@ -1105,6 +1101,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         _noCount.Remove(choice.Value);
         _notInTree.Remove(choice.Value);
         _focusCounter = true;
+        Announce(null, error: false);
         await RecountAsync();
     }
 
@@ -1129,6 +1126,12 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
         // The old total is no longer the draft's while the new one is asked for.
         _union = null;
+
+        // The client throws on a union past the API's cap, so over it the total stays unknown until removals bring it down.
+        if (OverFromImport)
+        {
+            return;
+        }
 
         int? total = 0;
         try
