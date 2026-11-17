@@ -378,12 +378,21 @@ public partial class VariableListViewTest
         Assert.Equal("", cut.FindAll("[role=alert]")[0].TextContent.Trim());
     }
 
-    [Fact]
-    public async Task ImportReport_WhenTheReportReadFailed_ThenTheNextPageReadAsksAgain()
+    [Theory]
+    [InlineData("throttled")]
+    [InlineData("unauthorised")]
+    [InlineData("fault")]
+    public async Task ImportReport_WhenTheReportReadFailed_ThenTheNextPageReadAsksAgain(string failure)
     {
-        // The list is the only place the reader learns what was left behind, so one throttled read must not hide it for good.
+        // The list is the only place the reader learns what was left behind, so one failed read must not hide it for good.
         var rows = Enumerable.Range(1, 30).Select(i => Item($"Variabel {i}", $"V_{i}")).ToArray();
-        var client = new ImportClient(rows) { PageSize = 25, ReportThrows = new MuninExplorerRateLimitedException(null) };
+        Exception thrown = failure switch
+        {
+            "throttled" => new MuninExplorerRateLimitedException(null),
+            "unauthorised" => new MuninExplorerUnauthorizedException(),
+            _ => new InvalidOperationException("down")
+        };
+        var client = new ImportClient(rows) { PageSize = 25, ReportThrows = thrown };
         var cut = RenderImport(client);
         cut.WaitForAssertion(() => Assert.Equal([ListId], client.ReportsAskedFor));
         Assert.Empty(cut.FindAll(ImportNotice));
