@@ -58,7 +58,8 @@ public partial class VariableListViewTest
         /// <summary>Holds the first list's report read until released, so the reader can switch list meanwhile.</summary>
         public TaskCompletionSource<ListImportReport?>? HoldReport { get; init; }
 
-        /// <summary>Holds both writes until released, each recorded as asked before it waits.</summary>
+        /// <summary>Holds both writes until released, each recorded as asked before it waits. Built without
+        /// RunContinuationsAsynchronously on purpose: the tests assert what did not happen once the answer lands.</summary>
         public TaskCompletionSource<bool>? HoldWrite { get; set; }
 
         public List<Guid> ReportsAskedFor { get; } = [];

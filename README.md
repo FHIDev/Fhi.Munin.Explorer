@@ -701,7 +701,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     styles either yet (`Fhi.Metadata-9huq2.41`). Undrawn, the notice is unboxed text between the alert and the table and each
     entry a bullet, a row not found with its button under the words, which reads; a host owes the
     notice a box and `overflow-wrap: anywhere`, so a long code or a pasted URL in a note wraps
-    inside 320px, its lists `list-style: none`, and an entry a wrapping flex row.
+    inside 320px; its lists `list-style: none`; and an entry a wrapping flex row.
     `munin-explorer-list-head` is the saved-list view's top row: the name block and the action row,
     side by side (`Fhi.Metadata-fc7ie`). Undrawn, the actions stand under the name, which reads
     well enough; a host owes it a wrapping flex row and one rule line under the pair.
