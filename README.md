@@ -688,8 +688,8 @@ These are not style preferences — each one is a host that breaks otherwise.
     a host owes it `display: block`; Stiler also sets it small and grey, and lets it break in the
     cards and in a search row's name cell, where a long code would otherwise be cut off or run
     over the next column.
-    `munin-explorer-list-status` is the «Historisk» mark in a list row's header, after the code,
-    when the variable is historical (`Fhi.Metadata-l9l2n.190`). No Stiler release styles it yet
+    `munin-explorer-list-status` is the «Historisk» mark in a list row's header, after the name and its code if it has
+    one, when the variable is historical (`Fhi.Metadata-l9l2n.190`). No Stiler release styles it yet
     (`Fhi.Metadata-l9l2n.191`): undrawn, it is plain text at the row header's size and weight, on
     its own line under a code Stiler draws as a block, or after the name, a space between, in a
     row with no code. A host styles it until then, as the samples do with the version history's
