@@ -24,6 +24,16 @@ export function readDateInput(id) {
     : null;
 }
 
+// True while the reader is typing or choosing in a field, so a late answer does not pull focus away mid-word.
+const NOT_TYPED_IN = new Set(['button', 'submit', 'reset', 'checkbox', 'radio', 'image', 'file', 'range', 'color']);
+export function isTypingInField() {
+  const active = document.activeElement;
+  return active instanceof HTMLTextAreaElement
+    || active instanceof HTMLSelectElement
+    || (active instanceof HTMLInputElement && !NOT_TYPED_IN.has(active.type))
+    || (active instanceof HTMLElement && active.isContentEditable);
+}
+
 // One observer per mounted detail page, keyed by its own bar's id. Two explorers on one host page
 // each have an entry of their own, so neither can drive or disconnect the other's bar.
 const observers = new Map();

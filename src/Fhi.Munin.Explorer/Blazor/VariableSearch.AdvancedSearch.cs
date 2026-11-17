@@ -53,6 +53,9 @@ public partial class VariableSearch
     private bool _focusAddCondition;
     private bool _focusAdvancedToggle;
 
+    // Set when an opening fills its rows, which can land after the reader has gone on typing elsewhere.
+    private bool _focusDraftUnlessTyping;
+
     // Set when the link's conditions could not all be kept, so the host is told the filter actually in force.
     private bool _conditionsDropped;
 
@@ -212,6 +215,7 @@ public partial class VariableSearch
         }
 
         _focusDraft = _drafts[0].Key;
+        _focusDraftUnlessTyping = true;
     }
 
     private ConditionDraft NewDraft(ConditionField field)
@@ -468,7 +472,48 @@ public partial class VariableSearch
     private Task RemoveConditionAsync(SearchCondition condition)
     {
         var conditions = Pending.Conditions.ToList();
-        return conditions.Remove(condition) ? ApplyFilterAsync(Pending with { Conditions = conditions }) : Task.CompletedTask;
+        if (!conditions.Remove(condition))
+        {
+            return Task.CompletedTask;
+        }
+
+        DropDraftsStating([condition], conditions);
+        return ApplyFilterAsync(Pending with { Conditions = conditions });
+    }
+
+    // As a row would state it: a link may list codes in another order or casing than the API does.
+    private SearchCondition CanonicalCondition(SearchCondition condition) =>
+        _conditionFields is { } fields && FieldOf(fields, condition.Field) is { } field
+            && DraftFrom(field, condition) is var draft && DraftValue(draft, field).Value is { } value
+            ? new SearchCondition(field.Field, draft.Operator, value)
+            : condition;
+
+    /// <summary>With the form open, drop the rows that state a condition the filter is about to lose.</summary>
+    /// <remarks>Left in, «Vis treff» would apply the removed condition again.</remarks>
+    private void DropDraftsStating(IReadOnlyCollection<SearchCondition> removed, IReadOnlyCollection<SearchCondition>? kept = null)
+    {
+        if (!_advancedOpen || removed.Count == 0)
+        {
+            return;
+        }
+
+        // A kept chip that reads the same once canonical still needs its row.
+        var canonical = removed.Select(CanonicalCondition)
+            .Except((kept ?? []).Select(CanonicalCondition), SameCondition.Instance).ToList();
+        var stating = _drafts.Where(draft => DraftField(draft) is { } field
+            && DraftValue(draft, field).Value is { } value
+            && canonical.Contains(new SearchCondition(field.Field, draft.Operator, value), SameCondition.Instance)).ToList();
+
+        foreach (var draft in stating)
+        {
+            _drafts.Remove(draft);
+            _draftFieldSelects.Remove(draft.Key);
+        }
+
+        if (stating.Count > 0 && _drafts.Count == 0 && _conditionFields is { Count: > 0 } fields)
+        {
+            _drafts.Add(NewDraft(fields[0]));
+        }
     }
 
     // A token with no word here reads as itself, so a field the API adds later still shows.
@@ -536,7 +581,12 @@ public partial class VariableSearch
         ElementReference? target = null;
         if (_focusDraft is { } key && _draftFieldSelects.TryGetValue(key, out var select) && select.Context is not null)
         {
-            (_focusDraft, target) = (null, select);
+            var unlessTyping = _focusDraftUnlessTyping;
+            (_focusDraft, _focusDraftUnlessTyping, target) = (null, false, select);
+            if (unlessTyping && _interop is { } interop && await interop.IsTypingInFieldAsync() == true)
+            {
+                return;
+            }
         }
         else if (_focusAddCondition && _addConditionButton.Context is not null)
         {

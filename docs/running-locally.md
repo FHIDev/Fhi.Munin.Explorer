@@ -176,20 +176,15 @@ helsedata's private Azure Artifacts feed. So:
   does not have: the defect was two grid rules missing from the sample stylesheets, and Stiler had
   carried both all along.
 
-- **`playwright install chromium` cannot complete on Node 26, and it does not look like that.**
-  The pinned fetcher calls `fs.rmdir(path, { recursive: true })`, removed in that version, so it
-  aborts with `ERR_INVALID_ARG_VALUE` partway and leaves
-  `%LOCALAPPDATA%\ms-playwright\chromium-<n>\chrome-win\` holding a `chrome.dll` and no
-  `chrome.exe`. Every later launch then fails as though the download had hung, and clearing the
-  cache does not help. `PLAYWRIGHT_BROWSER_CHANNEL=msedge` runs an installed browser instead —
-  opt-in, unset in CI, and a different engine build, so its geometry numbers are not
-  interchangeable with the bundled chromium's.
-
-  **`check-accessibility.sh` takes the same variable**, and until `Fhi.Metadata-2nfvm` it did not:
-  it ran the install unconditionally, so on Node 26 the gate AGENTS.md makes mandatory for every
-  markup change could not be run at all, and the hang looked like a slow download rather than a
-  failed unpack. Both scripts now skip the install when a channel is set and name the browser they
-  used.
+- **The gates pin Playwright 1.62.1, whose `playwright install chromium` completes on Node 26 on Linux.**
+  The earlier pin, 1.49.1, could not: on Windows its fetcher aborted with `ERR_INVALID_ARG_VALUE`
+  and left a half-written `chromium-<n>` folder, and on the devbox and its nightly sidecar it hung
+  in «extracting archive» until the run was killed (`Fhi.Metadata-wgwa0`, `Fhi.Metadata-l9l2n.131`).
+  1.62.1 is verified on the devbox (Linux); Windows has not been re-tested.
+  `PLAYWRIGHT_BROWSER_CHANNEL=msedge` still runs an installed browser instead: opt-in, unset in CI,
+  and a different engine build, so its geometry numbers are not interchangeable with the bundled
+  chromium's. All three browser gates take it, skip the install when it is set, and name the
+  browser they used.
 
 - **On a devbox, give the browser gates a folder of their own.** The box sets `PLAYWRIGHT_BROWSERS_PATH`
   to the shared `/opt/ms-playwright`, and `playwright install chromium` replaces that folder's contents with this
@@ -204,7 +199,7 @@ helsedata's private Azure Artifacts feed. So:
   browser gates therefore source `scripts/chromium-deps.sh` after installing chromium: when `ldd`
   finds a library missing, or the host has no fonts, it fetches the Ubuntu 24.04 packages chromium
   needs from `archive.ubuntu.com`, unpacks them with `dpkg-deb -x` into
-  `~/.cache/munin-explorer/chromium-deps-v1`, and points `LD_LIBRARY_PATH` and `FONTCONFIG_FILE`
+  `~/.cache/munin-explorer/chromium-deps-v2`, and points `LD_LIBRARY_PATH` and `FONTCONFIG_FILE`
   at them. The first run on a box takes a few minutes; later ones find the prefix and take none. On
   a host that already has the libraries and fonts — every CI runner — it does nothing at all.
 

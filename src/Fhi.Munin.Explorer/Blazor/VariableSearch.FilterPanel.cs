@@ -1422,6 +1422,7 @@ public partial class VariableSearch
     {
         await _searchField.FocusAsync();
 
+        DropDraftsStating(Pending.Conditions);
         await ApplyFilterAsync(VariableFilter.None);
     }
 

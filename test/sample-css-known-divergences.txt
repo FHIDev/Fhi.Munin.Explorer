@@ -554,30 +554,3 @@ missing-selector||.munin-explorer-header__actions .munin-explorer__dropdown|
 # Delete these two lines when helsedata pins a Stiler that carries it.
 unstyled-name||.munin-explorer-datasamling__description-rest|
 unstyled-name||.munin-explorer-datasamling__description-toggle|
-
-# Fhi.Metadata-9huq2.14: the code picker's tree; its Stiler rules are Fhi.Metadata-9huq2.16.
-# Delete these eight lines when helsedata pins a Stiler that carries them.
-unstyled-name||.munin-explorer-codetree|
-unstyled-name||.munin-explorer-codetree__box|
-unstyled-name||.munin-explorer-codetree__code|
-unstyled-name||.munin-explorer-codetree__count|
-unstyled-name||.munin-explorer-codetree__group|
-unstyled-name||.munin-explorer-codetree__name|
-unstyled-name||.munin-explorer-codetree__row|
-unstyled-name||.munin-explorer-codetree__toggle|
-# Stiler's rules for the code list's «Referanse» line and the lead sentence above the code lists, which the Data tab no
-# longer draws since each code list is headed «<type>: <reference>» (Fhi.Metadata-9huq2.19). Stiler drops both rules in
-# Fhi.Metadata-9huq2.16, with the code tree's rules; these lines go when helsedata pins that Stiler.
-missing-selector||.munin-explorer-kodeverk__reference|
-missing-selector||.munin-explorer-lead|
-# The list row's «Ønskede data» cell wraps the chosen codes in their own box (Fhi.Metadata-9huq2.19); Stiler's grid rules for
-# it, and the textarea's column 2, come with Fhi.Metadata-9huq2.16. These lines go when helsedata pins that Stiler.
-unstyled-name||.munin-explorer-dataitem-main__desiredCodes|
-invented-selector|@media (width < 1280px)|.munin-explorer-list-scroll table.munin-explorer-data-list .munin-explorer-dataitem-main__desiredData > textarea|grid-column
-# The picker's scroll area for the search hits and the tree (Fhi.Metadata-9huq2.19); Stiler's rule comes with
-# Fhi.Metadata-9huq2.16. This line goes when helsedata pins that Stiler.
-unstyled-name||.munin-explorer-codetree-scroll|
-# Fhi.Metadata-ipok2.2: avansert søk's box and its single buttons; their Stiler rules are Fhi.Metadata-ipok2.9.
-# Delete these two lines when HostileHost pins a Stiler that carries them.
-unstyled-name||.munin-explorer-advanced-search|
-unstyled-name||.munin-explorer-advanced-search__action|

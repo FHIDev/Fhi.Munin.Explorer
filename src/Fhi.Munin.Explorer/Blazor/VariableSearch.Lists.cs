@@ -54,6 +54,7 @@ public partial class VariableSearch : IDisposable, IAsyncDisposable
         }
 
         // It replaces the whole filter, so a press held from the panel meanwhile goes with it (Fhi.Metadata-7v7ki).
+        DropDraftsStating(Pending.Conditions);
         (_pendingVariabelgruppe, _queuedFilter, _queuedClearSearch) = (null, null, false);
         await ApplyFilterAsync(VariableFilter.None with { VariabelgruppeIds = [id] }, clearSearch: true);
     }
