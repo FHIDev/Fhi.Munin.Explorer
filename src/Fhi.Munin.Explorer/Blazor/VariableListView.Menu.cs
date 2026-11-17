@@ -9,8 +9,8 @@ public sealed partial class VariableListView
     private bool _menuOpen;
     private bool _downloadOpen;
 
-    // Moved by every disclosure press and cancel, the folds' Escape and their checkboxes and buttons, CloseFolds, the clear
-    // question and a shared list's page turn, so a late share can tell the reader acted since (Fhi.Metadata-emsc0.3.19).
+    // Moved by every Toggle() press and cancel, the folds' Escape and their checkboxes and buttons, CloseFolds, the clear
+    // question and a shared list's page turn, so a late share can tell the reader acted since; Fhi.Metadata-emsc0.3.19 would replace it.
     private int _readerMoves;
     private MenuFocus _menuFocus;
     private ElementReference _menuToggle;
