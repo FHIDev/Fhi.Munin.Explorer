@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
@@ -352,7 +353,6 @@ public sealed partial class VariableListView
         }
 
         _carryingOver = true;
-        _carryOverFailed = false;
         ForgetFailures();
 
         // Before the first await, as a create does: a form the reader opens meanwhile keeps the focus.
@@ -513,9 +513,12 @@ public sealed partial class VariableListView
             return null;
         }
 
-        return wanted.Control == OfferControl.RemoveRefused ? (RefusedRowsShown is not null ? _removeRefusedButton : null)
-            : ShowsCarryOverOffer ? _carryOverButton
-            : Lists.Count > 1 ? _listPicker : _createToggle;
+        return wanted.Control switch
+        {
+            OfferControl.RemoveRefused => RefusedRowsShown is not null ? _removeRefusedButton : null,
+            OfferControl.CarryOver => ShowsCarryOverOffer ? _carryOverButton : Lists.Count > 1 ? _listPicker : _createToggle,
+            _ => throw new UnreachableException($"no focus target for {wanted.Control}"),
+        };
     }
 
     // The list's name, made free among the reader's lists the way a reader would: «Navn (2)».

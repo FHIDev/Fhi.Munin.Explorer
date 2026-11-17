@@ -17,6 +17,12 @@ internal sealed class FakeBrowserList : IBrowserListStore
     /// <summary>No module: every call answers null.</summary>
     public bool Unreachable { get; set; }
 
+    /// <summary>No module is the host's answer for good, as a 404 latches it.</summary>
+    public bool Refused => Unreachable;
+
+    /// <summary>Every answer says the list is full, as the module's status can after any call.</summary>
+    public bool AnswersFull { get; set; }
+
     /// <summary>Thrown from every call, as a fault inside the module crosses the circuit.</summary>
     public Exception? Throws { get; set; }
 
@@ -79,7 +85,7 @@ internal sealed class FakeBrowserList : IBrowserListStore
         return answered;
     }
 
-    private BrowserListStatus Status(bool ok = true, bool full = false) => new(ok, Rows.Count, !Refuses && !Foreign, full, Foreign);
+    private BrowserListStatus Status(bool ok = true, bool full = false) => new(ok, Rows.Count, !Refuses && !Foreign, full || AnswersFull, Foreign);
 
     public Task<BrowserListStatus?> CountAsync() => Answer("count", () => Status());
 
