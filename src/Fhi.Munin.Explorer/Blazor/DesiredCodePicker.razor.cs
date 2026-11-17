@@ -121,7 +121,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         }
     }
 
-    // Only an import stores more than the cap. Until it fits, removal is the one edit allowed: every line gets «Fjern»,
+    // Only an import stores more than the cap (Fhi.Metadata-9huq2.33). Until it fits, removal is the one edit allowed: every line gets «Fjern»,
     // and a tick, a search's «Velg treffene» and a parent's split are refused even where they would end at or under it.
     private bool OverFromImport => _choices.Count > MaxChoices;
 

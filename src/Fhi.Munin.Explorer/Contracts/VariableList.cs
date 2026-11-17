@@ -51,7 +51,7 @@ public sealed record VariableList
     [JsonPropertyName("importNotFoundCount")] public int ImportNotFoundCount { get; init; }
 
     /// <summary>
-    /// How many items on the list came over without their notes or desired data. <see langword="null"/> when the API
+    /// How many items on the list came over without their notes, their desired data or some of their picked codes. <see langword="null"/> when the API
     /// does not say, which an API older than the count does not: null means unknown, not none, so read the report.
     /// </summary>
     [JsonPropertyName("importSkippedCount")] public int? ImportSkippedCount { get; init; }

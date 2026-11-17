@@ -892,7 +892,7 @@ public interface IMuninExplorerClient
 
     /// <summary>
     /// What the import of one of the reader's lists left behind: the rows that matched no variable, and the items
-    /// whose notes or desired data were left off. Null for a list that was not imported, is not the reader's, or is
+    /// whose notes, desired data or some of the picked codes were left off. Null for a list that was not imported, is not the reader's, or is
     /// gone.
     /// </summary>
     /// <remarks>

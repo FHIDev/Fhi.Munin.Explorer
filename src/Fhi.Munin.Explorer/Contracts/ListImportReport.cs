@@ -5,7 +5,7 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// <summary>
 /// What an imported list's import left behind, as returned by
 /// <c>GET /api/explorer/my/lists/{id}/import-report</c>: the rows that matched no variable, and the items whose
-/// notes or desired data were left off. Hiding it sets <see cref="Dismissed"/>; the report stays readable.
+/// notes, desired data or some of the picked codes were left off. Hiding it sets <see cref="Dismissed"/>; the report stays readable.
 /// </summary>
 public sealed record ListImportReport
 {
