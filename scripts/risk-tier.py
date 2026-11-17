@@ -10,7 +10,8 @@ A rules file has one `<tier> <glob>` per line (# starts a comment). A file takes
 high, medium, low, that has a glob matching it, and medium when none does. A pull request takes the highest
 tier among its files, so it is low only when every file is. `**` crosses directories, `*` and `?` do not.
 A Dependabot bump that stays within a major version of 1 or more and touches only package manifests and
-lockfiles is low, unless a high rule matches one of them: such a manifest keeps its high tier
+lockfiles is low, and so is one that only moves a same-tag image digest in Dockerfiles or compose files
+(DevInfra-0f5.38), unless a high rule matches one of them: such a file keeps its high tier
 (DevInfra-0f5.36, Robin's choice of 13.11), so a repository marks a package that must keep its review by naming its
 manifest in a high rule. The rules and examples files themselves are always high, so a pull request
 cannot lower its own tier by editing them; this rule lives here, in DevInfra, where no caller's pull request reaches.
@@ -26,6 +27,15 @@ MANIFEST = re.compile(
     r"(^|/)(package(-lock)?\.json|npm-shrinkwrap\.json|yarn\.lock|pnpm-lock\.yaml|packages\.lock\.json"
     r"|Directory\.Packages\.props|[^/]+\.csproj|go\.(mod|sum)|requirements[^/]*\.txt)$")
 DEPENDABOT_VERSIONS = re.compile(r"\bfrom v?(\d+)\.\S* to v?(\d+)\.\S*")
+# Image references Dependabot's docker ecosystem updates, and its title for a digest-only update of a pinned tag
+# («Bump node from `1a2b3c4` to `5d6e7f8`»: the short digests, in backticks; a tag change names the tags instead).
+# A Dockerfile (Dockerfile, Dockerfile.api, api.Dockerfile) or a compose file (compose.yaml, docker-compose.override.yml);
+# not Dockerfile.sh or composer.yaml.
+IMAGE_FILE = re.compile(r"(^|/)(Dockerfile(\.[A-Za-z0-9_-]+)*|[^/]+\.Dockerfile|(docker-)?compose(\.[A-Za-z0-9_-]+)?\.ya?ml)$")
+# A Dockerfile.<suffix> that is a script or data file, not an image file.
+NOT_IMAGE_SUFFIX = re.compile(r"(^|/)Dockerfile(\.[A-Za-z0-9_-]+)*\.(sh|ps1|py|js|mjs|ts|cs|json|ya?ml|toml|xml|exe|bat|cmd|txt|md|dockerignore)$", re.I)
+# The whole title, with Dependabot's optional commit prefix («build(deps): ») and directory («in /varde»).
+DEPENDABOT_DIGEST = re.compile(r"(?:[\w()!-]+: )?[Bb]ump \S+ from `[0-9a-f]{7,64}` to `[0-9a-f]{7,64}`(?: in \S+)?")
 
 
 def glob_regex(glob):
@@ -83,11 +93,17 @@ def is_minor_dependency_bump(files, author, title):
     return bool(match) and match.group(1) == match.group(2) and int(match.group(1)) >= 1
 
 
+def is_same_tag_digest_bump(files, author, title):
+    return (author in DEPENDENCY_BOTS and bool(files) and all(IMAGE_FILE.search(f) and not NOT_IMAGE_SUFFIX.search(f) for f in files)
+            and bool(DEPENDABOT_DIGEST.fullmatch(title)))
+
+
 def pr_tier(files, rules, author="", title=""):
     """(tier, [(path, tier, glob)])."""
     decided = [(path, *file_tier(path, rules)) for path in files]
-    # The exception never lowers a manifest a high rule names (DevInfra-0f5.36): the bump then takes the rules' tier.
-    if is_minor_dependency_bump(files, author, title) and not any(tier == "high" for _, tier, _ in decided):
+    # The exceptions never lower a manifest or file a high rule names (DevInfra-0f5.36): the bump then takes the rules' tier.
+    lowered = is_minor_dependency_bump(files, author, title) or is_same_tag_digest_bump(files, author, title)
+    if lowered and not any(tier == "high" for _, tier, _ in decided):
         return "low", decided
     if not decided:
         return "medium", decided
