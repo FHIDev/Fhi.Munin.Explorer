@@ -380,9 +380,9 @@ code, and ask for a test where none reaches it:
   beside one that exists (kilde code, then datasamling code), find the existing lookup's normalisation (case fold, a
   prefix such as `K_`, trim) and require the new one to apply the same, or the PR to say why not. Where the existing
   lookup is an API call, its normalisation is the API's: read the client member's doc
-  (`IMuninExplorerClient.FindKildeIdByCodeAsync`) or Munin's endpoint, not only the call site here. Ask for one test per spelling the existing lookup accepts. #746 fixed #744:
-  `?kilde=kreg&datasamling=KREG.CRC` opened nothing, because the kilde lookup (#702) takes a code with or without `K_`
-  and the new datasamling lookup required it.
+  (`IMuninExplorerClient.FindKildeIdByCodeAsync`) or Munin's endpoint, not only the call site here. Ask for one test
+  per spelling the existing lookup accepts. #746 fixed #744: `?kilde=kreg&datasamling=KREG.CRC` opened nothing,
+  because the kilde lookup (#702) takes a code with or without `K_` and the new datasamling lookup required it.
 
 Each miss is **Important**.
 
