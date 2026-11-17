@@ -94,4 +94,10 @@ public static class ListImportFields
 
     /// <summary>The reader's desired data.</summary>
     public const string DesiredData = "desiredData";
+
+    /// <summary>
+    /// Some of the codes the reader had picked: they were not in the variable's code list and were dropped, while the
+    /// rest were kept as choices. The report carries no count of them.
+    /// </summary>
+    public const string Codes = "codes";
 }

@@ -155,7 +155,8 @@ public sealed partial class VariableListView
     {
         var note = fields.Contains(ListImportFields.Notes);
         var desiredData = fields.Contains(ListImportFields.DesiredData);
-        return note || desiredData ? T.ImportSkippedFields(note, desiredData) : null;
+        var codes = fields.Contains(ListImportFields.Codes);
+        return note || desiredData || codes ? T.ImportSkippedFields(note, desiredData, codes) : null;
     }
 
     /// <summary>

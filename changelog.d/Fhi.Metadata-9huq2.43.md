@@ -1,0 +1,2 @@
+category: Fixed
+- **The code picker no longer drops an item's choices past 200 when it is opened and saved.** It kept only the first 200 stored choices, so saving an imported item that holds more lost the rest. It now shows every choice, and refuses to save until the reader has removed enough: «Velg høyst 200 kodevalg; dette elementet har N fra importen. Fjern noen før du lagrer.» Adding a choice is refused with the same sentence while the item is over. The 200 cap for choosing is unchanged.

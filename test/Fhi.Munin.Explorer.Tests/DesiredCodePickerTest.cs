@@ -1443,4 +1443,54 @@ public class DesiredCodePickerTest : ExplorerTestContext
         var markup = cut.Markup;
         Assert.InRange(markup.IndexOf("munin-explorer-codetree-scroll", StringComparison.Ordinal), 0, markup.IndexOf(">Lagre</button>", StringComparison.Ordinal));
     }
+
+    // An imported item can hold more than the cap (Fhi.Metadata-9huq2.33); a cut on load would drop the rest on the next save.
+    private static IReadOnlyList<DesiredCodeView> ManyCodes(int count, int? each = 1) =>
+        [.. Enumerable.Range(1, count).Select(i => Saved(DesiredCodeKinds.Code, $"C{i:000}", null, each))];
+
+    [Fact]
+    public void Save_WhenAnImportedItemHoldsMoreThanTheCap_ThenEveryChoiceIsKeptAndSavingIsRefusedWithWhy()
+    {
+        var saves = new Saves();
+        var cut = Picker(saves, [Icd10], ManyCodes(203));
+
+        Assert.Contains("203 av 200 valg", cut.Markup);
+        var why = "Velg høyst 200 kodevalg; dette elementet har 203 fra importen. Fjern noen før du lagrer.";
+        Assert.Contains(cut.FindAll("p.caption"), p => p.TextContent.Trim() == why);
+        Assert.DoesNotContain("Du har valgt 200", cut.Markup);
+
+        Press(cut, "Lagre");
+
+        Assert.Empty(saves.Calls);
+        Assert.Contains(why, cut.Find("[role=alert]").TextContent);
+    }
+
+    [Fact]
+    public void Save_WhenAnImportedItemIsBroughtUnderTheCap_ThenAllThatIsLeftIsSaved()
+    {
+        var saves = new Saves();
+        // No count and no loaded tree: each line carries its own «Fjern», as an imported code the tree has not shown does.
+        var cut = Picker(saves, [Icd10], ManyCodes(201, each: null));
+
+        Press(cut, "Fjern C001");
+        Press(cut, "Lagre");
+
+        var sent = Assert.Single(saves.Calls);
+        Assert.Equal(200, sent.Count);
+        Assert.Equal("C002", sent[0].Code);
+        Assert.Equal("C201", sent[^1].Code);
+    }
+
+    [Fact]
+    public void Save_WhenAnItemHoldsExactlyTheCap_ThenItSavesAndSaysNothingOfTheImport()
+    {
+        var saves = new Saves();
+        var cut = Picker(saves, [Icd10], ManyCodes(200));
+
+        Assert.DoesNotContain("fra importen", cut.Markup);
+        Assert.Contains("Du har valgt 200", cut.Markup);
+        Press(cut, "Lagre");
+
+        Assert.Equal(200, Assert.Single(saves.Calls).Count);
+    }
 }

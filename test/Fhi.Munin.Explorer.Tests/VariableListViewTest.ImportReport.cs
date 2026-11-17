@@ -311,7 +311,7 @@ public partial class VariableListViewTest
         var notice = cut.WaitForElement(ImportNotice);
         Assert.Equal("Importert fra den gamle listen: noe ble ikke tatt med", Text(notice.QuerySelector("h3")!));
         Assert.DoesNotContain("Søk etter variabelen", Text(notice));
-        Assert.Contains("For 4 variabler ble ønskede data eller notater ikke tatt med:", Text(notice));
+        Assert.Contains("For 4 variabler ble notater, ønskede data eller noen av kodene ikke tatt med:", Text(notice));
         Assert.Equal(
             ["V_BDR.ALDER Alder ved diagnose: notatet", "V_KJONN i datasamlingen DS1: notatet og ønskede data",
              "2 variabler til, som ikke står på denne siden"],
@@ -334,8 +334,29 @@ public partial class VariableListViewTest
 
         var notice = cut.WaitForElement(ImportNotice);
         Assert.Equal("Imported from the old list: some of it was not brought over", Text(notice.QuerySelector("h3")!));
-        Assert.Contains("For 1 variable the desired data or notes were not brought over:", Text(notice));
+        Assert.Contains("For 1 variable the notes, the desired data or some of the codes were not brought over:", Text(notice));
         Assert.Equal("V_KJONN: the desired data", Text(notice.QuerySelector("li")!));
+    }
+
+    // Munin marks an item whose picked codes were partly dropped with «codes», and stores no count (Fhi.Metadata-9huq2.43).
+    [Theory]
+    [InlineData(null, new[] { "notes", "desiredData", "codes" }, "V_KJONN: notatet, ønskede data og noen av kodene")]
+    [InlineData(null, new[] { "codes" }, "V_KJONN: noen av kodene")]
+    [InlineData("en", new[] { "notes", "codes" }, "V_KJONN: the note and some of the codes")]
+    public void ImportReport_WhenSomeOfAnItemsCodesWereDropped_ThenItsLineSaysSo(string? language, string[] fields, string expected)
+    {
+        var client = new ImportClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            Imported = l => l with { ImportedFrom = "helsedata-legacy", ImportSkippedCount = 1 },
+            Report = new ListImportReport
+            {
+                Skipped = [new ListImportSkipped { ItemId = Guid.NewGuid(), VariableCode = "V_KJONN", Fields = fields }]
+            }
+        };
+
+        var cut = RenderImport(client, language: language);
+
+        Assert.Equal(expected, Text(cut.WaitForElement(ImportNotice).QuerySelector("li")!));
     }
 
     [Fact]

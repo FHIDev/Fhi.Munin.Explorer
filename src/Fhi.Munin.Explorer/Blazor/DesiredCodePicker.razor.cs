@@ -109,7 +109,8 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
     protected override void OnInitialized()
     {
-        foreach (var view in Chosen.Take(MaxChoices))
+        // Every stored choice, also past the cap: an imported item may hold more, and a cut would drop them on save (Fhi.Metadata-9huq2.43).
+        foreach (var view in Chosen)
         {
             var choice = new Choice(view.ToChoice(), view.Name, view.ToName, view.Expired, view.Count, view.KodeverkName, view.Ancestors);
             if (Insert(_choices.Count, choice) && view.Count is null)
@@ -117,7 +118,17 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
                 _noCount.Add(choice.Value);
             }
         }
+
+        if (OverFromImport)
+        {
+            Announce(T.PickerOverFromImport(MaxChoices, _choices.Count), error: false);
+        }
     }
+
+    // Only an import stores more than the cap; the reader can remove choices, and nothing else, until it fits.
+    private bool OverFromImport => _choices.Count > MaxChoices;
+
+    private string FullMessage => OverFromImport ? T.PickerOverFromImport(MaxChoices, _choices.Count) : T.PickerFull(MaxChoices);
 
     // The summary keys its lines on the value, so two equal choices would end the circuit; saved data may repeat one.
     private bool Insert(int at, Choice choice)
@@ -510,7 +521,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
             if (!Choose(link, state, hit))
             {
-                Announce(T.PickerFull(MaxChoices), error: true);
+                Announce(FullMessage, error: true);
                 break;
             }
         }
@@ -744,7 +755,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         {
             if (!Choose(link, state, hit))
             {
-                Announce(T.PickerFull(MaxChoices), error: true);
+                Announce(FullMessage, error: true);
                 return;
             }
         }
@@ -851,7 +862,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         added = [.. added.DistinctBy(c => c.Value).Where(c => !kept.Contains(c.Value))];
         if (_choices.Count - gone.Count + added.Count > MaxChoices)
         {
-            Announce(T.PickerFull(MaxChoices), error: true);
+            Announce(FullMessage, error: true);
             return false;
         }
 
@@ -1191,6 +1202,12 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         // aria-disabled rather than disabled while saving: disabling the focused button drops focus to <body>.
         if (_saving)
         {
+            return;
+        }
+
+        if (OverFromImport)
+        {
+            Announce(T.PickerOverFromImport(MaxChoices, _choices.Count), error: true);
             return;
         }
 
