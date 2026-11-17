@@ -42,7 +42,8 @@ public sealed partial class VariableListState : IDisposable
     // Lists deleted here, which a lists read begun before the delete still holds. Swapped whole, as _madeHere is.
     private IReadOnlySet<Guid> _deletedHere = new HashSet<Guid>();
 
-    // The first read found no browser for a reason that passes, a dropped circuit or a timeout: the next render asks again.
+    // The first read went unanswered, by a dropped circuit, a timeout or a fault in the module, and the host has not
+    // refused the module for good: the next render asks again.
     private bool _browserReadAgain;
 
     /// <summary>What a press on the save button did to the browser list.</summary>
@@ -70,7 +71,7 @@ public sealed partial class VariableListState : IDisposable
     /// <summary>Whether the browser has answered once, so an empty list is an answer.</summary>
     internal bool BrowserListRead { get; private set; }
 
-    /// <summary>False when the browser could not be asked at all; the list then does not exist.</summary>
+    /// <summary>False when the browser could not be asked; the list then does not exist until a later read answers.</summary>
     internal bool BrowserListAvailable { get; private set; } = true;
 
     /// <summary>False while the browser holds the list for this page only: storage refused, or the key is not ours.</summary>
@@ -122,8 +123,9 @@ public sealed partial class VariableListState : IDisposable
     }
 
     /// <summary>
-    /// Reads the list's keys once per circuit, or joins the read in flight, and starts listening for other tabs. Call
-    /// from <c>OnAfterRenderAsync</c>: there is no browser during prerender. Never throws.
+    /// Reads the list's keys once per circuit, again on the next call after a first read went unanswered without the
+    /// host refusing the module, or joins the read in flight; listens for other tabs. Call from <c>OnAfterRenderAsync</c>:
+    /// there is no browser during prerender. Never throws.
     /// </summary>
     internal Task ReadBrowserListAsync()
     {

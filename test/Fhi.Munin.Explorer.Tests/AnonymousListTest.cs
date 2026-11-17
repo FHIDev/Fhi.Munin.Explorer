@@ -1311,6 +1311,14 @@ public class AnonymousListTest : ExplorerTestContext
         Assert.DoesNotContain(No.BrowserListUnavailable, cut.Markup);
     }
 
+    // The press's flag clears in its last continuation; the posted no-op runs after the rest of that continuation has.
+    private static async Task PressFinishedAsync(IRenderedComponent<VariableListView> cut, string flag)
+    {
+        var field = typeof(VariableListView).GetField(flag, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        cut.WaitForAssertion(() => Assert.False((bool)field.GetValue(cut.Instance)!));
+        await cut.InvokeAsync(() => { });
+    }
+
     [Fact]
     public async Task VariableListView_WhenAnotherReaderSignsInDuringTheRemovalAndIsToldSomething_ThenTheRemovalLeavesItStanding()
     {
@@ -1339,7 +1347,7 @@ public class AnonymousListTest : ExplorerTestContext
             await cut.InvokeAsync(browser.ReleaseNewest);
         }
 
-        await cut.InvokeAsync(() => Task.Delay(200));
+        await PressFinishedAsync(cut, "_removing");
 
         Assert.Single(browser.Rows);
         Assert.Contains(No.RateLimitError, cut.Markup);
@@ -1380,7 +1388,8 @@ public class AnonymousListTest : ExplorerTestContext
 
         cut.Render(p => p.Add(c => c.IsAuthenticated, false));
         cut.Render(p => p.Add(c => c.IsAuthenticated, true));
-        await cut.InvokeAsync(() => Task.Delay(100));
+        var state = Services.GetRequiredService<VariableListState>();
+        cut.WaitForAssertion(() => Assert.True(state.HasLoaded));
         var listReads = client.MyListsCalls;
         browser.Hold = false;
         while (browser.Pending.Count > 0)
@@ -1388,7 +1397,7 @@ public class AnonymousListTest : ExplorerTestContext
             await cut.InvokeAsync(browser.ReleaseNewest);
         }
 
-        await cut.InvokeAsync(() => Task.Delay(200));
+        await PressFinishedAsync(cut, "_carryingOver");
 
         Assert.Equal(listReads, client.MyListsCalls);
         Assert.DoesNotContain(No.BrowserListSavedAs(No.FirstListName), cut.Markup);

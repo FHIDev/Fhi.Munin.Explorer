@@ -1415,9 +1415,9 @@ leave `AnonymousLists` off; the gates turn it on for one state of their own. Tod
   «Lagre i Mine variabellister», beside a sentence saying the rows become a new list there. The press creates a new list in
   Mine variabellister and adds every row to it in one request, so Munin saves all of them or none; the new list is offered
   nowhere else until the rows are in it, and once saved, the rows leave the browser. When the browser cannot take them
-  out, the alert says the list was saved but is still in this browser, to be emptied once signed out, and while rows
-  still show there the offer is not drawn again, so they are not saved twice, until the list empties or another reader
-  signs in. When Munin refuses the request
+  out, the alert says the new list was saved but the browser list is still in this browser, to be emptied once signed
+  out. On this page the offer is then not drawn again until the browser list empties or the reader signs out or in;
+  after a reload it is offered again, and a press then saves the rows a second time. When Munin refuses the request
   and names variables, such as one whose row's datasamling is no longer its own, nothing is saved: the new list is
   deleted again, every row stays in the browser, the reader is told how many rows of how many variables Munin
   refused, and a button described by that sentence, «Fjern disse radene» («Fjern denne raden» for one row), takes

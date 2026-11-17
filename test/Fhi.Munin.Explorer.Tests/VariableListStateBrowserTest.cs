@@ -136,6 +136,37 @@ public class VariableListStateBrowserTest
     }
 
     [Fact]
+    public async Task ReadBrowserListAsync_WhenTheFirstReadKeepsGoingUnanswered_ThenEachCallReadsOnceAndOnlyTheFirstFailureIsAChange()
+    {
+        // A change sets off a render and a render reads again: changes after the first failure would never stop.
+        var browser = new FakeBrowserList();
+        browser.Failing.Add("count");
+        var state = await TabAsync(browser);
+        var version = state.BrowserVersion;
+
+        for (var call = 0; call < 3; call++)
+        {
+            await state.ReadBrowserListAsync();
+        }
+
+        Assert.Equal(4, browser.Calls.Count(c => c.Call == "count"));
+        Assert.Equal(version, state.BrowserVersion);
+        Assert.False(state.BrowserListAvailable);
+    }
+
+    [Fact]
+    public async Task ReadBrowserListAsync_WhenTheHostRefusedTheModule_ThenItIsNotAskedAgain()
+    {
+        // The host's answer for good: a read per render would ask a question that has been answered.
+        var browser = new FakeBrowserList { Unreachable = true };
+        var state = await TabAsync(browser);
+
+        await state.ReadBrowserListAsync();
+
+        Assert.Single(browser.Calls, c => c.Call == "count");
+    }
+
+    [Fact]
     public async Task SyncBrowserListAsync_WhenAnotherTabsChangeArrivesMidToggle_ThenNoStaleListIsPublished()
     {
         // The re-read was asked before the press; answered after it, without the turn it would put back the list before it.
