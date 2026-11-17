@@ -9,7 +9,7 @@ public sealed partial class VariableListView
 {
     private ListImportReport? _importReport;
 
-    // The list and reader the report was last asked for, so it is read once per list shown, not per page read.
+    // The list and reader the report was last asked for, so it is read once per list shown (again only after a failed read), not per page read.
     private Guid? _importReportFor;
     private int _importReportReader = -1;
     private int _importReportReads;
@@ -55,7 +55,7 @@ public sealed partial class VariableListView
         list is { ImportedFrom.Length: > 0, ImportReportDismissed: false }
         && (list.ImportNotFoundCount > 0 || list.ImportSkippedCount is not 0);
 
-    /// <summary>Starts the report's read when the list on screen is a new one, without holding up its rows.</summary>
+    /// <summary>Starts the report's read when the list on screen is a new one, or its last read failed, without holding up its rows.</summary>
     private void ReadImportReportIfDue()
     {
         if (State is null || (_importReportFor == _shownList && _importReportReader == State.Reader))
