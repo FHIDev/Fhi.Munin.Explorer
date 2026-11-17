@@ -691,8 +691,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     `munin-explorer-list-status` is the «Historisk» mark in a list row's header, after the code,
     when the variable is historical (`Fhi.Metadata-l9l2n.190`). No Stiler release styles it yet
     (`Fhi.Metadata-l9l2n.191`): undrawn, it is plain text at the row header's size and weight, on
-    its own line under a code Stiler draws as a block, so a host styles it until then, as the
-    samples do with the version history's small grey badge.
+    its own line under a code Stiler draws as a block, or after the name, a space between, in a
+    row with no code. A host styles it until then, as the samples do with the version history's
+    small grey badge.
     `munin-explorer-list-head` is the saved-list view's top row: the name block and the action row,
     side by side (`Fhi.Metadata-fc7ie`). Undrawn, the actions stand under the name, which reads
     well enough; a host owes it a wrapping flex row and one rule line under the pair.

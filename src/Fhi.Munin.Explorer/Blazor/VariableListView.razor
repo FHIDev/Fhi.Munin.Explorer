@@ -837,12 +837,13 @@ else if (State?.IsAuthenticated == true)
         if (!string.IsNullOrWhiteSpace(item.VariableCode))
         {
             @* Not lang="no": a code is an identifier, not Norwegian to pronounce (Fhi.Metadata-e1qeo). *@
-            <span class="munin-explorer-list-code">@item.VariableCode</span>
+            @(" ")<span class="munin-explorer-list-code">@item.VariableCode</span>
         }
         @* In the row header, so it is read with the name; text, not a colour, and the search's word (Fhi.Metadata-l9l2n.190). *@
         @if (VersionStatusRule.IsHistorical(item.VersionStatus))
         {
-            <span class="munin-explorer-list-status">@T.VersionStatusLabel(item.VersionStatus!)</span>
+            @* The spaces keep the code and «Historisk» words of their own in the header's text: Razor emits none between spans. *@
+            @(" ")<span class="munin-explorer-list-status">@T.VersionStatusLabel(item.VersionStatus!)</span>
         }
     };
 

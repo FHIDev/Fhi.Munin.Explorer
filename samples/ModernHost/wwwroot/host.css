@@ -1753,8 +1753,8 @@ table.munin-explorer-data-list > tbody > :where(tr) > th[scope=row] > button > .
   white-space: nowrap;
 }
 
-/* A historical variable's mark under its code in a list row, drawn like the version history's badge
-   (Fhi.Metadata-l9l2n.190). */
+/* A historical variable's mark in a list row's header, after the code when it has one, drawn like the version
+   history's badge (Fhi.Metadata-l9l2n.190). */
 .munin-explorer-list-status {
   background: var(--grey20);
   border-radius: 999px;
