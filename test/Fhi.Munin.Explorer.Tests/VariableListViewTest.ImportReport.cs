@@ -51,7 +51,7 @@ public partial class VariableListViewTest
 
         public ListImportReport? Report { get; set; } = FourNotFound();
 
-        public Exception? ReportThrows { get; init; }
+        public Exception? ReportThrows { get; set; }
         public Exception? DismissThrows { get; set; }
         public Exception? EntryRemoveThrows { get; set; }
 
@@ -376,6 +376,23 @@ public partial class VariableListViewTest
         cut.WaitForAssertion(() => Assert.Equal([ListId], client.ReportsAskedFor));
         Assert.Empty(cut.FindAll(ImportNotice));
         Assert.Equal("", cut.FindAll("[role=alert]")[0].TextContent.Trim());
+    }
+
+    [Fact]
+    public async Task ImportReport_WhenTheReportReadFailed_ThenTheNextPageReadAsksAgain()
+    {
+        // The list is the only place the reader learns what was left behind, so one throttled read must not hide it for good.
+        var rows = Enumerable.Range(1, 30).Select(i => Item($"Variabel {i}", $"V_{i}")).ToArray();
+        var client = new ImportClient(rows) { PageSize = 25, ReportThrows = new MuninExplorerRateLimitedException(null) };
+        var cut = RenderImport(client);
+        cut.WaitForAssertion(() => Assert.Equal([ListId], client.ReportsAskedFor));
+        Assert.Empty(cut.FindAll(ImportNotice));
+
+        client.ReportThrows = null;
+        await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-pagination-content button")[^1].Click());
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(ImportNotice)));
+        Assert.Equal([ListId, ListId], client.ReportsAskedFor);
     }
 
     [Fact]

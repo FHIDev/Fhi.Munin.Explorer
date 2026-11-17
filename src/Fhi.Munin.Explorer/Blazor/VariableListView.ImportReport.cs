@@ -89,7 +89,7 @@ public sealed partial class VariableListView
         ListImportReport? report;
         var reader = State?.Reader;
 
-        // A failed read draws nothing: the list itself is whole, and the report is an extra.
+        // A failed read draws nothing, and the next page read asks again: the list itself is whole meanwhile.
         try
         {
             report = await Client.GetMyListImportReportAsync(list);
@@ -97,16 +97,19 @@ public sealed partial class VariableListView
         catch (MuninExplorerRateLimitedException ex)
         {
             Log?.LogWarning(ex, "the rate limiter refused the import report of list {ListId}", list);
+            AskAgainAfterFailedRead(read);
             return;
         }
         catch (MuninExplorerUnauthorizedException ex)
         {
             Log?.LogWarning(ex, "the API refused the import report of list {ListId} as unauthorised", list);
+            AskAgainAfterFailedRead(read);
             return;
         }
         catch (Exception ex)
         {
             Log?.LogError(ex, "could not read the import report of list {ListId}", list);
+            AskAgainAfterFailedRead(read);
             return;
         }
 
@@ -118,6 +121,14 @@ public sealed partial class VariableListView
 
         _importReport = report;
         StateHasChanged();
+    }
+
+    private void AskAgainAfterFailedRead(int read)
+    {
+        if (read == _importReportReads)
+        {
+            _importReportFor = null;
+        }
     }
 
     private static IEnumerable<ListImportNotFound> InOrder(ListImportReport report) =>
