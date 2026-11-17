@@ -488,6 +488,12 @@ public sealed partial class VariableListView
         else
         {
             _refusal = refused;
+
+            // Kept only where another page reads them, the rows are gone from this one and the button with them.
+            if (State.BrowserRowsOf(refused) == 0)
+            {
+                _offerFocus = (OfferControl.CarryOver, formsOpenAtStart, reader);
+            }
         }
     }
 

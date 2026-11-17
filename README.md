@@ -1424,7 +1424,8 @@ leave `AnonymousLists` off; the gates turn it on for one state of their own. Tod
   next press is refused the same way. Any other failure (a refusal that names nothing, the write limiter, a lapsed sign-in, a list gone, an error) also saves
   nothing, deletes the new list and keeps every row. A press only ever deletes the list it created. When that delete
   fails, as it can under the same write limiter, or the reader signs out during the press, the new list can be left in
-  Mine variabellister, and the reader can delete it. Saving only the rows Munin accepts, and leaving the refused ones behind,
+  Mine variabellister: it appears among the reader's lists the next time the page is opened, or beside the next list
+  they make, and they can delete it there. Saving only the rows Munin accepts, and leaving the refused ones behind,
   is not supported. Where the browser refuses storage the list lasts while the page is open and the view says so;
   a host that does not serve the module has no list, and the save button and the list tab say it cannot be kept in this
   browser. With it off, a signed-out reader has no save button and no list tab, as before. `check-accessibility.sh`

@@ -550,7 +550,7 @@ public sealed partial class VariableListState : IDisposable
     }
 
     // Only the list this press made. The limiter that refused the add may refuse this too: the empty list then stays,
-    // shown among the reader's lists so they can delete it.
+    // drawn among the reader's lists on the next visit or beside their next list, where they can delete it.
     private async Task DiscardAsync(VariableList list, int reader)
     {
         try

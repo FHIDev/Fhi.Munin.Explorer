@@ -546,6 +546,65 @@ public class VariableListStateBrowserTest
     }
 
     [Fact]
+    public async Task CarryBrowserListOverAsync_WhenAListsReadBegunAfterTheCreateLandsAfterTheAdd_ThenTheListIsThereOnce()
+    {
+        // That read's answer already holds the list, so keeping it as made here as well would draw it twice.
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange(Rows(2));
+        var adding = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var hold = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new ListsClient { HoldFirstAdd = hold, BeforeAdd = () => adding.TrySetResult() };
+        var state = await SignedInAsync(browser, client);
+        await state.EnsureLoadedAsync();
+        var carrying = state.CarryBrowserListOverAsync("Min variabelliste");
+        await adding.Task;
+        client.HoldLists = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reading = state.RefreshAsync();
+
+        hold.SetResult(true);
+        var carried = await carrying;
+        client.HoldLists.SetResult();
+        await reading;
+
+        Assert.Single(state.Lists, l => l.Id == carried!.List!.Id);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_WhenAListsReadBegunBeforeTheCreateLandsAfterTheDelete_ThenTheListStaysGone()
+    {
+        // Kept as made here after its delete, the list would come back from an answer that never held it.
+        var client = new ListsClient();
+        var state = await SignedInAsync(new FakeBrowserList(), client);
+        await state.EnsureLoadedAsync();
+        client.HoldLists = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reading = state.RefreshAsync();
+        var created = await state.CreateAsync("Ny liste");
+
+        Assert.True(await state.DeleteAsync(created!.Id));
+        client.HoldLists.SetResult();
+        await reading;
+
+        Assert.DoesNotContain(state.Lists, l => l.Id == created.Id);
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenTheAddAndTheDeleteBothFail_ThenALaterReadStillShowsTheLeftList()
+    {
+        // Still marked as being carried into, the list would be filtered out of every answer that holds it.
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange(Rows(2));
+        var client = new ListsClient { AddThrows = new MuninExplorerRateLimitedException(), DeleteThrows = true };
+        var state = await SignedInAsync(browser, client);
+        await state.EnsureLoadedAsync();
+        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => state.CarryBrowserListOverAsync("Min variabelliste"));
+        var left = client.Adds[0].List;
+
+        await state.RefreshAsync();
+
+        Assert.Contains(state.Lists, l => l.Id == left);
+    }
+
+    [Fact]
     public async Task CreateAsync_WhenAListsReadBegunEarlierLandsAfterIt_ThenTheNewListStays()
     {
         // The same early answer as the carry-over's: it cannot speak for a list made after it was asked for.

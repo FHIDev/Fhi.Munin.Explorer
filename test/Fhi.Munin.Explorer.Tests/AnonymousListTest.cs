@@ -1285,9 +1285,10 @@ public class AnonymousListTest : ExplorerTestContext
     }
 
     [Fact]
-    public void VariableListView_WhenTheDeleteAfterANamedRefusalFails_ThenTheRefusalStandsAndTheLeftListIsShown()
+    public void VariableListView_WhenTheDeleteAfterANamedRefusalFails_ThenTheRefusalStandsAndTheLeftListIsKeptAmongTheReadersLists()
     {
-        // The delete's own failure is not the reader's news: the refusal and its button are, and the list they can delete.
+        // The delete's own failure is not the reader's news: the refusal and its button are. The list is drawn where
+        // the reader's lists are next drawn, and deleted there.
         var (browser, client) = NamedRefusal(deleteThrows: true);
         var cut = RefusedView(browser, client);
 
@@ -1502,6 +1503,23 @@ public class AnonymousListTest : ExplorerTestContext
         await cut.InvokeAsync(() => Task.Delay(100));
 
         Assert.Equal(focusCalls, JSInterop.Invocations[Focus].Count);
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheRefusedRowsLeaveThePageButStayStored_ThenFocusGoesToTheOfferAsTheButtonLeaves()
+    {
+        // The button the reader pressed is gone with the page's rows; left unmoved, focus falls to the document.
+        var (browser, client) = NamedRefusal();
+        browser.KeepsStored = true;
+        var cut = RefusedView(browser, client);
+        var focusesBefore = JSInterop.Invocations[Focus].Count;
+
+        ButtonSaying(cut, No.RemoveRefusedFromBrowser(2)).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListRefusedNotRemoved, cut.Markup));
+        Assert.DoesNotContain(No.RemoveRefusedFromBrowser(2), cut.Markup);
+        cut.WaitForAssertion(() => Assert.Equal(focusesBefore + 1, JSInterop.Invocations[Focus].Count));
+        Assert.Equal(Field(cut, "_carryOverButton").Id, ((ElementReference)JSInterop.Invocations[Focus][^1].Arguments[0]!).Id);
     }
 
     [Fact]
