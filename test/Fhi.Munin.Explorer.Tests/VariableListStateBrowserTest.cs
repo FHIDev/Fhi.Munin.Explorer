@@ -527,6 +527,42 @@ public class VariableListStateBrowserTest
     }
 
     [Fact]
+    public async Task CarryBrowserListOverAsync_WhenAListsReadBegunEarlierLandsAfterTheAdd_ThenTheCarriedListStays()
+    {
+        // The read was answered before the list existed; replacing Lists with it would hide the rows the reader just saved.
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange(Rows(2));
+        var client = new ListsClient();
+        var state = await SignedInAsync(browser, client);
+        await state.EnsureLoadedAsync();
+        client.HoldLists = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reading = state.RefreshAsync();
+
+        var carried = await state.CarryBrowserListOverAsync("Min variabelliste");
+        client.HoldLists.SetResult();
+        await reading;
+
+        Assert.Contains(state.Lists, l => l.Id == carried!.List!.Id);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenAListsReadBegunEarlierLandsAfterIt_ThenTheNewListStays()
+    {
+        // The same early answer as the carry-over's: it cannot speak for a list made after it was asked for.
+        var client = new ListsClient();
+        var state = await SignedInAsync(new FakeBrowserList(), client);
+        await state.EnsureLoadedAsync();
+        client.HoldLists = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reading = state.RefreshAsync();
+
+        var created = await state.CreateAsync("Ny liste");
+        client.HoldLists.SetResult();
+        await reading;
+
+        Assert.Contains(state.Lists, l => l.Id == created!.Id);
+    }
+
+    [Fact]
     public async Task CarryBrowserListOverAsync_WhenAnotherReaderSignsInWhileTheDiscardIsOut_ThenTheFailedDeleteLeavesThemNoList()
     {
         // The list the delete could not take is the pressing reader's; shown to the next one, it would be a disclosure.

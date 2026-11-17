@@ -141,7 +141,7 @@ public sealed partial class VariableListState(
 
         var startedAt = _generation;
         var activeAtStart = _activeListId;
-        var leftAtStart = _leftBehind;
+        var madeAtStart = _madeHere;
         _readingFor = startedAt;
         ListsReadFailed = false;
 
@@ -201,10 +201,10 @@ public sealed partial class VariableListState(
             return;
         }
 
-        // A list left behind after this read began is missing from its answer only because the read was early.
-        var leftSince = _leftBehind.Where(l => !leftAtStart.Contains(l) && !lists.Any(a => a.Id == l.Id));
-        _lists = [.. lists.Where(l => !_carryingInto.Contains(l.Id)), .. leftSince];
-        _leftBehind = [.. _leftBehind.Where(l => !leftAtStart.Contains(l))];
+        // A list made or left here after this read began is missing from its answer only because the read was early.
+        var madeSince = _madeHere.Where(l => !madeAtStart.Contains(l) && !lists.Any(a => a.Id == l.Id));
+        _lists = [.. lists.Where(l => !_carryingInto.Contains(l.Id)), .. madeSince];
+        _madeHere = [.. _madeHere.Where(l => !madeAtStart.Contains(l))];
         _loaded = true;
         ListsReadFailed = false;
 
@@ -263,6 +263,7 @@ public sealed partial class VariableListState(
         }
 
         _lists = [.. _lists, created];
+        _madeHere = [.. _madeHere, created];
 
         // A list this fresh has never held a row for anybody to have shown - the identity below is
         // what lets a subscriber skip the read on it, not this flag, but it is honestly false too.
@@ -321,7 +322,7 @@ public sealed partial class VariableListState(
         }
 
         _lists = [.. _lists.Where(l => l.Id != id)];
-        _leftBehind = [.. _leftBehind.Where(l => l.Id != id)];
+        _madeHere = [.. _madeHere.Where(l => l.Id != id)];
 
         // Left pointing at the list just deleted, the next ask would read the membership of a list
         // the API no longer has, and the save button would offer to remove variables from it.

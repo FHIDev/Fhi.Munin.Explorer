@@ -1924,23 +1924,23 @@ internal sealed record Texts(
         BrowserListForeign: "Nettleseren har lagret noe denne versjonen ikke kan lese, så listen finnes bare så lenge denne siden er åpen.",
         BrowserListReadError: "Kunne ikke lese listen i denne nettleseren nå.",
         BrowserListTooLongToShare: "Listen er for lang til å deles som kode. Last den ned i stedet.",
-        BrowserListSavedAs: name => $"Lagret som «{name}» i Mine lister.",
-        BrowserListSavedButStillHere: name => $"Listen ble lagret i Mine lister («{name}»), men den kunne ikke fjernes fra denne nettleseren. Tøm den når du er logget ut.",
+        BrowserListSavedAs: name => $"Lagret som «{name}» i Mine variabellister.",
+        BrowserListSavedButStillHere: name => $"Listen ble lagret i Mine variabellister («{name}»), men den kunne ikke fjernes fra denne nettleseren. Tøm den når du er logget ut.",
         BrowserListRefused: (rows, variables) =>
-            $"{(rows == 1 ? "1 rad" : $"{rows} rader")} for {(variables == 1 ? "1 variabel" : $"{variables} variabler")} kunne ikke lagres i Mine lister, så ingenting ble lagret. Listen ligger fortsatt i denne nettleseren.",
+            $"{(rows == 1 ? "1 rad" : $"{rows} rader")} for {(variables == 1 ? "1 variabel" : $"{variables} variabler")} kunne ikke lagres i Mine variabellister, så ingenting ble lagret. Listen ligger fortsatt i denne nettleseren.",
         RemoveRefusedFromBrowser: rows => rows == 1 ? "Fjern denne raden" : "Fjern disse radene",
         BrowserListRefusedRemoved: (rows, rest) =>
             (rows == 1 ? "Raden er fjernet fra denne nettleseren." : "Radene er fjernet fra denne nettleseren.")
-            + (rest == 0 ? "" : rest == 1 ? " Raden som er igjen, kan lagres som ny liste i Mine lister." : $" De {rest} radene som er igjen, kan lagres som ny liste i Mine lister."),
+            + (rest == 0 ? "" : rest == 1 ? " Raden som er igjen, kan lagres som ny liste i Mine variabellister." : $" De {rest} radene som er igjen, kan lagres som ny liste i Mine variabellister."),
         BrowserListRefusedNotRemoved: "Kunne ikke fjerne radene fra denne nettleseren nå.",
         BrowserListFull: max => $"Listen kan ha høyst {max} rader. Fjern noen før du legger til flere.",
         ClearBrowserList: "Tøm listen",
         ConfirmClearBrowserList: "Fjerne alle variabler fra listen i denne nettleseren? Det kan ikke angres.",
         BrowserListWaiting: rows => rows == 1
-            ? "Denne nettleseren har en liste fra før du logget inn, med 1 rad. Lagrer du den i Mine lister, blir den en ny liste der."
-            : $"Denne nettleseren har en liste fra før du logget inn, med {rows} rader. Lagrer du den i Mine lister, blir den en ny liste der.",
-        CarryBrowserListOver: "Lagre i Mine lister",
-        CarryBrowserListOverError: "Kunne ikke lagre listen i Mine lister nå. Den ligger fortsatt i denne nettleseren.");
+            ? "Denne nettleseren har en liste fra før du logget inn, med 1 rad. Lagrer du den i Mine variabellister, blir den en ny liste der."
+            : $"Denne nettleseren har en liste fra før du logget inn, med {rows} rader. Lagrer du den i Mine variabellister, blir den en ny liste der.",
+        CarryBrowserListOver: "Lagre i Mine variabellister",
+        CarryBrowserListOverError: "Kunne ikke lagre listen i Mine variabellister nå. Den ligger fortsatt i denne nettleseren.");
 
     private static readonly Texts En = new(
         Title: "Variable explorer",
@@ -2605,23 +2605,23 @@ internal sealed record Texts(
         BrowserListForeign: "This browser holds something this version cannot read, so the list lasts only while this page is open.",
         BrowserListReadError: "Could not read the list in this browser just now.",
         BrowserListTooLongToShare: "The list is too long to share as a code. Download it instead.",
-        BrowserListSavedAs: name => $"Saved as «{name}» in My lists.",
-        BrowserListSavedButStillHere: name => $"The list was saved in My lists («{name}»), but it could not be removed from this browser. Empty it when you are signed out.",
+        BrowserListSavedAs: name => $"Saved as «{name}» in My variable lists.",
+        BrowserListSavedButStillHere: name => $"The list was saved in My variable lists («{name}»), but it could not be removed from this browser. Empty it when you are signed out.",
         BrowserListRefused: (rows, variables) =>
-            $"{(rows == 1 ? "1 row" : $"{rows} rows")} for {(variables == 1 ? "1 variable" : $"{variables} variables")} could not be saved in My lists, so nothing was saved. The list is still in this browser.",
+            $"{(rows == 1 ? "1 row" : $"{rows} rows")} for {(variables == 1 ? "1 variable" : $"{variables} variables")} could not be saved in My variable lists, so nothing was saved. The list is still in this browser.",
         RemoveRefusedFromBrowser: rows => rows == 1 ? "Remove this row" : "Remove these rows",
         BrowserListRefusedRemoved: (rows, rest) =>
             (rows == 1 ? "The row is removed from this browser." : "The rows are removed from this browser.")
-            + (rest == 0 ? "" : rest == 1 ? " The row that is left can be saved as a new list in My lists." : $" The {rest} rows that are left can be saved as a new list in My lists."),
+            + (rest == 0 ? "" : rest == 1 ? " The row that is left can be saved as a new list in My variable lists." : $" The {rest} rows that are left can be saved as a new list in My variable lists."),
         BrowserListRefusedNotRemoved: "Could not remove the rows from this browser just now.",
         BrowserListFull: max => $"The list can hold at most {max} rows. Remove some before adding more.",
         ClearBrowserList: "Empty the list",
         ConfirmClearBrowserList: "Remove every variable from the list in this browser? It cannot be undone.",
         BrowserListWaiting: rows => rows == 1
-            ? "This browser holds a list from before you signed in, with 1 row. Saved to My lists, it becomes a new list there."
-            : $"This browser holds a list from before you signed in, with {rows} rows. Saved to My lists, it becomes a new list there.",
-        CarryBrowserListOver: "Save to My lists",
-        CarryBrowserListOverError: "Could not save the list to My lists just now. It is still in this browser.")
+            ? "This browser holds a list from before you signed in, with 1 row. Saved to My variable lists, it becomes a new list there."
+            : $"This browser holds a list from before you signed in, with {rows} rows. Saved to My variable lists, it becomes a new list there.",
+        CarryBrowserListOver: "Save to My variable lists",
+        CarryBrowserListOverError: "Could not save the list to My variable lists just now. It is still in this browser.")
     {
         Reader = ReaderLanguage.English,
     };

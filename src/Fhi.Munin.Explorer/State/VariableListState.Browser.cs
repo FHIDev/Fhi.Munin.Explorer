@@ -36,8 +36,8 @@ public sealed partial class VariableListState : IDisposable
     // Swapped whole, as two mounted views can press at once.
     private IReadOnlySet<Guid> _carryingInto = new HashSet<Guid>();
 
-    // Lists a failed discard put back in Lists, which a lists read begun before that must not drop.
-    private IReadOnlyList<VariableList> _leftBehind = [];
+    // Lists this circuit knows Munin holds, made or left here: a lists read begun before one cannot speak for it.
+    private IReadOnlyList<VariableList> _madeHere = [];
 
     /// <summary>What a press on the save button did to the browser list.</summary>
     internal enum BrowserListOutcome
@@ -486,6 +486,7 @@ public sealed partial class VariableListState : IDisposable
 
         StopCarryingInto(target.Id);
         _lists = [.. _lists, target];
+        _madeHere = [.. _madeHere, target];
         RaiseChanged(target.Id, affectsRows: true);
 
         var left = await RemoveBrowserKeysAsync(keys).ConfigureAwait(false);
@@ -563,7 +564,7 @@ public sealed partial class VariableListState : IDisposable
             if (StillCurrent(reader))
             {
                 _lists = [.. _lists.Where(l => l.Id != list.Id), list];
-                _leftBehind = [.. _leftBehind, list];
+                _madeHere = [.. _madeHere, list];
                 RaiseChanged(list.Id, affectsRows: false);
             }
         }

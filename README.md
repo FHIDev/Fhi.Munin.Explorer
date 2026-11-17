@@ -1412,8 +1412,8 @@ leave `AnonymousLists` off; the gates turn it on for one state of their own. Tod
   reader has) adds a row to it, the list tab shows it through the shared-list view, and it can be downloaded
   (`ExportItemsAsync`, Munin's anonymous export), shared as a code while its snapshot stays under the share endpoint's
   512 KB (about 990 full rows), or emptied. Signed in with rows still in the browser, the list tab offers one button,
-  «Lagre i Mine lister», beside a sentence saying the rows become a new list there. The press creates a new list in
-  Mine lister and adds every row to it in one request, so Munin saves all of them or none; the new list is offered
+  «Lagre i Mine variabellister», beside a sentence saying the rows become a new list there. The press creates a new list in
+  Mine variabellister and adds every row to it in one request, so Munin saves all of them or none; the new list is offered
   nowhere else until the rows are in it, and once saved, the rows leave the browser. When Munin refuses the request
   and names variables, such as one whose row's datasamling is no longer its own, nothing is saved: the new list is
   deleted again, every row stays in the browser, the reader is told how many rows of how many variables Munin
@@ -1424,7 +1424,7 @@ leave `AnonymousLists` off; the gates turn it on for one state of their own. Tod
   next press is refused the same way. Any other failure (a refusal that names nothing, the write limiter, a lapsed sign-in, a list gone, an error) also saves
   nothing, deletes the new list and keeps every row. A press only ever deletes the list it created. When that delete
   fails, as it can under the same write limiter, or the reader signs out during the press, the new list can be left in
-  Mine lister, and the reader can delete it. Saving only the rows Munin accepts, and leaving the refused ones behind,
+  Mine variabellister, and the reader can delete it. Saving only the rows Munin accepts, and leaving the refused ones behind,
   is not supported. Where the browser refuses storage the list lasts while the page is open and the view says so;
   a host that does not serve the module has no list, and the save button and the list tab say it cannot be kept in this
   browser. With it off, a signed-out reader has no save button and no list tab, as before. `check-accessibility.sh`
