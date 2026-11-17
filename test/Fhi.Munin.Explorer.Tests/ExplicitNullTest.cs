@@ -52,7 +52,7 @@ public class ExplicitNullTest
     [
         nameof(ExplorerUrlState), nameof(VariableFilter), nameof(ExportedList), nameof(DesiredDataResult),
         nameof(SharedList), nameof(SiblingOrder), nameof(VariabelgruppeScope), nameof(DesiredCodeKinds),
-        nameof(SearchCondition)
+        nameof(SearchCondition), nameof(ListImportStatuses), nameof(ListImportFields)
     ];
 
     [Fact]

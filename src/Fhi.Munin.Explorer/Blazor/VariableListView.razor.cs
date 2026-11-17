@@ -634,7 +634,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// <summary>The one sentence the view's alert region says, the most recent failure first.</summary>
     private string? AlertText =>
         _failed ? T.ListLoadError
-        : SharedListMessage ?? ShareMessage ?? CopyMessage ?? EmptyingMessage ?? DownloadMessage ?? ActionMessage
+        : SharedListMessage ?? ShareMessage ?? CopyMessage ?? EmptyingMessage ?? DownloadMessage ?? ActionMessage ?? ImportReportMessage
           ?? CreateMessage ?? DesiredDataMessage ?? NotesMessage ?? (State is { ListsReadFailed: true, Lists.Count: 0 } ? T.ListLoadError : null);
 
     /// <summary>The lists are still being read, so an empty list says nothing about the reader yet.</summary>
@@ -703,8 +703,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         var fromWrite = TakeFocusTarget();
         var fromCreateForm = TakeCreateFormFocusTarget();
         var fromRemove = TakeRemoveFocusTarget();
+        var fromImport = TakeImportFocusTarget();
 
-        if ((fromCreateForm ?? fromSource ?? fromMenu ?? fromWrite ?? fromRemove) is { } target)
+        if ((fromCreateForm ?? fromSource ?? fromMenu ?? fromWrite ?? fromRemove ?? fromImport) is { } target)
         {
             try
             {
@@ -946,6 +947,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     {
         InvokeAsync(async () =>
         {
+            ForgetImportReportOfPreviousReader();
+
             // A narrowing shortens the list, so the page number has to go back to the start: a
             // reader on page 4 of ten who ticks a kilde with two pages would otherwise be handed
             // an empty page and no sign of why. Every other change leaves them where they stood.
@@ -1060,6 +1063,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         SeedDesiredData();
+        ReadImportReportIfDue();
     }
 
     /// <summary>
@@ -1327,6 +1331,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _downloadFailure = DownloadFailure.None;
         _desiredDataFailure = DesiredDataFailure.None;
         _notesFailure = DesiredDataFailure.None;
+        _importFailure = ListActionFailure.None;
         ForgetSharingFailures();
         ForgetCopyAndEmptyFailures();
     }

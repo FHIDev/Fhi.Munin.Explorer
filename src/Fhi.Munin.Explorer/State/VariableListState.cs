@@ -491,6 +491,20 @@ public sealed partial class VariableListState(
         ];
     }
 
+    /// <summary>Records a hidden import report, so the list's summary does not ask for it again this circuit.</summary>
+    internal void RecordImportReportDismissed(Guid id) =>
+        _lists = [.. _lists.Select(l => l.Id == id ? l with { ImportReportDismissed = true } : l)];
+
+    /// <summary>
+    /// Records one row taken out of an import report, so one with none left and a skipped count known to be 0 is not
+    /// read again.
+    /// </summary>
+    internal void RecordImportEntryRemoved(Guid id) =>
+        _lists =
+        [
+            .. _lists.Select(l => l.Id == id ? l with { ImportNotFoundCount = Math.Max(0, l.ImportNotFoundCount - 1) } : l)
+        ];
+
     /// <summary>
     /// What an accepted rename sets <c>updatedAt</c> to. This clock because the endpoint does not
     /// answer with the new value, and the alternative is not a truer one but a stale one.

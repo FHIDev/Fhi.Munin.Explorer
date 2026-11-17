@@ -681,6 +681,8 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
 
     private static string MyListShare(Guid id) => $"{MyList(id)}/share";
 
+    private static string MyListImportReport(Guid id) => $"{MyList(id)}/import-report";
+
     /// <summary>The per-variable annotation route. The API spells the segment <c>variabelId</c>.</summary>
     private static string MyListVariableDesiredData(Guid id, Guid variableId) =>
         $"{MyListVariables(id)}/{variableId}/desired-data";
@@ -1293,6 +1295,16 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
                 $"{MyListShare(id)} answered {(int)response.StatusCode} without a code in the body. "
                 + "The endpoint answers 201 with {\"code\": \"...\"}.");
     }
+
+    public Task<ListImportReport?> GetMyListImportReportAsync(Guid id, CancellationToken cancellationToken = default) =>
+        // 404 for a list not imported as for one not the reader's: both are "no report" to the caller.
+        GetOrNullAsync<ListImportReport>(MyListImportReport(id), cancellationToken, requiresAuthentication: true);
+
+    public Task<bool> DismissMyListImportReportAsync(Guid id, CancellationToken cancellationToken = default) =>
+        SendForFoundAsync(HttpMethod.Put, $"{MyListImportReport(id)}/dismissed", body: null, cancellationToken);
+
+    public Task<bool> RemoveMyListImportEntryAsync(Guid id, Guid entryId, CancellationToken cancellationToken = default) =>
+        SendForFoundAsync(HttpMethod.Delete, $"{MyListImportReport(id)}/entries/{entryId}", body: null, cancellationToken);
 
     public async Task<SharedList?> GetSharedListAsync(
         string? code,

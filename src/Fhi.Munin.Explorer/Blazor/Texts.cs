@@ -930,7 +930,24 @@ internal sealed record Texts(
     Func<string, string> PickerRetryFor,
     Func<string, string, string> PickerLevelCut,
     // The share view's column of chosen codes.
-    string CodeSummaryHeading)
+    string CodeSummaryHeading,
+    // A list imported from the old helsedata: what did not come over, until the reader hides it (Fhi.Metadata-9huq2.37).
+    Func<int, string> ImportReportHeading,
+    string ImportReportAdvice,
+    Func<string?, string?, string> ImportReportCodes,
+    string ImportReasonUnknownVariable,
+    string ImportReasonUnknownDatasamling,
+    string ImportReasonAmbiguous,
+    string ImportNoteLabel,
+    string ImportDesiredDataLabel,
+    string ImportNoteLeftOff,
+    string ImportDesiredDataLeftOff,
+    Func<int, string> ImportSkippedLead,
+    Func<bool, bool, string> ImportSkippedFields,
+    Func<int, string> ImportSkippedElsewhere,
+    string ImportRemoveEntry,
+    Func<int, string> ImportEntryPlace,
+    string ImportHide)
 {
     /// <summary>
     /// The label for a sort order. Every one that names a field uses the same words the result
@@ -1892,7 +1909,43 @@ internal sealed record Texts(
         PickerRetry: "Prøv igjen",
         PickerRetryFor: code => $"Prøv igjen for {code}",
         PickerLevelCut: (level, whole) => $"{level} har for mange koder til at én kan tas ut her. Fjern haken for {whole} og velg kodene du vil ha, for eksempel med søket.",
-        CodeSummaryHeading: "Ønskede verdier");
+        CodeSummaryHeading: "Ønskede verdier",
+        ImportReportHeading: count => count switch
+        {
+            0 => "Importert fra den gamle listen: noe ble ikke tatt med",
+            1 => "Importert fra den gamle listen: 1 variabel ble ikke funnet",
+            _ => $"Importert fra den gamle listen: {count} variabler ble ikke funnet"
+        },
+        ImportReportAdvice: "Søk etter variabelen på navn, eller spør registeret som har dataene.",
+        ImportReportCodes: (variable, datasamling) => (variable, datasamling) switch
+        {
+            ({ } v, { } d) => $"{v} i datasamlingen {d}",
+            ({ } v, null) => v,
+            (null, { } d) => $"Datasamlingen {d}",
+            _ => "Uten kode"
+        },
+        ImportReasonUnknownVariable: "Fant ikke variabelen i katalogen",
+        ImportReasonUnknownDatasamling: "Datasamlingen hører ikke til variabelen",
+        ImportReasonAmbiguous: "Koden passer til flere variabler",
+        ImportNoteLabel: "Notat",
+        ImportDesiredDataLabel: "Ønskede data",
+        ImportNoteLeftOff: "Notatet ble ikke med",
+        ImportDesiredDataLeftOff: "Ønskede data ble ikke med",
+        ImportSkippedLead: count => count == 1
+            ? "For 1 variabel ble ønskede data eller notater ikke tatt med:"
+            : $"For {count} variabler ble ønskede data eller notater ikke tatt med:",
+        ImportSkippedFields: (note, desiredData) => (note, desiredData) switch
+        {
+            (true, true) => "notatet og ønskede data",
+            (true, false) => "notatet",
+            _ => "ønskede data"
+        },
+        ImportSkippedElsewhere: count => count == 1
+            ? "1 variabel til, som ikke står på denne siden"
+            : $"{count} variabler til, som ikke står på denne siden",
+        ImportRemoveEntry: "Fjern",
+        ImportEntryPlace: place => $"nr. {place}",
+        ImportHide: "Skjul");
 
     private static readonly Texts En = new(
         Title: "Variable explorer",
@@ -2548,7 +2601,43 @@ internal sealed record Texts(
         PickerRetry: "Try again",
         PickerRetryFor: code => $"Try again for {code}",
         PickerLevelCut: (level, whole) => $"{level} has too many codes to leave one out here. Untick {whole} and choose the codes you want, for example with the search.",
-        CodeSummaryHeading: "Desired values")
+        CodeSummaryHeading: "Desired values",
+        ImportReportHeading: count => count switch
+        {
+            0 => "Imported from the old list: some of it was not brought over",
+            1 => "Imported from the old list: 1 variable was not found",
+            _ => $"Imported from the old list: {count} variables were not found"
+        },
+        ImportReportAdvice: "Search for the variable by name, or ask the registry that holds the data.",
+        ImportReportCodes: (variable, datasamling) => (variable, datasamling) switch
+        {
+            ({ } v, { } d) => $"{v} in datasamling {d}",
+            ({ } v, null) => v,
+            (null, { } d) => $"Datasamling {d}",
+            _ => "No code"
+        },
+        ImportReasonUnknownVariable: "The variable was not found in the catalogue",
+        ImportReasonUnknownDatasamling: "The datasamling does not belong to the variable",
+        ImportReasonAmbiguous: "The code fits more than one variable",
+        ImportNoteLabel: "Note",
+        ImportDesiredDataLabel: "Desired data",
+        ImportNoteLeftOff: "The note was not brought over",
+        ImportDesiredDataLeftOff: "The desired data was not brought over",
+        ImportSkippedLead: count => count == 1
+            ? "For 1 variable the desired data or notes were not brought over:"
+            : $"For {count} variables the desired data or notes were not brought over:",
+        ImportSkippedFields: (note, desiredData) => (note, desiredData) switch
+        {
+            (true, true) => "the note and the desired data",
+            (true, false) => "the note",
+            _ => "the desired data"
+        },
+        ImportSkippedElsewhere: count => count == 1
+            ? "1 more variable, not on this page"
+            : $"{count} more variables, not on this page",
+        ImportRemoveEntry: "Remove",
+        ImportEntryPlace: place => $"no. {place}",
+        ImportHide: "Hide")
     {
         Reader = ReaderLanguage.English,
     };

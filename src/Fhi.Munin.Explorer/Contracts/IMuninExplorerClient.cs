@@ -891,6 +891,49 @@ public interface IMuninExplorerClient
             "Consume MuninExplorerClient, or implement the member.");
 
     /// <summary>
+    /// What the import of one of the reader's lists left behind: the rows that matched no variable, and the items
+    /// whose notes or desired data were left off. Null for a list that was not imported, is not the reader's, or is
+    /// gone.
+    /// </summary>
+    /// <remarks>
+    /// Only a list with <see cref="VariableList.ImportedFrom"/> set has one. A 401 or 403 throws
+    /// <see cref="MuninExplorerUnauthorizedException"/> and a 429 <see cref="MuninExplorerRateLimitedException"/>.
+    /// The default answers null, so a host's own implementation that predates this member shows no report rather than
+    /// failing.
+    /// </remarks>
+    /// <param name="id">The saved list's id.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    Task<ListImportReport?> GetMyListImportReportAsync(Guid id, CancellationToken cancellationToken = default) =>
+        Task.FromResult<ListImportReport?>(null);
+
+    /// <summary>
+    /// Hide an imported list's report for good: <see cref="VariableList.ImportReportDismissed"/> is true from then on.
+    /// False when the list was not imported, is not the reader's, or is gone.
+    /// </summary>
+    /// <remarks>A 401 or 403 throws <see cref="MuninExplorerUnauthorizedException"/> and a 429
+    /// <see cref="MuninExplorerRateLimitedException"/>. Carries a default body for the reader <see cref="ExportListAsync"/> names.</remarks>
+    /// <param name="id">The saved list's id.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    Task<bool> DismissMyListImportReportAsync(Guid id, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"This {nameof(IMuninExplorerClient)} does not implement {nameof(DismissMyListImportReportAsync)}. " +
+            "Consume MuninExplorerClient, or implement the member.");
+
+    /// <summary>
+    /// Remove one row from an imported list's report, once the reader has dealt with it. False when the list or the
+    /// row is not the reader's, or is gone.
+    /// </summary>
+    /// <remarks>A 401 or 403 throws <see cref="MuninExplorerUnauthorizedException"/> and a 429
+    /// <see cref="MuninExplorerRateLimitedException"/>. Carries a default body for the reader <see cref="ExportListAsync"/> names.</remarks>
+    /// <param name="id">The saved list's id.</param>
+    /// <param name="entryId">The row's <see cref="ListImportNotFound.EntryId"/>.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    Task<bool> RemoveMyListImportEntryAsync(Guid id, Guid entryId, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"This {nameof(IMuninExplorerClient)} does not implement {nameof(RemoveMyListImportEntryAsync)}. " +
+            "Consume MuninExplorerClient, or implement the member.");
+
+    /// <summary>
     /// Read a shared list back by its code. Null when the code is unknown, expired or malformed.
     /// </summary>
     /// <remarks>
