@@ -3,8 +3,8 @@ using Bunit;
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
-/// A historical variable says so on its list row (Fhi.Metadata-l9l2n.190): Sidsel's warning, as text in the row
-/// header so a screen reader reads it with the name, and in the search's own word.
+/// A historical variable says so on its list row (Fhi.Metadata-l9l2n.190): text in the row header, read with the
+/// row, in the search's own word and the reader's language, with or without a code.
 /// </summary>
 public partial class VariableListViewTest
 {
@@ -42,5 +42,19 @@ public partial class VariableListViewTest
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER") with { VersionStatus = "historisk" }));
 
         Assert.Equal("Historisk", cut.Find($"{OwnTable} tbody {StatusMark}").TextContent.Trim());
+    }
+
+    [Theory]
+    [InlineData("V_BDR.ALDER", null, "Historisk")]
+    [InlineData("", null, "Historisk")]
+    [InlineData("V_BDR.ALDER", "en", "Historical")]
+    [InlineData("", "en", "Historical")]
+    public void Status_WhenAHistoricalRowIsDrawn_ThenTheMarkIsInTheReadersLanguageWithOrWithoutACode(
+        string code, string? language, string expected)
+    {
+        // A client-built shared snapshot can carry no code; the warning must not go with it.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", code) with { VersionStatus = "Historical" }), language: language);
+
+        Assert.Equal(expected, cut.Find($"{OwnTable} tbody th[scope=row] {StatusMark}").TextContent.Trim());
     }
 }
