@@ -257,7 +257,7 @@ public sealed record DatasamlingCandidate
 }
 
 /// <summary>
-/// How the API answered a write of one variable's "Ønskede data" annotation.
+/// How the API answered one of the annotation writes <see cref="DesiredDataResult"/> lists.
 /// </summary>
 public enum DesiredDataOutcome
 {
@@ -284,8 +284,11 @@ public enum DesiredDataOutcome
 }
 
 /// <summary>
-/// The answer to the "Ønskede data" writes: <see cref="IMuninExplorerClient.SetMyListDesiredDataAsync"/>, its item
-/// form, and <see cref="IMuninExplorerClient.SetMyListItemDesiredCodesAsync"/>.
+/// The answer to the annotation writes: <see cref="IMuninExplorerClient.SetMyListDesiredDataAsync"/>,
+/// <see cref="IMuninExplorerClient.SetMyListNotesAsync"/> and their item forms,
+/// <see cref="IMuninExplorerClient.SetMyListItemDesiredDataAsync"/>,
+/// <see cref="IMuninExplorerClient.SetMyListItemDesiredCodesAsync"/> and
+/// <see cref="IMuninExplorerClient.SetMyListItemNotesAsync"/>.
 /// </summary>
 /// <remarks>
 /// A result rather than a <c>bool</c> plus a throw, which is what the other list writes use, and
