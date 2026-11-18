@@ -86,12 +86,8 @@ public sealed partial class VariableListView
         RemoveRefused
     }
 
-    /// <summary>
-    /// Signed in with rows in the browser, the reader's lists read (the new list's name is picked against them), and no
-    /// carry-over that saved them but could not take them out.
-    /// </summary>
-    private bool ShowsCarryOverOffer =>
-        State is { IsAuthenticated: true, HasLoaded: true, BrowserCount: > 0, BrowserCarryOverStuck: false };
+    /// <summary>Signed in with rows in the browser, and no carry-over that saved them but could not take them out.</summary>
+    private bool ShowsCarryOverOffer => State is { IsAuthenticated: true, BrowserCount: > 0, BrowserCarryOverStuck: false };
 
     /// <summary>The rows and variables the remove button would take out, while its sentence is the one on screen.</summary>
     private (int Rows, int Variables)? RefusedRowsShown =>
@@ -350,7 +346,7 @@ public sealed partial class VariableListView
     /// </summary>
     private async Task CarryBrowserListOverAsync()
     {
-        if (State is null || !IsAuthenticated || !State.HasLoaded || _carryingOver || _removing)
+        if (State is null || !IsAuthenticated || _carryingOver || _removing)
         {
             return;
         }
@@ -366,7 +362,9 @@ public sealed partial class VariableListView
 
         try
         {
-            carried = await State.CarryBrowserListOverAsync(FreeListName(T.FirstListName));
+            // Read afresh, as the shared-list save does: the state's lists may not be read yet, or a refresh may have failed.
+            var existing = await Client.GetMyListsAsync();
+            carried = await State.CarryBrowserListOverAsync(FreeListName(T.FirstListName, existing));
         }
         catch (Exception ex)
         {
@@ -523,9 +521,9 @@ public sealed partial class VariableListView
     }
 
     // The list's name, made free among the reader's lists the way a reader would: «Navn (2)».
-    private string FreeListName(string name)
+    private static string FreeListName(string name, IEnumerable<VariableList> lists)
     {
-        var taken = Lists.Select(l => l.Name.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var taken = lists.Select(l => l.Name.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var candidate = name.Trim();
 
         for (var n = 2; taken.Contains(candidate); n++)

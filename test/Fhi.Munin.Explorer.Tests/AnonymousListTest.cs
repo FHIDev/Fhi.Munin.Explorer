@@ -752,23 +752,21 @@ public class AnonymousListTest : ExplorerTestContext
     }
 
     [Fact]
-    public void VariableListView_WhenTheReadersListsHaveNotLoaded_ThenTheCarryOverIsNotOfferedUntilTheyHave()
+    public void VariableListView_WhenTheReadersListsHaveNotLoaded_ThenTheCarryOverStillNamesTheNewListApartFromThem()
     {
-        // The new list's name is picked against the reader's lists; offered before they are read, it can take one they have.
+        // The new list's name is picked against the reader's lists; pressed before they are read, it could take one they have.
         var browser = new FakeBrowserList();
         browser.Rows.Add(FakeBrowserList.Row("Alder"));
         var client = new Client { HoldRead = "lists" };
         client.Lists.Add(new VariableList { Id = OwnListId, Name = No.FirstListName });
         var cut = ListView(client, browser, signedIn: true);
         cut.WaitForAssertion(() => Assert.True(client.ReadReached));
-
-        Assert.DoesNotContain(cut.FindAll("button"), b => b.TextContent.Trim() == No.CarryBrowserListOver);
-
-        client.ReadHeld.SetResult();
         cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
+
         ButtonSaying(cut, No.CarryBrowserListOver).Click();
 
         cut.WaitForAssertion(() => Assert.Equal([$"{No.FirstListName} (2)"], client.Created));
+        client.ReadHeld.SetResult();
     }
 
     [Fact]
