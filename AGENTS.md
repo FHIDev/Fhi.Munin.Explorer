@@ -1,6 +1,6 @@
 # AGENTS.md: FHIDev/Fhi.Munin.Explorer
 
-<!-- team-doc:begin sha256=aa17ced5c7d696a340d8eee78ab260002a7db3eeda5e26b524b90565e1bab771 source=FHIDev/Fhi.Munin.DevInfra/docs/team/working-together.md -->
+<!-- team-doc:begin sha256=11d0a31ce337f889c38acd554415855625027f6f66892123ee16e2bfa4046768 source=FHIDev/Fhi.Munin.DevInfra/docs/team/working-together.md -->
 ## The team's rules, in short
 
 Full text: FHIDev/Fhi.Munin.DevInfra `docs/team/working-together.md`. This block is a synced copy; edit the
@@ -18,12 +18,12 @@ canonical doc, not this block.
   `venter:<what or whom>:<YYYY-MM-DD>` label. Notes are append-only.
 - **Decisions go to your owner through your coordinator**, with a recommendation, the way your owner's lanes file
   says. A question left only in a bead note has not been asked.
-- **Every PR body** has one `Pre-PR review:` line, `Testing:`, `Risk:` (matching the `risk:` label) and
-  `How to revert:` lines, and `Closes-Bead:` or `Bead:`. Run the pre-PR review before opening it, and register each
-  round with the commit it read (`head`). A fix after the last round gets a new round: a full one for an Important
-  finding, otherwise a short confirming round (Sonnet, effort medium) over the new commits, a fix after the independent review included. On PRs
-  opened from 10 November 2026 the check requires a round over the head unless the later commit is docs only, a merge
-  of main with no change of its own, or a comment-only change marked `Review-exempt: comments` (the munin-lane skill).
+- **Every PR body** has one `Pre-PR review:` line, `Testing:`, `Risk:` (matching the `risk:` label) and `How to revert:` lines,
+  `Closes-Bead:` or `Bead:`, and `Fixes-PR: #N` when it fixes a bug an earlier merged PR brought in. Run the pre-PR review before
+  opening it, and register each round with the commit it read (`head`). A fix after the last round gets a new round: a full one for
+  an Important finding, otherwise a short confirming round (Sonnet, effort medium) over the new commits, a fix after the independent
+  review included. On PRs opened from 10 November 2026 the check requires a round over the head unless the later commit is docs
+  only, a merge of main with no change of its own, or a comment-only change marked `Review-exempt: comments` (the munin-lane skill).
 - **Open PRs without asking.** A PR merges when CI is green and its risk tier's review requirements are met
   (DevInfra `docs/review-risk-tiers.md`); who approves and who merges is each owner's own arrangement, in their
   lanes file. Never touch someone else's PR or branch.
