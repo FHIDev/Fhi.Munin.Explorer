@@ -11,13 +11,13 @@ Data comes from the public Munin Explorer API. **The browsing components are rea
 anonymous**; everything the variable and kilde explorers render is public metadata and needs no
 token.
 
-The client reaches one step further than those. `IMuninExplorerClient` also carries the eight
-`api/explorer/my/lists` calls — the signed-in user's saved variable lists — which are the only part
-of it that is authenticated, and therefore the only part that needs a host-supplied
-`IMuninExplorerTokenProvider` registered *before* `AddMuninExplorer`. Without one they answer 401,
-which arrives as a thrown `HttpRequestException` rather than as an empty list. `VariableListView`
-is the component built on them — the one this package ships that reads and writes rather than
-browses — and a host is free to build its own instead.
+The client reaches one step further than those. `IMuninExplorerClient` also carries the
+`api/explorer/my/lists` calls — the signed-in user's saved variable lists — which are, bar the obsolete
+`RedeemIdentityLinkAsync`, the only part of it that is authenticated, and therefore the only part that
+needs a host-supplied `IMuninExplorerTokenProvider` registered *before* `AddMuninExplorer`. Without one
+they answer 401, which arrives as a thrown `MuninExplorerUnauthorizedException` rather than as an empty
+list. `VariableListView` is the component built on them — the one this package ships that reads and
+writes rather than browses — and a host is free to build its own instead.
 
 **Mount `VariableExplorer`.** It is the variabelutforsker whole: search and the reader's lists
 behind Runa's two tabs, with the view in the address bar. `VariableSearch` and `VariableListView`
@@ -1330,28 +1330,33 @@ services.AddMuninExplorer(o => o.ApiBaseUrl = "https://explorer.munin.skytest.fh
 accepted only for a loopback host such as `localhost`, `127.0.0.1` or `::1`, and anything else stops the host at
 startup.
 
-Leave the provider out entirely and calls are anonymous, which is all public metadata browsing
-needs — and all the browsing components ever do; `VariableListView` is the one that does not,
-because the lists it reads and writes are the signed-in user's own. The variable-list methods
-(`GetMyListsAsync` and the nine beside it) are the exception: they call an endpoint the API gates
-behind a signed-in explorer user, so with no provider registered every one of them throws on the
-401 rather than reporting the user as having nothing saved.
+Leave the provider out entirely and calls are anonymous, which is all public metadata browsing needs —
+and all the browsing components ever do; `VariableListView` is the one that does not, because the lists
+it reads and writes are the signed-in user's own. The variable-list methods (`GetMyListsAsync` and
+every other `…MyList…` member of `IMuninExplorerClient`) are the exception: they call an endpoint the
+API gates behind a signed-in explorer user, so with no provider registered every one of them throws on
+the 401 rather than reporting the user as having nothing saved.
 
-Three things about those ten are worth knowing before writing against them. A call naming a list
-the user does not have answers `false` — or `null`, for the paged read — because the API cannot
+Three things about these calls are worth knowing before writing against them. A call naming a list
+the user does not have answers `false` — `null` for the paged read, the import report, the export and
+the share, and `DesiredDataOutcome.NotFound` for the annotation writes below — because the API cannot
 tell "deleted in another tab" from "somebody else's" and deliberately does not try. The two
-batch endpoints take at most `IMuninExplorerClient.MaxVariablesPerBatch` ids, which the client
-refuses above rather than splitting: split them yourself with
+batch endpoints take at most `IMuninExplorerClient.MaxVariablesPerBatch` ids or items, which the
+client refuses above rather than splitting: split them yourself with
 `ids.Chunk(IMuninExplorerClient.MaxVariablesPerBatch)`, so a failure part-way through leaves you
 knowing how far it got.
 
-And `SetMyListDesiredDataAsync` and `SetMyListNotesAsync` break the `false` pattern on purpose,
-because they are the two writes the API can refuse for what is *in* them: the "Ønskede data" note
-is capped at 500 characters server side and the reader's own notes ("Mine notater") at 2000. Both
-answer a `DesiredDataResult` rather than a `bool`, and a refusal carries the ceiling the API named —
-so a caller can tell the reader what to shorten to, and this package never writes the number down
-to drift from. A 429 is still thrown, and so is any fault. Neither annotation is ever sent when a
-list is shared.
+And the annotation writes — `SetMyListDesiredDataAsync`, `SetMyListNotesAsync` and their per-item
+`SetMyListItem…` siblings — break the `false` pattern on purpose, because they are the writes whose
+refusal of what is *in* them comes back as an answer rather than a throw: the "Ønskede data" note is
+capped at 500 characters server side, the reader's own notes ("Mine notater") at 2000, and chosen codes
+are checked against the variable's code list. They answer a `DesiredDataResult` rather than a `bool`,
+and a refusal carries the ceiling or the rejected choice the API named — so a caller can tell the
+reader what to shorten or remove, and this package never writes the number down to drift from. A write
+with chosen codes answers `DesiredDataOutcome.ListUnavailable` when the API cannot read the variable's
+code list just then; a 429 is still thrown, and so is any other fault. A shared snapshot never carries
+the free text or the notes; from either share call, `ShareListAsync` or `ShareMyListAsync`, it carries
+the chosen codes.
 
 `AddMuninExplorer` also calls `AddLogging`, and that is where the component's own diagnostics go.
 The browsing surfaces never let an exception out — an unhandled one inside a Blazor circuit takes
