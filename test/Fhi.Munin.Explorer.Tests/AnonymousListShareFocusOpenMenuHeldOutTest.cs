@@ -54,7 +54,7 @@ public class AnonymousListShareFocusOpenMenuHeldOutTest : ExplorerTestContext
             state.OfferBrowserList(browser);
             return state;
         });
-        Services.AddSingleton(new AnonymousListsSwitch(true));
+        Services.AddSingleton(new CodePickerSwitch(true));
         return (Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, false)), client, share);
     }
 
