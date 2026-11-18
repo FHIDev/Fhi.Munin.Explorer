@@ -15,7 +15,7 @@
 
 <!-- Fixes a bug an earlier merged PR brought in? Add "Fixes-PR: #N" ("<Repo>#N" for another repository), one
      line per PR, on a line of its own. Required on such a PR, a person's and the Forge's alike (Fhi.Munin.DevInfra
-     docs/team/working-together.md); on the Forge's PRs the line comes from the bead description. -->
+     docs/team/working-together.md §4); on the Forge's PRs the line comes from the bead description. -->
 
 ## Pre-PR review
 
