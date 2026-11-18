@@ -296,10 +296,12 @@ public class AnonymousListTest : ExplorerTestContext
         Assert.DoesNotContain(module.Invocations, call => call.Identifier.Contains("nonymousList", StringComparison.Ordinal));
     }
 
-    [Fact]
-    public void VariableListView_WhenTheFlagIsOff_ThenASignedOutReaderGetsNothing()
+    [Theory]
+    [InlineData(null)]
+    [InlineData(false)]
+    public void VariableListView_WhenTheFlagIsOff_ThenASignedOutReaderGetsNothing(bool? flag)
     {
-        Register(new Client(), flag: false);
+        Register(new Client(), flag);
 
         var cut = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, false));
 

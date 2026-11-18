@@ -1457,7 +1457,8 @@ kept in this browser. With it off, a signed-out reader has no save button and no
 `Sample:SignedOut` switch, which mounts the composed explorer signed out; `check-hostile-host.sh` measures the same
 state when it runs, nightly or by hand, not on a pull request.
 
-A new feature gets its own entry, off by default, and the entry is removed once the feature is on for every host.
+A new feature gets its own entry, off by default, unless it ships with an existing one, as the browser list does
+with `CodePicker`; an entry is removed once its features are on for every host.
 
 ### A legacy Blazor Server host on .NET 10
 
