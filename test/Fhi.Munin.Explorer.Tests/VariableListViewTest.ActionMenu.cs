@@ -99,7 +99,8 @@ public partial class VariableListViewTest
         var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
         var first = module.SetupVoid("watchFolds");
 
-        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+        // Picker off: with it on, the browser list's reads render again, and each render asks again.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")), picker: false);
         first.SetException(new JSDisconnectedException("reconnecting"));
         cut.WaitForAssertion(() => Assert.Single(module.Invocations["watchFolds"]));
 
@@ -126,7 +127,7 @@ public partial class VariableListViewTest
         var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
         var first = module.SetupVoid("watchFolds");
 
-        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")), picker: false);
         cut.WaitForAssertion(() => Assert.Single(module.Invocations["watchFolds"]));
 
         OpenMenu(cut);
