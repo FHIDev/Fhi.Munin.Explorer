@@ -284,8 +284,9 @@ public enum DesiredDataOutcome
 }
 
 /// <summary>
-/// The answer to the "Ønskede data" writes: <see cref="IMuninExplorerClient.SetMyListDesiredDataAsync"/>, its item
-/// form, and <see cref="IMuninExplorerClient.SetMyListItemDesiredCodesAsync"/>.
+/// The answer to the annotation writes: <see cref="IMuninExplorerClient.SetMyListDesiredDataAsync"/>,
+/// <see cref="IMuninExplorerClient.SetMyListNotesAsync"/> and their item forms, codes included
+/// (<see cref="IMuninExplorerClient.SetMyListItemDesiredCodesAsync"/>).
 /// </summary>
 /// <remarks>
 /// A result rather than a <c>bool</c> plus a throw, which is what the other list writes use, and

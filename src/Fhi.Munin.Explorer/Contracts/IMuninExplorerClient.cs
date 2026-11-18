@@ -23,16 +23,18 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// reasoning is on the exception.
 /// </para>
 /// <para>
-/// The variable-list methods at the bottom follow the same rule in the shape a write can take it:
-/// one that names a list the signed-in user does not have answers <c>false</c> rather than throwing,
-/// because a list deleted in another tab is the same ordinary event as an edited id. They are the
-/// only part of this interface that needs a token, and the only writes that can come back with an
+/// The <c>my/lists</c> methods follow the same rule in the shape a write can take it: one that names
+/// a list the signed-in user does not have answers <c>false</c> rather than throwing — null from a
+/// read, the export and the share, <see cref="DesiredDataOutcome.NotFound"/> from a
+/// <see cref="DesiredDataResult"/> write — because a list deleted in another tab is the same ordinary
+/// event as an edited id. They are, with the obsolete <see cref="RedeemIdentityLinkAsync"/>, the only
+/// part of this interface that needs a token, and the only writes that can come back with an
 /// <see cref="ArgumentException"/> before anything is sent — see <see cref="MaxVariablesPerBatch"/>.
 /// They are not the only methods that can: <see cref="GetKodeverkCodesAsync"/> refuses a path
 /// segment it cannot carry the same way.
 /// </para>
 /// <para>
-/// Those same variable-list methods answer a 401/403 as
+/// Those same <c>my/lists</c> methods answer a 401/403 as
 /// <see cref="MuninExplorerUnauthorizedException"/> rather than the general failure, for a host
 /// that declares <c>IsAuthenticated</c> true while its token provider sends nothing the API
 /// accepts — the RCL cannot verify that claim, only the API's answer to it.
@@ -394,7 +396,7 @@ public interface IMuninExplorerClient
 
     // ------------------------------------------------------------------ the user's own variable lists
     // `api/explorer/my/lists` needs an IMuninExplorerTokenProvider registered before AddMuninExplorer;
-    // without one its 401 throws MuninExplorerUnauthorizedException, not an empty list, as a fault.
+    // without one every call throws MuninExplorerUnauthorizedException: a host fault, not an empty list.
 
     /// <summary>
     /// The largest number of variable ids the API accepts in one batch add or remove.
@@ -841,7 +843,7 @@ public interface IMuninExplorerClient
     /// holding the code can read it for 90 days. So the items are posted with the display fields and
     /// <see cref="VariableListItem.DesiredDataCodes"/> only — never
     /// <see cref="VariableListItem.DesiredDataFreeText"/>, <see cref="VariableListItem.DesiredDataType"/> or
-    /// <see cref="VariableListItem.Notes"/>, which are the reader's own words. The field names are the
+    /// <see cref="VariableListItem.Notes"/>, which stay private. The field names are the
     /// ones Runa posts, so a code made here opens in Runa and the other way round.
     /// </para>
     /// <para>
