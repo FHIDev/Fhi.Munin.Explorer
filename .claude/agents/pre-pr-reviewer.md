@@ -437,8 +437,9 @@ reversal — reviewers read the bead to decide what the change is supposed to co
 - **`Bead: <bead-id>`** instead when the change only partly satisfies the bead — `Closes-Bead`
   shuts it whether or not the acceptance criteria are met. Name the unmet criterion in the body.
 - **`Fixes-PR: #N`** (`<Repo>#N` for another repository), one line per PR, when the change fixes a
-  bug an earlier merged PR brought in (DevInfra working-together §4). Flag a fix PR whose body
-  lacks it; the review-line check does not read it, so nothing else catches it.
+  bug an earlier merged PR brought in (DevInfra working-together §4). The bead description names
+  that PR when the bead has it; otherwise find it with `git log -S` on the defect's line. Flag a fix
+  PR whose body lacks the line; no CI check reads it.
 - `[no-changelog]` in the title if and only if the `src/` change genuinely has nothing to tell a
   host (§5).
 - The seven required checks are `build + test`, `changelog fragment`,
