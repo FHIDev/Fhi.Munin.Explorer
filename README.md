@@ -1333,23 +1333,25 @@ startup.
 Leave the provider out entirely and calls are anonymous, which is all public metadata browsing
 needs — and all the browsing components ever do; `VariableListView` is the one that does not,
 because the lists it reads and writes are the signed-in user's own. The variable-list methods
-(`GetMyListsAsync` and the nine beside it) are the exception: they call an endpoint the API gates
-behind a signed-in explorer user, so with no provider registered every one of them throws on the
+(`GetMyListsAsync` and every other `…MyList…` member of `IMuninExplorerClient`) are the exception:
+they call an endpoint the API gates behind a signed-in explorer user, so with no provider registered every one of them throws on the
 401 rather than reporting the user as having nothing saved.
 
-Three things about those ten are worth knowing before writing against them. A call naming a list
-the user does not have answers `false` — or `null`, for the paged read — because the API cannot
+Three things about them are worth knowing before writing against them. A call naming a list
+the user does not have answers `false` — `null` for the paged read, the import report, the export and
+the share, and `DesiredDataOutcome.NotFound` for the annotation writes below — because the API cannot
 tell "deleted in another tab" from "somebody else's" and deliberately does not try. The two
 batch endpoints take at most `IMuninExplorerClient.MaxVariablesPerBatch` ids, which the client
 refuses above rather than splitting: split them yourself with
 `ids.Chunk(IMuninExplorerClient.MaxVariablesPerBatch)`, so a failure part-way through leaves you
 knowing how far it got.
 
-And `SetMyListDesiredDataAsync` and `SetMyListNotesAsync` break the `false` pattern on purpose,
-because they are the two writes the API can refuse for what is *in* them: the "Ønskede data" note
-is capped at 500 characters server side and the reader's own notes ("Mine notater") at 2000. Both
-answer a `DesiredDataResult` rather than a `bool`, and a refusal carries the ceiling the API named —
-so a caller can tell the reader what to shorten to, and this package never writes the number down
+And the annotation writes — `SetMyListDesiredDataAsync`, `SetMyListNotesAsync` and their per-item
+`SetMyListItem…` siblings — break the `false` pattern on purpose, because they are the writes the
+API can refuse for what is *in* them: the "Ønskede data" note is capped at 500 characters server
+side, the reader's own notes ("Mine notater") at 2000, and chosen codes are checked against the
+variable's code list. They answer a `DesiredDataResult` rather than a `bool`, and a refusal carries
+the ceiling or the rejected choice the API named — so a caller can tell the reader what to shorten to, and this package never writes the number down
 to drift from. A 429 is still thrown, and so is any fault. Neither annotation is ever sent when a
 list is shared.
 
