@@ -763,7 +763,7 @@ else if (ShowsBrowserCopy)
                     <input type="checkbox"
                            checked="@_includeKodeverk"
                            disabled="@_downloading"
-                           @onchange="e => _includeKodeverk = e.Value is true" />
+                           @onchange="e => { _includeKodeverk = e.Value is true; _readerMoves++; }" />
                     @T.IncludeKodeverk
                 </label>
 

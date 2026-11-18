@@ -582,6 +582,62 @@ public class AnonymousListTest : ExplorerTestContext
         Assert.Single(items);
     }
 
+    // A keyboard or screen-reader reader must land on the new code, as a signed-in share puts them (Fhi.Metadata-emsc0.3.18).
+    [Fact]
+    public void VariableListView_WhenTheBrowserListIsShared_ThenFocusGoesToTheCode()
+    {
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var cut = ListView(new Client(), browser);
+        cut.WaitForAssertion(() => Assert.Single(RowNames(cut)));
+
+        ButtonSaying(cut, No.ShareList).Click();
+
+        cut.WaitForAssertion(() => JSInterop.Invocations[Focus][^1].Arguments[0]
+            .ShouldBeElementReferenceTo(cut.Find("input[id^=munin-explorer-share-code]")));
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheBrowserListsShareIsOpenedAgain_ThenFocusGoesToTheSameCode()
+    {
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var client = new Client();
+        var cut = ListView(client, browser);
+        cut.WaitForAssertion(() => Assert.Single(RowNames(cut)));
+        ButtonSaying(cut, No.ShareList).Click();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("input[id^=munin-explorer-share-code]")));
+        ButtonSaying(cut, No.ShareList).Click();
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("input[id^=munin-explorer-share-code]")));
+        var focusCalls = JSInterop.Invocations[Focus].Count;
+
+        ButtonSaying(cut, No.ShareList).Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(focusCalls + 1, JSInterop.Invocations[Focus].Count));
+        JSInterop.Invocations[Focus][^1].Arguments[0].ShouldBeElementReferenceTo(cut.Find("input[id^=munin-explorer-share-code]"));
+        Assert.Single(client.Shared);
+    }
+
+    [Fact]
+    public async Task VariableListView_WhenTheReaderOpensAFoldWhileTheShareIsOut_ThenFocusStaysWhereTheyPutIt()
+    {
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var share = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new Client { ShareAnswer = share.Task };
+        var cut = ListView(client, browser);
+        cut.WaitForAssertion(() => Assert.Single(RowNames(cut)));
+
+        ButtonSaying(cut, No.ShareList).Click();
+        cut.WaitForAssertion(() => Assert.Single(client.Shared));
+        cut.Find("button[id^=munin-explorer-list-download-toggle]").Click();
+        var focusCalls = JSInterop.Invocations[Focus].Count;
+        await cut.InvokeAsync(() => share.SetResult("ABC123"));
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("input[id^=munin-explorer-share-code]")));
+        Assert.Equal(focusCalls, JSInterop.Invocations[Focus].Count);
+    }
+
     /// <summary>One row whose name brings the share's snapshot to exactly <paramref name="length"/> characters.</summary>
     private static VariableListItem RowOfSnapshotLength(int length)
     {
