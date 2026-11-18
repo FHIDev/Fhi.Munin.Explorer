@@ -142,6 +142,8 @@ public sealed partial class VariableListState(
         var startedAt = _generation;
         var activeAtStart = _activeListId;
         var madeAtStart = _madeHere;
+        var deletedAtStart = _deletedHere;
+        var renamedAtStart = _renamedHere;
         _readingFor = startedAt;
         ListsReadFailed = false;
 
@@ -201,10 +203,22 @@ public sealed partial class VariableListState(
             return;
         }
 
-        // A list made or left here after this read began is missing from its answer only because the read was early.
-        var madeSince = _madeHere.Where(l => !madeAtStart.Contains(l) && !lists.Any(a => a.Id == l.Id));
-        _lists = [.. lists.Where(l => !_carryingInto.Contains(l.Id)), .. madeSince];
+        // A list made, left, renamed or deleted here after this read began is in its answer, or not, or under its old
+        // name, only because the read was early. A made one is taken as it stands now, renamed or recounted since.
+        var madeSince = _madeHere
+            .Where(l => !madeAtStart.Contains(l) && !lists.Any(a => a.Id == l.Id))
+            .Select(l => _lists.FirstOrDefault(c => c.Id == l.Id) ?? l);
+        var renamedSince = _renamedHere.Where(r => !renamedAtStart.Contains(r)).ToList();
+        _lists =
+        [
+            .. lists
+                .Where(l => !_carryingInto.Contains(l.Id) && !_deletedHere.Contains(l.Id))
+                .Select(l => renamedSince.LastOrDefault(r => r.Id == l.Id) is { } r ? l with { Name = r.Name, UpdatedAt = r.UpdatedAt } : l),
+            .. madeSince,
+        ];
         _madeHere = [.. _madeHere.Where(l => !madeAtStart.Contains(l))];
+        _deletedHere = _deletedHere.Except(deletedAtStart).ToHashSet();
+        _renamedHere = renamedSince;
         _loaded = true;
         ListsReadFailed = false;
 
@@ -296,6 +310,11 @@ public sealed partial class VariableListState(
         // for the reason TouchedNow gives.
         _lists = [.. _lists.Select(l => l.Id == id ? l with { Name = name, UpdatedAt = TouchedNow() } : l)];
 
+        if (_lists.FirstOrDefault(l => l.Id == id) is { } renamed)
+        {
+            _renamedHere = [.. _renamedHere, renamed];
+        }
+
         // A rename touches the list's own name and stamp, never a row in it.
         RaiseChanged(id, affectsRows: false);
         return true;
@@ -323,6 +342,7 @@ public sealed partial class VariableListState(
 
         _lists = [.. _lists.Where(l => l.Id != id)];
         _madeHere = [.. _madeHere.Where(l => l.Id != id)];
+        _deletedHere = new HashSet<Guid>(_deletedHere) { id };
 
         // Left pointing at the list just deleted, the next ask would read the membership of a list
         // the API no longer has, and the save button would offer to remove variables from it.

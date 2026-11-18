@@ -39,6 +39,16 @@ public sealed partial class VariableListState : IDisposable
     // Lists this circuit knows Munin holds, made or left here: a lists read begun before one cannot speak for it.
     private IReadOnlyList<VariableList> _madeHere = [];
 
+    // Lists deleted here, which a lists read begun before the delete still holds. Swapped whole, as _madeHere is.
+    private IReadOnlySet<Guid> _deletedHere = new HashSet<Guid>();
+
+    // Lists renamed here, as they stand after the rename, which a lists read begun before it answers under the old name.
+    private IReadOnlyList<VariableList> _renamedHere = [];
+
+    // The first read went unanswered, by a dropped circuit, a timeout or a fault in the module, and the host has not
+    // refused the module for good: the next render asks again.
+    private bool _browserReadAgain;
+
     /// <summary>What a press on the save button did to the browser list.</summary>
     internal enum BrowserListOutcome
     {
@@ -64,7 +74,7 @@ public sealed partial class VariableListState : IDisposable
     /// <summary>Whether the browser has answered once, so an empty list is an answer.</summary>
     internal bool BrowserListRead { get; private set; }
 
-    /// <summary>False when the browser could not be asked at all; the list then does not exist.</summary>
+    /// <summary>False when the browser could not be asked; the list then does not exist until a later read answers.</summary>
     internal bool BrowserListAvailable { get; private set; } = true;
 
     /// <summary>False while the browser holds the list for this page only: storage refused, or the key is not ours.</summary>
@@ -116,14 +126,21 @@ public sealed partial class VariableListState : IDisposable
     }
 
     /// <summary>
-    /// Reads the list's keys once per circuit, or joins the read in flight, and starts listening for other tabs. Call
-    /// from <c>OnAfterRenderAsync</c>: there is no browser during prerender. Never throws.
+    /// Reads the list's keys once per circuit, again on the next call after a first read went unanswered without the
+    /// host refusing the module, or joins the read in flight; listens for other tabs. Call from <c>OnAfterRenderAsync</c>:
+    /// there is no browser during prerender. Never throws.
     /// </summary>
     internal Task ReadBrowserListAsync()
     {
         if (_browserStore is not { } store)
         {
             return Task.CompletedTask;
+        }
+
+        if (_browserReadAgain)
+        {
+            _browserReadAgain = false;
+            _browserRead = null;
         }
 
         return _browserRead ??= FirstReadAsync(store);
@@ -142,6 +159,7 @@ public sealed partial class VariableListState : IDisposable
         }
 
         await SyncBrowserListAsync().ConfigureAwait(false);
+        _browserReadAgain = !BrowserListAvailable && !store.Refused;
     }
 
     /// <summary>Reads the keys again, as after another tab changed them. Never throws.</summary>
@@ -152,8 +170,12 @@ public sealed partial class VariableListState : IDisposable
             return;
         }
 
+        var wasAvailable = true;
+
         await InTurnAsync(async () =>
         {
+            wasAvailable = BrowserListAvailable;
+
             try
             {
                 await RereadKeysAsync(store, await store.CountAsync().ConfigureAwait(false)).ConfigureAwait(false);
@@ -167,7 +189,11 @@ public sealed partial class VariableListState : IDisposable
             return true;
         }).ConfigureAwait(false);
 
-        BrowserChanged();
+        // A read failing again changed nothing; a render it set off would read again, and fail again, without end.
+        if (wasAvailable || BrowserListAvailable)
+        {
+            BrowserChanged();
+        }
     }
 
     // In its turn. A null anywhere means the browser could not be asked, and nothing is published.
@@ -258,7 +284,7 @@ public sealed partial class VariableListState : IDisposable
             }
 
             var keys = new HashSet<VariableDatasamlingKey>(_browserKeys);
-            var outcome = status.Full ? BrowserListOutcome.Full : drawnAsSaved ? BrowserListOutcome.Removed : BrowserListOutcome.Added;
+            var outcome = drawnAsSaved ? BrowserListOutcome.Removed : status.Full ? BrowserListOutcome.Full : BrowserListOutcome.Added;
 
             if (outcome == BrowserListOutcome.Removed)
             {
@@ -593,6 +619,9 @@ public sealed partial class VariableListState : IDisposable
 /// <remarks>Null from any member means the browser could not be asked; a fault in the script may throw, and the state logs it.</remarks>
 internal interface IBrowserListStore
 {
+    /// <summary>True once the host has refused the module for good, a 404 or a Content-Security-Policy.</summary>
+    bool Refused { get; }
+
     Task<BrowserListStatus?> CountAsync();
 
     Task<BrowserListStatus?> AddAsync(VariableListItem row, int max);

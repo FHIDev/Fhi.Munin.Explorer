@@ -118,8 +118,16 @@ public class AnonymousListTest : ExplorerTestContext
             return lists;
         }
 
+        /// <summary>Thrown by every create, as the write limiter can.</summary>
+        public Exception? CreateThrows { get; set; }
+
         public override Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default)
         {
+            if (CreateThrows is { } thrown)
+            {
+                throw thrown;
+            }
+
             Created.Add(name);
             var list = new VariableList { Id = Guid.NewGuid(), Name = name };
             Lists.Add(list);
@@ -1356,6 +1364,153 @@ public class AnonymousListTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Contains("Hjerte og kar", client.Created));
         cut.WaitForAssertion(() => Assert.DoesNotContain(No.BrowserListRefused(2, 1), cut.Markup));
         Assert.DoesNotContain(No.RemoveRefusedFromBrowser(2), cut.Markup);
+    }
+
+    [Fact]
+    public void VariableListView_WhenAListIsCreatedAfterAFailedCarryOver_ThenTheFailureSentenceLeaves()
+    {
+        // Left standing, the carry-over's failure would read as the answer to the create the reader just made.
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var client = new Client { AddThrows = true };
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+        cut.WaitForAssertion(() => Assert.Contains(No.CarryBrowserListOverError, cut.Markup));
+
+        cut.Find("button[id^='munin-explorer-create-toggle-']").Click();
+        cut.Find("input[id^='munin-explorer-new-list-']").Change("Hjerte og kar");
+        ButtonSaying(cut, "Opprett liste").Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("Hjerte og kar", client.Created));
+        cut.WaitForAssertion(() => Assert.DoesNotContain(No.CarryBrowserListOverError, cut.Markup));
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheFirstReadFindsNoBrowserForAMoment_ThenALaterRenderShowsTheRows()
+    {
+        // A dropped circuit or a timeout is not the host's answer for good; cached, the list would be gone for the circuit.
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        browser.Failing.Add("count");
+        var cut = ListView(new Client(), browser);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListUnavailable, cut.Markup));
+
+        browser.Failing.Clear();
+        cut.Render();
+
+        cut.WaitForAssertion(() => Assert.Equal(["Alder"], RowNames(cut)));
+        Assert.DoesNotContain(No.BrowserListUnavailable, cut.Markup);
+    }
+
+    // The press's flag clears in its last continuation; the posted no-op runs after the rest of that continuation has.
+    private static async Task PressFinishedAsync(IRenderedComponent<VariableListView> cut, string flag)
+    {
+        var field = typeof(VariableListView).GetField(flag, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        cut.WaitForAssertion(() => Assert.False((bool)field.GetValue(cut.Instance)!));
+        await cut.InvokeAsync(() => { });
+    }
+
+    [Fact]
+    public async Task VariableListView_WhenAnotherReaderSignsInDuringTheRemovalAndIsToldSomething_ThenTheRemovalLeavesItStanding()
+    {
+        // Pins the reader guard after the removal's await: past it, ForgetFailures would empty the next reader's alert.
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange([FakeBrowserList.Row("Gammel"), FakeBrowserList.Row("Alder")]);
+        var client = new Client { Stale = VariableDatasamlingKey.Of(browser.Rows[0]), NamesStale = true };
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(2), cut.Markup));
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+        cut.WaitForAssertion(() => Assert.Contains(No.RemoveRefusedFromBrowser(1), cut.Markup));
+        browser.Hold = true;
+        ButtonSaying(cut, No.RemoveRefusedFromBrowser(1)).Click();
+        cut.WaitForAssertion(() => Assert.NotEmpty(browser.Pending));
+
+        cut.Render(p => p.Add(c => c.IsAuthenticated, false));
+        cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+        client.CreateThrows = new MuninExplorerRateLimitedException();
+        cut.Find("button[id^='munin-explorer-create-toggle-']").Click();
+        cut.Find("input[id^='munin-explorer-new-list-']").Change("Hjerte og kar");
+        ButtonSaying(cut, "Opprett liste").Click();
+        cut.WaitForAssertion(() => Assert.Contains(No.RateLimitError, cut.Markup));
+        browser.Hold = false;
+        while (browser.Pending.Count > 0)
+        {
+            await cut.InvokeAsync(browser.ReleaseNewest);
+        }
+
+        await PressFinishedAsync(cut, "_removing");
+
+        Assert.Single(browser.Rows);
+        Assert.Contains(No.RateLimitError, cut.Markup);
+        Assert.DoesNotContain(No.BrowserListRefusedRemoved(1, 1), cut.Markup);
+    }
+
+    [Fact]
+    public async Task VariableListView_WhenARemovePressArrivesAfterAnotherReaderSignedIn_ThenNoRowLeaves()
+    {
+        // Pins the handler's entry guard. Blazor Server keeps a handler until the browser acknowledges the render that
+        // drops its button, so a press sent before the sign-in reached the screen still arrives; reflection stands in.
+        var (browser, client) = NamedRefusal();
+        var cut = RefusedView(browser, client);
+
+        cut.Render(p => p.Add(c => c.IsAuthenticated, false));
+        cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+        var press = typeof(VariableListView).GetMethod(
+            "RemoveRefusedFromBrowserAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        await cut.InvokeAsync(() => (Task)press.Invoke(cut.Instance, null)!);
+
+        Assert.Equal(3, browser.Rows.Count);
+        Assert.DoesNotContain(browser.Calls, c => c.Call == "removeKeys");
+    }
+
+    [Fact]
+    public async Task VariableListView_WhenAnotherReaderSignsInWhileTheSavedRowsLeaveTheBrowser_ThenThePressReadsNothingForThem()
+    {
+        // Pins the reader guard after the carry-over's await: the state hands the list back here, and past the guard the
+        // press would read the lists again under the next reader.
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var client = new Client();
+        client.BeforeAdd = () => browser.Hold = true;
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+        cut.WaitForAssertion(() => Assert.Contains(browser.Pending, p => p.Call == "removeKeys"));
+
+        cut.Render(p => p.Add(c => c.IsAuthenticated, false));
+        cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+        var state = Services.GetRequiredService<VariableListState>();
+        cut.WaitForAssertion(() => Assert.True(state.HasLoaded));
+        var listReads = client.MyListsCalls;
+        browser.Hold = false;
+        while (browser.Pending.Count > 0)
+        {
+            await cut.InvokeAsync(browser.ReleaseNewest);
+        }
+
+        await PressFinishedAsync(cut, "_carryingOver");
+
+        Assert.Equal(listReads, client.MyListsCalls);
+        Assert.DoesNotContain(No.BrowserListSavedAs(No.FirstListName), cut.Markup);
+    }
+
+    [Fact]
+    public void VariableListView_WhenAnOfferFocusNamesNoControlItKnows_ThenItThrows()
+    {
+        // A control added to the enum and not to the switch would otherwise send focus down the carry-over's branch.
+        var cut = ListView(new Client(), new FakeBrowserList(), signedIn: true);
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var field = typeof(VariableListView).GetField("_offerFocus", flags)!;
+        var tuple = Nullable.GetUnderlyingType(field.FieldType)!;
+        var control = Enum.ToObject(tuple.GetGenericArguments()[0], 99);
+        var reader = Services.GetRequiredService<VariableListState>().Reader;
+        field.SetValue(cut.Instance, Activator.CreateInstance(tuple, control, 0, reader));
+
+        var take = typeof(VariableListView).GetMethod("TakeOfferFocusTarget", flags)!;
+        var thrown = Assert.Throws<System.Reflection.TargetInvocationException>(() => take.Invoke(cut.Instance, null));
+
+        Assert.IsType<System.Diagnostics.UnreachableException>(thrown.InnerException);
     }
 
     [Fact]
