@@ -28,10 +28,10 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// read, the export and the share, <see cref="DesiredDataOutcome.NotFound"/> from a
 /// <see cref="DesiredDataResult"/> write — because a list deleted in another tab is the same ordinary
 /// event as an edited id. They are, with the obsolete <see cref="RedeemIdentityLinkAsync"/>, the only
-/// part of this interface that needs a token, and the only writes that can come back with an
-/// <see cref="ArgumentException"/> before anything is sent — see <see cref="MaxVariablesPerBatch"/>.
-/// They are not the only methods that can: <see cref="GetKodeverkCodesAsync"/> refuses a path
-/// segment it cannot carry the same way.
+/// part of this interface that needs a token, and the only writes that refuse a value they were given
+/// with an <see cref="ArgumentException"/> before anything is sent — an oversized batch, see
+/// <see cref="MaxVariablesPerBatch"/>. They are not the only methods that can:
+/// <see cref="GetKodeverkCodesAsync"/> refuses a path segment it cannot carry the same way.
 /// </para>
 /// <para>
 /// Those same <c>my/lists</c> methods answer a 401/403 as
