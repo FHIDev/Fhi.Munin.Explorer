@@ -86,8 +86,12 @@ public sealed partial class VariableListView
         RemoveRefused
     }
 
-    /// <summary>Signed in with rows in the browser, and no carry-over that saved them but could not take them out.</summary>
-    private bool ShowsCarryOverOffer => State is { IsAuthenticated: true, BrowserCount: > 0, BrowserCarryOverStuck: false };
+    /// <summary>
+    /// Signed in with rows in the browser, the reader's lists read (the new list's name is picked against them), and no
+    /// carry-over that saved them but could not take them out.
+    /// </summary>
+    private bool ShowsCarryOverOffer =>
+        State is { IsAuthenticated: true, HasLoaded: true, BrowserCount: > 0, BrowserCarryOverStuck: false };
 
     /// <summary>The rows and variables the remove button would take out, while its sentence is the one on screen.</summary>
     private (int Rows, int Variables)? RefusedRowsShown =>
@@ -346,7 +350,7 @@ public sealed partial class VariableListView
     /// </summary>
     private async Task CarryBrowserListOverAsync()
     {
-        if (State is null || !IsAuthenticated || _carryingOver || _removing)
+        if (State is null || !IsAuthenticated || !State.HasLoaded || _carryingOver || _removing)
         {
             return;
         }
