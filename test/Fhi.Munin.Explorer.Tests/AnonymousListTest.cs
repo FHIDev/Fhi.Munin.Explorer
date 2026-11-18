@@ -77,6 +77,12 @@ public class AnonymousListTest : ExplorerTestContext
         /// <summary>A page read fails, as the view's own read of the list on screen can.</summary>
         public bool PageThrows { get; set; }
 
+        /// <summary>How many list reads pass before the one <see cref="HoldRead"/> «lists» holds.</summary>
+        public int ListsReadsToPass { get; set; }
+
+        /// <summary>Thrown by every list read once set.</summary>
+        public Exception? ListsThrow { get; set; }
+
         /// <summary>What every page read answers with; empty unless a test needs rows to act on.</summary>
         public IReadOnlyList<VariableListItem> PageItems { get; init; } = [];
 
@@ -84,6 +90,12 @@ public class AnonymousListTest : ExplorerTestContext
         {
             // A list read waits once, so the next reader's sign-in can read; the new list's reads all wait, or a reload
             // the press set off would be held while the press's own read passed.
+            if (read == "lists" && HoldRead == read && ListsReadsToPass > 0)
+            {
+                ListsReadsToPass--;
+                return;
+            }
+
             if (HoldRead == read && !ReadHeld.Task.IsCompleted)
             {
                 HoldRead = read == "lists" ? null : read;
@@ -95,6 +107,12 @@ public class AnonymousListTest : ExplorerTestContext
         public override async Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default)
         {
             MyListsCalls++;
+
+            if (ListsThrow is { } thrown)
+            {
+                throw thrown;
+            }
+
             var lists = Lists.ToList();
             await HoldIfAsync("lists");
             return lists;
@@ -1206,12 +1224,13 @@ public class AnonymousListTest : ExplorerTestContext
     }
 
     [Theory]
+    [InlineData("names")]
     [InlineData("lists")]
     [InlineData("membership")]
     [InlineData("page")]
     public async Task VariableListView_WhenAnotherReaderSignsInDuringTheCarryOversReads_ThenThePressLeavesThemNothing(string read)
     {
-        // One per await in the press's tail: the counts, the new list's membership, and its page.
+        // One per await in the press: the names read before the create, then the counts, the new list's membership and its page.
         var browser = new FakeBrowserList();
         browser.Rows.Add(FakeBrowserList.Row("Alder"));
         var client = new Client();
@@ -1220,7 +1239,8 @@ public class AnonymousListTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
         var state = Services.GetRequiredService<VariableListState>();
         cut.WaitForAssertion(() => Assert.Equal(OwnListId, state.ActiveListId));
-        client.HoldRead = read;
+        client.HoldRead = read == "names" ? "lists" : read;
+        client.ListsReadsToPass = read == "lists" ? 1 : 0;
 
         ButtonSaying(cut, No.CarryBrowserListOver).Click();
         cut.WaitForAssertion(() => Assert.True(client.ReadReached));
@@ -1240,6 +1260,43 @@ public class AnonymousListTest : ExplorerTestContext
 
         // Nor is the old reader's new list read for a page under the next reader.
         Assert.Equal(pageReads, client.NewListPageReads);
+
+        // Stopped before the create, nothing is made in the next reader's account and the rows stay in the browser.
+        if (read == "names")
+        {
+            Assert.Empty(client.Created);
+            Assert.Single(browser.Rows);
+        }
+    }
+
+    [Theory]
+    [InlineData("throttled", LogLevel.Warning)]
+    [InlineData("unauthorised", LogLevel.Warning)]
+    [InlineData("failed", LogLevel.Error)]
+    public void VariableListView_WhenTheCarryOversNamesReadFails_ThenNothingIsMadeTheRowsStayAndTheReaderIsTold(string failure, LogLevel level)
+    {
+        var recorder = new RecordingLoggerProvider();
+        Services.AddLogging(b => b.AddProvider(recorder).SetMinimumLevel(LogLevel.Trace));
+        Exception thrown = failure switch
+        {
+            "throttled" => new MuninExplorerRateLimitedException(),
+            "unauthorised" => new MuninExplorerUnauthorizedException(),
+            _ => new HttpRequestException("nede"),
+        };
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var client = new Client();
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
+        client.ListsThrow = thrown;
+
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.CarryBrowserListOverError, cut.Markup));
+        Assert.Empty(client.Created);
+        Assert.Single(browser.Rows);
+        var entry = Assert.Single(recorder.Entries, e => e.Category == typeof(VariableListView).FullName && e.Exception == thrown);
+        Assert.Equal(level, entry.Level);
     }
 
     [Fact]

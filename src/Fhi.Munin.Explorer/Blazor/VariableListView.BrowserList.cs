@@ -364,6 +364,13 @@ public sealed partial class VariableListView
         {
             // Read afresh, as the shared-list save does: the state's lists may not be read yet, or a refresh may have failed.
             var existing = await Client.GetMyListsAsync();
+
+            // The rows are the pressing reader's: one who signed out, or was replaced, during the read gets nothing made.
+            if (State.Reader != reader)
+            {
+                return;
+            }
+
             carried = await State.CarryBrowserListOverAsync(FreeListName(T.FirstListName, existing));
         }
         catch (Exception ex)
