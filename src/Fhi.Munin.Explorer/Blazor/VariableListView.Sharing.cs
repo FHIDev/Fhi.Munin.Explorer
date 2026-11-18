@@ -295,6 +295,7 @@ public sealed partial class VariableListView
         if (page >= 1 && page <= SharedTotalPages)
         {
             _sharedPageNumber = page;
+            _readerMoves++;
         }
 
         return Task.CompletedTask;

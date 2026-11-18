@@ -1811,6 +1811,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// </summary>
     private async Task DownloadAsync(ExportFormat format)
     {
+        _readerMoves++;
+
         if (ShowsBrowserCopy)
         {
             await DownloadBrowserListAsync(format);

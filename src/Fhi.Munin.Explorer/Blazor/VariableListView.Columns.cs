@@ -72,6 +72,7 @@ public sealed partial class VariableListView
                 () =>
                 {
                     ToggleListColumn(column);
+                    _readerMoves++;
 
                     return Task.CompletedTask;
                 }))]);
