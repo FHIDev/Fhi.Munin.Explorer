@@ -146,6 +146,9 @@ generated.
 Write `Bead: <bead-id>` instead when the change only partly satisfies the bead: `Closes-Bead`
 shuts it whether or not the acceptance criteria are met.
 
+A PR that fixes a bug an earlier merged PR brought in also carries `Fixes-PR: #N` (`<Repo>#N` for
+another repository), one line per PR, on a line of its own (AGENTS.md).
+
 Then, only where Varde's bead tools are missing (the Forge):
 
 ```bash
