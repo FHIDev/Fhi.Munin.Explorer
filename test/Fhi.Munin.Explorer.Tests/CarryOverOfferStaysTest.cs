@@ -39,13 +39,7 @@ public class CarryOverOfferStaysTest : ExplorerTestContext
         var state = Services.GetRequiredService<VariableListState>();
 
         client.ListsThrow = true;
-        try
-        {
-            await cut.InvokeAsync(() => state.RefreshAsync());
-        }
-        catch (MuninExplorerRateLimitedException)
-        {
-        }
+        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => cut.InvokeAsync(() => state.RefreshAsync()));
 
         await cut.InvokeAsync(() => Task.Delay(100));
         Assert.Single(browser.Rows);

@@ -1446,7 +1446,8 @@ every row of those variables out of the browser; the button goes with the senten
 that are left and takes focus; with no rows left there is no offer, and focus goes to the list picker, or to creating
 a list when the reader has one list or none. A refused row is not remembered: if the reader keeps it, the next press
 is refused the same way. Any other failure (a refusal that names nothing, the write limiter, a lapsed sign-in, a list
-gone, an error) also saves nothing, deletes the new list and keeps every row. A press only ever deletes the list it
+gone, an error) also saves nothing, deletes the new list if one was made and keeps every row; the press reads the
+reader's lists first, to name the new one, and a failure there makes nothing. A press only ever deletes the list it
 created. When that delete fails, as it can under the same write limiter, or the reader signs out during the press, the
 new list can be left in Mine variabellister: it appears among the reader's lists the next time the page is opened, or
 beside the next list they make, and they can delete it there. Saving only the rows Munin accepts, and leaving the
