@@ -289,7 +289,7 @@ internal sealed class ExplorerInterop : IAsyncDisposable
             .ConfigureAwait(false) is true;
     }
 
-    /// <summary>Moves focus to <paramref name="toId"/> while it is still on <paramref name="fromId"/> or on nothing.</summary>
+    /// <summary>Moves focus to <paramref name="toId"/> while it is on <paramref name="fromId"/>, or on nothing with it pressed last.</summary>
     /// <returns>False when the reader moved on, the element is gone or the browser is out of reach.</returns>
     /// <exception cref="JSException">A fault in the export itself, for the caller to log as one.</exception>
     internal static async Task<bool> FocusIfStillOnAsync(IJSRuntime js, string fromId, string toId)

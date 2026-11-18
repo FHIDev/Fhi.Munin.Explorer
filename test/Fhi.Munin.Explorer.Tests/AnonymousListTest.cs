@@ -644,6 +644,62 @@ public class AnonymousListTest : ExplorerTestContext
         Assert.Equal(focusCalls, JSInterop.Invocations[Focus].Count);
     }
 
+    // Without the watch, Safari's unfocused clicks read as «still on Del liste» and the code takes focus (Fhi.Metadata-emsc0.3.19).
+    [Fact]
+    public void VariableListView_WhenTheBrowserListShows_ThenTheBrowserIsAskedOnceToWatchPresses()
+    {
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        module.Setup<bool>(WatchPresses).SetResult(true);
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var cut = ListView(new Client(), browser);
+        cut.WaitForAssertion(() => Assert.Single(module.Invocations[WatchPresses]));
+
+        cut.Render();
+
+        cut.WaitForAssertion(() => Assert.Single(RowNames(cut)));
+        Assert.Single(module.Invocations[WatchPresses]);
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheWatchCannotBeSetUp_ThenALaterRenderAsksAgain()
+    {
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        module.Setup<bool>(WatchPresses).SetResult(false);
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var cut = ListView(new Client(), browser);
+        cut.WaitForAssertion(() => Assert.NotEmpty(module.Invocations[WatchPresses]));
+        var asked = module.Invocations[WatchPresses].Count;
+
+        cut.Render();
+
+        cut.WaitForAssertion(() => Assert.True(module.Invocations[WatchPresses].Count > asked));
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheWatchFaultsInTheModule_ThenItIsLoggedAsAnErrorAndNotAskedAgain()
+    {
+        var recorder = new RecordingLoggerProvider();
+        Services.AddLogging(b => b.AddProvider(recorder).SetMinimumLevel(LogLevel.Trace));
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var fault = new Microsoft.JSInterop.JSException("watchPresses is not a function");
+        module.Setup<bool>(WatchPresses).SetException(fault);
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var cut = ListView(new Client(), browser);
+        cut.WaitForAssertion(() => Assert.Single(module.Invocations[WatchPresses]));
+
+        cut.Render();
+
+        cut.WaitForAssertion(() => Assert.Single(RowNames(cut)));
+        Assert.Single(module.Invocations[WatchPresses]);
+        var entry = Assert.Single(recorder.Entries, e => e.Category == typeof(VariableListView).FullName && e.Exception == fault);
+        Assert.Equal(LogLevel.Error, entry.Level);
+    }
+
+    private const string WatchPresses = "watchPresses";
+
     private const string FocusIfStillOn = "focusIfStillOn";
 
     private BunitJSModuleInterop SharesFocusModule()

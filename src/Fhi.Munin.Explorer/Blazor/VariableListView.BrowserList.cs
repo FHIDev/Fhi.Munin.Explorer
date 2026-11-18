@@ -142,6 +142,10 @@ public sealed partial class VariableListView
                 _pressesWatched = true;
                 Log?.LogError(ex, "the module could not watch the reader's presses for the browser list's share");
             }
+            catch (Exception ex)
+            {
+                Log?.LogWarning(ex, "could not watch the reader's presses for the browser list's share");
+            }
         }
 
         var wanted = (state.BrowserVersion, _sharedPageNumber, PageSize);
