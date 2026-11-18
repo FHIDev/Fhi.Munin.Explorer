@@ -281,9 +281,9 @@ node --test "$ROOT/scripts/test-axe-states.mjs" "$ROOT/scripts/test-scan-shard.m
 # Product code, not tooling: the browser list as the package's module keeps it. A failure is a finding (Fhi.Metadata-emsc0.3.12).
 echo "==> checking the package's browser list module"
 module_status=0
-node --test "$ROOT/scripts/test-anonymous-list.mjs" "$ROOT/scripts/test-anonymous-list.heldout.mjs" "$ROOT/scripts/test-focus-if-still-on.mjs" || module_status=1
+node --test "$ROOT/scripts/test-anonymous-list.mjs" "$ROOT/scripts/test-anonymous-list.heldout.mjs" "$ROOT/scripts/test-focus-if-still-on.mjs" "$ROOT/scripts/test-focus-if-still-on.heldout.mjs" || module_status=1
 module_failed() {
-  echo "The browser list module's own tests failed (scripts/test-anonymous-list*.mjs, test-focus-if-still-on.mjs): a defect in the package's" >&2
+  echo "The browser list module's own tests failed (scripts/test-anonymous-list*.mjs, test-focus-if-still-on*.mjs): a defect in the package's" >&2
   echo "explorer-interop.js, not in a page and not in the tooling. See the node test output above." >&2
 }
 
