@@ -393,14 +393,8 @@ public interface IMuninExplorerClient
             "Consume MuninExplorerClient, or implement the member.");
 
     // ------------------------------------------------------------------ the user's own variable lists
-    //
-    // Everything above is anonymous and read-only. Everything below is not: the whole of
-    // `api/explorer/my/lists` sits behind the API's authenticated explorer policy, so a caller
-    // reaches it only when the host has registered an IMuninExplorerTokenProvider *before*
-    // AddMuninExplorer — see the remarks on that interface. With the anonymous default in place
-    // every one of these answers 401, which arrives here as an HttpRequestException rather than as
-    // an empty list, because a host that thinks it wired up sign-in has a fault rather than a user
-    // with nothing saved.
+    // `api/explorer/my/lists` needs an IMuninExplorerTokenProvider registered before AddMuninExplorer;
+    // without one its 401 throws MuninExplorerUnauthorizedException, not an empty list, as a fault.
 
     /// <summary>
     /// The largest number of variable ids the API accepts in one batch add or remove.
@@ -569,9 +563,9 @@ public interface IMuninExplorerClient
     /// or clears it.
     /// </summary>
     /// <remarks>
-    /// The one write here that answers with more than "was it yours". The API caps the text at 500
-    /// characters and refuses a longer one with a <c>400</c> naming the ceiling, which is a refusal
-    /// of something the reader typed rather than a fault — so it comes back as
+    /// Answers with more than "was it yours", as every <see cref="DesiredDataResult"/> write here does.
+    /// The API caps the text at 500 characters and refuses a longer one with a <c>400</c> naming the
+    /// ceiling, which is a refusal of something the reader typed rather than a fault — so it comes back as
     /// <see cref="DesiredDataOutcome.Refused"/> with the ceiling attached, not as a throw and not
     /// as a silent success. A caller that cannot draw that distinction leaves the reader typing
     /// into a field that keeps refusing without saying so.
@@ -844,10 +838,11 @@ public interface IMuninExplorerClient
     /// <remarks>
     /// <para>
     /// Anonymous, like <see cref="ExportListAsync"/>: the snapshot travels in the body, and anyone
-    /// holding the code can read it for 90 days. So the items are posted with the display fields
-    /// only — never <see cref="VariableListItem.DesiredDataFreeText"/> or
-    /// <see cref="VariableListItem.DesiredDataType"/>, which are the reader's private notes. The
-    /// field names are the ones Runa posts, so a code made here opens in Runa and the other way round.
+    /// holding the code can read it for 90 days. So the items are posted with the display fields and
+    /// <see cref="VariableListItem.DesiredDataCodes"/> only — never
+    /// <see cref="VariableListItem.DesiredDataFreeText"/>, <see cref="VariableListItem.DesiredDataType"/> or
+    /// <see cref="VariableListItem.Notes"/>, which are the reader's own words. The field names are the
+    /// ones Runa posts, so a code made here opens in Runa and the other way round.
     /// </para>
     /// <para>
     /// For a list that is not saved. The list view shares the reader's saved lists with
@@ -877,10 +872,10 @@ public interface IMuninExplorerClient
     /// </summary>
     /// <remarks>
     /// Unlike <see cref="ShareListAsync"/>, nothing travels in the body: the API builds the snapshot from the stored
-    /// list, without notes or desired data, and ties the code to the list, so deleting the list makes the code answer
-    /// 404. It still expires after 90 days. Needs the reader's token, as the rest of <c>my/lists</c> does; a 401 or 403
-    /// throws <see cref="MuninExplorerUnauthorizedException"/>. An empty list, or one over 10 000 items, is a 400 and
-    /// throws.
+    /// list, with the chosen codes but without notes or the desired-data text, and ties the code to the list, so
+    /// deleting the list makes the code answer 404. It still expires after 90 days. Needs the reader's token, as the
+    /// rest of <c>my/lists</c> does; a 401 or 403 throws <see cref="MuninExplorerUnauthorizedException"/>. An empty
+    /// list, or one over 10 000 items, is a 400 and throws.
     /// </remarks>
     /// <param name="id">The saved list's id.</param>
     /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
