@@ -215,6 +215,107 @@ else if (State?.IsAuthenticated == true)
                 @DesiredDataRefusalMessage
             </div>
 
+            @* A region, not an alert: it stands on every visit until hidden, and is not to be read out each time. *@
+            @if (ShownImportReport is { } importReport)
+            {
+                var (skippedNamed, skippedElsewhere) = SkippedRows(importReport);
+                var repeatedCodes = RepeatedImportCodes(importReport);
+
+                <section class="munin-explorer-list-import" aria-labelledby="@ImportHeadingId">
+                    @DetailBlocks.Heading(RowPanelLevel, T.ImportReportHeading(importReport.NotFound.Count),
+                                          "headline headline-xxs margin--none", ImportHeadingId)
+
+                    @if (importReport.NotFound.Count > 0)
+                    {
+                        <p>@T.ImportReportAdvice</p>
+                        <ul>
+                            @foreach (var (entry, place) in InOrder(importReport).Select((e, i) => (e, i + 1)))
+                            {
+                                var codes = ImportCodes(entry.VariableCode, entry.DatasamlingCode);
+                                var placed = repeatedCodes.Contains(codes);
+
+                                <li class="munin-explorer-list-import__entry" @key="entry.EntryId">
+                                    <div>
+                                        <strong id="@ImportCodesId(entry)">@codes</strong>
+                                        @if (placed)
+                                        {
+                                            <span id="@ImportPlaceId(entry)" hidden>@T.ImportEntryPlace(place)</span>
+                                        }
+                                        @if (ImportReason(entry.Status) is { } reason)
+                                        {
+                                            <p class="caption margin--none">@reason</p>
+                                        }
+                                        @if (Present(entry.Notes) is { } notes)
+                                        {
+                                            <p class="margin--none">@T.ImportNoteLabel: @notes</p>
+                                        }
+                                        @if (Present(entry.DesiredDataFreeText) is { } desired)
+                                        {
+                                            <p class="margin--none">@T.ImportDesiredDataLabel: @desired</p>
+                                        }
+                                        @if (entry.Skipped.Contains(ListImportFields.Notes))
+                                        {
+                                            <p class="caption margin--none">@T.ImportNoteLeftOff</p>
+                                        }
+                                        @if (entry.Skipped.Contains(ListImportFields.DesiredData))
+                                        {
+                                            <p class="caption margin--none">@T.ImportDesiredDataLeftOff</p>
+                                        }
+                                    </div>
+                                    @* Named as the rows' «Fjern» are: its own word, then the codes it removes. *@
+                                    <button class="hd-button-square button-square--ghost-blue"
+                                            type="button"
+                                            id="@ImportRemoveId(entry)"
+                                            @ref="_importRemoveButtons[entry.EntryId]"
+                                            aria-labelledby="@($"{ImportRemoveId(entry)} {ImportCodesId(entry)}{(placed ? $" {ImportPlaceId(entry)}" : "")}")"
+                                            aria-disabled="@AriaDisabled(!_importWriting)"
+                                            @onclick="() => RemoveImportEntryAsync(entry)">@T.ImportRemoveEntry</button>
+                                </li>
+                            }
+                        </ul>
+                    }
+
+                    @if (importReport.Skipped.Count > 0)
+                    {
+                        <p>@T.ImportSkippedLead(importReport.Skipped.Count)</p>
+                        <ul>
+                            @foreach (var (row, item) in skippedNamed)
+                            {
+                                <li class="munin-explorer-list-import__entry" @key="row.ItemId">
+                                    <span>
+                                        @if (item is not null)
+                                        {
+                                            @(Present(item.VariableCode) is { } code ? $"{code} " : "")<span lang="@CatalogueLang(item.VariableName)">@RowName(item)</span>
+                                        }
+                                        else
+                                        {
+                                            @ImportCodes(row.VariableCode, row.DatasamlingCode)
+                                        }
+                                        @if (ImportSkippedFields(row.Fields) is { } fields)
+                                        {
+                                            @($": {fields}")
+                                        }
+                                    </span>
+                                </li>
+                            }
+                            @if (skippedElsewhere > 0)
+                            {
+                                <li class="munin-explorer-list-import__entry">@T.ImportSkippedElsewhere(skippedElsewhere)</li>
+                            }
+                        </ul>
+                    }
+
+                    @* Named with its object, as «Fjern» is: «Skjul» alone does not say what it hides. *@
+                    <button class="hd-button-square button-square--ghost-blue"
+                            type="button"
+                            id="@ImportHideId"
+                            aria-labelledby="@($"{ImportHideId} {ImportHeadingId}")"
+                            @ref="_importHideButton"
+                            aria-disabled="@AriaDisabled(!_importWriting)"
+                            @onclick="HideImportReportAsync">@T.ImportHide</button>
+                </section>
+            }
+
             @* Not while the read is known to have failed. The alert above already says so, and
                "du har ingen variabellister ennå" beside it answers the same question the other way —
                the reader cannot tell whether they have none or whether we never found out. The two
@@ -354,7 +455,7 @@ else if (State?.IsAuthenticated == true)
                                                       lang="@CatalogueLang(item.VariableName)">@RowName(item)</span>
                                             </button>
                                         }
-                                        @CodeUnderName(item)
+                                        @UnderName(item)
                                     </th>
 
                                     @* The six columns the result list draws too and the two coverage
@@ -589,7 +690,7 @@ else if (ShowsBrowserCopy)
                                             <span class="munin-explorer-dataitem-main__column__text"
                                                   id="@RowNameId(item)"
                                                   lang="@CatalogueLang(item.VariableName)">@RowName(item)</span>
-                                            @CodeUnderName(item)
+                                            @UnderName(item)
                                         </th>
                                         @if (SharedHasCodes)
                                         {
@@ -950,13 +1051,19 @@ else if (ShowsBrowserCopy)
 }
 
 @code {
-    // The code under the name rather than a column of its own: it was the widest, and copies whole where it wraps.
-    private RenderFragment CodeUnderName(VariableListItem item) => __builder =>
+    // The code under the name rather than a column of its own (it was the widest, and copies whole where it wraps), then a historical row's mark.
+    private RenderFragment UnderName(VariableListItem item) => __builder =>
     {
         if (!string.IsNullOrWhiteSpace(item.VariableCode))
         {
             @* Not lang="no": a code is an identifier, not Norwegian to pronounce (Fhi.Metadata-e1qeo). *@
-            <span class="munin-explorer-list-code">@item.VariableCode</span>
+            @(" ")<span class="munin-explorer-list-code">@item.VariableCode</span>
+        }
+        @* In the row header, so it is read with the name; text, not a colour, and the search's word (Fhi.Metadata-l9l2n.190). *@
+        @if (VersionStatusRule.IsHistorical(item.VersionStatus))
+        {
+            @* The spaces keep the code and «Historisk» words of their own in the header's text: Razor emits none between spans. *@
+            @(" ")<span class="munin-explorer-list-status">@T.VersionStatusLabel(item.VersionStatus!)</span>
         }
     };
 

@@ -86,6 +86,18 @@ internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
     public virtual Task<string?> ShareMyListAsync(Guid id, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("This fake does not share saved lists.");
 
+    /// <summary>The interface's own default: no report, so a list never shows one.</summary>
+    public virtual Task<ListImportReport?> GetMyListImportReportAsync(Guid id, CancellationToken cancellationToken = default) =>
+        Task.FromResult<ListImportReport?>(null);
+
+    /// <summary>Refuses, like the interface's own default.</summary>
+    public virtual Task<bool> DismissMyListImportReportAsync(Guid id, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This fake does not hide import reports.");
+
+    /// <summary>Refuses, like the interface's own default.</summary>
+    public virtual Task<bool> RemoveMyListImportEntryAsync(Guid id, Guid entryId, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This fake does not remove import report entries.");
+
     /// <summary>The API's 404: no shared list behind any code.</summary>
     public virtual Task<SharedList?> GetSharedListAsync(
         string? code,

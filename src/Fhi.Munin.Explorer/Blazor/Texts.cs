@@ -915,6 +915,7 @@ internal sealed record Texts(
     Func<string, string> PickerInvalid,
     Func<string, string> PickerLeftList,
     Func<int, string> PickerTooMany,
+    Func<int, int, string> PickerOverFromImport,
     Func<int, int, string> PickerShowingHits,
     Func<int, int, string> PickerShowingLevel,
     string PickerChooseHits,
@@ -953,7 +954,24 @@ internal sealed record Texts(
     string ConfirmClearBrowserList,
     Func<int, string> BrowserListWaiting,
     string CarryBrowserListOver,
-    string CarryBrowserListOverError)
+    string CarryBrowserListOverError,
+    // A list imported from the old helsedata: what did not come over, until the reader hides it (Fhi.Metadata-9huq2.37).
+    Func<int, string> ImportReportHeading,
+    string ImportReportAdvice,
+    Func<string?, string?, string> ImportReportCodes,
+    string ImportReasonUnknownVariable,
+    string ImportReasonUnknownDatasamling,
+    string ImportReasonAmbiguous,
+    string ImportNoteLabel,
+    string ImportDesiredDataLabel,
+    string ImportNoteLeftOff,
+    string ImportDesiredDataLeftOff,
+    Func<int, string> ImportSkippedLead,
+    Func<bool, bool, bool, string> ImportSkippedFields,
+    Func<int, string> ImportSkippedElsewhere,
+    string ImportRemoveEntry,
+    Func<int, string> ImportEntryPlace,
+    string ImportHide)
 {
     /// <summary>
     /// The label for a sort order. Every one that names a field uses the same words the result
@@ -1226,6 +1244,13 @@ internal sealed record Texts(
     /// opposite way to the order it is in is worse than one that fails loudly.
     /// </remarks>
     public string DirectionName(SortDirection direction) => DirectionWord(direction, Ascending, Descending);
+
+    // «a, b og c»: the parts that are there, the last joined by the language's own word.
+    private static string Listed(string and, params string?[] parts)
+    {
+        var present = parts.OfType<string>().ToList();
+        return present.Count <= 1 ? string.Concat(present) : $"{string.Join(", ", present[..^1])} {and} {present[^1]}";
+    }
 
     /// <summary>One of two words for a direction, chosen by an arm rather than by "else".</summary>
     /// <remarks>
@@ -1901,6 +1926,7 @@ internal sealed record Texts(
         PickerInvalid: choice => $"{choice} finnes ikke i kodelisten. Fjern det og lagre igjen.",
         PickerLeftList: choice => $"{choice} finnes ikke lenger i kodelisten. Fjern det.",
         PickerTooMany: max => $"Høyst {max} valg per variabel.",
+        PickerOverFromImport: (max, count) => $"Velg høyst {max} kodevalg; dette elementet har {count} fra importen. Fjern noen før du lagrer.",
         PickerShowingHits: (shown, total) => $"Viser {shown} av {total}. Søk smalere.",
         PickerShowingLevel: (shown, total) => $"Viser {shown} av {total}. Søk for å finne resten.",
         PickerChooseHits: "Velg treffene",
@@ -1940,7 +1966,39 @@ internal sealed record Texts(
             ? "Denne nettleseren har en liste fra før du logget inn, med 1 rad. Lagrer du den i Mine variabellister, blir den en ny liste der."
             : $"Denne nettleseren har en liste fra før du logget inn, med {rows} rader. Lagrer du den i Mine variabellister, blir den en ny liste der.",
         CarryBrowserListOver: "Lagre i Mine variabellister",
-        CarryBrowserListOverError: "Kunne ikke lagre listen i Mine variabellister nå. Den ligger fortsatt i denne nettleseren.");
+        CarryBrowserListOverError: "Kunne ikke lagre listen i Mine variabellister nå. Den ligger fortsatt i denne nettleseren.",
+        ImportReportHeading: count => count switch
+        {
+            0 => "Importert fra den gamle listen: noe ble ikke tatt med",
+            1 => "Importert fra den gamle listen: 1 variabel ble ikke funnet",
+            _ => $"Importert fra den gamle listen: {count} variabler ble ikke funnet"
+        },
+        ImportReportAdvice: "Søk etter variabelen på navn, eller spør registeret som har dataene.",
+        ImportReportCodes: (variable, datasamling) => (variable, datasamling) switch
+        {
+            ({ } v, { } d) => $"{v} i datasamlingen {d}",
+            ({ } v, null) => v,
+            (null, { } d) => $"Datasamlingen {d}",
+            _ => "Uten kode"
+        },
+        ImportReasonUnknownVariable: "Fant ikke variabelen i katalogen",
+        ImportReasonUnknownDatasamling: "Datasamlingen hører ikke til variabelen",
+        ImportReasonAmbiguous: "Koden passer til flere variabler",
+        ImportNoteLabel: "Notat",
+        ImportDesiredDataLabel: "Ønskede data",
+        ImportNoteLeftOff: "Notatet ble ikke med",
+        ImportDesiredDataLeftOff: "Ønskede data ble ikke med",
+        ImportSkippedLead: count => count == 1
+            ? "For 1 variabel ble notater, ønskede data eller noen av kodene ikke tatt med:"
+            : $"For {count} variabler ble notater, ønskede data eller noen av kodene ikke tatt med:",
+        ImportSkippedFields: (note, desiredData, codes) => Listed(
+            "og", note ? "notatet" : null, desiredData ? "ønskede data" : null, codes ? "noen av kodene" : null),
+        ImportSkippedElsewhere: count => count == 1
+            ? "1 variabel til, som ikke står på denne siden"
+            : $"{count} variabler til, som ikke står på denne siden",
+        ImportRemoveEntry: "Fjern",
+        ImportEntryPlace: place => $"nr. {place}",
+        ImportHide: "Skjul");
 
     private static readonly Texts En = new(
         Title: "Variable explorer",
@@ -2582,6 +2640,7 @@ internal sealed record Texts(
         PickerInvalid: choice => $"{choice} is not in the code list. Remove it and save again.",
         PickerLeftList: choice => $"{choice} is no longer in the code list. Remove it.",
         PickerTooMany: max => $"At most {max} choices per variable.",
+        PickerOverFromImport: (max, count) => $"Choose at most {max} codes; this item has {count} from the import. Remove some before you save.",
         PickerShowingHits: (shown, total) => $"Showing {shown} of {total}. Narrow the search.",
         PickerShowingLevel: (shown, total) => $"Showing {shown} of {total}. Search to find the rest.",
         PickerChooseHits: "Choose the results",
@@ -2621,7 +2680,39 @@ internal sealed record Texts(
             ? "This browser holds a list from before you signed in, with 1 row. Saved to My variable lists, it becomes a new list there."
             : $"This browser holds a list from before you signed in, with {rows} rows. Saved to My variable lists, it becomes a new list there.",
         CarryBrowserListOver: "Save to My variable lists",
-        CarryBrowserListOverError: "Could not save the list to My variable lists just now. It is still in this browser.")
+        CarryBrowserListOverError: "Could not save the list to My variable lists just now. It is still in this browser.",
+        ImportReportHeading: count => count switch
+        {
+            0 => "Imported from the old list: some of it was not brought over",
+            1 => "Imported from the old list: 1 variable was not found",
+            _ => $"Imported from the old list: {count} variables were not found"
+        },
+        ImportReportAdvice: "Search for the variable by name, or ask the registry that holds the data.",
+        ImportReportCodes: (variable, datasamling) => (variable, datasamling) switch
+        {
+            ({ } v, { } d) => $"{v} in datasamling {d}",
+            ({ } v, null) => v,
+            (null, { } d) => $"Datasamling {d}",
+            _ => "No code"
+        },
+        ImportReasonUnknownVariable: "The variable was not found in the catalogue",
+        ImportReasonUnknownDatasamling: "The datasamling does not belong to the variable",
+        ImportReasonAmbiguous: "The code fits more than one variable",
+        ImportNoteLabel: "Note",
+        ImportDesiredDataLabel: "Desired data",
+        ImportNoteLeftOff: "The note was not brought over",
+        ImportDesiredDataLeftOff: "The desired data was not brought over",
+        ImportSkippedLead: count => count == 1
+            ? "For 1 variable the notes, the desired data or some of the codes were not brought over:"
+            : $"For {count} variables the notes, the desired data or some of the codes were not brought over:",
+        ImportSkippedFields: (note, desiredData, codes) => Listed(
+            "and", note ? "the note" : null, desiredData ? "the desired data" : null, codes ? "some of the codes" : null),
+        ImportSkippedElsewhere: count => count == 1
+            ? "1 more variable, not on this page"
+            : $"{count} more variables, not on this page",
+        ImportRemoveEntry: "Remove",
+        ImportEntryPlace: place => $"no. {place}",
+        ImportHide: "Hide")
     {
         Reader = ReaderLanguage.English,
     };

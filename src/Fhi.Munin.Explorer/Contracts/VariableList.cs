@@ -36,6 +36,28 @@ public sealed record VariableList
     /// list and sends an explicit 0 for a new one, so a blank here would be this package's doing.
     /// </remarks>
     [JsonPropertyName("variableCount")] public int VariableCount { get; init; }
+
+    /// <summary>
+    /// The system the list was imported from, such as <c>helsedata-legacy</c>, or <see langword="null"/> for a list
+    /// made here, and from an API that predates imports. Only an imported list has a
+    /// <see cref="IMuninExplorerClient.GetMyListImportReportAsync"/>.
+    /// </summary>
+    [JsonPropertyName("importedFrom")] public string? ImportedFrom { get; init; }
+
+    /// <summary>
+    /// How many rows not found are still in the import report: removing one lowers it. 0 for a list made here, and from
+    /// an older API.
+    /// </summary>
+    [JsonPropertyName("importNotFoundCount")] public int ImportNotFoundCount { get; init; }
+
+    /// <summary>
+    /// How many items on the list came over without their notes, their desired data or some of their picked codes. <see langword="null"/> when the API
+    /// does not say, which an API older than the count does not: null means unknown, not none, so read the report.
+    /// </summary>
+    [JsonPropertyName("importSkippedCount")] public int? ImportSkippedCount { get; init; }
+
+    /// <summary>Whether the reader has hidden the import report; false for a list made here, and from an older API.</summary>
+    [JsonPropertyName("importReportDismissed")] public bool ImportReportDismissed { get; init; }
 }
 
 /// <summary>

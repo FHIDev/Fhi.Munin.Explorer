@@ -49,7 +49,8 @@ HOST_PROJECT="$ROOT/samples/ModernHost/ModernHost.csproj"
 #     nothing are covered by tree-*, and an empty hierarchy by kilde-hierarchy-empty;
 #   - hierarchy shapes neither the captured kilde nor kilde-hierarchy-deep's synthetic one holds;
 #   - the English texts, and samples/LegacyHost, the same component in the other host;
-#   - the list tab's own create, rename and delete forms, and the annotation field in a row.
+#   - the list tab's own create, rename and delete forms, and the annotation field in a row;
+#   - an imported list's notice of what did not come over: no stub list is imported (Fhi.Metadata-9huq2.37; a state for it: Fhi.Metadata-9huq2.42);
 #   - the signed-in carry-over offer of a list kept in the browser, and its refusal state with the button that
 #     removes the refused rows: reaching it needs Munin to refuse the add (Fhi.Metadata-emsc0.3.12).
 # Each is another page load and settle, about ten seconds, and none carries the risk the

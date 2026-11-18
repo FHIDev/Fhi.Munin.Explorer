@@ -347,6 +347,46 @@ public class ContractCoverageTest
         Covers<IReadOnlyList<VariableList>>("my-lists.json");
 
     [Fact]
+    public void ImportedList_WhenReadFromTheDocumentedResponse_ThenEveryFieldIsCovered()
+    {
+        // Inline, not in my-lists.json: the axe stub serves that file, and an imported list there would change its states.
+        // From Munin's MyListDto and MyListImportReportDto (Munin #7403); importSkippedCount and the skipped rows' codes
+        // are Fhi.Metadata-9huq2.40's, not on Munin's main yet.
+        var list = JsonSerializer.Deserialize<VariableList>(
+            """
+            {"id":"1f9d0b7e-3c14-4a2f-8f0b-2b6a4f1c9d31","name":"Fra helsedata","createdAt":"2026-11-10T08:00:00+00:00",
+             "updatedAt":"2026-11-10T08:00:00+00:00","variableCount":4,"importedFrom":"helsedata-legacy",
+             "importNotFoundCount":2,"importSkippedCount":1,"importReportDismissed":true}
+            """, Strict)!;
+        var report = JsonSerializer.Deserialize<ListImportReport>(
+            """
+            {"importedFrom":"helsedata-legacy","importedAt":"2026-11-10T08:00:00+00:00","dismissed":true,
+             "notFound":[{"entryId":"5b1e7a2c-9d40-4f3e-8a61-0c2d9e7f4b18","index":0,"status":"ambiguous","variableCode":"V_X",
+                          "dataCollectionCode":"DS","notes":"n","desiredDataFreeText":"d","skipped":null}],
+             "skipped":[{"itemId":"5b1e7a2c-9d40-4f3e-8a61-0c2d9e7f4b18","variabelId":"1f9d0b7e-3c14-4a2f-8f0b-2b6a4f1c9d31",
+                         "variableCode":"V_Y","dataCollectionCode":null,"fields":["notes","desiredData"]}]}
+            """, Strict)!;
+
+        Assert.Equal((2, 1), (list.ImportNotFoundCount, list.ImportSkippedCount));
+        Assert.Equal(("helsedata-legacy", true), (list.ImportedFrom, list.ImportReportDismissed));
+        Assert.Equal(("helsedata-legacy", true), (report.ImportedFrom, report.Dismissed));
+        var notFound = Assert.Single(report.NotFound);
+        Assert.Equal(("n", "d"), (notFound.Notes, notFound.DesiredDataFreeText));
+        Assert.Empty(notFound.Skipped);
+        Assert.Equal(2, Assert.Single(report.Skipped).Fields.Count);
+    }
+
+    [Fact]
+    public void ImportedList_WhenTheApiPredatesTheSkippedCount_ThenItReadsAsUnknownRatherThanNone()
+    {
+        // 0 would mean "nothing left off", and the view would then never read the report that says otherwise.
+        var list = JsonSerializer.Deserialize<VariableList>(
+            """{"id":"1f9d0b7e-3c14-4a2f-8f0b-2b6a4f1c9d31","name":"L","importedFrom":"helsedata-legacy"}""", Strict)!;
+
+        Assert.Null(list.ImportSkippedCount);
+    }
+
+    [Fact]
     public void MyListVariables_WhenReadFromTheDocumentedResponse_ThenEveryFieldIsCovered() =>
         // Same caveat as above. Note that the envelope carries no totalPages, which is why the
         // client derives one — see MyListsClientTest, where that is pinned; the strict read here

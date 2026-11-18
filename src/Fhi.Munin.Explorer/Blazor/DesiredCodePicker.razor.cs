@@ -15,7 +15,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <remarks>The choices are a draft until <see cref="Save"/> answers: a refusal leaves them on screen to fix.</remarks>
 public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 {
-    /// <summary>The most choices the API stores for one item.</summary>
+    /// <summary>The most choices one save accepts for an item; an import may store more.</summary>
     internal const int MaxChoices = 200;
     internal const int FoldAfter = 10;
 
@@ -50,6 +50,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     private int _tab;
     private string? _status;
     private string? _alert;
+    private bool _alertOverCap;
     private ElementReference _counter;
     private bool _focusTab;
     private bool _focusCounter;
@@ -109,13 +110,37 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
     protected override void OnInitialized()
     {
-        foreach (var view in Chosen.Take(MaxChoices))
+        // Every stored choice, also past the cap: an imported item may hold more, and a cut would drop them on save (Fhi.Metadata-9huq2.43).
+        foreach (var view in Chosen)
         {
             var choice = new Choice(view.ToChoice(), view.Name, view.ToName, view.Expired, view.Count, view.KodeverkName, view.Ancestors);
             if (Insert(_choices.Count, choice) && view.Count is null)
             {
                 _noCount.Add(choice.Value);
             }
+        }
+    }
+
+    // Only an import stores more than the cap (Fhi.Metadata-9huq2.33). Until it fits, removal is the one edit allowed: every line gets «Fjern»,
+    // and a tick, a search's «Velg treffene» and a parent's split are refused even where they would end at or under it.
+    private bool OverFromImport => _choices.Count > MaxChoices;
+
+    private string FullMessage => OverFromImport ? T.PickerOverFromImport(MaxChoices, _choices.Count) : T.PickerFull(MaxChoices);
+
+    // Marked when it is the import's sentence, so a removal can clear it: its count goes stale, and the caption below
+    // keeps the live one. Any other refusal is not the removal's to answer and stays.
+    private void AnnounceFull()
+    {
+        Announce(FullMessage, error: true);
+        _alertOverCap = OverFromImport;
+    }
+
+    private void ClearOverCapRefusal()
+    {
+        if (_alertOverCap)
+        {
+            _alert = null;
+            _alertOverCap = false;
         }
     }
 
@@ -363,6 +388,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
         _tab = index;
         _alert = null;
+        _alertOverCap = false;
         if (Current is { } link)
         {
             await OpenAsync(link);
@@ -510,7 +536,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
             if (!Choose(link, state, hit))
             {
-                Announce(T.PickerFull(MaxChoices), error: true);
+                AnnounceFull();
                 break;
             }
         }
@@ -528,6 +554,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
             return;
         }
 
+        var before = _choices.Count;
         foreach (var hit in state.Hits.ToList())
         {
             var tick = TickOf(link, state, hit);
@@ -544,6 +571,12 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
             if (_saving || _disposed)
             {
                 return;
+            }
+
+            // Cleared after each removal rather than once at the end, so a refusal later in the run is not wiped.
+            if (_choices.Count < before)
+            {
+                ClearOverCapRefusal();
             }
         }
 
@@ -706,7 +739,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     private bool Choose(KodeverkLink link, ListState state, KodeverkCodeHit hit)
     {
         var under = ChoicesIn(link).Where(c => IsUnder(c, hit.Value) || IsOwnCodeOnly(c, hit)).ToList();
-        if (_choices.Count - under.Count + 1 > MaxChoices)
+        if (OverFromImport || _choices.Count - under.Count + 1 > MaxChoices)
         {
             return false;
         }
@@ -744,7 +777,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         {
             if (!Choose(link, state, hit))
             {
-                Announce(T.PickerFull(MaxChoices), error: true);
+                AnnounceFull();
                 return;
             }
         }
@@ -778,6 +811,13 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     // Every level is read first; a failed read changes nothing.
     private async Task<bool> UntickUnderAsync(KodeverkLink link, ListState state, KodeverkCodeHit hit)
     {
+        // Refused before any read, so a failed read cannot announce first.
+        if (OverFromImport)
+        {
+            AnnounceFull();
+            return false;
+        }
+
         var ancestors = AncestorsOf(state, hit);
         if (WholeOver(link, ancestors) is not { } whole)
         {
@@ -851,7 +891,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         added = [.. added.DistinctBy(c => c.Value).Where(c => !kept.Contains(c.Value))];
         if (_choices.Count - gone.Count + added.Count > MaxChoices)
         {
-            Announce(T.PickerFull(MaxChoices), error: true);
+            AnnounceFull();
             return false;
         }
 
@@ -1069,9 +1109,9 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
     private bool AnyFolded => !ShowAllChosen && ShownChoices.Count() < _choices.Count;
 
-    // What the summary can remove: whatever no box in the tree stands for.
+    // What the summary can remove: whatever no box in the tree stands for, and every choice while over the cap.
     private bool Removable(Choice choice) =>
-        IsOlderRange(choice) || !CanReveal(choice) || _notInTree.Contains(choice.Value)
+        OverFromImport || IsOlderRange(choice) || !CanReveal(choice) || _notInTree.Contains(choice.Value)
         || (_noCount.Contains(choice.Value) && !InLoadedTree(choice));
 
     // A search hit is not enough: only a level read from the tree shows the code where the reader can find it again.
@@ -1093,6 +1133,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         _choices.Remove(choice);
         _noCount.Remove(choice.Value);
         _notInTree.Remove(choice.Value);
+        ClearOverCapRefusal();
         _focusCounter = true;
         await RecountAsync();
     }
@@ -1118,6 +1159,12 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
 
         // The old total is no longer the draft's while the new one is asked for.
         _union = null;
+
+        // The client throws on a union past the API's cap, so over it the total stays unknown until removals bring it down.
+        if (OverFromImport)
+        {
+            return;
+        }
 
         int? total = 0;
         try
@@ -1153,6 +1200,7 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
     {
         _status = error ? null : text;
         _alert = error ? text : null;
+        _alertOverCap = false;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -1191,6 +1239,12 @@ public sealed partial class DesiredCodePicker : ComponentBase, IDisposable
         // aria-disabled rather than disabled while saving: disabling the focused button drops focus to <body>.
         if (_saving)
         {
+            return;
+        }
+
+        if (OverFromImport)
+        {
+            AnnounceFull();
             return;
         }
 

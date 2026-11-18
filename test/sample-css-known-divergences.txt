@@ -554,3 +554,12 @@ missing-selector||.munin-explorer-header__actions .munin-explorer__dropdown|
 # Delete these two lines when helsedata pins a Stiler that carries it.
 unstyled-name||.munin-explorer-datasamling__description-rest|
 unstyled-name||.munin-explorer-datasamling__description-toggle|
+
+# Fhi.Metadata-l9l2n.190: the «Historisk» mark in a list row's header, after the code when it has one; its Stiler rule is Fhi.Metadata-l9l2n.191.
+# Delete this line when helsedata pins a Stiler that carries it.
+unstyled-name||.munin-explorer-list-status|
+
+# Fhi.Metadata-9huq2.37: the notice on a list imported from the old helsedata; its Stiler rules are Fhi.Metadata-9huq2.41.
+# Delete these lines when helsedata pins a Stiler that carries them.
+unstyled-name||.munin-explorer-list-import|
+unstyled-name||.munin-explorer-list-import__entry|
