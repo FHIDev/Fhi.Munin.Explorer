@@ -1049,12 +1049,14 @@ export const states = {
   // set MuninExplorer__Features__CodePicker=true), and fails as tooling without them, since it would scan the signed-in list.
   'list-browser-list': async page => {
     await rowsArePresent(page, 'button.munin-explorer-dataitem-main__name');
-    await page.locator('button.munin-explorer-dataitem-main__name').first().click();
 
+    // Pressed once the detail has loaded: its arrival redraws the save button, and a handle to the old one never turns.
+    await states['variable-detail'](page);
     const save = page.locator('.munin-explorer-detail button[aria-pressed]').first();
     await save.waitFor({ state: 'visible', timeout: findTimeout });
     await save.click();
-    await page.waitForFunction(el => el.getAttribute('aria-pressed') === 'true', await save.elementHandle(), { timeout: findTimeout });
+    await page.locator('.munin-explorer-detail button[aria-pressed="true"]').first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
 
     const tab = page.getByRole('tab', { name: 'Variabelliste', exact: true }).first();
     await tab.waitFor({ state: 'visible', timeout: findTimeout });
