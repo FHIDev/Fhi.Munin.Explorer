@@ -20,6 +20,7 @@
 import { treeStates } from './tree-states.mjs';
 import { hierarchyStates } from './hierarchy-states.mjs';
 import { scrollPast } from './reader-scroll.mjs';
+import { BROWSER_LIST_KEY, browserList } from './carry-over-fixture.mjs';
 import {
   loadTreeFixture, panel as filterPanel, tree as kildeTree, boxes as treeBoxes, chips as filterChips,
   until as untilTrue,
@@ -1067,6 +1068,36 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
     if (await list.getByText('Listen er lagret bare i denne nettleseren', { exact: false }).count() === 0) {
       throw new Error('no browser list on the tab: list-browser-list needs Sample__SignedOut=true and MuninExplorer:Features:CodePicker on');
+    }
+  },
+
+  // Signed in with rows in the browser (Fhi.Metadata-emsc0.3.16): the carry-over offer pressed and refused, so the list
+  // tab draws the offer, the sentence naming the refused rows and «Fjern disse radene». carry-over-fixture.mjs seeds
+  // the rows; the stub refuses its reserved variable. Either control missing is TOOLING, never a clean scan.
+  'list-carry-over-refused': async page => {
+    await rowsArePresent(page, 'button.munin-explorer-dataitem-main__name');
+    await page.evaluate(([key, value]) => localStorage.setItem(key, value), [BROWSER_LIST_KEY, browserList]);
+    await page.reload();
+    await states['explorer-list-tab'](page);
+
+    const list = page.locator('[role=tabpanel]:not([hidden])').first();
+    const offer = list.getByRole('button', { name: 'Lagre i Mine variabellister', exact: true });
+    await offer.waitFor({ state: 'visible', timeout: findTimeout }).catch(() => {
+      throw new Error('no carry-over offer on the list tab: list-carry-over-refused needs a signed-in host with CodePicker on, '
+        + 'and the seeded list in the package\'s current storage shape (carry-over-fixture.mjs)');
+    });
+    await offer.click();
+
+    const remove = list.getByRole('button', { name: 'Fjern disse radene', exact: true });
+    await remove.waitFor({ state: 'visible', timeout: findTimeout }).catch(() => {
+      throw new Error('no refusal with «Fjern disse radene»: the stub did not refuse the add, or the view drew no refusal');
+    });
+    const sentence = await remove.getAttribute('aria-describedby');
+    await page.locator(`[id="${sentence}"]`).filter({ hasText: /\S/ }).waitFor({ state: 'visible', timeout: findTimeout }).catch(() => {
+      throw new Error('«Fjern disse radene» is drawn without the sentence that names the refused rows');
+    });
+    if (!await offer.isVisible()) {
+      throw new Error('the carry-over offer is gone after the refusal: list-carry-over-refused scans the two together');
     }
   },
 

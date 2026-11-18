@@ -490,6 +490,9 @@ only stays inside 320px because the label rule carries `overflow-wrap: anywhere`
 (`Fhi.Metadata-7484a`). `check-hostile-host.sh` measures the unfolded panel at 320 as well, and does
 not run in CI.
 
+And the composed `VariableExplorer` on `/utforsker` once, in `list-carry-over-refused`: the signed-in carry-over's
+offer and its named refusal, «Fjern disse radene», beside the saved list's own controls (`Fhi.Metadata-emsc0.3.16`).
+
 It runs three of the sixteen assertions, by name through `GEOMETRY_ASSERTIONS`: `no horizontal
 overflow`, `hidden means hidden`, and `text a reader is meant to see has a box to see it in`. Four
 of the thirteen left out were **measured there and then excluded**, which is a different claim from
@@ -503,8 +506,8 @@ to hit`), three have nothing to measure on these pages at all, and the two newes
   real stylesheet by `check-hostile-host.sh`.
 - `the tablist clears the header`, `exactly one tab panel has content` and `no page shell class
   inside a tab panel` are scoped to the two `explorer-*` states, which are the composed
-  `VariableExplorer` on `/utforsker` and neither of the pages measured here, so they print `n/a`
-  and measure nothing.
+  `VariableExplorer` on `/utforsker`, which this run measures only in `list-carry-over-refused`; they
+  are not asked for here.
 - `nothing the reader can press is under the host header` reports `no .main-header on the page —
   the host chrome did not render`. ModernHost draws none; that finding is about the fixture.
 - `the component stays inside the box the host gave it` fails at 320 on the column picker: here its
@@ -517,12 +520,14 @@ to hit`), three have nothing to measure on these pages at all, and the two newes
 - `the detail page's main column is the wider part of its body` and `the detail page's two columns
   share a row` measure a `.munin-explorer-page__body`, the detail views' chassis, and `the detail
   page's fact list is one column with a reading measure` its `.munin-explorer-page__fields`;
-  none of the five states driven here opens one. That is a statement about the states and not about the pages: both
-  draw one in a detail state — `/` in `variable-whole`, `/kilder` in `kilde-drilldown`, which axe
-  scans above — so adding either state to this run would measure them. They run and find nothing
-  rather than failing, so they were never measured here in the sense the four above were.
+  none of the six states driven here opens a detail page with a contents column or a fact list: the list view in
+  `list-carry-over-refused` draws a `.munin-explorer-page__body`, which those assertions skip. That is a statement
+  about the states and not about the pages: `/` and `/kilder` each draw a detail page in a detail state — `/` in
+  `variable-whole`, `/kilder` in `kilde-drilldown`, which axe scans above — so adding either state to this run and
+  asking for them would measure them. They are not asked for here, so they were never measured here in the sense the
+  four above were.
 
-Read the run for exactly what it is: three assertions, two pages, five states, against the sample
+Read the run for exactly what it is: three assertions, three pages, six states, against the sample
 stylesheet. The pinned-Stiler pages are measured at 320 by `check-hostile-host.sh`, in a step of
 its own after the six widths. It runs every assertion in every state, except that a state failing
 today leaves out only its failing assertions, through `GEOMETRY_EXCEPT`, with the reason beside
@@ -541,7 +546,8 @@ A signed-out reader's list in the browser gets the same treatment in `list-brows
 `/utforsker` and HostileHost's `/` read (LegacyHost has none), which mounts the composed explorer signed out; both stay
 signed in by default (`Fhi.Metadata-emsc0.3.12`). A pull request's CI runs only
 the axe half: `check-hostile-host.sh` does not run on pull requests, so the state's geometry against real Stiler is
-measured when that script runs — nightly, or by hand.
+measured when that script runs — nightly, or by hand. The signed-in carry-over's offer and its named refusal need no
+host start of their own: `list-carry-over-refused` seeds the browser list on the signed-in host (`Fhi.Metadata-emsc0.3.16`).
 
 **It scans states, not only pages.** A page in its default state is not the page a reader uses,
 and for a while the default state was the whole of this check: the level lines shipped at 1.16:1

@@ -22,6 +22,8 @@
 #   - the code picker off, except in list-row-picker-off at the end (the six widths, 320, 1279; axe at 1440):
 #     the sample turns it on in Development. Likewise a signed-out reader's list in the browser, only in
 #     list-browser-list, on a host started with MuninExplorer__Features__CodePicker and Sample__SignedOut.
+#   - of the signed-in carry-over, only its offer and its named refusal, in list-carry-over-refused; not its busy state,
+#     a press that succeeds, the sentences after «Fjern disse radene», or a failure that names nothing (Fhi.Metadata-emsc0.3.16).
 #
 # Exits: 0 measured and correct; 1 measured and wrong; 3 not measured, because a geometry assertion
 #        stopped firing against the defect it exists for; 2 could not measure at all (TOOLING).
@@ -93,6 +95,7 @@ TARGETS=(
   "/::list-actions-menu"
   "/::list-actions-and-columns"
   "/::list-download-and-columns"
+  "/::list-carry-over-refused"
   "/::search-download-open"
   "/::variable-detail"
   "/::variable-detail-about"
@@ -328,6 +331,8 @@ echo
 echo "==> measuring the reflow width WCAG 1.4.10 names"
 reflow "" "/::explorer-tabs" "/::explorer-list-tab" "/::list-row-panel" "/::list-row-notes" "/::list-row-picker" \
   "/::list-actions-menu" "/::list-actions-and-columns" "/::list-download-and-columns" "/::search-download-open"
+# The signed-in carry-over refused: its offer and «Fjern disse radene» beside the list's controls (Fhi.Metadata-emsc0.3.16).
+reflow "" "/::list-carry-over-refused"
 # The closed column picker hangs 2px off the left edge; Fhi.Metadata-abmom records why that stays.
 reflow "the component stays inside the box the host gave it" \
   "/kilder::kilder-list" "/kilder::kilder-counts" "/kilder::kilde-facets"
