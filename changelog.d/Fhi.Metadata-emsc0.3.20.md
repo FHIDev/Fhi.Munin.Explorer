@@ -1,0 +1,2 @@
+category: Fixed
+- **The open row's save button keeps keyboard focus when the row's detail arrives after it.** `VariableSearch` draws the save button while the detail loads. When a detail that names both a kilde and a datasamling arrived, Blazor drew the button again as a new element, so a reader who had already pressed it lost focus to the page. The kilde and datasamling buttons before it are now keyed, so the save button stays the same element.

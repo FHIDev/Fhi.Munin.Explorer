@@ -1067,7 +1067,11 @@ else
                                        that has focus drops focus to <body>. *@
                                     @foreach (var kind in VariableOwners.Targets(detail))
                                     {
-                                        <button class="hd-button-square button-square--ghost margin-right margin-bottom"
+                                        @* Keyed, or Blazor's diff loses its place in this loop when it draws both
+                                           owners, and the save button after it is drawn anew, dropping the focus of
+                                           a reader who pressed it (emsc0.3.20). *@
+                                        <button @key="kind"
+                                                class="hd-button-square button-square--ghost margin-right margin-bottom"
                                                 type="button"
                                                 id="@SourceToggleId(kind)"
                                                 @ref="_sourceToggles[kind]"
