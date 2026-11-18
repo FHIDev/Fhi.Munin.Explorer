@@ -710,6 +710,31 @@ public class VariableListStateBrowserTest
     }
 
     [Fact]
+    public async Task RenameAsync_WhenAListsReadBegunBeforeTheRenameAnswersTheOldName_ThenTheNewNameStays()
+    {
+        // The read was answered before the rename, so its old name says nothing about what the reader chose since.
+        var client = new ListsClient();
+        var state = await SignedInAsync(new FakeBrowserList(), client);
+        var existing = await state.CreateAsync("Ny liste");
+        await state.EnsureLoadedAsync();
+        client.HoldLists = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reading = state.RefreshAsync();
+
+        Assert.True(await state.RenameAsync(existing!.Id, "Hjerte og kar"));
+        client.HoldLists.SetResult();
+        await reading;
+
+        Assert.Equal("Hjerte og kar", Assert.Single(state.Lists, l => l.Id == existing.Id).Name);
+
+        // The next read began after the rename, so its answer speaks for the name: renamed elsewhere, that name shows.
+        client.HoldLists = null;
+        client.Made[0] = client.Made[0] with { Name = "Kreft" };
+        await state.RefreshAsync();
+
+        Assert.Equal("Kreft", Assert.Single(state.Lists, l => l.Id == existing.Id).Name);
+    }
+
+    [Fact]
     public async Task CarryBrowserListOverAsync_WhenTheAddAndTheDeleteBothFail_ThenALaterReadStillShowsTheLeftList()
     {
         // Still marked as being carried into, the list would be filtered out of every answer that holds it.

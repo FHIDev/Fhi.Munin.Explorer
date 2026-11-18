@@ -42,6 +42,9 @@ public sealed partial class VariableListState : IDisposable
     // Lists deleted here, which a lists read begun before the delete still holds. Swapped whole, as _madeHere is.
     private IReadOnlySet<Guid> _deletedHere = new HashSet<Guid>();
 
+    // Lists renamed here, as they stand after the rename, which a lists read begun before it answers under the old name.
+    private IReadOnlyList<VariableList> _renamedHere = [];
+
     // The first read went unanswered, by a dropped circuit, a timeout or a fault in the module, and the host has not
     // refused the module for good: the next render asks again.
     private bool _browserReadAgain;

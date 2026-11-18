@@ -143,6 +143,7 @@ public sealed partial class VariableListState(
         var activeAtStart = _activeListId;
         var madeAtStart = _madeHere;
         var deletedAtStart = _deletedHere;
+        var renamedAtStart = _renamedHere;
         _readingFor = startedAt;
         ListsReadFailed = false;
 
@@ -202,14 +203,22 @@ public sealed partial class VariableListState(
             return;
         }
 
-        // A list made, left or deleted here after this read began is in its answer, or not, only because the read was early.
-        // A made one is taken as it stands now, renamed or recounted since.
+        // A list made, left, renamed or deleted here after this read began is in its answer, or not, or under its old
+        // name, only because the read was early. A made one is taken as it stands now, renamed or recounted since.
         var madeSince = _madeHere
             .Where(l => !madeAtStart.Contains(l) && !lists.Any(a => a.Id == l.Id))
             .Select(l => _lists.FirstOrDefault(c => c.Id == l.Id) ?? l);
-        _lists = [.. lists.Where(l => !_carryingInto.Contains(l.Id) && !_deletedHere.Contains(l.Id)), .. madeSince];
+        var renamedSince = _renamedHere.Where(r => !renamedAtStart.Contains(r)).ToList();
+        _lists =
+        [
+            .. lists
+                .Where(l => !_carryingInto.Contains(l.Id) && !_deletedHere.Contains(l.Id))
+                .Select(l => renamedSince.LastOrDefault(r => r.Id == l.Id) is { } r ? l with { Name = r.Name, UpdatedAt = r.UpdatedAt } : l),
+            .. madeSince,
+        ];
         _madeHere = [.. _madeHere.Where(l => !madeAtStart.Contains(l))];
         _deletedHere = _deletedHere.Except(deletedAtStart).ToHashSet();
+        _renamedHere = renamedSince;
         _loaded = true;
         ListsReadFailed = false;
 
@@ -300,6 +309,11 @@ public sealed partial class VariableListState(
         // trip here would make a rename look slower than it is. The timestamp goes with the name,
         // for the reason TouchedNow gives.
         _lists = [.. _lists.Select(l => l.Id == id ? l with { Name = name, UpdatedAt = TouchedNow() } : l)];
+
+        if (_lists.FirstOrDefault(l => l.Id == id) is { } renamed)
+        {
+            _renamedHere = [.. _renamedHere, renamed];
+        }
 
         // A rename touches the list's own name and stamp, never a row in it.
         RaiseChanged(id, affectsRows: false);
