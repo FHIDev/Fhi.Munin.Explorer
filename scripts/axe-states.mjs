@@ -1070,6 +1070,46 @@ export const states = {
     }
   },
 
+  // The browser list's share open with its code. On the way, a Tab while the share is held must keep the reader where
+  // Tab took them, and reopening must put focus on the code: the browser decides (Fhi.Metadata-emsc0.3.19). Needs
+  // STUB_BASE, the stub the host reads; a failed focus check here is a defect in the package, not tooling.
+  'list-browser-list-share': async page => {
+    await states['list-browser-list'](page);
+    const stub = process.env.STUB_BASE;
+    if (!stub) {
+      throw new Error('list-browser-list-share needs STUB_BASE, the stub the host reads, to hold the share');
+    }
+    const hold = await fetch(`${stub}/__stub/hold-next?path=/api/explorer/lists/share&ms=3000`, { method: 'POST' });
+    if (!hold.ok) {
+      throw new Error(`the stub refused to hold the share: ${hold.status}`);
+    }
+
+    const list = page.locator('[role=tabpanel]:not([hidden])').first();
+    const share = list.locator('button[id^="munin-explorer-share-toggle-"]').first();
+    const code = list.locator('input[id^="munin-explorer-share-code-"]').first();
+    const focused = () => page.evaluate(() => document.activeElement?.id ?? '');
+
+    await share.click();
+    await page.keyboard.press('Tab');
+    const movedTo = await focused();
+    if (movedTo.startsWith('munin-explorer-share-')) {
+      throw new Error(`Tab from «Del liste» did not leave it (focus on «${movedTo}»), so the check below means nothing`);
+    }
+    await code.waitFor({ state: 'visible', timeout: findTimeout });
+    await page.waitForTimeout(1000);
+    if (await focused() !== movedTo) {
+      throw new Error(`DEFECT, not tooling: the share took focus from «${movedTo}» to «${await focused()}» after the reader moved on`);
+    }
+
+    await share.click();
+    await code.waitFor({ state: 'detached', timeout: findTimeout });
+    await share.click();
+    await page.waitForFunction(() => document.activeElement?.id?.startsWith('munin-explorer-share-code-') === true, null,
+      { timeout: findTimeout }).catch(async () => {
+      throw new Error(`DEFECT, not tooling: «Del liste» pressed again left focus on «${await focused()}», not on the code`);
+    });
+  },
+
   // The opened row's code picker on «Ønskede data»: the first code's branch opened and one code under it ticked, so a
   // nested level, a half-ticked parent and the summary are all scanned (Fhi.Metadata-9huq2.14).
   'list-row-picker': async page => {

@@ -151,9 +151,10 @@ public sealed partial class VariableListView
 
             if (ShowsBrowserCopy && _sharingBrowserList && _browserShare is not null)
             {
+                // The browser says where focus is: a reader who moved on while the share was out, by any control, keeps it.
                 try
                 {
-                    await _shareCodeField.FocusAsync();
+                    await ExplorerInterop.FocusIfStillOnAsync(Js, ShareToggleId, ShareCodeFieldId);
                 }
                 catch (Exception ex)
                 {
@@ -245,7 +246,6 @@ public sealed partial class VariableListView
 
         _shareInFlight = true;
         var version = State.BrowserVersion;
-        var moves = _readerMoves;
 
         try
         {
@@ -286,8 +286,7 @@ public sealed partial class VariableListView
 
             _browserShare = new ShareMade(Guid.Empty, code, SharedListHref?.Invoke(code));
 
-            // A reader who acted in the list's menus, its clear question or its pager while the share was out keeps focus there.
-            _focusBrowserShareCode = _readerMoves == moves;
+            _focusBrowserShareCode = true;
         }
         catch (SharedSnapshotTooLargeException ex)
         {

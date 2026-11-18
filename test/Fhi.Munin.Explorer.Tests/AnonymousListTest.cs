@@ -584,8 +584,9 @@ public class AnonymousListTest : ExplorerTestContext
 
     // A keyboard or screen-reader reader must land on the new code, as a signed-in share puts them (Fhi.Metadata-emsc0.3.18).
     [Fact]
-    public void VariableListView_WhenTheBrowserListIsShared_ThenFocusGoesToTheCode()
+    public void VariableListView_WhenTheBrowserListIsShared_ThenTheBrowserIsAskedToMoveFocusFromShareToTheCode()
     {
+        var module = SharesFocusModule();
         var browser = new FakeBrowserList();
         browser.Rows.Add(FakeBrowserList.Row("Alder"));
         var cut = ListView(new Client(), browser);
@@ -593,13 +594,15 @@ public class AnonymousListTest : ExplorerTestContext
 
         ButtonSaying(cut, No.ShareList).Click();
 
-        cut.WaitForAssertion(() => JSInterop.Invocations[Focus][^1].Arguments[0]
-            .ShouldBeElementReferenceTo(cut.Find("input[id^=munin-explorer-share-code]")));
+        cut.WaitForAssertion(() => Assert.Single(module.Invocations[FocusIfStillOn]));
+        AssertAskedFromShareToCode(cut, module.Invocations[FocusIfStillOn][^1]);
+        Assert.Empty(JSInterop.Invocations[Focus]);
     }
 
     [Fact]
-    public void VariableListView_WhenTheBrowserListsShareIsOpenedAgain_ThenFocusGoesToTheSameCode()
+    public void VariableListView_WhenTheBrowserListsShareIsOpenedAgain_ThenTheBrowserIsAskedAgainForTheSameCode()
     {
+        var module = SharesFocusModule();
         var browser = new FakeBrowserList();
         browser.Rows.Add(FakeBrowserList.Row("Alder"));
         var client = new Client();
@@ -609,18 +612,20 @@ public class AnonymousListTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("input[id^=munin-explorer-share-code]")));
         ButtonSaying(cut, No.ShareList).Click();
         cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("input[id^=munin-explorer-share-code]")));
-        var focusCalls = JSInterop.Invocations[Focus].Count;
+        var asks = module.Invocations[FocusIfStillOn].Count;
 
         ButtonSaying(cut, No.ShareList).Click();
 
-        cut.WaitForAssertion(() => Assert.Equal(focusCalls + 1, JSInterop.Invocations[Focus].Count));
-        JSInterop.Invocations[Focus][^1].Arguments[0].ShouldBeElementReferenceTo(cut.Find("input[id^=munin-explorer-share-code]"));
+        cut.WaitForAssertion(() => Assert.Equal(asks + 1, module.Invocations[FocusIfStillOn].Count));
+        AssertAskedFromShareToCode(cut, module.Invocations[FocusIfStillOn][^1]);
         Assert.Single(client.Shared);
     }
 
     [Fact]
-    public async Task VariableListView_WhenTheReaderOpensAFoldWhileTheShareIsOut_ThenFocusStaysWhereTheyPutIt()
+    public async Task VariableListView_WhenTheReaderOpensAFoldWhileTheShareIsOut_ThenTheBrowserDecidesAndTheViewFocusesNothingItself()
     {
+        // Whether focus stays is the browser's answer (focusIfStillOn, node-tested); the view must not overrule it.
+        var module = SharesFocusModule(movedOn: true);
         var browser = new FakeBrowserList();
         browser.Rows.Add(FakeBrowserList.Row("Alder"));
         var share = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -634,8 +639,25 @@ public class AnonymousListTest : ExplorerTestContext
         var focusCalls = JSInterop.Invocations[Focus].Count;
         await cut.InvokeAsync(() => share.SetResult("ABC123"));
 
-        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("input[id^=munin-explorer-share-code]")));
+        cut.WaitForAssertion(() => Assert.Single(module.Invocations[FocusIfStillOn]));
+        AssertAskedFromShareToCode(cut, module.Invocations[FocusIfStillOn][^1]);
         Assert.Equal(focusCalls, JSInterop.Invocations[Focus].Count);
+    }
+
+    private const string FocusIfStillOn = "focusIfStillOn";
+
+    // movedOn: the browser's answer when the reader has left «Del liste»; the view acts the same either way.
+    private BunitJSModuleInterop SharesFocusModule(bool movedOn = false)
+    {
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        module.Setup<bool>(FocusIfStillOn, _ => true).SetResult(!movedOn);
+        return module;
+    }
+
+    private static void AssertAskedFromShareToCode(IRenderedComponent<VariableListView> cut, JSRuntimeInvocation ask)
+    {
+        Assert.Equal(cut.Find("button[id^=munin-explorer-share-toggle]").Id, ask.Arguments[0]);
+        Assert.Equal(cut.Find("input[id^=munin-explorer-share-code]").Id, ask.Arguments[1]);
     }
 
     /// <summary>One row whose name brings the share's snapshot to exactly <paramref name="length"/> characters.</summary>

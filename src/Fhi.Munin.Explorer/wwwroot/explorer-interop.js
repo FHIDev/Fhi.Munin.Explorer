@@ -34,6 +34,19 @@ export function isTypingInField() {
     || (active instanceof HTMLElement && active.isContentEditable);
 }
 
+// Focus goes to `toId` only while it is still on `fromId` or on nothing: a reader who moved on, by any control, keeps
+// their place. Checked and moved in one step, so no press can land between the two.
+export function focusIfStillOn(fromId, toId) {
+  const active = document.activeElement;
+  const to = document.getElementById(toId);
+  if (!(to instanceof HTMLElement)
+    || (active !== null && active !== document.body && active !== document.getElementById(fromId))) {
+    return false;
+  }
+  to.focus();
+  return document.activeElement === to;
+}
+
 // One observer per mounted detail page, keyed by its own bar's id. Two explorers on one host page
 // each have an entry of their own, so neither can drive or disconnect the other's bar.
 const observers = new Map();

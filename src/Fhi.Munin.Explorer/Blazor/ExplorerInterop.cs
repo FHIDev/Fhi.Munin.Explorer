@@ -274,6 +274,28 @@ internal sealed class ExplorerInterop : IAsyncDisposable
         return await interop.TryLoadAsync().ConfigureAwait(false) && await interop.WatchFoldsAsync().ConfigureAwait(false);
     }
 
+    /// <summary>Moves focus to <paramref name="toId"/> while it is still on <paramref name="fromId"/> or on nothing.</summary>
+    /// <returns>False when the reader moved on, the element is gone or the module cannot be reached.</returns>
+    internal static async Task<bool> FocusIfStillOnAsync(IJSRuntime js, string fromId, string toId)
+    {
+        await using var interop = new ExplorerInterop(js);
+
+        if (!await interop.TryLoadAsync().ConfigureAwait(false) || interop._module is not { } module)
+        {
+            return false;
+        }
+
+        try
+        {
+            return await Tolerated<object>(async () => await module.InvokeAsync<bool>("focusIfStillOn", fromId, toId).ConfigureAwait(false))
+                .ConfigureAwait(false) is true;
+        }
+        catch (JSException)
+        {
+            return false;
+        }
+    }
+
     // Null means unknown, so callers must not mistake an unreachable control for a cleared date.
     internal async Task<DateInputState?> ReadDateInputAsync(string id)
     {
