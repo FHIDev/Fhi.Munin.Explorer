@@ -6,8 +6,13 @@
   risk-tier.py --rules .github/risk-tiers.txt --examples .github/risk-tiers.examples
       checks every `<tier> <path>` line of the examples file; exits 1 on a mismatch
 
-A rules file has one `<tier> <glob>` per line (# starts a comment). A file takes the first tier, in the order
-high, medium, low, that has a glob matching it, and medium when none does. A pull request takes the highest
+A rules file has one `<tier> <glob>` per line (# starts a comment). A `!<glob>` line takes the paths it matches out
+of the tier rule right above it (one or more `!` lines may follow a rule, with no blank or comment line between;
+DevInfra-0f5.58), so `high X/**` then `!X/packages.lock.json` reads «everything under X is high except its lock file».
+A path taken out is decided by the other rules, by tier as always (high, then medium, then low, wherever they sit in
+the file), and is medium when none matches.
+A file takes the first tier, in the order high, medium, low, that has a glob matching it (and no `!` line of that rule
+does), and medium when none does. A pull request takes the highest
 tier among its files, so it is low only when every file is. `**` crosses directories, `*` and `?` do not.
 A Dependabot bump that stays within a major version of 1 or more and touches only package manifests and
 lockfiles is low, and so is one that only moves a same-tag image digest in Dockerfiles or compose files
@@ -61,16 +66,27 @@ def glob_regex(glob):
 
 def load_rules(text):
     rules = {tier: [] for tier in TIERS}
+    last = None  # the rule a `!` line belongs to: (glob, pattern, [(glob, pattern) taken out])
     for number, raw in enumerate(text.splitlines(), 1):
         line = raw.split("#", 1)[0].strip()
         if not line:
+            last = None  # a blank or comment line ends what a «!» line can bind to: it sits right under its rule
+            continue
+        if line.startswith("!"):
+            glob = line[1:].strip()
+            if not last or not glob or len(glob.split()) != 1:
+                raise ValueError(f"line {number}: a '!<glob>' line follows a '<tier> <glob>' rule and names one glob: {raw!r}")
+            if glob.startswith(("./", "/")):
+                raise ValueError(f"line {number}: a glob is relative to the repository root, without ./ or /: {raw!r}")
+            last[2].append((glob, glob_regex(glob)))
             continue
         parts = line.split()
         if len(parts) != 2 or parts[0] not in TIERS:
             raise ValueError(f"line {number}: expected '<low|medium|high> <glob>', got {raw!r}")
         if parts[1].startswith(("./", "/")):
             raise ValueError(f"line {number}: a glob is relative to the repository root, without ./ or /: {raw!r}")
-        rules[parts[0]].append((parts[1], glob_regex(parts[1])))
+        last = (parts[1], glob_regex(parts[1]), [])
+        rules[parts[0]].append(last)
     return rules
 
 
@@ -79,8 +95,8 @@ def file_tier(path, rules):
     if path in ALWAYS_HIGH:
         return "high", ALWAYS_HIGH[path]
     for tier in ("high", "medium", "low"):
-        for glob, pattern in rules[tier]:
-            if pattern.match(path):
+        for glob, pattern, taken_out in rules[tier]:
+            if pattern.match(path) and not any(out.match(path) for _, out in taken_out):
                 return tier, glob
     return "medium", None
 
