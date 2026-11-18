@@ -94,6 +94,9 @@ public class SaveToListTest : ExplorerTestContext
         /// <summary>Never answer a detail fetch, so the open panel stays loading.</summary>
         public bool HangDetail { get; init; }
 
+        /// <summary>When set, a detail fetch answers once this is done, naming a kilde and a datasamling.</summary>
+        public TaskCompletionSource? DetailGate { get; init; }
+
         public override Task<VariableDetail?> GetVariableAsync(
             Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default)
         {
@@ -108,6 +111,20 @@ public class SaveToListTest : ExplorerTestContext
             }
 
             var row = answer.Items.Single(v => v.Id == id);
+
+            if (DetailGate is { } gate)
+            {
+                return gate.Task.ContinueWith(
+                    _ => (VariableDetail?)new VariableDetail
+                    {
+                        Id = id,
+                        Code = row.Code,
+                        PreferredTerm = row.PreferredTerm,
+                        KildeId = Guid.NewGuid(),
+                        DatasamlingId = Guid.NewGuid(),
+                    },
+                    TaskScheduler.Default);
+            }
 
             return Task.FromResult<VariableDetail?>(
                 new VariableDetail { Id = id, Code = row.Code, PreferredTerm = row.PreferredTerm });
@@ -321,6 +338,57 @@ public class SaveToListTest : ExplorerTestContext
         Assert.Equal("true", cut.Find(".munin-explorer-detail").GetAttribute("aria-busy"));
         Assert.Single(cut.FindAll(".munin-explorer-detail button[aria-pressed]"));
     }
+
+    [Fact]
+    public async Task Panel_WhenTheDetailArrivesAfterThePanelOpened_ThenTheSaveButtonIsKeptRatherThanDrawnAgain()
+    {
+        // Drawn again, the button a reader pressed while the detail loaded loses keyboard focus to <body>. bUnit cannot
+        // see it, so Blazor's own diff is read. (Fhi.Metadata-emsc0.3.20)
+        var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")))
+        {
+            DetailGate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously),
+        };
+        Services.AddSingleton<IMuninExplorerClient>(client);
+        Services.AddScoped<VariableListState>();
+        using var renderer = new RenderDiffRecorder(Services);
+        var id = await renderer.RenderAsync<VariableSearch>(new Dictionary<string, object?> { [nameof(VariableSearch.IsAuthenticated)] = true });
+
+        var toggle = await renderer.Dispatcher.InvokeAsync(() => renderer.HandlerOf(id, "munin-explorer-dataitem-main__name", "onclick"));
+        var beforeOpening = renderer.Inserted.Count;
+        var opening = renderer.ClickAsync(toggle, new MouseEventArgs { Detail = 1 });
+
+        Assert.Contains(renderer.Inserted.Skip(beforeOpening), a => Holds(a, "aria-busy") && HoldsSaveButton(a));
+        var whileLoading = renderer.Inserted.Count;
+
+        client.DetailGate!.SetResult();
+        await opening.WaitAsync(TimeSpan.FromSeconds(5));
+        var afterDetail = renderer.Inserted.Skip(whileLoading).ToList();
+
+        Assert.Equal(2, afterDetail.Count(a => Holds(a, "aria-expanded")));
+        Assert.DoesNotContain(afterDetail, HoldsSaveButton);
+        Assert.DoesNotContain(afterDetail, a => Holds(a, "aria-live"));
+    }
+
+    [Fact]
+    public void Panel_WhenTheReaderSavesBeforeTheDetailArrives_ThenThePressStandsAfterIt()
+    {
+        // The bead's acceptance, not a regression guard: bUnit applies the press before the detail lands either way.
+        var variable = Variable("Alder ved diagnose", "V_BDR.ALDER");
+        var client = new ListClient(OnePage(variable)) { DetailGate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously) };
+        var cut = RenderSignedIn(client);
+        Open(cut);
+
+        cut.Find(".munin-explorer-detail button[aria-pressed]").Click();
+        client.DetailGate!.SetResult();
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".munin-explorer-detail [role=tablist]")));
+
+        Assert.Equal(variable.Id, Assert.Single(client.Stored));
+        Assert.Equal("true", Assert.Single(SaveButtons(cut)).GetAttribute("aria-pressed"));
+    }
+
+    private static bool HoldsSaveButton(string attributes) => Holds(attributes, "aria-pressed");
+
+    private static bool Holds(string attributes, string name) => attributes.Split(' ').Contains(name);
 
     [Fact]
     public void Panel_WhenTheDetailFailsForASignedOutReader_ThenThereIsStillNoSaveButton()

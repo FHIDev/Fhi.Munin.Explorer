@@ -1050,7 +1050,7 @@ export const states = {
   'list-browser-list': async page => {
     await rowsArePresent(page, 'button.munin-explorer-dataitem-main__name');
 
-    // Pressed once the detail has loaded: its arrival redraws the save button, and a handle to the old one never turns.
+    // Waits for the detail before pressing save, so the press lands on the settled panel; the scan is of the list tab after it.
     await states['variable-detail'](page);
     const save = page.locator('.munin-explorer-detail button[aria-pressed]').first();
     await save.waitFor({ state: 'visible', timeout: findTimeout });
