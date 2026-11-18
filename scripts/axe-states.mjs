@@ -1045,7 +1045,7 @@ export const states = {
   },
 
   // A signed-out reader's list in the browser (Fhi.Metadata-emsc0.3.12): one row saved from its open panel, then the
-  // list tab with that row drawn. Needs MuninExplorer__Features__AnonymousLists=true and Sample__SignedOut=true, and
+  // list tab with that row drawn. Needs MuninExplorer__Features__CodePicker=true and Sample__SignedOut=true, and
   // fails as tooling without them, since it would then scan the signed-in list.
   'list-browser-list': async page => {
     await rowsArePresent(page, 'button.munin-explorer-dataitem-main__name');
@@ -1064,7 +1064,7 @@ export const states = {
     await list.locator('table.munin-explorer-data-list tbody th[scope=row]').first()
       .waitFor({ state: 'visible', timeout: findTimeout });
     if (await list.getByText('Listen er lagret bare i denne nettleseren', { exact: false }).count() === 0) {
-      throw new Error('no browser list on the tab: list-browser-list needs MuninExplorer__Features__AnonymousLists=true and Sample__SignedOut=true');
+      throw new Error('no browser list on the tab: list-browser-list needs MuninExplorer__Features__CodePicker=true and Sample__SignedOut=true');
     }
   },
 

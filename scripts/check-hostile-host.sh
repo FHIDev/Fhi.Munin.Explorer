@@ -21,7 +21,7 @@
 #   - whether it LOOKS right. Boxes in the right places can still be the wrong design;
 #   - the code picker off, except in list-row-picker-off at the end (the six widths, 320, 1279; axe at 1440):
 #     the sample turns it on in Development. Likewise a signed-out reader's list in the browser, only in
-#     list-browser-list, on a host started with MuninExplorer__Features__AnonymousLists and Sample__SignedOut.
+#     list-browser-list, on a host started with MuninExplorer__Features__CodePicker and Sample__SignedOut.
 #
 # Exits: 0 measured and correct; 1 measured and wrong; 3 not measured, because a geometry assertion
 #        stopped firing against the defect it exists for; 2 could not measure at all (TOOLING).
@@ -461,7 +461,7 @@ browser_list_pass() {
   local status worst=0
   kill "$host_pid" 2>/dev/null || true
   wait "$host_pid" 2>/dev/null || true
-  MuninExplorer__ApiBaseUrl="$STUB_BASE" MuninExplorer__Features__AnonymousLists=true Sample__SignedOut=true ASPNETCORE_ENVIRONMENT=Development \
+  MuninExplorer__ApiBaseUrl="$STUB_BASE" MuninExplorer__Features__CodePicker=true Sample__SignedOut=true ASPNETCORE_ENVIRONMENT=Development \
     dotnet "$HOST_DLL" --urls "$BASE" --contentRoot "$ROOT/samples/HostileHost" \
     >/tmp/hostile-host-browser-list.log 2>&1 &
   host_pid=$!

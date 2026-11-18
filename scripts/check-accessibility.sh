@@ -59,7 +59,7 @@ HOST_PROJECT="$ROOT/samples/ModernHost/ModernHost.csproj"
 # The code picker is on for every state above (the sample turns MuninExplorer:Features:CodePicker on in Development),
 # and off, the shape a host ships by default, in one more: list-row-picker-off, scanned after them on the host
 # restarted with the switch overridden, in shard 1 only (Fhi.Metadata-l9l2n.172). A signed-out reader's list in the
-# browser is scanned the same way, in list-browser-list, on a host started with MuninExplorer__Features__AnonymousLists
+# browser is scanned the same way, in list-browser-list, on a host started with MuninExplorer__Features__CodePicker
 # and the sample's Sample__SignedOut (Fhi.Metadata-emsc0.3.12).
 #
 # /utforsker is the only page in either sample that mounts the composed VariableExplorer, so it is
@@ -382,7 +382,7 @@ if [ -z "${SCAN_SHARD:-}" ] || [ "${SCAN_SHARD%%/*}" = 1 ]; then
   echo "==> a signed-out reader's list in the browser"
   kill "$host_pid" 2>/dev/null || true
   wait "$host_pid" 2>/dev/null || true
-  MuninExplorer__ApiBaseUrl="$STUB_BASE" MuninExplorer__Features__AnonymousLists=true Sample__SignedOut=true \
+  MuninExplorer__ApiBaseUrl="$STUB_BASE" MuninExplorer__Features__CodePicker=true Sample__SignedOut=true \
     ASPNETCORE_ENVIRONMENT=Development \
     dotnet "$HOST_DLL" --urls "$BASE" --contentRoot "$ROOT/samples/ModernHost" \
     >/tmp/accessibility-host-browser-list.log 2>&1 &

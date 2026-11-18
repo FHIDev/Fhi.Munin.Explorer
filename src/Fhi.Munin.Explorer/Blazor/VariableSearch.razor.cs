@@ -246,7 +246,7 @@ public sealed partial class VariableSearch : ComponentBase
     /// and the tablist appears between the filters and the results — Runa's own placement, so the
     /// search box and the facets stay on screen whichever tab is open. <see cref="VariableExplorer"/>
     /// passes <see cref="VariableListView"/> here; a host composing its own page can pass anything.
-    /// With <c>MuninExplorer:Features:AnonymousLists</c> on, a signed-out reader gets a save button only when this is
+    /// With <c>MuninExplorer:Features:CodePicker</c> on, a signed-out reader gets a save button only when this is
     /// passed, since the list it fills in the browser is seen in this tab.
     /// </remarks>
     [Parameter] public RenderFragment? VariableList { get; set; }
@@ -287,7 +287,7 @@ public sealed partial class VariableSearch : ComponentBase
     /// <para>
     /// The default is signed out on purpose. A host that forgets this parameter gets no saved
     /// lists, which is a visible gap; the alternative default would send unauthorised calls on
-    /// every render instead, which is not visible at all. With <c>MuninExplorer:Features:AnonymousLists</c>
+    /// every render instead, which is not visible at all. With <c>MuninExplorer:Features:CodePicker</c>
     /// on, a reader this component treats as signed out, a forgotten parameter included, gets the list kept in the
     /// browser where <see cref="VariableList"/> is passed, and no save button where it is not; a reader with
     /// <see cref="IsAuthenticated"/> true always saves to Munin.

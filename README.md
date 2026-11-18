@@ -9,7 +9,7 @@ can consume it.
 
 Data comes from the public Munin Explorer API. **The browsing components are read-only and
 anonymous**; everything the variable and kilde explorers render is public metadata and needs no
-token. The one exception is `MuninExplorer:Features:AnonymousLists`: with it on, a signed-out reader's save button
+token. The one exception is `MuninExplorer:Features:CodePicker`: with it on, a signed-out reader's save button
 writes to a list kept in their own browser, never to Munin.
 
 The client reaches one step further than those. `IMuninExplorerClient` also carries the
@@ -18,7 +18,7 @@ The client reaches one step further than those. `IMuninExplorerClient` also carr
 needs a host-supplied `IMuninExplorerTokenProvider` registered *before* `AddMuninExplorer`. Without one
 they answer 401, which arrives as a thrown `MuninExplorerUnauthorizedException` rather than as an empty
 list. `VariableListView` is the component built on them — the one this package ships that reads and
-writes rather than browses, besides the browser list `AnonymousLists` adds — and a host is free to
+writes rather than browses, besides the browser list `CodePicker` turns on — and a host is free to
 build its own instead.
 
 **Mount `VariableExplorer`.** It is the variabelutforsker whole: search and the reader's lists
@@ -1390,7 +1390,7 @@ Three things, each only where the host serves the package's browser module, and 
 | --- | --- | --- | --- |
 | `sessionStorage`, per tab | `Fhi.Munin.Explorer:scroll:` + the page's path and query | the kildeutforsker list's scroll position | written when the reader leaves the list, removed when read back |
 | `localStorage` | `munin-explorer.filters-collapsed` | whether the filter panel is folded on a wide screen | when the reader folds or unfolds it |
-| `localStorage` | `Fhi.Munin.Explorer:anonymous-list` | a signed-out reader's variable list, `{"v":1,"items":[…]}`, each row the fields below | only with `MuninExplorer:Features:AnonymousLists` on |
+| `localStorage` | `Fhi.Munin.Explorer:anonymous-list` | a signed-out reader's variable list, `{"v":1,"items":[…]}`, each row the fields below | only with `MuninExplorer:Features:CodePicker` on |
 
 Stored row fields: `variabelId`, `variabelCode`, `variabelName`, `kildeId`, `kildeName`, `kildeKortNavn`, `datasamlingId`, `datasamlingName`, `variabelgruppeName`, `dataType`, `dataFrom`, `dataTo`, `versjonStatus` — the
 variable's and datasamling's ids, its code and Norwegian name, its kilde's id, name and short name, the datasamling's
@@ -1413,48 +1413,49 @@ Both `AddMuninExplorer` overloads read these keys from the host's configuration 
 registered `IConfiguration`, and nothing else from the section). The configuration overload reads them when it is
 called, the delegate overload when the first component needs them; either way a change takes a restart. `true` turns a feature on; absent or any other value is off. `options.Features.<Name>` set in
 the delegate wins over the key. The sample hosts turn both on in `appsettings.Development.json`, which is what
-the browser gates run; `check-accessibility.sh` also scans an opened list row once with `CodePicker` off. The samples
-leave `AnonymousLists` off; the gates turn it on for one state of their own. Today there are three:
+the browser gates run; `check-accessibility.sh` also scans an opened list row once with `CodePicker` off, and the
+browser list on a signed-out sample host of its own. Today there are two:
 
 - `CodePicker`, the code picker under «Ønskede data» in a saved list; with it off, «Ønskede data» is
-  one free-text field and codes saved through Munin show read-only.
+  one free-text field and codes saved through Munin show read-only. The same key turns on the browser list below.
 - `AdvancedSearch`, avansert søk in `VariableSearch`: the «Avansert søk» button under the search field, its form of
   field, operator and value rows, and each condition as a chip beside the facet chips. The conditions travel in
   `VariableFilter.Conditions`, written as the API's repeated `vilkar`, so a link with them restores the search. With
   it off, none of that is drawn and conditions a link carries are dropped, and `FilterChanged` tells the host so its
   address loses them too.
-- `AnonymousLists`, a variable list for a reader who is not signed in, kept only in their browser's local storage under
-  `Fhi.Munin.Explorer:anonymous-list`: each row's catalogue fields, exactly those named under «What the package keeps in
-  the reader's browser», no name for the list and nothing about the reader, at most 2000 rows. The package's
-  `explorer-interop.js` owns the list and changes it a row at a time. Every call re-reads the stored list, so another
-  tab's change stands for every row this page has not touched; for a row this page changed while writes were refused,
-  its unsaved change wins. A write that would pass 2000 rows keeps the stored rows and drops this page's newest unsaved
-  adds. Another tab's change is picked up through the browser's `storage` event. It needs a list tab to show the list:
-  `VariableExplorer`, or `VariableSearch` given a `VariableList` fragment holding `VariableListView`; mounted alone,
-  `VariableSearch` offers a signed-out reader no save button. A signed-out reader's save button (the one a signed-in
-  reader has) adds a row to it, the list tab shows it through the shared-list view, and it can be downloaded
-  (`ExportItemsAsync`, Munin's anonymous export), shared as a code while its snapshot stays under the share endpoint's
-  512 KB (about 990 full rows), or emptied. Signed in with rows still in the browser, the list tab offers one button,
-  «Lagre i Mine variabellister», beside a sentence saying the rows become a new list there. The press creates a new list in
-  Mine variabellister and adds every row to it in one request, so Munin saves all of them or none; the new list is offered
-  nowhere else until the rows are in it, and once saved, the rows leave the browser. When Munin refuses the request
-  and names variables, such as one whose row's datasamling is no longer its own, nothing is saved: the new list is
-  deleted again, every row stays in the browser, the reader is told how many rows of how many variables Munin
-  refused, and a button described by that sentence, «Fjern disse radene» («Fjern denne raden» for one row), takes
-  every row of those variables out of the browser; the button goes with the sentence. The offer then counts the rows
-  that are left and takes focus; with no rows left there is no offer, and focus goes to the list picker, or to
-  creating a list when the reader has one list or none. A refused row is not remembered: if the reader keeps it, the
-  next press is refused the same way. Any other failure (a refusal that names nothing, the write limiter, a lapsed sign-in, a list gone, an error) also saves
-  nothing, deletes the new list and keeps every row. A press only ever deletes the list it created. When that delete
-  fails, as it can under the same write limiter, or the reader signs out during the press, the new list can be left in
-  Mine variabellister: it appears among the reader's lists the next time the page is opened, or beside the next list
-  they make, and they can delete it there. Saving only the rows Munin accepts, and leaving the refused ones behind,
-  is not supported. Where the browser refuses storage the list lasts while the page is open and the view says so;
-  a host that does not serve the module has no list, and the save button and the list tab say it cannot be kept in this
-  browser. With it off, a signed-out reader has no save button and no list tab, as before. `check-accessibility.sh`
-  scans it with axe in `list-browser-list`, on a host started with it on and with the samples' `Sample:SignedOut`
-  switch, which mounts the composed explorer signed out; `check-hostile-host.sh` measures the same state when it runs,
-  nightly or by hand, not on a pull request.
+
+The browser list behind `CodePicker` is a variable list for a reader who is not signed in, kept only in their
+browser's local storage under `Fhi.Munin.Explorer:anonymous-list`: each row's catalogue fields, exactly those named
+under «What the package keeps in the reader's browser», no name for the list and nothing about the reader, at most
+2000 rows. The package's `explorer-interop.js` owns the list and changes it a row at a time. Every call re-reads the
+stored list, so another tab's change stands for every row this page has not touched; for a row this page changed while
+writes were refused, its unsaved change wins. A write that would pass 2000 rows keeps the stored rows and drops this
+page's newest unsaved adds. Another tab's change is picked up through the browser's `storage` event. It needs a list
+tab to show the list: `VariableExplorer`, or `VariableSearch` given a `VariableList` fragment holding
+`VariableListView`; mounted alone, `VariableSearch` offers a signed-out reader no save button. A signed-out reader's
+save button (the one a signed-in reader has) adds a row to it, the list tab shows it through the shared-list view, and
+it can be downloaded (`ExportItemsAsync`, Munin's anonymous export), shared as a code while its snapshot stays under
+the share endpoint's 512 KB (about 990 full rows), or emptied. Signed in with rows still in the browser, the list tab
+offers one button, «Lagre i Mine variabellister», beside a sentence saying the rows become a new list there. The press
+creates a new list in Mine variabellister and adds every row to it in one request, so Munin saves all of them or none;
+the new list is offered nowhere else until the rows are in it, and once saved, the rows leave the browser. When Munin
+refuses the request and names variables, such as one whose row's datasamling is no longer its own, nothing is saved:
+the new list is deleted again, every row stays in the browser, the reader is told how many rows of how many variables
+Munin refused, and a button described by that sentence, «Fjern disse radene» («Fjern denne raden» for one row), takes
+every row of those variables out of the browser; the button goes with the sentence. The offer then counts the rows
+that are left and takes focus; with no rows left there is no offer, and focus goes to the list picker, or to creating
+a list when the reader has one list or none. A refused row is not remembered: if the reader keeps it, the next press
+is refused the same way. Any other failure (a refusal that names nothing, the write limiter, a lapsed sign-in, a list
+gone, an error) also saves nothing, deletes the new list and keeps every row. A press only ever deletes the list it
+created. When that delete fails, as it can under the same write limiter, or the reader signs out during the press, the
+new list can be left in Mine variabellister: it appears among the reader's lists the next time the page is opened, or
+beside the next list they make, and they can delete it there. Saving only the rows Munin accepts, and leaving the
+refused ones behind, is not supported. Where the browser refuses storage the list lasts while the page is open and the
+view says so; a host that does not serve the module has no list, and the save button and the list tab say it cannot be
+kept in this browser. With it off, a signed-out reader has no save button and no list tab, as before.
+`check-accessibility.sh` scans it with axe in `list-browser-list`, on a host started with it on and with the samples'
+`Sample:SignedOut` switch, which mounts the composed explorer signed out; `check-hostile-host.sh` measures the same
+state when it runs, nightly or by hand, not on a pull request.
 
 A new feature gets its own entry, off by default, and the entry is removed once the feature is on for every host.
 

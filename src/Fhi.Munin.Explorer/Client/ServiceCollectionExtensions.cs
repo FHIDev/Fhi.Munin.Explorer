@@ -53,21 +53,19 @@ public sealed class MuninExplorerFeatures
     /// <c>MuninExplorer:Features:CodePicker</c>. Off: «Ønskede data» is one free-text field, and codes already saved
     /// through Munin are still shown, read-only.
     /// </summary>
+    /// <remarks>The same key turns on a variable list for a reader who is not signed in, kept only in their browser's
+    /// local storage. The save button adds a row to it, the list tab shows it, and it can be downloaded, shared or
+    /// emptied; at sign-in the reader may save it as a new list of their own, every row or, when Munin refuses any,
+    /// none. It holds catalogue fields only, never anything about the reader. It needs a list tab to show the list:
+    /// <c>VariableExplorer</c>, or <c>VariableSearch</c> given a <c>VariableList</c> fragment holding
+    /// <c>VariableListView</c>; mounted alone, <c>VariableSearch</c> offers a signed-out reader no save button. Off: a
+    /// signed-out reader has no list and no save button.</remarks>
     public bool? CodePicker { get; set; }
 
     /// <summary>Avansert søk in the variable search; key <c>MuninExplorer:Features:AdvancedSearch</c>. Off, nothing
     /// of it is drawn and a link's <c>vilkar</c> are dropped, so nothing narrows the list that the reader cannot
     /// see or remove.</summary>
     public bool? AdvancedSearch { get; set; }
-
-    /// <summary>A variable list for a reader who is not signed in, kept only in their browser's local storage; key
-    /// <c>MuninExplorer:Features:AnonymousLists</c>. The save button adds a row to it, the list tab shows it, and it can be
-    /// downloaded, shared or emptied; at sign-in the reader may save it as a new list of their own, every row or, when
-    /// Munin refuses any, none. It holds catalogue fields only, never anything about the reader. It needs a list tab to
-    /// show the list: <c>VariableExplorer</c>, or <c>VariableSearch</c> given a <c>VariableList</c> fragment holding
-    /// <c>VariableListView</c>; mounted alone, <c>VariableSearch</c> offers a signed-out reader no save button. Off: a
-    /// signed-out reader has no list and no save button, as before.</summary>
-    public bool? AnonymousLists { get; set; }
 }
 
 /// <summary>The one call a host makes to use the explorer components.</summary>
@@ -174,10 +172,6 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton(provider => new Blazor.AdvancedSearchSwitch(
             advancedSearch ?? FeatureOn(provider.GetService<IConfiguration>(), nameof(MuninExplorerFeatures.AdvancedSearch))));
 
-        var anonymousLists = options.Features.AnonymousLists;
-        services.TryAddSingleton(provider => new Blazor.AnonymousListsSwitch(
-            anonymousLists ?? FeatureOn(provider.GetService<IConfiguration>(), nameof(MuninExplorerFeatures.AnonymousLists))));
-
         services.AddHttpClient<IMuninExplorerClient, MuninExplorerClient>(client =>
         {
             // Trailing slash so relative routes ("api/explorer/...") resolve against the
@@ -240,7 +234,6 @@ public static class ServiceCollectionExtensions
             o.AccessLinks = accessLinks;
             o.Features.CodePicker = FeatureOn(configuration, nameof(MuninExplorerFeatures.CodePicker));
             o.Features.AdvancedSearch = FeatureOn(configuration, nameof(MuninExplorerFeatures.AdvancedSearch));
-            o.Features.AnonymousLists = FeatureOn(configuration, nameof(MuninExplorerFeatures.AnonymousLists));
         });
     }
 

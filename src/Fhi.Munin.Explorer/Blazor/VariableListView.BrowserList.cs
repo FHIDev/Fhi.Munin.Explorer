@@ -105,7 +105,7 @@ public sealed partial class VariableListView
     /// <summary>Turns the browser list on when the host does; GetService, so a host with neither still draws the view.</summary>
     private void OfferBrowserList()
     {
-        if (State is { OffersBrowserList: false } && ServiceProvider.GetService<AnonymousListsSwitch>()?.On == true)
+        if (State is { OffersBrowserList: false } && ServiceProvider.GetService<CodePickerSwitch>()?.On == true)
         {
             State.OfferBrowserList(new BrowserListStore(Js));
         }

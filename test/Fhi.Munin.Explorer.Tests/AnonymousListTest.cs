@@ -13,7 +13,7 @@ namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
 /// A signed-out reader's variable list, kept in their browser when the host turns
-/// <c>MuninExplorer:Features:AnonymousLists</c> on (Fhi.Metadata-emsc0.3.12). The browser's half is
+/// <c>MuninExplorer:Features:CodePicker</c> on (Fhi.Metadata-emsc0.3.12). The browser's half is
 /// <see cref="FakeBrowserList"/>; <see cref="BrowserListStoreTest"/> pins the module's own shapes.
 /// </summary>
 public class AnonymousListTest : ExplorerTestContext
@@ -238,7 +238,7 @@ public class AnonymousListTest : ExplorerTestContext
 
         if (flag is { } on)
         {
-            Services.AddSingleton(new AnonymousListsSwitch(on));
+            Services.AddSingleton(new CodePickerSwitch(on));
         }
     }
 
@@ -304,6 +304,19 @@ public class AnonymousListTest : ExplorerTestContext
         var cut = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, false));
 
         Assert.Equal("", cut.Markup.Trim());
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheFlagIsOn_ThenASignedOutReaderGetsTheBrowserList()
+    {
+        // The view mounted alone offers the list itself; every other view test here hands the state a store.
+        JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        Register(new Client(), flag: true);
+
+        var cut = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, false));
+
+        Assert.True(Services.GetRequiredService<VariableListState>().OffersBrowserList);
+        Assert.NotEqual("", cut.Markup.Trim());
     }
 
     [Fact]

@@ -492,7 +492,7 @@ public class GeometryScanGuardTest
     {
         var source = File.ReadAllText(Repo.In("scripts", "check-accessibility.sh"));
 
-        Assert.Contains("MuninExplorer__Features__AnonymousLists=true Sample__SignedOut=true", source, StringComparison.Ordinal);
+        Assert.Contains("MuninExplorer__Features__CodePicker=true Sample__SignedOut=true", source, StringComparison.Ordinal);
         Assert.Contains("/utforsker::list-browser-list\"", source, StringComparison.Ordinal);
         Assert.Contains("[ \"$browser_status\" -ne 0 ]", source, StringComparison.Ordinal);
     }
@@ -521,7 +521,7 @@ public class GeometryScanGuardTest
         // The browser list is off by default and the samples are signed in, so no other pass draws it (Fhi.Metadata-emsc0.3.12).
         var source = File.ReadAllText(Repo.In("scripts", "check-hostile-host.sh"));
 
-        Assert.Contains("MuninExplorer__Features__AnonymousLists=true Sample__SignedOut=true ASPNETCORE_ENVIRONMENT", source, StringComparison.Ordinal);
+        Assert.Contains("MuninExplorer__Features__CodePicker=true Sample__SignedOut=true ASPNETCORE_ENVIRONMENT", source, StringComparison.Ordinal);
         Assert.Contains("node \"$ROOT/scripts/axe-scan.mjs\" \"${BASE}/::list-browser-list\"", source, StringComparison.Ordinal);
         Assert.Contains("[ \"$browser_status\" -ne 0 ]", source, StringComparison.Ordinal);
         Assert.True(source.LastIndexOf("exit 3", StringComparison.Ordinal)

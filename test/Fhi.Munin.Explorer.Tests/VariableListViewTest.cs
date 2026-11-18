@@ -1485,13 +1485,13 @@ public partial class VariableListViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void View_WhenTheReaderIsSignedOut_ThenNothingIsDrawnAndNothingIsAsked()
+    public void View_WhenSignedOutWithTheFlagOff_ThenNothingIsDrawnAndNothingIsAsked()
     {
         // Asserted on the call count, not on the markup: an implementation that fetches and swallows
         // the 401 renders the same nothing while sending a failed request per render.
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
 
-        var cut = RenderView(client, signedIn: false);
+        var cut = RenderView(client, signedIn: false, picker: false);
 
         Assert.Empty(cut.Markup.Trim());
         Assert.Equal(0, client.VariablesCalls);
@@ -1511,7 +1511,7 @@ public partial class VariableListViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void View_WhenTheReaderIsSignedOut_ThenTheNamesAreNotAskedForEither()
+    public void View_WhenSignedOutWithTheFlagOff_ThenTheNamesAreNotAskedForEither()
     {
         // Same reason the list itself is not read: the view draws nothing for a signed-out reader, and
         // a call whose answer nobody sees still counts against the limiter.
@@ -1520,7 +1520,7 @@ public partial class VariableListViewTest : ExplorerTestContext
             DataTypeFacets = [new DataTypeFacet { Value = "2", DisplayName = "Heltall" }]
         };
 
-        RenderView(client, signedIn: false);
+        RenderView(client, signedIn: false, picker: false);
 
         Assert.Equal(0, client.FilterCalls);
     }
@@ -4130,7 +4130,7 @@ public partial class VariableListViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void View_WhenTheReaderIsSignedOut_ThenThereIsNoAnnotationFieldAndNothingIsWritten()
+    public void View_WhenSignedOutWithTheFlagOff_ThenThereIsNoAnnotationFieldAndNothingIsWritten()
     {
         // The second half of "signed out this component draws nothing", asserted rather than
         // assumed: it is the state every helsedata.no visitor starts in, and this change adds the
@@ -4144,7 +4144,7 @@ public partial class VariableListViewTest : ExplorerTestContext
 
         var client = new ListClient(item);
 
-        var cut = RenderView(client, signedIn: false);
+        var cut = RenderView(client, signedIn: false, picker: false);
 
         Assert.Empty(cut.Markup.Trim());
         Assert.Empty(DesiredDataFields(cut));

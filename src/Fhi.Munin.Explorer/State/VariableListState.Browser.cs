@@ -7,7 +7,7 @@ namespace Fhi.Munin.Explorer.State;
 
 /// <summary>
 /// A signed-out reader's one list, kept in their browser rather than in Munin (Fhi.Metadata-emsc0.3.12). Offered
-/// only when the host turns <see cref="MuninExplorerFeatures.AnonymousLists"/> on.
+/// only when the host turns <see cref="MuninExplorerFeatures.CodePicker"/> on.
 /// </summary>
 /// <remarks>
 /// The browser owns the list and changes it one row at a time; this holds only the rows' keys, read in chunks, since
