@@ -59,7 +59,9 @@ fixed`, `ran, N findings, M fixed, K left: <why>` or `skipped, <reason>` (only f
 The body also carries `Testing: … on <sha>` (the commit it ran on), `Held-out test: …` for a fix of an Important finding or of a defect on a risk:high path
 (DevInfra working-together §4), `Risk: low|medium|high – <why>` (the tier the `risk:`
 label gives) and `How to revert:`, each on its own line; the review-line check fails a PR where one is missing or
-empty, or the tier differs from the label.
+empty, or the tier differs from the label. A PR that fixes a bug an earlier merged PR brought in must also carry
+`Fixes-PR: #N` (`<Repo>#N` for another repository), one line per PR (DevInfra working-together §4); the review-line
+check does not read it.
 
 The Stiler comparison needs the package on disk, which means credentials for helsedata's Azure
 Artifacts feed and `dotnet restore samples/HostileHost/HostileHost.csproj` first — see
