@@ -37,9 +37,19 @@ export function isTypingInField() {
 // What the reader last pressed or clicked. Safari, and Firefox on macOS, leave a clicked button unfocused, so focus on
 // nothing says nothing there about whether the reader moved on; the press does (Fhi.Metadata-emsc0.3.19).
 let lastPressed = null;
+let pressesWatched = false;
 const remember = event => { lastPressed = event.target; };
-document.addEventListener('pointerdown', remember, true);
-document.addEventListener('keydown', remember, true);
+
+// Called by the browser list's view, not on import. A click too, since a screen reader may activate with only that.
+export function watchPresses() {
+  if (!pressesWatched) {
+    pressesWatched = true;
+    for (const type of ['pointerdown', 'keydown', 'click']) {
+      document.addEventListener(type, remember, true);
+    }
+  }
+  return true;
+}
 
 // Focus goes to `toId` only while it is on `fromId`, or on nothing with `fromId` the last thing pressed: a reader who
 // moved on, by any control, keeps their place. Checked and moved in one step, so no press can land between the two.

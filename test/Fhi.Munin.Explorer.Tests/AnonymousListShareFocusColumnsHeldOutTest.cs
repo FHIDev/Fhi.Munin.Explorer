@@ -10,6 +10,7 @@ namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
 /// Deleting these leaves a share's answer free to pull focus to the code after the reader ticked a column in the picker that was already open.
+/// Since Fhi.Metadata-emsc0.3.19 the browser decides that (scripts/test-focus-if-still-on*.mjs); these fail if the view focuses the code itself.
 /// </summary>
 public class AnonymousListShareFocusColumnsHeldOutTest : ExplorerTestContext
 {

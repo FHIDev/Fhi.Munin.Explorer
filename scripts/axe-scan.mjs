@@ -213,11 +213,15 @@ try {
       try {
         await states[state](page);
       } catch (err) {
+        // A finding: counted and written like a violation, so the run still reaches its own verdict.
         if (err instanceof StateDefect) {
-          console.error(`DEFECT in state "${state}" on ${url}: ${err.message}`);
+          console.log(`\n  [serious] state-defect — ${state}: ${err.message}`);
+          if (resultsFile) {
+            appendFileSync(resultsFile, `${JSON.stringify(resultLine(url, state, null, [{ rule: 'state-defect', criteria: err.criteria }]))}\n`);
+          }
+          violationCount += 1;
           await context.close();
-          await browser.close();
-          process.exit(1);
+          continue;
         }
         console.error(`could not reach state "${state}" on ${url} - TOOLING failure.`);
         console.error(String(err?.message ?? err));

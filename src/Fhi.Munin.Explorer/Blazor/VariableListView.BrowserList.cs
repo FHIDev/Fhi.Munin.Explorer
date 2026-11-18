@@ -19,6 +19,7 @@ public sealed partial class VariableListView
 
     // Into the share code once the panel shows one, as a signed-in share does (Fhi.Metadata-emsc0.3.18).
     private bool _focusBrowserShareCode;
+    private bool _pressesWatched;
     private ElementReference _clearToggle;
     private bool _carryingOver;
     private bool _removing;
@@ -128,6 +129,20 @@ public sealed partial class VariableListView
         }
 
         await state.ReadBrowserListAsync();
+
+        // Before «Del liste» can be pressed: the share's focus move asks what was pressed last (Fhi.Metadata-emsc0.3.19).
+        if (ShowsBrowserCopy && !_pressesWatched)
+        {
+            try
+            {
+                _pressesWatched = await ExplorerInterop.WatchPressesAsync(Js);
+            }
+            catch (JSException ex)
+            {
+                _pressesWatched = true;
+                Log?.LogError(ex, "the module could not watch the reader's presses for the browser list's share");
+            }
+        }
 
         var wanted = (state.BrowserVersion, _sharedPageNumber, PageSize);
 

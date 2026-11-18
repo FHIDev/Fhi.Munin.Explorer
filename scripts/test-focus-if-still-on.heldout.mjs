@@ -23,7 +23,9 @@ globalThis.document = {
 };
 const deliver = (type, target) => (listeners.get(type) ?? []).slice().forEach(fn => fn({ type, target }));
 
-const { focusIfStillOn } = await import(new URL('../src/Fhi.Munin.Explorer/wwwroot/explorer-interop.js', import.meta.url));
+const module = await import(new URL('../src/Fhi.Munin.Explorer/wwwroot/explorer-interop.js', import.meta.url));
+const { focusIfStillOn } = module;
+module.watchPresses?.();
 
 let share;
 let code;

@@ -131,9 +131,14 @@ async function collapseFilters(page, row) {
 /** States scanned at the default width only: their fold is drawn from 1024px up, so a phone has none to scan. */
 export const wideOnlyStates = new Set(['variables-filters-collapsed', 'kilder-filters-collapsed']);
 
-// A state's own check found the page wrong: a finding, which axe-scan exits 1 on, not a state it could not reach.
+// A state's own check found the page wrong: a finding axe-scan records and exits 1 on, not a state it could not reach.
 export class StateDefect extends Error {
   name = 'StateDefect';
+
+  constructor(message, criteria) {
+    super(message);
+    this.criteria = criteria;
+  }
 }
 
 export const states = {
@@ -1103,7 +1108,7 @@ export const states = {
     await code.waitFor({ state: 'visible', timeout: findTimeout });
     await page.waitForTimeout(1000);
     if (await focused() !== movedTo) {
-      throw new StateDefect(`the share took focus from «${movedTo}» to «${await focused()}» after the reader moved on`);
+      throw new StateDefect(`the share took focus from «${movedTo}» to «${await focused()}» after the reader moved on`, ['2.4.3']);
     }
 
     await share.click();
@@ -1111,7 +1116,7 @@ export const states = {
     await share.click();
     await page.waitForFunction(() => document.activeElement?.id?.startsWith('munin-explorer-share-code-') === true, null,
       { timeout: findTimeout }).catch(async () => {
-      throw new StateDefect(`«Del liste» pressed again left focus on «${await focused()}», not on the code`);
+      throw new StateDefect(`«Del liste» pressed again left focus on «${await focused()}», not on the code`, ['2.4.3']);
     });
   },
 
