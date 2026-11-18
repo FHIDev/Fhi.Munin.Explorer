@@ -932,6 +932,29 @@ internal sealed record Texts(
     Func<string, string, string> PickerLevelCut,
     // The share view's column of chosen codes.
     string CodeSummaryHeading,
+
+    // A signed-out reader's list in the browser (Fhi.Metadata-emsc0.3.12). Says what is kept where and what needs
+    // sign-in, in a sentence each, and carries no consent text.
+    string BrowserListKeptHere,
+    string BrowserListApplication,
+    string BrowserListSignInFor,
+    string BrowserListNotKept,
+    string BrowserListUnavailable,
+    string BrowserListForeign,
+    string BrowserListReadError,
+    string BrowserListTooLongToShare,
+    Func<string, string> BrowserListSavedAs,
+    Func<string, string> BrowserListSavedButStillHere,
+    Func<int, int, string> BrowserListRefused,
+    Func<int, string> RemoveRefusedFromBrowser,
+    Func<int, int, string> BrowserListRefusedRemoved,
+    string BrowserListRefusedNotRemoved,
+    Func<int, string> BrowserListFull,
+    string ClearBrowserList,
+    string ConfirmClearBrowserList,
+    Func<int, string> BrowserListWaiting,
+    string CarryBrowserListOver,
+    string CarryBrowserListOverError,
     // A list imported from the old helsedata: what did not come over, until the reader hides it (Fhi.Metadata-9huq2.37).
     Func<int, string> ImportReportHeading,
     string ImportReportAdvice,
@@ -1919,6 +1942,31 @@ internal sealed record Texts(
         PickerRetryFor: code => $"Prøv igjen for {code}",
         PickerLevelCut: (level, whole) => $"{level} har for mange koder til at én kan tas ut her. Fjern haken for {whole} og velg kodene du vil ha, for eksempel med søket.",
         CodeSummaryHeading: "Ønskede verdier",
+        BrowserListKeptHere: "Listen er lagret bare i denne nettleseren: variablenes koder, navn og hvor de hører hjemme (kilde og datasamling), ingen opplysninger om deg.",
+        BrowserListApplication: "Du kan laste ned listen som Excel og legge den ved en søknad om tilgang.",
+        BrowserListSignInFor: "Logg inn for å skrive ønskede data og notater, og for å ha flere lister.",
+        BrowserListNotKept: "Nettleseren lar ikke listen lagres, så den finnes bare så lenge denne siden er åpen.",
+        BrowserListUnavailable: "Listen kan ikke lagres i denne nettleseren nå.",
+        BrowserListForeign: "Nettleseren har lagret noe denne versjonen ikke kan lese, så listen finnes bare så lenge denne siden er åpen.",
+        BrowserListReadError: "Kunne ikke lese listen i denne nettleseren nå.",
+        BrowserListTooLongToShare: "Listen er for lang til å deles som kode. Last den ned i stedet.",
+        BrowserListSavedAs: name => $"Lagret som «{name}» i Mine variabellister.",
+        BrowserListSavedButStillHere: name => $"Listen ble lagret i Mine variabellister («{name}»), men den kunne ikke fjernes fra denne nettleseren. Tøm den når du er logget ut.",
+        BrowserListRefused: (rows, variables) =>
+            $"{(rows == 1 ? "1 rad" : $"{rows} rader")} for {(variables == 1 ? "1 variabel" : $"{variables} variabler")} kunne ikke lagres i Mine variabellister, så ingenting ble lagret. Listen ligger fortsatt i denne nettleseren.",
+        RemoveRefusedFromBrowser: rows => rows == 1 ? "Fjern denne raden" : "Fjern disse radene",
+        BrowserListRefusedRemoved: (rows, rest) =>
+            (rows == 1 ? "Raden er fjernet fra denne nettleseren." : "Radene er fjernet fra denne nettleseren.")
+            + (rest == 0 ? "" : rest == 1 ? " Raden som er igjen, kan lagres som ny liste i Mine variabellister." : $" De {rest} radene som er igjen, kan lagres som ny liste i Mine variabellister."),
+        BrowserListRefusedNotRemoved: "Kunne ikke fjerne radene fra denne nettleseren nå.",
+        BrowserListFull: max => $"Listen kan ha høyst {max} rader. Fjern noen før du legger til flere.",
+        ClearBrowserList: "Tøm listen",
+        ConfirmClearBrowserList: "Fjerne alle variabler fra listen i denne nettleseren? Det kan ikke angres.",
+        BrowserListWaiting: rows => rows == 1
+            ? "Denne nettleseren har en liste fra før du logget inn, med 1 rad. Lagrer du den i Mine variabellister, blir den en ny liste der."
+            : $"Denne nettleseren har en liste fra før du logget inn, med {rows} rader. Lagrer du den i Mine variabellister, blir den en ny liste der.",
+        CarryBrowserListOver: "Lagre i Mine variabellister",
+        CarryBrowserListOverError: "Kunne ikke lagre listen i Mine variabellister nå. Den ligger fortsatt i denne nettleseren.",
         ImportReportHeading: count => count switch
         {
             0 => "Importert fra den gamle listen: noe ble ikke tatt med",
@@ -2608,6 +2656,31 @@ internal sealed record Texts(
         PickerRetryFor: code => $"Try again for {code}",
         PickerLevelCut: (level, whole) => $"{level} has too many codes to leave one out here. Untick {whole} and choose the codes you want, for example with the search.",
         CodeSummaryHeading: "Desired values",
+        BrowserListKeptHere: "The list is stored only in this browser: the variables' codes, names and where they belong (source and data collection), nothing about you.",
+        BrowserListApplication: "You can download the list as Excel and attach it to an application for access.",
+        BrowserListSignInFor: "Sign in to write desired data and notes, and to keep several lists.",
+        BrowserListNotKept: "This browser does not let the list be stored, so it lasts only while this page is open.",
+        BrowserListUnavailable: "The list cannot be kept in this browser just now.",
+        BrowserListForeign: "This browser holds something this version cannot read, so the list lasts only while this page is open.",
+        BrowserListReadError: "Could not read the list in this browser just now.",
+        BrowserListTooLongToShare: "The list is too long to share as a code. Download it instead.",
+        BrowserListSavedAs: name => $"Saved as «{name}» in My variable lists.",
+        BrowserListSavedButStillHere: name => $"The list was saved in My variable lists («{name}»), but it could not be removed from this browser. Empty it when you are signed out.",
+        BrowserListRefused: (rows, variables) =>
+            $"{(rows == 1 ? "1 row" : $"{rows} rows")} for {(variables == 1 ? "1 variable" : $"{variables} variables")} could not be saved in My variable lists, so nothing was saved. The list is still in this browser.",
+        RemoveRefusedFromBrowser: rows => rows == 1 ? "Remove this row" : "Remove these rows",
+        BrowserListRefusedRemoved: (rows, rest) =>
+            (rows == 1 ? "The row is removed from this browser." : "The rows are removed from this browser.")
+            + (rest == 0 ? "" : rest == 1 ? " The row that is left can be saved as a new list in My variable lists." : $" The {rest} rows that are left can be saved as a new list in My variable lists."),
+        BrowserListRefusedNotRemoved: "Could not remove the rows from this browser just now.",
+        BrowserListFull: max => $"The list can hold at most {max} rows. Remove some before adding more.",
+        ClearBrowserList: "Empty the list",
+        ConfirmClearBrowserList: "Remove every variable from the list in this browser? It cannot be undone.",
+        BrowserListWaiting: rows => rows == 1
+            ? "This browser holds a list from before you signed in, with 1 row. Saved to My variable lists, it becomes a new list there."
+            : $"This browser holds a list from before you signed in, with {rows} rows. Saved to My variable lists, it becomes a new list there.",
+        CarryBrowserListOver: "Save to My variable lists",
+        CarryBrowserListOverError: "Could not save the list to My variable lists just now. It is still in this browser.",
         ImportReportHeading: count => count switch
         {
             0 => "Imported from the old list: some of it was not brought over",

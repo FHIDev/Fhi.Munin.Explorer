@@ -102,7 +102,8 @@ public sealed partial class VariableListView
     private bool ShownListIsEmpty => ShownList is { VariableCount: 0 };
 
     private string SharedListName =>
-        _sharedList?.Name is { Length: > 0 } name ? name : T.SharedListEyebrow;
+        ShowsBrowserCopy ? T.FirstListName
+        : _sharedList?.Name is { Length: > 0 } name ? name : T.SharedListEyebrow;
 
     private string? SharedListMessage => _sharedListFailure switch
     {
@@ -128,17 +129,17 @@ public sealed partial class VariableListView
 
     private string? SaveNameMessage => NameProblemMessage(_saveNameProblem);
 
+    // The browser list's page is read from the browser a page at a time; a snapshot arrives whole and is paged here.
     private IReadOnlyList<VariableListItem> SharedPageItems =>
-        _sharedList is null
-            ? []
-            : [.. _sharedList.Items.Skip((_sharedPageNumber - 1) * PageSize).Take(PageSize)];
+        _sharedList is { } shared
+            ? [.. shared.Items.Skip((_sharedPageNumber - 1) * PageSize).Take(PageSize)]
+            : ShowsBrowserCopy ? _browserPage : [];
 
-    private int SharedTotalPages =>
-        _sharedList is null ? 1 : Math.Max(1, (_sharedList.Items.Count + PageSize - 1) / Math.Max(1, PageSize));
+    private int SharedTotalPages => Math.Max(1, ((ShownCount ?? 0) + PageSize - 1) / Math.Max(1, PageSize));
 
-    private string ShareMailTo(ShareMade made)
+    private string ShareMailTo(ShareMade made, string listName)
     {
-        var subject = T.ShareMailSubject(ShownList?.Name ?? "");
+        var subject = T.ShareMailSubject(listName);
         var body = T.ShareMailBody(made.Code, made.Link);
 
         return $"mailto:?subject={Uri.EscapeDataString(subject)}&body={Uri.EscapeDataString(body)}";

@@ -25,10 +25,11 @@ public sealed partial class KildeSearch : IAsyncDisposable
     /// was when the reader left it, and to the first open row otherwise — which needs the package's
     /// browser module; without it the rows open and the page stays where the browser put it.
     /// <para>
-    /// That position is the one thing the package writes to Web Storage: the page's vertical
-    /// offset, per tab in <c>sessionStorage</c> under <c>Fhi.Munin.Explorer:scroll:</c> followed
-    /// by the page's path and query, written when the reader follows a link out of the list or
-    /// leaves the page and removed when it is read back. Nothing about the reader is in it.
+    /// The position is kept in <c>sessionStorage</c>: the page's vertical offset, per tab, under
+    /// <c>Fhi.Munin.Explorer:scroll:</c> followed by the page's path and query, written when the reader
+    /// follows a link out of the list or leaves the page and removed when it is read back. Nothing about
+    /// the reader is in it. Everything the package keeps in the reader's browser is listed in the README,
+    /// under «What the package keeps in the reader's browser».
     /// </para>
     /// </remarks>
     [Parameter] public IReadOnlyList<Guid>? ExpandedKildeIds { get; set; }

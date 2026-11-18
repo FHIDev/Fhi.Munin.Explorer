@@ -86,6 +86,19 @@ public class SharedListClientTest
         await Assert.ThrowsAsync<HttpRequestException>(() => Client(handler).ShareListAsync("Tom", []));
     }
 
+    [Theory]
+    [InlineData("\"Snapshot payload exceeds the maximum allowed size.\"", true)]
+    [InlineData("\"Items must not be empty.\"", false)]
+    public async Task ShareListAsync_WhenTheApiRefusesTheSnapshotsSize_ThenItSaysSoApartFromOtherRefusals(string body, bool tooLarge)
+    {
+        // Munin's own words for its 524,288-character cap; any other 400 is still a plain failure.
+        var handler = StubHttpHandler.Answering(HttpStatusCode.BadRequest, body);
+
+        var thrown = await Assert.ThrowsAnyAsync<HttpRequestException>(() => Client(handler).ShareListAsync("Hjerte", [Annotated(One, "Alder")]));
+
+        Assert.Equal(tooLarge, thrown is SharedSnapshotTooLargeException);
+    }
+
     // -----------------------------------------------------------------------
     // ShareMyListAsync: a saved list is shared by id, so the code dies with the list (Fhi.Metadata-9huq2.10)
 

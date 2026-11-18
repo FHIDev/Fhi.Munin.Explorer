@@ -44,7 +44,8 @@ public sealed class MuninExplorerOptions
 /// configuration key <c>MuninExplorer:Features:&lt;name&gt;</c> (<c>true</c> turns it on; absent or any other value is
 /// off), whichever <c>AddMuninExplorer</c> overload the host calls, so an environment's appsettings can turn it on without
 /// a code change. The configuration overload reads the key when it is called, the delegate overload when the first
-/// component needs it; either way a change takes a restart. A value set here wins over the key. An entry is removed once its feature is on for every host.
+/// component needs it; either way a change takes a restart. A value set here wins over the key. An entry
+/// may turn on more than one feature, and is removed once they are on for every host.
 /// </summary>
 public sealed class MuninExplorerFeatures
 {
@@ -53,6 +54,13 @@ public sealed class MuninExplorerFeatures
     /// <c>MuninExplorer:Features:CodePicker</c>. Off: «Ønskede data» is one free-text field, and codes already saved
     /// through Munin are still shown, read-only.
     /// </summary>
+    /// <remarks>The same key turns on a variable list for a reader who is not signed in, kept only in their browser's
+    /// local storage. The save button adds a row to it, the list tab shows it, and it can be downloaded, shared or
+    /// emptied; at sign-in the reader may save it as a new list of their own, every row or, when Munin refuses any,
+    /// none. It holds catalogue fields only, never anything about the reader. It needs a list tab to show the list:
+    /// <c>VariableExplorer</c>, or <c>VariableSearch</c> given a <c>VariableList</c> fragment holding
+    /// <c>VariableListView</c>; mounted alone, <c>VariableSearch</c> offers a signed-out reader no save button. Off: a
+    /// signed-out reader has no list and no save button.</remarks>
     public bool? CodePicker { get; set; }
 
     /// <summary>Avansert søk in the variable search; key <c>MuninExplorer:Features:AdvancedSearch</c>. Off, nothing

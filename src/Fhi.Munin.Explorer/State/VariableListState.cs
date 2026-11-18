@@ -5,7 +5,8 @@ using Microsoft.Extensions.Logging;
 namespace Fhi.Munin.Explorer.State;
 
 /// <summary>
-/// The one place the signed-in user's variable lists live for the lifetime of a circuit. Every
+/// The one place the signed-in user's variable lists live for the lifetime of a circuit, and, with
+/// <c>MuninExplorer:Features:CodePicker</c> on, the signed-out reader's list kept in their browser. Every
 /// surface that reads or writes them — the save action in the result list, the list view, the
 /// download — resolves this same instance and is told when the others change it.
 /// </summary>
@@ -83,6 +84,7 @@ public sealed partial class VariableListState(
         }
 
         IsAuthenticated = isAuthenticated;
+        ForgetCarryOverStuck();
 
         // Anything already in flight belongs to the reader who was here a moment ago. Bumping the
         // generation is what lets those calls recognise, when they come back, that their answer is
@@ -139,6 +141,7 @@ public sealed partial class VariableListState(
 
         var startedAt = _generation;
         var activeAtStart = _activeListId;
+        var madeAtStart = _madeHere;
         _readingFor = startedAt;
         ListsReadFailed = false;
 
@@ -198,7 +201,10 @@ public sealed partial class VariableListState(
             return;
         }
 
-        _lists = lists;
+        // A list made or left here after this read began is missing from its answer only because the read was early.
+        var madeSince = _madeHere.Where(l => !madeAtStart.Contains(l) && !lists.Any(a => a.Id == l.Id));
+        _lists = [.. lists.Where(l => !_carryingInto.Contains(l.Id)), .. madeSince];
+        _madeHere = [.. _madeHere.Where(l => !madeAtStart.Contains(l))];
         _loaded = true;
         ListsReadFailed = false;
 
@@ -257,6 +263,7 @@ public sealed partial class VariableListState(
         }
 
         _lists = [.. _lists, created];
+        _madeHere = [.. _madeHere, created];
 
         // A list this fresh has never held a row for anybody to have shown - the identity below is
         // what lets a subscriber skip the read on it, not this flag, but it is honestly false too.
@@ -315,6 +322,7 @@ public sealed partial class VariableListState(
         }
 
         _lists = [.. _lists.Where(l => l.Id != id)];
+        _madeHere = [.. _madeHere.Where(l => l.Id != id)];
 
         // Left pointing at the list just deleted, the next ask would read the membership of a list
         // the API no longer has, and the save button would offer to remove variables from it.

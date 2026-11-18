@@ -536,6 +536,12 @@ in Development, so every state above sees it on. The shape a host ships by defau
 by `check-accessibility.sh` with axe at 1280, 375 and 320 in shard 1, and by `check-hostile-host.sh`
 against real Stiler with geometry at the six widths, 320 and 1279 and axe at 1440
 (`Fhi.Metadata-l9l2n.172`, `Fhi.Metadata-l9l2n.174`).
+A signed-out reader's list in the browser gets the same treatment in `list-browser-list`, on one more host start with
+`Sample__SignedOut=true` (and `MuninExplorer__Features__CodePicker=true` set explicitly), the sign-out switch ModernHost's
+`/utforsker` and HostileHost's `/` read (LegacyHost has none), which mounts the composed explorer signed out; both stay
+signed in by default (`Fhi.Metadata-emsc0.3.12`). A pull request's CI runs only
+the axe half: `check-hostile-host.sh` does not run on pull requests, so the state's geometry against real Stiler is
+measured when that script runs — nightly, or by hand.
 
 **It scans states, not only pages.** A page in its default state is not the page a reader uses,
 and for a while the default state was the whole of this check: the level lines shipped at 1.16:1

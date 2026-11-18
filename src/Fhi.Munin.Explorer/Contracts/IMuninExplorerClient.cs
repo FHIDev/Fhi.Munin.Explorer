@@ -710,7 +710,7 @@ public interface IMuninExplorerClient
     /// <param name="includeKodeverk">Whether to include the codebooks alongside the variables.</param>
     /// <param name="kildeIdFilter">Optional: only the variables belonging to one kilde.</param>
     /// <param name="cancellationToken">Cancelled when the caller goes away.</param>
-    [Obsolete("Use ExportMyListAsync, which exports the reader's own list with its \"Ønskede data\". ExportListAsync is removed in 3.0.0.")]
+    [Obsolete("Use ExportMyListAsync for the reader's own list, with its \"Ønskede data\", or ExportItemsAsync for a list nobody has saved. ExportListAsync is removed in 3.0.0.")]
     Task<ExportedList> ExportListAsync(
         IReadOnlyCollection<Guid> variableIds,
         ExportFormat format = ExportFormat.Xlsx,
@@ -719,6 +719,34 @@ public interface IMuninExplorerClient
         CancellationToken cancellationToken = default) =>
         throw new NotSupportedException(
             $"This {nameof(IMuninExplorerClient)} does not implement {nameof(ExportListAsync)}. " +
+            "Consume MuninExplorerClient, or implement the member.");
+
+    /// <summary>
+    /// A list nobody has saved — say a signed-out reader's — as a file, one line per (variable, datasamling): xlsx,
+    /// csv, or a zip when codebooks come too. The supported successor to <see cref="ExportListAsync"/>.
+    /// </summary>
+    /// <remarks>
+    /// Anonymous, like <see cref="ExportListAsync"/>, and on the same route: the items travel in the body. The API's
+    /// ceiling is 2000 items; more is refused with an <see cref="ArgumentException"/> before anything is sent.
+    /// Its default body throws <see cref="NotSupportedException"/>, so a host that implements this interface itself
+    /// still builds after the upgrade and says plainly that it has no such export.
+    /// </remarks>
+    /// <param name="items">The rows to export, each a variable and the datasamling it was chosen from.</param>
+    /// <param name="explorerPageUrl">The host's Explorer page, for links in the file; null leaves them out.</param>
+    /// <param name="format">Xlsx or Csv. Csv with codebooks answers with a zip.</param>
+    /// <param name="includeKodeverk">Whether to include the codebooks alongside the variables.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away.</param>
+    /// <returns>The file, named and typed by the API.</returns>
+    /// <exception cref="MuninExplorerRateLimitedException">The API's rate limiter refused the request.</exception>
+    /// <exception cref="HttpRequestException">The API refused or failed the export.</exception>
+    Task<ExportedList> ExportItemsAsync(
+        IReadOnlyCollection<VariableDatasamlingKey> items,
+        Uri? explorerPageUrl = null,
+        ExportFormat format = ExportFormat.Xlsx,
+        bool includeKodeverk = false,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"This {nameof(IMuninExplorerClient)} does not implement {nameof(ExportItemsAsync)}. " +
             "Consume MuninExplorerClient, or implement the member.");
 
     /// <summary>
@@ -852,7 +880,7 @@ public interface IMuninExplorerClient
     /// </para>
     /// <para>
     /// The API refuses an empty list, a blank name, a name over 200 characters, more than 10 000
-    /// items or a payload over 1 MB with a 400, which throws. Carries a default body for the reader
+    /// items or a snapshot over 512 KB (524,288 characters, about 990 full items) with a 400, which throws. Carries a default body for the reader
     /// <see cref="ExportListAsync"/> gives.
     /// </para>
     /// </remarks>

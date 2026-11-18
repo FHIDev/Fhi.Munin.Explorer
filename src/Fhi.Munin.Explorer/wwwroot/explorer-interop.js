@@ -851,3 +851,200 @@ export function writePreference(key, value) {
     // Not kept, and nothing else depends on it.
   }
 }
+
+// A signed-out reader's one variable list, in this browser only (Fhi.Metadata-emsc0.3.12). Every call re-reads the
+// stored list, so another tab's change stands for every row this page has not touched; nothing returns more than a
+// small chunk, since a JS answer to Blazor Server is capped at 32 KB by default.
+const anonymousListKey = 'Fhi.Munin.Explorer:anonymous-list';
+const anonymousListVersion = 1;
+const anonymousPageBytes = 16_000;
+const anonymousEncoder = new TextEncoder();
+
+// Only this page's unsaved changes, while storage refuses them: rows it added and keys it removed. The stored list
+// is read fresh every time, so another tab's adds, removals and clears stand for every key this page did not touch.
+// This page's unsaved change wins for the keys it touched, since which came last cannot be known from here.
+let anonymousAdded = new Map();
+let anonymousRemoved = new Set();
+let anonymousForeign = false;
+let anonymousReadable = true;
+let anonymousWatcher = null;
+let anonymousMax = Infinity;
+
+const anonymousRowKey = row => `${row.variabelId}|${row.datasamlingId ?? ''}`;
+const anonymousIsRow = item => item !== null && typeof item === 'object' && typeof item.variabelId === 'string';
+const anonymousUnsaved = () => anonymousAdded.size > 0 || anonymousRemoved.size > 0;
+
+// Ours only as v:1 with an array of rows; anything else is foreign, and is then neither read nor overwritten.
+function anonymousParse(raw) {
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.v === anonymousListVersion && Array.isArray(parsed.items) && parsed.items.every(anonymousIsRow)) {
+      return parsed.items;
+    }
+  } catch {
+    // Unparsable: not ours either.
+  }
+  return null;
+}
+
+// The stored rows, read now, less the keys this page removed, plus the rows it added that are not stored already.
+function anonymousLoad() {
+  let stored = [];
+  try {
+    const raw = localStorage.getItem(anonymousListKey);
+    anonymousReadable = true;
+    const parsed = raw === null ? [] : anonymousParse(raw);
+    anonymousForeign = parsed === null;
+    stored = parsed ?? [];
+  } catch {
+    anonymousReadable = false;
+  }
+  const items = stored.filter(item => !anonymousRemoved.has(anonymousRowKey(item)));
+  const seen = new Set(items.map(anonymousRowKey));
+  for (const [key, row] of anonymousAdded) {
+    if (!seen.has(key)) {
+      seen.add(key);
+      items.push(row);
+    }
+  }
+  return items;
+}
+
+// Over the ceiling, as when another tab filled the list, the stored rows stay and this page's newest unsaved adds go.
+function anonymousCap(items) {
+  let excess = items.length - anonymousMax;
+  if (excess <= 0) {
+    return { items, full: false };
+  }
+  const kept = [...items];
+  for (let i = kept.length - 1; i >= 0 && excess > 0; i--) {
+    const key = anonymousRowKey(kept[i]);
+    if (anonymousAdded.has(key)) {
+      anonymousAdded.delete(key);
+      kept.splice(i, 1);
+      excess--;
+    }
+  }
+  return { items: kept, full: true };
+}
+
+// Whether any of these keys is in the stored value itself, where another page would still find it.
+function anonymousStillStored(keys) {
+  try {
+    const raw = localStorage.getItem(anonymousListKey);
+    const parsed = raw === null ? [] : anonymousParse(raw) ?? [];
+    return parsed.some(item => keys.has(anonymousRowKey(item)));
+  } catch {
+    return false;
+  }
+}
+
+// Writes the merged list where the browser lets it; then nothing is unsaved. Refused, the changes stay in the delta.
+function anonymousSave(items) {
+  if (!anonymousForeign && anonymousReadable) {
+    try {
+      if (items.length === 0) {
+        localStorage.removeItem(anonymousListKey);
+      } else {
+        localStorage.setItem(anonymousListKey, JSON.stringify({ v: anonymousListVersion, items }));
+      }
+      anonymousAdded = new Map();
+      anonymousRemoved = new Set();
+      return true;
+    } catch {
+      // Refused: the delta already holds this change.
+    }
+  }
+  return false;
+}
+
+const anonymousKept = () => anonymousReadable && !anonymousForeign && !anonymousUnsaved();
+
+function anonymousStatus(items, ok, full, stillStored = false) {
+  return { ok, count: items.length, kept: anonymousKept(), full, foreign: anonymousForeign, stillStored };
+}
+
+function anonymousWithout(keys) {
+  const before = anonymousLoad();
+  for (const key of keys) {
+    anonymousAdded.delete(key);
+    anonymousRemoved.add(key);
+  }
+  const { items, full } = anonymousCap(before.filter(item => !keys.has(anonymousRowKey(item))));
+  anonymousSave(items);
+  return anonymousStatus(items, true, full, anonymousStillStored(keys));
+}
+
+export function anonymousListCount() {
+  return anonymousStatus(anonymousLoad(), true, false);
+}
+
+export function anonymousListAdd(row, max) {
+  anonymousMax = max;
+  const items = anonymousLoad();
+  const key = anonymousRowKey(row);
+  if (items.some(item => anonymousRowKey(item) === key)) {
+    return anonymousStatus(items, true, false);
+  }
+  if (items.length >= max) {
+    return anonymousStatus(items, false, true);
+  }
+  anonymousRemoved.delete(key);
+  anonymousAdded.set(key, row);
+  const next = [...items, row];
+  anonymousSave(next);
+  return anonymousStatus(next, true, false);
+}
+
+export function anonymousListRemove(variabelId, datasamlingId) {
+  return anonymousWithout(new Set([anonymousRowKey({ variabelId, datasamlingId })]));
+}
+
+// The rows a carry-over saved, and only those: a row another tab added meanwhile stays.
+export function anonymousListRemoveKeys(keys) {
+  return anonymousWithout(new Set(keys));
+}
+
+export function anonymousListClear() {
+  return anonymousWithout(new Set(anonymousLoad().map(anonymousRowKey)));
+}
+
+// "variabelId|datasamlingId" per row, the datasamling empty when there is none: about 75 bytes a key.
+export function anonymousListKeys(offset, count) {
+  return anonymousLoad().slice(offset, offset + count).map(anonymousRowKey);
+}
+
+// At most `count` rows and 16 KB of UTF-8. A row alone over that comes back as its ids and code only, so the caller,
+// which moves on by the rows it got, still lands on the next one.
+export function anonymousListPage(offset, count) {
+  const items = [];
+  let bytes = 0;
+  for (const item of anonymousLoad().slice(offset, offset + count)) {
+    let row = item;
+    let size = anonymousEncoder.encode(JSON.stringify(row)).length;
+    if (size > anonymousPageBytes) {
+      row = { variabelId: item.variabelId, datasamlingId: item.datasamlingId ?? null, variabelCode: String(item.variabelCode ?? '').slice(0, 200), truncated: true };
+      size = anonymousEncoder.encode(JSON.stringify(row)).length;
+    }
+    if (bytes + size > anonymousPageBytes) {
+      break;
+    }
+    bytes += size;
+    items.push(row);
+  }
+  return { items };
+}
+
+// Another tab changed the list: .NET reads its keys again. The newest listener replaces the last, so a circuit that
+// replaced an earlier one in the same page is the one told.
+export function watchAnonymousList(listener) {
+  if (anonymousWatcher !== null) {
+    window.removeEventListener('storage', anonymousWatcher);
+  }
+  anonymousWatcher = event => {
+    if (event.key === anonymousListKey || event.key === null) {
+      listener.invokeMethodAsync('ChangedElsewhere').catch(() => {});
+    }
+  };
+  window.addEventListener('storage', anonymousWatcher);
+}

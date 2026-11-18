@@ -17,8 +17,8 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddServerSideBlazor(o => o.PersistedCircuitInMemoryMaxRetained = 0);
 
 // No token provider, unlike LegacyHost. This host has no sign-in at all: the view mounts with
-// IsAuthenticated="true" so the tabs and the reader's list panel exist to be measured, which is
-// the whole reason the page is worth scanning. Authentication is LegacyHost's subject.
+// IsAuthenticated="true" (unless Sample:SignedOut) so the tabs and the reader's list panel exist to be measured,
+// which is the whole reason the page is worth scanning. Authentication is LegacyHost's subject.
 builder.Services.AddMuninExplorer(
     builder.Configuration,
     developmentFallback: builder.Environment.IsDevelopment() ? "https://explorer.munin.skytest.fhi.no" : null);

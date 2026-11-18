@@ -428,7 +428,7 @@ public partial class VariableListViewTest
     }
 
     [Fact]
-    public void ImportReport_WhenSignedOut_ThenNothingIsReadOrDrawn()
+    public void ImportReport_WhenSignedOut_ThenNoReportIsReadOrDrawn()
     {
         var client = new ImportClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
 

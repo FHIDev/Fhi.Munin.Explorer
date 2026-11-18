@@ -38,13 +38,17 @@ public sealed partial class VariableListState
     /// <summary>
     /// Whether the variable is in the active list from any datasamling. A plain read with no request behind it.
     /// </summary>
-    public bool IsSaved(Guid variableId) => _saved.Any(key => key.VariableId == variableId);
+    /// <remarks>Signed out with <c>MuninExplorer:Features:CodePicker</c> on, the list is the one in the reader's browser.</remarks>
+    public bool IsSaved(Guid variableId) =>
+        UsesBrowserList ? _browserKeys.Any(k => k.VariableId == variableId) : _saved.Any(key => key.VariableId == variableId);
 
     /// <summary>
     /// Whether this variable from this datasamling is in the active list. A plain read with no request
     /// behind it, because every row on screen calls it on every render.
     /// </summary>
-    public bool IsSaved(VariableDatasamlingKey item) => _saved.Contains(item);
+    /// <remarks>Signed out with <c>MuninExplorer:Features:CodePicker</c> on, the list is the one in the reader's browser.</remarks>
+    public bool IsSaved(VariableDatasamlingKey item) =>
+        UsesBrowserList ? _browserKeys.Contains(item) : _saved.Contains(item);
 
     /// <summary>
     /// The active list's distinct variables and its rows, or null until its membership is read. A

@@ -1,3 +1,5 @@
+using System.Text.Json;
+using Fhi.Munin.Explorer.State;
 using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Blazor;
@@ -351,6 +353,49 @@ internal sealed class ExplorerInterop : IAsyncDisposable
         {
             // Not kept; the reader's choice still holds for this page.
         }
+    }
+
+    // The browser list's calls (Fhi.Metadata-emsc0.3.12), each one a read-modify-write inside the module. Reached only
+    // from a press or OnAfterRenderAsync, so each loads the module itself. Null where it is not there; a fault travels.
+    internal Task<BrowserListStatus?> AnonymousListCountAsync() => AnonymousCallAsync<BrowserListStatus>("anonymousListCount");
+
+    internal Task<BrowserListStatus?> AnonymousListAddAsync(object row, int max) =>
+        AnonymousCallAsync<BrowserListStatus>("anonymousListAdd", row, max);
+
+    internal Task<BrowserListStatus?> AnonymousListRemoveAsync(Guid variableId, Guid? datasamlingId) =>
+        AnonymousCallAsync<BrowserListStatus>("anonymousListRemove", variableId, datasamlingId);
+
+    internal Task<BrowserListStatus?> AnonymousListRemoveKeysAsync(IReadOnlyCollection<string> keys) =>
+        AnonymousCallAsync<BrowserListStatus>("anonymousListRemoveKeys", keys);
+
+    internal Task<BrowserListStatus?> AnonymousListClearAsync() => AnonymousCallAsync<BrowserListStatus>("anonymousListClear");
+
+    internal Task<string[]?> AnonymousListKeysAsync(int offset, int count) =>
+        AnonymousCallAsync<string[]>("anonymousListKeys", offset, count);
+
+    internal Task<JsonDocument?> AnonymousListPageAsync(int offset, int count) =>
+        AnonymousCallAsync<JsonDocument>("anonymousListPage", offset, count);
+
+    /// <summary>Tells <paramref name="listener"/> when another tab changes the list; false where the module is not there.</summary>
+    internal async Task<bool> WatchAnonymousListAsync(object listener)
+    {
+        if (!await TryLoadAsync().ConfigureAwait(false) || _module is not { } module)
+        {
+            return false;
+        }
+
+        await Tolerated(() => module.InvokeVoidAsync("watchAnonymousList", listener)).ConfigureAwait(false);
+        return true;
+    }
+
+    private async Task<T?> AnonymousCallAsync<T>(string export, params object?[] args) where T : class
+    {
+        if (!await TryLoadAsync().ConfigureAwait(false) || _module is not { } module)
+        {
+            return null;
+        }
+
+        return await Tolerated(() => module.InvokeAsync<T>(export, args)).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

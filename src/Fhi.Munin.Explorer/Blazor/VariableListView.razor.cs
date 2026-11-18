@@ -346,12 +346,13 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         CatalogueDate.Period(item.DataFrom, item.DataTo, Language, T);
 
     /// <summary>
-    /// The name column's text: the variable's name, or the sentence shown for one no longer in the
-    /// catalogue. The remove button is named from the rendered cell rather than from a second call to
-    /// this, so the two cannot drift.
+    /// The name column's text: the variable's name, its code for a browser-list row too long to hand over whole,
+    /// or the sentence for one no longer in the catalogue. The remove button is named from the rendered cell.
     /// </summary>
     private string RowName(VariableListItem item) =>
-        string.IsNullOrWhiteSpace(item.VariableName) ? T.VariableNoLongerAvailable : item.VariableName;
+        !string.IsNullOrWhiteSpace(item.VariableName) ? item.VariableName
+        : ShowsBrowserCopy && !string.IsNullOrWhiteSpace(item.VariableCode) ? item.VariableCode
+        : T.VariableNoLongerAvailable;
 
     /// <summary>
     /// The columns of one row, drawn by the helper the search results use. A fragment gets its own
@@ -634,7 +635,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// <summary>The one sentence the view's alert region says, the most recent failure first.</summary>
     private string? AlertText =>
         _failed ? T.ListLoadError
-        : SharedListMessage ?? ShareMessage ?? CopyMessage ?? EmptyingMessage ?? DownloadMessage ?? ActionMessage ?? ImportReportMessage
+        : CarriedOverMessage ?? SharedListMessage ?? ShareMessage ?? CopyMessage ?? EmptyingMessage ?? DownloadMessage ?? ActionMessage ?? ImportReportMessage
           ?? CreateMessage ?? DesiredDataMessage ?? NotesMessage ?? (State is { ListsReadFailed: true, Lists.Count: 0 } ? T.ListLoadError : null);
 
     /// <summary>The lists are still being read, so an empty list says nothing about the reader yet.</summary>
@@ -703,9 +704,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         var fromWrite = TakeFocusTarget();
         var fromCreateForm = TakeCreateFormFocusTarget();
         var fromRemove = TakeRemoveFocusTarget();
+        var fromOffer = TakeOfferFocusTarget();
         var fromImport = TakeImportFocusTarget();
 
-        if ((fromCreateForm ?? fromSource ?? fromMenu ?? fromWrite ?? fromRemove ?? fromImport) is { } target)
+        if ((fromCreateForm ?? fromSource ?? fromMenu ?? fromWrite ?? fromRemove ?? fromOffer ?? fromImport) is { } target)
         {
             try
             {
@@ -745,6 +747,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 StateHasChanged();
             }
         }
+
+        await AfterBrowserListRenderAsync();
     }
 
     // Into the name field when the form opens, back to its button when the reader shuts it.
@@ -820,6 +824,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         State.SetAuthenticated(IsAuthenticated);
+        OfferBrowserList();
 
         // Caught: an exception out of a lifecycle method takes the circuit, in helsedata's legacy host the
         // whole CMS page. The mount fires this read with the search and facet refresh, the burst the
@@ -868,7 +873,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         // Nothing is asked for a reader who is not signed in. This view renders nothing for them, and
         // a call whose answer nobody sees is still a call the limiter counts - the same reason the
         // list itself is not read either.
-        if (!IsAuthenticated && _openCode is null)
+        if (!IsAuthenticated && _openCode is null && State?.UsesBrowserList != true)
         {
             return;
         }
@@ -958,6 +963,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 _downloadDone = false;
                 _pageNumber = 1;
             }
+
+            FollowBrowserListChange();
 
             // A fresh read of the lists supersedes this view's last failure; its own outcome is told when it lands.
             if (State is { IsReadingLists: true })
@@ -1326,6 +1333,11 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     {
         _failed = false;
         _listCreatedSaid = false;
+        _carriedOverAs = null;
+        _carriedOverButStillHere = false;
+        _refusal = null;
+        _refusalSaid = null;
+        _refusedRemoved = null;
         _createFailure = ListActionFailure.None;
         _actionFailure = ListActionFailure.None;
         _downloadFailure = DownloadFailure.None;
@@ -1798,6 +1810,12 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// </summary>
     private async Task DownloadAsync(ExportFormat format)
     {
+        if (ShowsBrowserCopy)
+        {
+            await DownloadBrowserListAsync(format);
+            return;
+        }
+
         if (_shownList is null || _downloading)
         {
             return;

@@ -1,4 +1,5 @@
 @using Fhi.Munin.Explorer.Blazor
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 @{
     ViewData["Title"] = "Utforskeren i helsedatas stiler";
 }
@@ -9,12 +10,12 @@
    first element is what meets the header. Adding chrome here would pad the measurement and hide
    the defect this host exists to catch.
 
-   IsAuthenticated is hardcoded true. This host has no sign-in, and with it false there is no
-   tablist and no list panel at all — ShowTabs is `VariableList is not null && IsAuthenticated` —
-   so three of the four assertions would have nothing to measure and would pass vacuously. *@
+   IsAuthenticated is true unless Sample:SignedOut is. This host has no sign-in, and signed out there is
+   no tablist and no list panel at all unless MuninExplorer:Features:CodePicker is on — so three of the
+   four assertions would have nothing to measure. The switch exists for the list-browser-list pass only. *@
 <div class="container">
     <component type="typeof(VariableExplorer)"
                render-mode="Server"
                param-Language="@("no")"
-               param-IsAuthenticated="@(true)" />
+               param-IsAuthenticated="@(!Configuration.GetValue<bool>("Sample:SignedOut"))" />
 </div>

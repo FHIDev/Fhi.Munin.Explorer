@@ -57,7 +57,7 @@ public partial class VariableSearch
 
     // Not while a link shows one row: «Lagre alle» saves every match, not the row on screen.
     private bool ShowSaveAll =>
-        ShowSaveButton && _result is { Items.Count: > 0 } && _resultsTab == ExplorerTab.Search && _pinnedRow is null;
+        ListState?.IsAuthenticated == true && _result is { Items.Count: > 0 } && _resultsTab == ExplorerTab.Search && _pinnedRow is null;
 
     private RenderFragment SaveAllControl() => builder =>
     {

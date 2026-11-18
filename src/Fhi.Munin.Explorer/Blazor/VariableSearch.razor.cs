@@ -246,6 +246,8 @@ public sealed partial class VariableSearch : ComponentBase
     /// and the tablist appears between the filters and the results — Runa's own placement, so the
     /// search box and the facets stay on screen whichever tab is open. <see cref="VariableExplorer"/>
     /// passes <see cref="VariableListView"/> here; a host composing its own page can pass anything.
+    /// With <c>MuninExplorer:Features:CodePicker</c> on, a signed-out reader gets a save button only when this is
+    /// passed, since the list it fills in the browser is seen in this tab.
     /// </remarks>
     [Parameter] public RenderFragment? VariableList { get; set; }
 
@@ -285,7 +287,10 @@ public sealed partial class VariableSearch : ComponentBase
     /// <para>
     /// The default is signed out on purpose. A host that forgets this parameter gets no saved
     /// lists, which is a visible gap; the alternative default would send unauthorised calls on
-    /// every render instead, which is not visible at all.
+    /// every render instead, which is not visible at all. With <c>MuninExplorer:Features:CodePicker</c>
+    /// on, a reader this component treats as signed out, a forgotten parameter included, gets the list kept in the
+    /// browser where <see cref="VariableList"/> is passed, and no save button where it is not; a reader with
+    /// <see cref="IsAuthenticated"/> true always saves to Munin.
     /// </para>
     /// </remarks>
     [Parameter] public bool IsAuthenticated { get; set; }
@@ -465,11 +470,10 @@ public sealed partial class VariableSearch : ComponentBase
     /// as on and off — and pressing it raises <see cref="LevelLinesChanged"/>.
     /// </para>
     /// <para>
-    /// The package does not remember the choice, by decision rather than by omission. It keeps no
-    /// reader's preference in Web Storage — it has to run inside a static-SSR host as well as an
-    /// interactive one, and what is remembered about a reader is the host's own policy to set. The
-    /// one thing it does write there is the kilde list's scroll position, per tab, as
-    /// <see cref="KildeSearch.ExpandedKildeIds"/> says. Like <see cref="Search"/> and <see cref="Filter"/>
+    /// The package does not remember the choice, by decision rather than by omission — it has to run inside a
+    /// static-SSR host as well as an interactive one, and what is remembered about a reader is the host's own
+    /// policy to set. What the package does keep in the reader's browser is listed in the README, under «What the
+    /// package keeps in the reader's browser», and this choice is not among it. Like <see cref="Search"/> and <see cref="Filter"/>
     /// it is read once at mount and owned by the component afterwards, so a host that wants it remembered
     /// stores what this raises and supplies it at the next mount; a later change to the parameter on
     /// a mounted component does nothing. A host that stores nothing gets the lines on at every
@@ -515,8 +519,8 @@ public sealed partial class VariableSearch : ComponentBase
     /// </para>
     /// <para>
     /// Remembered by the host and never by the package, exactly as <see cref="LevelLines"/> is:
-    /// the package keeps no reader's preference in Web Storage, and what is remembered about a
-    /// reader is the host's own policy to set. It is read once at
+    /// the package does not keep it in the reader's browser (the README lists what it does keep, under «What the
+    /// package keeps in the reader's browser»), and what is remembered about a reader is the host's own policy to set. It is read once at
     /// mount and owned by the component afterwards, so a host stores what
     /// <see cref="ShowNodeIconsChanged"/> raises and supplies it at the next mount; changing the
     /// parameter on a component that is already mounted does nothing. A host that stores nothing
@@ -1400,9 +1404,11 @@ public sealed partial class VariableSearch : ComponentBase
 
     /// <summary>
     /// Whether there is a second tab worth drawing. A signed-out reader has no lists, so the
-    /// tablist would name a panel with nothing in it — unless a shared list is being opened.
+    /// tablist would name a panel with nothing in it — unless a shared list is being opened, or
+    /// the host offers the list in the browser.
     /// </summary>
-    private bool ShowTabs => VariableList is not null && (IsAuthenticated || ShareCode is not null);
+    private bool ShowTabs =>
+        VariableList is not null && (IsAuthenticated || ShareCode is not null || ListState?.UsesBrowserList == true);
 
     private string ResultTabId(ExplorerTab tab) => $"munin-explorer-tab-{_instance}-{tab}";
 

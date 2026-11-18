@@ -1044,6 +1044,32 @@ export const states = {
     }
   },
 
+  // A signed-out reader's list in the browser (Fhi.Metadata-emsc0.3.12): one row saved from its open panel, then the
+  // list tab with that row drawn. Needs Sample__SignedOut=true and CodePicker on (Development has it; the gates also
+  // set MuninExplorer__Features__CodePicker=true), and fails as tooling without them, since it would scan the signed-in list.
+  'list-browser-list': async page => {
+    await rowsArePresent(page, 'button.munin-explorer-dataitem-main__name');
+
+    // Pressed once the detail has loaded: its arrival redraws the save button, and a handle to the old one never turns.
+    await states['variable-detail'](page);
+    const save = page.locator('.munin-explorer-detail button[aria-pressed]').first();
+    await save.waitFor({ state: 'visible', timeout: findTimeout });
+    await save.click();
+    await page.locator('.munin-explorer-detail button[aria-pressed="true"]').first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+
+    const tab = page.getByRole('tab', { name: 'Variabelliste', exact: true }).first();
+    await tab.waitFor({ state: 'visible', timeout: findTimeout });
+    await tab.click();
+
+    const list = page.locator('[role=tabpanel]:not([hidden])').first();
+    await list.locator('table.munin-explorer-data-list tbody th[scope=row]').first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+    if (await list.getByText('Listen er lagret bare i denne nettleseren', { exact: false }).count() === 0) {
+      throw new Error('no browser list on the tab: list-browser-list needs Sample__SignedOut=true and MuninExplorer:Features:CodePicker on');
+    }
+  },
+
   // The opened row's code picker on «Ønskede data»: the first code's branch opened and one code under it ticked, so a
   // nested level, a half-ticked parent and the summary are all scanned (Fhi.Metadata-9huq2.14).
   'list-row-picker': async page => {

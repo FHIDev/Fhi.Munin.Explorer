@@ -393,7 +393,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
             HttpMethod.Post, MyListVariables(id), new VariableIdsBody(variableIds), cancellationToken);
     }
 
-    public Task<bool> AddItemsToMyListAsync(
+    public async Task<bool> AddItemsToMyListAsync(
         Guid id,
         IReadOnlyCollection<VariableDatasamlingKey> items,
         CancellationToken cancellationToken = default)
@@ -401,8 +401,36 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         ArgumentNullException.ThrowIfNull(items);
         RefuseAnOversizedBatch(items.Count, nameof(items));
 
-        return SendForFoundAsync(HttpMethod.Post, MyListVariables(id), new ItemsBody(items), cancellationToken);
+        using var response = await SendAsync(HttpMethod.Post, MyListVariables(id), new ItemsBody(items), cancellationToken);
+
+        // Munin names the variables whose datasamling is not their own, so a caller can say which rows it refused.
+        if (response.StatusCode == HttpStatusCode.BadRequest)
+        {
+            throw new ListItemsRefusedException(await RefusedVariablesAsync(response, cancellationToken).ConfigureAwait(false));
+        }
+
+        return Found(response);
     }
+
+    private static async Task<IReadOnlyList<Guid>?> RefusedVariablesAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var body = await response.Content.ReadFromJsonAsync<RefusedItemsBody>(Json, cancellationToken).ConfigureAwait(false);
+            return body?.VariableIds is { Count: > 0 } ids ? ids : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+        catch (NotSupportedException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Munin's 400 for items whose datasamling is not the variable's own.</summary>
+    private sealed record RefusedItemsBody([property: JsonPropertyName("variabelIds")] IReadOnlyList<Guid>? VariableIds);
 
     public Task<bool> RemoveItemsFromMyListAsync(
         Guid id,
@@ -590,6 +618,14 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         [property: JsonPropertyName("includeKodeverk")] bool IncludeKodeverk,
         [property: JsonPropertyName("kildeIdFilter")] Guid? KildeIdFilter);
 
+    /// <summary>The export by (variable, datasamling) items; the API reads <c>items</c> and ignores the ids beside them.</summary>
+    private sealed record ExportItemsBody(
+        [property: JsonPropertyName("variabelIds")] IReadOnlyCollection<Guid> VariableIds,
+        [property: JsonPropertyName("items")] IReadOnlyCollection<VariableDatasamlingKey> Items,
+        [property: JsonPropertyName("format")] string Format,
+        [property: JsonPropertyName("includeKodeverk")] bool IncludeKodeverk,
+        [property: JsonPropertyName("explorerPageUrl")] Uri? ExplorerPageUrl);
+
     /// <summary>
     /// The spelling the API accepts for <c>format</c>.
     /// </summary>
@@ -758,6 +794,11 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     {
         using var response = await SendAsync(method, url, body, cancellationToken);
 
+        return Found(response);
+    }
+
+    private static bool Found(HttpResponseMessage response)
+    {
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
             return false;
@@ -1028,7 +1069,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     }
 
     /// <inheritdoc />
-    [Obsolete("Use ExportMyListAsync, which exports the reader's own list with its \"Ønskede data\". ExportListAsync is removed in 3.0.0.")]
+    [Obsolete("Use ExportMyListAsync for the reader's own list, with its \"Ønskede data\", or ExportItemsAsync for a list nobody has saved. ExportListAsync is removed in 3.0.0.")]
     public async Task<ExportedList> ExportListAsync(
         IReadOnlyCollection<Guid> variableIds,
         ExportFormat format = ExportFormat.Xlsx,
@@ -1063,6 +1104,42 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
 
         // The API's own name and type. Composing them here would get CSV-with-codebooks wrong: it
         // answers with a zip of two files, not a csv.
+        var contentType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
+        var fileName = response.Content.Headers.ContentDisposition?.FileNameStar
+            ?? response.Content.Headers.ContentDisposition?.FileName?.Trim('"')
+            ?? "variabelliste";
+
+        return new ExportedList(bytes, contentType, fileName);
+    }
+
+    /// <summary>The API's <c>MaxVariabelCount</c> for an export by items, and so the browser list's ceiling too.</summary>
+    internal const int MaxExportItems = 2000;
+
+    /// <inheritdoc />
+    public async Task<ExportedList> ExportItemsAsync(
+        IReadOnlyCollection<VariableDatasamlingKey> items,
+        Uri? explorerPageUrl = null,
+        ExportFormat format = ExportFormat.Xlsx,
+        bool includeKodeverk = false,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+
+        if (items.Count > MaxExportItems)
+        {
+            throw new ArgumentException($"At most {MaxExportItems} items can be exported at once; got {items.Count}.", nameof(items));
+        }
+
+        // The ids beside the items, which replace them, so an API older than items still exports the variables.
+        var body = new ExportItemsBody(
+            [.. items.Select(i => i.VariableId).Distinct()], items, WireName(format), includeKodeverk,
+            UsablePageUrl(explorerPageUrl));
+
+        using var response = await SendAsync(
+            HttpMethod.Post, "api/explorer/lists/export", body, cancellationToken, ExportTimeout);
+        response.EnsureSuccessStatusCode();
+
+        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
         var contentType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
         var fileName = response.Content.Headers.ContentDisposition?.FileNameStar
             ?? response.Content.Headers.ContentDisposition?.FileName?.Trim('"')
@@ -1255,6 +1332,13 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
 
         using var response = await SendAsync(HttpMethod.Post, ShareLists, body, cancellationToken);
 
+        if (response.StatusCode == HttpStatusCode.BadRequest
+            && (await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false))
+                .Contains("exceeds the maximum allowed size", StringComparison.Ordinal))
+        {
+            throw new SharedSnapshotTooLargeException();
+        }
+
         response.EnsureSuccessStatusCode();
 
         var answer = await response.Content
@@ -1336,6 +1420,16 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         return SharedSnapshot.Read(snapshot.RootElement);
     }
 
+    /// <summary>
+    /// Under Munin's <c>SharedListSnapshots.MaxSnapshotBytes</c>, 524,288 characters of the snapshot it stores, with
+    /// room for the server's own spelling of the same items.
+    /// </summary>
+    internal const int MaxShareSnapshotChars = 500_000;
+
+    /// <summary>About how many characters Munin will store for this share, measured as it measures them.</summary>
+    internal static int ShareSnapshotLength(string name, IEnumerable<VariableListItem> items) =>
+        JsonSerializer.Serialize(new ShareBody(name, [.. items.Select(SharedItemBody.From)])).Length;
+
     /// <summary>The share body. The API stores <c>items</c> verbatim, so their names are the contract.</summary>
     private sealed record ShareBody(
         [property: JsonPropertyName("name")] string Name,
@@ -1346,7 +1440,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     /// holding it, so the free text and notes stay behind, as Runa's stripPrivateAnnotations does. The
     /// chosen codes go with it (Fhi.Metadata-emsc0.3.5), left out when there are none.
     /// </summary>
-    private sealed record SharedItemBody(
+    internal sealed record SharedItemBody(
         [property: JsonPropertyName("variabelId")] Guid VariableId,
         [property: JsonPropertyName("variabelCode")] string? VariableCode,
         [property: JsonPropertyName("variabelName")] string? VariableName,
@@ -1369,4 +1463,15 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
             item.DataFrom, item.DataTo, item.VersionStatus, item.DatasamlingId,
             item.DesiredDataCodes.Count > 0 ? item.DesiredDataCodes : null);
     }
+}
+
+/// <summary>Munin refused a share because its snapshot is over the stored size, which no retry changes.</summary>
+internal sealed class SharedSnapshotTooLargeException()
+    : HttpRequestException("The shared list's snapshot exceeds the API's maximum size.", null, HttpStatusCode.BadRequest);
+
+/// <summary>Munin refused a batch of list items; <see cref="VariableIds"/> names the variables it refused, or is null when its answer did not.</summary>
+internal sealed class ListItemsRefusedException(IReadOnlyList<Guid>? variableIds)
+    : HttpRequestException("The API refused a batch of list items.", null, HttpStatusCode.BadRequest)
+{
+    public IReadOnlyList<Guid>? VariableIds { get; } = variableIds;
 }

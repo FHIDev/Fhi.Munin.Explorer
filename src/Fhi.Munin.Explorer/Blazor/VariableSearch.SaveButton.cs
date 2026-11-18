@@ -13,9 +13,10 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Drawn only for a signed-in reader. Signed out there is no button at all rather than a disabled
-/// one — a control that can never do anything is worse than no control, and the state holder would
-/// refuse the call anyway.
+/// Drawn only for a signed-in reader, or signed out with <c>MuninExplorer:Features:CodePicker</c> on and a
+/// <see cref="VariableSearch.VariableList"/> fragment passed, when the row goes to the list kept in the reader's
+/// browser and that fragment's tab shows it. Otherwise there is no button at all rather than a disabled one — a
+/// control that can never do anything is worse than no control.
 /// </para>
 /// <para>
 /// Whether a variable is saved is read from <see cref="VariableListState"/> on every render and
@@ -26,7 +27,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </remarks>
 public partial class VariableSearch
 {
-    private bool ShowSaveButton => ListState?.IsAuthenticated == true;
+    // Signed out, only where a list tab can show what the press saved.
+    private bool ShowSaveButton => ListState is { IsAuthenticated: true } || (ListState is { UsesBrowserList: true } && VariableList is not null);
 
     /// <summary>How a row's last save attempt ended, when it ended badly.</summary>
     /// <remarks>
@@ -46,7 +48,19 @@ public partial class VariableSearch
         Throttled,
 
         /// <summary>The API refused the save as unauthenticated (HTTP 401/403), despite the host's own claim that the reader is signed in.</summary>
-        SignInRequired
+        SignInRequired,
+
+        /// <summary>The browser list is full, so the row was not added.</summary>
+        BrowserListFull,
+
+        /// <summary>The row is in the browser list, but the browser holds it only while this page is open.</summary>
+        BrowserListNotKept,
+
+        /// <summary>As <see cref="BrowserListNotKept"/>, because the key holds something this version cannot read.</summary>
+        BrowserListForeign,
+
+        /// <summary>The browser could not be asked, so there is no browser list to put the row in.</summary>
+        BrowserListUnavailable
     }
 
     /// <summary>
@@ -185,6 +199,10 @@ public partial class VariableSearch
             SaveFailure.Throttled => T.RateLimitError,
             SaveFailure.SignInRequired => T.SignInRequiredError,
             SaveFailure.Failed => T.SaveError,
+            SaveFailure.BrowserListFull => T.BrowserListFull(VariableListState.MaxBrowserListRows),
+            SaveFailure.BrowserListNotKept => T.BrowserListNotKept,
+            SaveFailure.BrowserListForeign => T.BrowserListForeign,
+            SaveFailure.BrowserListUnavailable => T.BrowserListUnavailable,
             _ => null
         });
         builder.CloseElement();
@@ -197,8 +215,27 @@ public partial class VariableSearch
 
     // A row from an API older than rows per datasamling names its variable's primary datasamling, which that
     // API's lists do not store: it saves and reads by variable, as before (Fhi.Metadata-d07al.1).
+    // The browser list always saves the row, so it is asked by row.
     private bool IsRowSaved(VariableSummary v) =>
-        v.RowKey is null ? ListState!.IsSaved(v.Id) : ListState!.IsSaved(VariableDatasamlingKey.Of(v));
+        v.RowKey is null && !ListState!.UsesBrowserList ? ListState!.IsSaved(v.Id) : ListState!.IsSaved(VariableDatasamlingKey.Of(v));
+
+    // What the browser list keeps of a row: the catalogue's fields as the row shows them, nothing of the reader's.
+    private static VariableListItem BrowserListRow(VariableSummary v) => new()
+    {
+        VariableId = v.Id,
+        VariableCode = v.Code,
+        VariableName = v.PreferredTerm,
+        KildeId = v.KildeId,
+        KildeName = v.KildeName,
+        KildeShortName = v.KildeShortName,
+        DatasamlingId = v.DatasamlingId,
+        DatasamlingName = v.DatasamlingName,
+        VariabelgruppeName = v.VariabelgruppeName,
+        DataType = v.DataType,
+        DataFrom = v.DataFrom,
+        DataTo = v.DataTo,
+        VersionStatus = v.VersionStatus,
+    };
 
     private async Task ToggleSavedAsync(VariableSummary v)
     {
@@ -212,7 +249,9 @@ public partial class VariableSearch
         // failed save than a line of text beside the button.
         var row = VariableDatasamlingKey.Of(v);
 
-        if (!_savingRows.TryAdd(row, IsRowSaved(v)))
+        var drawnAsSaved = IsRowSaved(v);
+
+        if (!_savingRows.TryAdd(row, drawnAsSaved))
         {
             return;
         }
@@ -220,9 +259,30 @@ public partial class VariableSearch
         try
         {
             _saveError.Remove(row);
-            _ = v.RowKey is null
-                ? await ListState.ToggleSavedAsync(v.Id, T.FirstListName, KildeOf(v))
-                : await ListState.ToggleSavedAsync(row, T.FirstListName, KildeOf(v));
+
+            if (ListState.UsesBrowserList)
+            {
+                var outcome = await ListState.ToggleInBrowserListAsync(BrowserListRow(v), drawnAsSaved);
+
+                if (outcome == VariableListState.BrowserListOutcome.Full)
+                {
+                    _saveError[row] = SaveFailure.BrowserListFull;
+                }
+                else if (outcome == VariableListState.BrowserListOutcome.Unavailable)
+                {
+                    _saveError[row] = SaveFailure.BrowserListUnavailable;
+                }
+                else if (!ListState.BrowserListKept)
+                {
+                    _saveError[row] = ListState.BrowserListForeign ? SaveFailure.BrowserListForeign : SaveFailure.BrowserListNotKept;
+                }
+            }
+            else
+            {
+                _ = v.RowKey is null
+                    ? await ListState.ToggleSavedAsync(v.Id, T.FirstListName, KildeOf(v))
+                    : await ListState.ToggleSavedAsync(row, T.FirstListName, KildeOf(v));
+            }
         }
         catch (MuninExplorerRateLimitedException ex)
         {
