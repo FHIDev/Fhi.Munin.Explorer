@@ -318,7 +318,9 @@ public class AnonymousListTest : ExplorerTestContext
         var cut = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, false));
 
         Assert.True(Services.GetRequiredService<VariableListState>().OffersBrowserList);
-        Assert.NotEqual("", cut.Markup.Trim());
+        Assert.Contains(
+            new[] { No.BrowserListKeptHere, No.BrowserListNotKept, No.BrowserListUnavailable, No.BrowserListForeign },
+            sentence => cut.Markup.Contains(sentence, StringComparison.Ordinal));
     }
 
     [Fact]

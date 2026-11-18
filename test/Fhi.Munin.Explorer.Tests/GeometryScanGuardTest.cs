@@ -518,7 +518,7 @@ public class GeometryScanGuardTest
     [Fact]
     public void HostileHostGate_WhenItRuns_ThenItAlsoMeasuresASignedOutReadersBrowserList()
     {
-        // The browser list is off by default and the samples are signed in, so no other pass draws it (Fhi.Metadata-emsc0.3.12).
+        // The samples are signed in, so no other pass draws the browser list (Fhi.Metadata-emsc0.3.12).
         var source = File.ReadAllText(Repo.In("scripts", "check-hostile-host.sh"));
 
         Assert.Contains("MuninExplorer__Features__CodePicker=true Sample__SignedOut=true ASPNETCORE_ENVIRONMENT", source, StringComparison.Ordinal);

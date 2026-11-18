@@ -373,8 +373,8 @@ else
   echo "==> code picker off: scanned in shard 1/${SCAN_SHARD#*/}, not this one (${SCAN_SHARD})"
 fi
 
-# A signed-out reader's list in the browser, off by default: one more host start with the feature on and the sample's
-# sign-out switch, in shard 1 only like the pass above (Fhi.Metadata-emsc0.3.12).
+# A signed-out reader's list in the browser: one more host start with the sample's sign-out switch (and CodePicker
+# set explicitly), in shard 1 only like the pass above (Fhi.Metadata-emsc0.3.12).
 browser_status=0
 if [ -z "${SCAN_SHARD:-}" ] || [ "${SCAN_SHARD%%/*}" = 1 ]; then
   axe_runs=$((axe_runs + 1))

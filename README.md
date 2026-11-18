@@ -1452,8 +1452,8 @@ new list can be left in Mine variabellister: it appears among the reader's lists
 beside the next list they make, and they can delete it there. Saving only the rows Munin accepts, and leaving the
 refused ones behind, is not supported. Where the browser refuses storage the list lasts while the page is open and the
 view says so; a host that does not serve the module has no list, and the save button and the list tab say it cannot be
-kept in this browser. With it off, a signed-out reader has no save button and no list tab, as before.
-`check-accessibility.sh` scans it with axe in `list-browser-list`, on a host started with it on and with the samples'
+kept in this browser. With `CodePicker` off, a signed-out reader has no save button and no list tab, as before.
+`check-accessibility.sh` scans it with axe in `list-browser-list`, on a host started with `CodePicker` on and with the samples'
 `Sample:SignedOut` switch, which mounts the composed explorer signed out; `check-hostile-host.sh` measures the same
 state when it runs, nightly or by hand, not on a pull request.
 

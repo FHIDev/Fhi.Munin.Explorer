@@ -102,7 +102,7 @@ public sealed partial class VariableListView
         : State?.BrowserListKept == false ? T.BrowserListNotKept
         : T.BrowserListKeptHere;
 
-    /// <summary>Turns the browser list on when the host does; GetService, so a host with neither still draws the view.</summary>
+    /// <summary>Turns the browser list on when the host does; GetService, so a host that registered no switch still draws the view.</summary>
     private void OfferBrowserList()
     {
         if (State is { OffersBrowserList: false } && ServiceProvider.GetService<CodePickerSwitch>()?.On == true)

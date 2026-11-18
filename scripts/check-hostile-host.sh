@@ -453,8 +453,8 @@ picker_off_pass
 off_status=$?
 set -e
 
-# A signed-out reader's list in the browser, off by default: the same pass on a host started with it on and with the
-# sample's sign-out switch (Fhi.Metadata-emsc0.3.12).
+# A signed-out reader's list in the browser: the same pass on a host started with the sample's sign-out switch (and
+# CodePicker set explicitly) (Fhi.Metadata-emsc0.3.12).
 echo
 echo "==> a signed-out reader's list in the browser"
 browser_list_pass() {
