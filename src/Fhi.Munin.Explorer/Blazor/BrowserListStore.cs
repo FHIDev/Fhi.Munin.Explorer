@@ -13,6 +13,8 @@ internal sealed class BrowserListStore(IJSRuntime js) : IBrowserListStore, IAsyn
     private readonly ExplorerInterop _interop = new(js);
     private DotNetObjectReference<ElsewhereListener>? _listener;
 
+    public bool Refused => _interop.IsRefused;
+
     public Task<BrowserListStatus?> CountAsync() => _interop.AnonymousListCountAsync();
 
     public Task<BrowserListStatus?> AddAsync(VariableListItem row, int max) =>

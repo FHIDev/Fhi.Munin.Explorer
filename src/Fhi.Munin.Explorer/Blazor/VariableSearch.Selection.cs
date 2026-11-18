@@ -476,7 +476,8 @@ public partial class VariableSearch
 
         await MarkMixedAsync();
 
-        // Once per circuit; the read raises Changed, which draws the rows' buttons against it.
+        // Once per circuit, and again after a first read the browser could not answer; the read raises Changed, which
+        // draws the rows' buttons against it.
         if (!_disposed && ListState is { OffersBrowserList: true } lists)
         {
             await lists.ReadBrowserListAsync();

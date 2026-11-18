@@ -52,6 +52,18 @@ internal sealed class ExplorerInterop : IAsyncDisposable
     /// </summary>
     internal bool IsLoaded => _module is not null;
 
+    /// <summary>Whether the host refused the module for good, so asking again answers nothing new.</summary>
+    internal bool IsRefused
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _refused;
+            }
+        }
+    }
+
     /// <summary>
     /// Imports the module, keeping at most one however often it is asked, and answers whether it
     /// is there.

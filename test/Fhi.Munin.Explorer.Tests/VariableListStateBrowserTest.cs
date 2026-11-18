@@ -103,6 +103,70 @@ public class VariableListStateBrowserTest
     }
 
     [Fact]
+    public async Task ToggleInBrowserListAsync_WhenTheRemovalsStatusSaysFull_ThenItReportsRemoved()
+    {
+        // A full list says so after any call; read first, it would tell the reader a removal was refused as full.
+        var browser = new FakeBrowserList();
+        var state = await TabAsync(browser);
+        var row = FakeBrowserList.Row("Alder");
+        await state.ToggleInBrowserListAsync(row, drawnAsSaved: false);
+        browser.AnswersFull = true;
+
+        var outcome = await state.ToggleInBrowserListAsync(row, drawnAsSaved: true);
+
+        Assert.Equal(VariableListState.BrowserListOutcome.Removed, outcome);
+        Assert.False(state.IsSaved(VariableDatasamlingKey.Of(row)));
+    }
+
+    [Fact]
+    public async Task ReadBrowserListAsync_WhenTheFirstReadFoundNoBrowserForAMoment_ThenTheNextReadAsksAgain()
+    {
+        // A dropped circuit or a timeout answers null without the host's refusal; cached, the list would be gone for the circuit.
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        browser.Failing.Add("count");
+        var state = await TabAsync(browser);
+        Assert.False(state.BrowserListAvailable);
+
+        browser.Failing.Clear();
+        await state.ReadBrowserListAsync();
+
+        Assert.True(state.BrowserListAvailable);
+        Assert.Equal(1, state.BrowserCount);
+    }
+
+    [Fact]
+    public async Task ReadBrowserListAsync_WhenTheFirstReadKeepsGoingUnanswered_ThenEachCallReadsOnceAndOnlyTheFirstFailureIsAChange()
+    {
+        // A change sets off a render and a render reads again: changes after the first failure would never stop.
+        var browser = new FakeBrowserList();
+        browser.Failing.Add("count");
+        var state = await TabAsync(browser);
+        var version = state.BrowserVersion;
+
+        for (var call = 0; call < 3; call++)
+        {
+            await state.ReadBrowserListAsync();
+        }
+
+        Assert.Equal(4, browser.Calls.Count(c => c.Call == "count"));
+        Assert.Equal(version, state.BrowserVersion);
+        Assert.False(state.BrowserListAvailable);
+    }
+
+    [Fact]
+    public async Task ReadBrowserListAsync_WhenTheHostRefusedTheModule_ThenItIsNotAskedAgain()
+    {
+        // The host's answer for good: a read per render would ask a question that has been answered.
+        var browser = new FakeBrowserList { Unreachable = true };
+        var state = await TabAsync(browser);
+
+        await state.ReadBrowserListAsync();
+
+        Assert.Single(browser.Calls, c => c.Call == "count");
+    }
+
+    [Fact]
     public async Task SyncBrowserListAsync_WhenAnotherTabsChangeArrivesMidToggle_ThenNoStaleListIsPublished()
     {
         // The re-read was asked before the press; answered after it, without the turn it would put back the list before it.
@@ -230,6 +294,9 @@ public class VariableListStateBrowserTest
                 ? new Client.ListItemsRefusedException([.. items.Where(Stale.Contains).Select(i => i.VariableId)])
                 : new HttpRequestException("Each variable must be saved with one of its own datasamlinger.", null, System.Net.HttpStatusCode.BadRequest);
         }
+
+        public override Task<bool> RenameMyListAsync(Guid id, string name, CancellationToken cancellationToken = default) =>
+            Task.FromResult(true);
 
         public override Task<bool> DeleteMyListAsync(Guid id, CancellationToken cancellationToken = default)
         {
@@ -452,10 +519,7 @@ public class VariableListStateBrowserTest
         var state = await SignedInAsync(browser, client);
 
         var carrying = state.CarryBrowserListOverAsync("Min variabelliste");
-        while (client.Adds.Count == 0)
-        {
-            await Task.Delay(5);
-        }
+        Assert.Single(client.Adds);
 
         await state.RefreshAsync();
         Assert.Contains(client.Made, l => l.Id == client.Adds[0].List);
@@ -480,10 +544,7 @@ public class VariableListStateBrowserTest
 
         var pressing = state.CarryBrowserListOverAsync("Min variabelliste");
         var alsoPressing = state.CarryBrowserListOverAsync("Min variabelliste (2)");
-        while (client.Adds.Count < 2)
-        {
-            await Task.Delay(5);
-        }
+        Assert.Equal(2, client.Adds.Count);
 
         first.SetResult(true);
         var carried = await pressing;
@@ -588,6 +649,67 @@ public class VariableListStateBrowserTest
     }
 
     [Fact]
+    public async Task CarryBrowserListOverAsync_WhenAListsReadBegunDuringAFailedAddLandsAfterTheDiscard_ThenTheListStaysGone()
+    {
+        // That read was answered while the list existed; drawn from it, a list the reader never had would flash past.
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange(Rows(2));
+        var hold = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new ListsClient { HoldFirstAdd = hold };
+        var state = await SignedInAsync(browser, client);
+        await state.EnsureLoadedAsync();
+        var carrying = state.CarryBrowserListOverAsync("Min variabelliste");
+        var discarded = Assert.Single(client.Adds).List;
+        client.HoldLists = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reading = state.RefreshAsync();
+
+        hold.SetException(new MuninExplorerRateLimitedException());
+        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => carrying);
+        client.HoldLists.SetResult();
+        await reading;
+
+        Assert.Equal([discarded], client.Deleted);
+        Assert.DoesNotContain(state.Lists, l => l.Id == discarded);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_WhenAListsReadBegunBeforeItLandsAfterIt_ThenTheListStaysGone()
+    {
+        // The same early answer: it holds a list deleted after it was asked for.
+        var client = new ListsClient();
+        var existing = new VariableList { Id = Guid.NewGuid(), Name = "Gammel liste" };
+        client.Made.Add(existing);
+        var state = await SignedInAsync(new FakeBrowserList(), client);
+        await state.EnsureLoadedAsync();
+        client.HoldLists = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reading = state.RefreshAsync();
+
+        Assert.True(await state.DeleteAsync(existing.Id));
+        client.HoldLists.SetResult();
+        await reading;
+
+        Assert.DoesNotContain(state.Lists, l => l.Id == existing.Id);
+    }
+
+    [Fact]
+    public async Task RenameAsync_WhenAListsReadBegunBeforeTheCreateLandsAfterTheRename_ThenTheNewNameStays()
+    {
+        // Kept as it was made, the list would come back from that read under the name the reader just changed.
+        var client = new ListsClient();
+        var state = await SignedInAsync(new FakeBrowserList(), client);
+        await state.EnsureLoadedAsync();
+        client.HoldLists = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reading = state.RefreshAsync();
+        var created = await state.CreateAsync("Ny liste");
+
+        Assert.True(await state.RenameAsync(created!.Id, "Hjerte og kar"));
+        client.HoldLists.SetResult();
+        await reading;
+
+        Assert.Equal("Hjerte og kar", Assert.Single(state.Lists, l => l.Id == created.Id).Name);
+    }
+
+    [Fact]
     public async Task CarryBrowserListOverAsync_WhenTheAddAndTheDeleteBothFail_ThenALaterReadStillShowsTheLeftList()
     {
         // Still marked as being carried into, the list would be filtered out of every answer that holds it.
@@ -632,10 +754,7 @@ public class VariableListStateBrowserTest
         var state = await SignedInAsync(browser, client);
 
         var carrying = state.CarryBrowserListOverAsync("Min variabelliste");
-        while (client.Deleted.Count == 0)
-        {
-            await Task.Delay(5);
-        }
+        Assert.Single(client.Deleted);
 
         state.SetAuthenticated(false);
         state.SetAuthenticated(true);
@@ -670,10 +789,7 @@ public class VariableListStateBrowserTest
         var state = await SignedInAsync(browser, new ListsClient { BeforeAdd = () => browser.Hold = true });
 
         var carrying = state.CarryBrowserListOverAsync("Min variabelliste");
-        while (!browser.Pending.Exists(p => p.Call == "removeKeys"))
-        {
-            await Task.Delay(5);
-        }
+        Assert.Contains(browser.Pending, p => p.Call == "removeKeys");
 
         state.SetAuthenticated(false);
         state.SetAuthenticated(true);
@@ -697,10 +813,7 @@ public class VariableListStateBrowserTest
         var state = await SignedInAsync(browser, client);
 
         var carrying = state.CarryBrowserListOverAsync("Min variabelliste");
-        while (client.Adds.Count == 0)
-        {
-            await Task.Delay(5);
-        }
+        Assert.Single(client.Adds);
 
         state.SetAuthenticated(false);
         if (anotherSignsIn)
@@ -732,10 +845,7 @@ public class VariableListStateBrowserTest
         var state = await SignedInAsync(browser, client);
 
         var carrying = state.CarryBrowserListOverAsync("Min variabelliste");
-        while (client.Adds.Count == 0)
-        {
-            await Task.Delay(5);
-        }
+        Assert.Single(client.Adds);
 
         state.SetAuthenticated(false);
         state.SetAuthenticated(true);
@@ -762,10 +872,7 @@ public class VariableListStateBrowserTest
         browser.Hold = true;
 
         var carrying = state.CarryBrowserListOverAsync("Min variabelliste");
-        while (browser.Pending.Count == 0)
-        {
-            await Task.Delay(5);
-        }
+        Assert.NotEmpty(browser.Pending);
 
         state.SetAuthenticated(false);
         state.SetAuthenticated(true);
@@ -787,10 +894,7 @@ public class VariableListStateBrowserTest
         var state = await SignedInAsync(browser, client);
 
         var carrying = state.CarryBrowserListOverAsync("Min variabelliste");
-        while (client.Created.Count == 0)
-        {
-            await Task.Delay(5);
-        }
+        Assert.Single(client.Created);
 
         state.SetAuthenticated(false);
         state.SetAuthenticated(true);
