@@ -131,6 +131,11 @@ async function collapseFilters(page, row) {
 /** States scanned at the default width only: their fold is drawn from 1024px up, so a phone has none to scan. */
 export const wideOnlyStates = new Set(['variables-filters-collapsed', 'kilder-filters-collapsed']);
 
+// A state's own check found the page wrong: a finding, which axe-scan exits 1 on, not a state it could not reach.
+export class StateDefect extends Error {
+  name = 'StateDefect';
+}
+
 export const states = {
   // The script guards inventory these literal names without launching a browser.
   'tree-collapsed': treeStates['tree-collapsed'],
@@ -1071,8 +1076,8 @@ export const states = {
   },
 
   // The browser list's share open with its code. On the way, a Tab while the share is held must keep the reader where
-  // Tab took them, and reopening must put focus on the code: the browser decides (Fhi.Metadata-emsc0.3.19). Needs
-  // STUB_BASE, the stub the host reads; a failed focus check here is a defect in the package, not tooling.
+  // Tab took them, and reopening must put focus on the code (Fhi.Metadata-emsc0.3.19). Needs STUB_BASE, the stub the
+  // host reads; a failed focus check throws StateDefect, which axe-scan reports as a finding.
   'list-browser-list-share': async page => {
     await states['list-browser-list'](page);
     const stub = process.env.STUB_BASE;
@@ -1098,7 +1103,7 @@ export const states = {
     await code.waitFor({ state: 'visible', timeout: findTimeout });
     await page.waitForTimeout(1000);
     if (await focused() !== movedTo) {
-      throw new Error(`DEFECT, not tooling: the share took focus from «${movedTo}» to «${await focused()}» after the reader moved on`);
+      throw new StateDefect(`the share took focus from «${movedTo}» to «${await focused()}» after the reader moved on`);
     }
 
     await share.click();
@@ -1106,7 +1111,7 @@ export const states = {
     await share.click();
     await page.waitForFunction(() => document.activeElement?.id?.startsWith('munin-explorer-share-code-') === true, null,
       { timeout: findTimeout }).catch(async () => {
-      throw new Error(`DEFECT, not tooling: «Del liste» pressed again left focus on «${await focused()}», not on the code`);
+      throw new StateDefect(`«Del liste» pressed again left focus on «${await focused()}», not on the code`);
     });
   },
 

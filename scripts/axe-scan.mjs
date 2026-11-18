@@ -10,7 +10,7 @@ import { chromium } from 'playwright';
 
 import { launchOptions } from './browser-launch.mjs';
 import AxeBuilder from '@axe-core/playwright';
-import { states, wideOnlyStates } from './axe-states.mjs';
+import { StateDefect, states, wideOnlyStates } from './axe-states.mjs';
 import { criteriaOf, resultLine, scanFinishedLine } from './axe-pages.mjs';
 import { describeShard, packByCost, parseShard } from './scan-shard.mjs';
 import { BROWSER_LIST_SECONDS, DEFAULT_SECONDS, PICKER_OFF_SECONDS, REFLOW_SECONDS, stateSeconds } from './axe-state-seconds.mjs';
@@ -213,6 +213,12 @@ try {
       try {
         await states[state](page);
       } catch (err) {
+        if (err instanceof StateDefect) {
+          console.error(`DEFECT in state "${state}" on ${url}: ${err.message}`);
+          await context.close();
+          await browser.close();
+          process.exit(1);
+        }
         console.error(`could not reach state "${state}" on ${url} - TOOLING failure.`);
         console.error(String(err?.message ?? err));
         await context.close();

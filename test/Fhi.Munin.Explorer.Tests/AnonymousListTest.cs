@@ -624,8 +624,8 @@ public class AnonymousListTest : ExplorerTestContext
     [Fact]
     public async Task VariableListView_WhenTheReaderOpensAFoldWhileTheShareIsOut_ThenTheBrowserDecidesAndTheViewFocusesNothingItself()
     {
-        // Whether focus stays is the browser's answer (focusIfStillOn, node-tested); the view must not overrule it.
-        var module = SharesFocusModule(movedOn: true);
+        // Whether focus stays is the browser's answer (focusIfStillOn, node-tested and gated); the view must not overrule it.
+        var module = SharesFocusModule();
         var browser = new FakeBrowserList();
         browser.Rows.Add(FakeBrowserList.Row("Alder"));
         var share = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -646,11 +646,10 @@ public class AnonymousListTest : ExplorerTestContext
 
     private const string FocusIfStillOn = "focusIfStillOn";
 
-    // movedOn: the browser's answer when the reader has left «Del liste»; the view acts the same either way.
-    private BunitJSModuleInterop SharesFocusModule(bool movedOn = false)
+    private BunitJSModuleInterop SharesFocusModule()
     {
         var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
-        module.Setup<bool>(FocusIfStillOn, _ => true).SetResult(!movedOn);
+        module.Setup<bool>(FocusIfStillOn, _ => true).SetResult(true);
         return module;
     }
 

@@ -275,7 +275,8 @@ internal sealed class ExplorerInterop : IAsyncDisposable
     }
 
     /// <summary>Moves focus to <paramref name="toId"/> while it is still on <paramref name="fromId"/> or on nothing.</summary>
-    /// <returns>False when the reader moved on, the element is gone or the module cannot be reached.</returns>
+    /// <returns>False when the reader moved on, the element is gone or the browser is out of reach.</returns>
+    /// <exception cref="JSException">A fault in the export itself, for the caller to log as one.</exception>
     internal static async Task<bool> FocusIfStillOnAsync(IJSRuntime js, string fromId, string toId)
     {
         await using var interop = new ExplorerInterop(js);
@@ -285,15 +286,8 @@ internal sealed class ExplorerInterop : IAsyncDisposable
             return false;
         }
 
-        try
-        {
-            return await Tolerated<object>(async () => await module.InvokeAsync<bool>("focusIfStillOn", fromId, toId).ConfigureAwait(false))
-                .ConfigureAwait(false) is true;
-        }
-        catch (JSException)
-        {
-            return false;
-        }
+        return await Tolerated<object>(async () => await module.InvokeAsync<bool>("focusIfStillOn", fromId, toId).ConfigureAwait(false))
+            .ConfigureAwait(false) is true;
     }
 
     // Null means unknown, so callers must not mistake an unreachable control for a cleared date.

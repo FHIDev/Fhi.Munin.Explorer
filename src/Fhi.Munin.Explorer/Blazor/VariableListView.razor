@@ -861,7 +861,7 @@ else if (ShowsBrowserCopy)
         {
             <div>
                 <label class="form-element__label" for="@ShareCodeFieldId">@T.ShareCodeLabel</label>
-                <input type="text" id="@ShareCodeFieldId" readonly value="@made.Code" @ref="_shareCodeField" />
+                <input type="text" id="@ShareCodeFieldId" readonly value="@made.Code" />
 
                 @if (made.Link is { } link)
                 {

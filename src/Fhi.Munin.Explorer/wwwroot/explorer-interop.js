@@ -34,13 +34,23 @@ export function isTypingInField() {
     || (active instanceof HTMLElement && active.isContentEditable);
 }
 
-// Focus goes to `toId` only while it is still on `fromId` or on nothing: a reader who moved on, by any control, keeps
-// their place. Checked and moved in one step, so no press can land between the two.
+// What the reader last pressed or clicked. Safari, and Firefox on macOS, leave a clicked button unfocused, so focus on
+// nothing says nothing there about whether the reader moved on; the press does (Fhi.Metadata-emsc0.3.19).
+let lastPressed = null;
+const remember = event => { lastPressed = event.target; };
+document.addEventListener('pointerdown', remember, true);
+document.addEventListener('keydown', remember, true);
+
+// Focus goes to `toId` only while it is on `fromId`, or on nothing with `fromId` the last thing pressed: a reader who
+// moved on, by any control, keeps their place. Checked and moved in one step, so no press can land between the two.
 export function focusIfStillOn(fromId, toId) {
   const active = document.activeElement;
+  const from = document.getElementById(fromId);
   const to = document.getElementById(toId);
-  if (!(to instanceof HTMLElement)
-    || (active !== null && active !== document.body && active !== document.getElementById(fromId))) {
+  const onNothing = active === null || active === document.body;
+  const stillThere = active !== null && active === from
+    || (onNothing && (lastPressed === null || (from !== null && from.contains(lastPressed))));
+  if (!(to instanceof HTMLElement) || !stillThere) {
     return false;
   }
   to.focus();

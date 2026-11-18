@@ -5,6 +5,7 @@ using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -151,10 +152,14 @@ public sealed partial class VariableListView
 
             if (ShowsBrowserCopy && _sharingBrowserList && _browserShare is not null)
             {
-                // The browser says where focus is: a reader who moved on while the share was out, by any control, keeps it.
+                // The browser says where focus is and what was pressed last: a reader who moved on while the share was out keeps it.
                 try
                 {
                     await ExplorerInterop.FocusIfStillOnAsync(Js, ShareToggleId, ShareCodeFieldId);
+                }
+                catch (JSException ex)
+                {
+                    Log?.LogError(ex, "the module could not move focus to the browser list's share code");
                 }
                 catch (Exception ex)
                 {
@@ -207,7 +212,6 @@ public sealed partial class VariableListView
         }
 
         _confirmingClear = !_confirmingClear;
-        _readerMoves++;
     }
 
     private async Task ClearBrowserListAsync()
