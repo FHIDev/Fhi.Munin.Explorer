@@ -486,7 +486,7 @@ public class GeometryScanGuardTest
         Assert.Contains("::list-row-picker-off\"", source, StringComparison.Ordinal);
     }
 
-    // The browser list is off by default and the samples are signed in, so only this pass scans it (Fhi.Metadata-emsc0.3.12).
+    // The samples are signed in, so only this pass scans the browser list (Fhi.Metadata-emsc0.3.12).
     [Fact]
     public void AccessibilityGate_WhenItRuns_ThenItAlsoScansASignedOutReadersBrowserList()
     {
