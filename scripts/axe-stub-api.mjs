@@ -476,10 +476,11 @@ function handle(request, response) {
     request.on('end', () => {
       let name = '';
       try { name = String(JSON.parse(sent || '{}').name ?? '').trim(); } catch { name = ''; }
-      // Munin's 409 at the person's list quota, for list-create-refused's reserved name (Fhi.Metadata-oiips.61).
+      // Munin's 409 at the person's list quota, for list-create-refused's reserved name (Fhi.Metadata-oiips.61). English
+      // text, so the Norwegian sentence the state waits for can only be the package's own.
       if (name === QUOTA_LIST_NAME) {
         response.writeHead(409, { 'content-type': 'application/json' }).end(JSON.stringify(
-          { error: 'Du kan ha høyst 50 lister. Slett en liste før du lager en ny.', code: 'list-limit', limit: 50 }));
+          { error: 'You can have at most 50 lists. Delete a list before you make a new one.', code: 'list-limit', limit: 50 }));
         return;
       }
       const now = new Date().toISOString();

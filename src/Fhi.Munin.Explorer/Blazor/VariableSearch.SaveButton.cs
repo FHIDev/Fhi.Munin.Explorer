@@ -50,7 +50,7 @@ public partial class VariableSearch
         /// <summary>The API refused the save as unauthenticated (HTTP 401/403), despite the host's own claim that the reader is signed in.</summary>
         SignInRequired,
 
-        /// <summary>Munin refused it at a list quota; <see cref="_rowQuota"/> says which (Fhi.Metadata-oiips.61).</summary>
+        /// <summary>Munin refused it at a list quota, named by <see cref="_rowQuota"/> or SaveAllOutcome.Quota (Fhi.Metadata-oiips.61).</summary>
         ListQuota,
 
         /// <summary>The browser list is full, so the row was not added.</summary>

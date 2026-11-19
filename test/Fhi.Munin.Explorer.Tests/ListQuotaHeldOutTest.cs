@@ -25,6 +25,15 @@ public class ListQuotaHeldOutTest : ExplorerTestContext
     private sealed class SharedClient(MuninExplorerListQuotaException? createRefusal, MuninExplorerListQuotaException? addRefusal)
         : EmptyMuninExplorerClient
     {
+        public Exception? CreateFailure { get; set; } = createRefusal;
+        public List<Guid> Deleted { get; } = [];
+
+        public override Task<bool> DeleteMyListAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            Deleted.Add(id);
+            return Task.FromResult(true);
+        }
+
         public override Task<SharedList?> GetSharedListAsync(string? code, CancellationToken cancellationToken = default) =>
             Task.FromResult<SharedList?>(new SharedList("Delt liste", Three));
 
@@ -32,8 +41,8 @@ public class ListQuotaHeldOutTest : ExplorerTestContext
             Task.FromResult<IReadOnlyList<VariableList>>([]);
 
         public override Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default) =>
-            createRefusal is not null
-                ? throw createRefusal
+            CreateFailure is not null
+                ? throw CreateFailure
                 : Task.FromResult(new VariableList { Id = Guid.NewGuid(), Name = name });
 
         public override Task<bool> AddVariablesToMyListAsync(
@@ -48,14 +57,25 @@ public class ListQuotaHeldOutTest : ExplorerTestContext
 
     private sealed class CopyClient : EmptyMuninExplorerClient
     {
+        public Exception? CreateFailure { get; set; }
+        public Exception AddFailure { get; set; } = new MuninExplorerListQuotaException(ListQuotaKind.Rows, 50, "Maks 50 rader.");
+
+        // So the copy the first press leaves on screen can be copied again.
+        public bool EveryListHoldsThree { get; set; }
+
         private readonly List<VariableList> _lists = [new VariableList { Id = SourceId, Name = "Kilde" }];
 
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<VariableList>>(
-                [.. _lists.Select(l => l with { VariableCount = l.Id == SourceId ? Three.Length : 0 })]);
+                [.. _lists.Select(l => l with { VariableCount = l.Id == SourceId || EveryListHoldsThree ? Three.Length : 0 })]);
 
         public override Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default)
         {
+            if (CreateFailure is not null)
+            {
+                throw CreateFailure;
+            }
+
             var created = new VariableList { Id = Guid.NewGuid(), Name = name };
             _lists.Add(created);
             return Task.FromResult(created);
@@ -63,13 +83,13 @@ public class ListQuotaHeldOutTest : ExplorerTestContext
 
         public override Task<bool> AddVariablesToMyListAsync(
             Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default) =>
-            throw new MuninExplorerListQuotaException(ListQuotaKind.Rows, 50, "Maks 50 rader.");
+            throw AddFailure;
 
         public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
             Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
             CancellationToken cancellationToken = default)
         {
-            var items = id == SourceId ? Three : [];
+            var items = id == SourceId || EveryListHoldsThree ? Three : [];
 
             return Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
             {
@@ -101,7 +121,7 @@ public class ListQuotaHeldOutTest : ExplorerTestContext
         cut.Find("div[role=alert][aria-live=assertive]").TextContent.Trim();
 
     [Fact]
-    public void Save_WhenMuninRefusesTheCreateOfASharedListAtTheListQuota_ThenTheAlertSaysTheLimit()
+    public void VariableListView_WhenMuninRefusesTheCreateOfASharedListAtTheListQuota_ThenTheAlertSaysTheLimit()
     {
         var texts = Texts.For("no");
         var refusal = new MuninExplorerListQuotaException(ListQuotaKind.Lists, 50, "Maks 50 lister.");
@@ -115,7 +135,7 @@ public class ListQuotaHeldOutTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Save_WhenMuninRefusesTheAddOfASharedListAtTheRowQuota_ThenTheAlertSaysTheLimit()
+    public void VariableListView_WhenMuninRefusesTheAddOfASharedListAtTheRowQuota_ThenTheAlertSaysTheLimit()
     {
         var texts = Texts.For("no");
         var refusal = new MuninExplorerListQuotaException(ListQuotaKind.Rows, 50, "Maks 50 rader.");
@@ -129,7 +149,7 @@ public class ListQuotaHeldOutTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Copy_WhenTheRowsAreRefusedAtTheRowQuota_ThenTheAlertSaysTheCopyIsIncompleteAndTheLimit()
+    public void VariableListView_WhenACopysRowsAreRefusedAtTheRowQuota_ThenTheAlertSaysTheCopyIsIncompleteAndTheLimit()
     {
         var texts = Texts.For("no");
         var cut = RenderView(new CopyClient());
@@ -140,5 +160,65 @@ public class ListQuotaHeldOutTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Contains(texts.CopyIncomplete, Alert(cut)));
         Assert.Contains(texts.RowLimitReached(50), Alert(cut));
+    }
+
+    [Fact]
+    public void VariableListView_WhenASharedSavesRowsAreRefusedAtTheRowQuota_ThenTheEmptyListItMadeIsDeleted()
+    {
+        var client = new SharedClient(null, new MuninExplorerListQuotaException(ListQuotaKind.Rows, 50, apiText: null));
+        var cut = RenderView(client, shareCode: "AB12CD");
+        cut.WaitForAssertion(() => Assert.Equal(3, cut.FindAll("table tbody tr").Count));
+
+        Button(cut, "Lagre som min liste").Click();
+        Button(cut, "Lagre listen").Click();
+
+        cut.WaitForAssertion(() => Assert.Single(client.Deleted));
+    }
+
+    [Fact]
+    public void VariableListView_WhenASharedSaveIsThrottledAfterAQuotaRefusal_ThenItSaysTheThrottleNotTheLimit()
+    {
+        var texts = Texts.For("no");
+        var client = new SharedClient(new MuninExplorerListQuotaException(ListQuotaKind.Lists, 50, apiText: null), null);
+        var cut = RenderView(client, shareCode: "AB12CD");
+        cut.WaitForAssertion(() => Assert.Equal(3, cut.FindAll("table tbody tr").Count));
+        Button(cut, "Lagre som min liste").Click();
+        Button(cut, "Lagre listen").Click();
+        cut.WaitForAssertion(() => Assert.Equal(texts.ListLimitReached(50), Alert(cut)));
+        client.CreateFailure = new MuninExplorerRateLimitedException();
+
+        Button(cut, "Lagre listen").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(texts.RateLimitError, Alert(cut)));
+    }
+
+    [Fact]
+    public void VariableListView_WhenACopyIsRefusedAtTheListQuota_ThenItSaysTheLimitAndNotThatACopyIsIncomplete()
+    {
+        var texts = Texts.For("no");
+        var cut = RenderView(new CopyClient { CreateFailure = new MuninExplorerListQuotaException(ListQuotaKind.Lists, 50, apiText: null) });
+        cut.WaitForAssertion(() => Assert.Equal(3, cut.FindAll("table tbody tr").Count));
+
+        Button(cut, "Kopier liste").Click();
+        Button(cut, "Kopier listen").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(texts.ListLimitReached(50), Alert(cut)));
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheNextCopyIsCutShortForAnotherReason_ThenTheEarlierLimitIsNotSaid()
+    {
+        var texts = Texts.For("no");
+        var client = new CopyClient { EveryListHoldsThree = true };
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(3, cut.FindAll("table tbody tr").Count));
+        Button(cut, "Kopier liste").Click();
+        Button(cut, "Kopier listen").Click();
+        cut.WaitForAssertion(() => Assert.Contains(texts.RowLimitReached(50), Alert(cut)));
+        client.AddFailure = new HttpRequestException("nede");
+
+        Button(cut, "Kopier listen").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(texts.CopyIncomplete, Alert(cut)));
     }
 }

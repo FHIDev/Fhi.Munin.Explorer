@@ -408,6 +408,18 @@ public sealed partial class VariableListView
         }
     }
 
+    private async Task DiscardRefusedSaveAsync(Guid list)
+    {
+        try
+        {
+            await State!.DeleteAsync(list);
+        }
+        catch (Exception ex)
+        {
+            Log?.LogWarning(ex, "could not delete list {ListId} after the quota refused its rows", list);
+        }
+    }
+
     private async Task SaveSharedListOnceAsync()
     {
         if (State is null || !IsAuthenticated || _sharedList is not { } shared)
@@ -420,7 +432,7 @@ public sealed partial class VariableListView
         ForgetFailures();
         _saveNameProblem = SaveNameProblem.None;
 
-        VariableList? created;
+        VariableList? created = null;
 
         try
         {
@@ -450,6 +462,13 @@ public sealed partial class VariableListView
         {
             Log?.LogWarning(ex, "Munin's list quota refused saving a shared list");
             _saveSharedQuota = ex;
+
+            // As the carry-over does: an empty list left behind would take the name the reader retries with.
+            if (created is not null)
+            {
+                await DiscardRefusedSaveAsync(created.Id);
+            }
+
             return;
         }
         catch (MuninExplorerRateLimitedException ex)

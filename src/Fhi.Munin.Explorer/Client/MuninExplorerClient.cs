@@ -443,7 +443,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         }
         catch (Exception cause) when (cause is not OperationCanceledException)
         {
-            // The 409 still throws below as it always did; only the reading of it as the quota is lost.
+            // The 409 still throws, as any other 409 does; only the reading of it as the quota is lost.
             _logger?.LogWarning(cause, "a 409 body could not be read");
             return;
         }
@@ -872,7 +872,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     }
 
     // A 429 is thrown here so every write, wherever it reads status, inherits it as every read does from
-    // GetOrNullAsync; the export once sent its own request and did not. Disposed first: no caller can dispose it.
+    // GetOrNullAsync, and a write that sends its own request does not. Disposed first: no caller can dispose it.
     private async Task<HttpResponseMessage> SendAsync(
         HttpMethod method,
         string url,

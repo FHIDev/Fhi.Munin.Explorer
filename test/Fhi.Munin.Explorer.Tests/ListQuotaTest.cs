@@ -37,7 +37,7 @@ public class ListQuotaTest
     [InlineData("create")]
     [InlineData("variables")]
     [InlineData("items")]
-    public async Task ListWriteAsync_WhenMuninAnswersTheListLimit_ThenTheQuotaIsThrownWithItsKindLimitAndText(string call)
+    public async Task MuninExplorerClient_WhenAListWriteIsAnsweredWithTheListLimit_ThenTheQuotaIsThrownWithItsKindLimitAndText(string call)
     {
         var refused = await Assert.ThrowsAsync<MuninExplorerListQuotaException>(
             () => ListWriteAsync(Client(StubHttpHandler.Answering(HttpStatusCode.Conflict, ListLimit)), call));
@@ -52,7 +52,7 @@ public class ListQuotaTest
     [InlineData("create")]
     [InlineData("variables")]
     [InlineData("items")]
-    public async Task ListWriteAsync_WhenMuninAnswersTheRowLimit_ThenTheQuotaIsThrownAsRows(string call)
+    public async Task MuninExplorerClient_WhenAListWriteIsAnsweredWithTheRowLimit_ThenTheQuotaIsThrownAsRows(string call)
     {
         var refused = await Assert.ThrowsAsync<MuninExplorerListQuotaException>(
             () => ListWriteAsync(Client(StubHttpHandler.Answering(HttpStatusCode.Conflict, RowLimit)), call));
@@ -68,13 +68,23 @@ public class ListQuotaTest
     [InlineData("create", """{"error":"x"}""")]
     [InlineData("variables", "<html>Conflict</html>")]
     [InlineData("items", "")]
-    public async Task ListWriteAsync_WhenA409IsNotTheQuota_ThenItIsThrownAsBefore(string call, string body)
+    public async Task MuninExplorerClient_WhenAListWritesConflictIsNotTheQuota_ThenItIsThrownAsBefore(string call, string body)
     {
         var refused = await Assert.ThrowsAsync<HttpRequestException>(
             () => ListWriteAsync(Client(StubHttpHandler.Answering(HttpStatusCode.Conflict, body)), call));
 
         Assert.IsNotType<MuninExplorerListQuotaException>(refused);
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateMyListAsync_WhenAQuotaBodyComesWithAnotherStatus_ThenItIsNotReadAsTheQuota()
+    {
+        var refused = await Assert.ThrowsAsync<HttpRequestException>(
+            () => Client(StubHttpHandler.Answering(HttpStatusCode.BadRequest, ListLimit)).CreateMyListAsync("Min liste"));
+
+        Assert.IsNotType<MuninExplorerListQuotaException>(refused);
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
     }
 
     [Fact]
