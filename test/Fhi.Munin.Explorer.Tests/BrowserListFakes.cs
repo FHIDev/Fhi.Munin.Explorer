@@ -32,6 +32,9 @@ internal sealed class FakeBrowserList : IBrowserListStore
     /// <summary>Calls by these names answer null, as a module that failed only those would.</summary>
     public HashSet<string> Failing { get; } = [];
 
+    /// <summary>Calls by these names throw, as a fault in only that part of the module would.</summary>
+    public HashSet<string> ThrowingCalls { get; } = [];
+
     /// <summary>
     /// While set, every call works out its answer when it is made, as the browser does, and hands it back only when
     /// a test releases it from <see cref="Pending"/>: the round trip, made as long as a test needs.
@@ -71,6 +74,11 @@ internal sealed class FakeBrowserList : IBrowserListStore
         if (Throws is { } thrown)
         {
             throw thrown;
+        }
+
+        if (ThrowingCalls.Contains(call))
+        {
+            throw new InvalidOperationException($"the module's {call} failed");
         }
 
         var answered = Unreachable || Failing.Contains(call) ? null : answer();

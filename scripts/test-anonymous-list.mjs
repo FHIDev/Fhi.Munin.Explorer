@@ -378,10 +378,29 @@ test('CarryClaim_WhenAnotherTabHoldsALiveClaim_ThenThisTabIsRefused', async () =
   assert.deepEqual(await second.anonymousCarryClaim(60_000, 0), { taken: false, token: null });
 });
 
-test('CarryClaim_WhenTwoTabsClaimAtOnce_ThenExactlyOneGoesOn', async () => {
-  const [a, b] = await Promise.all([tab(), tab()]);
-  const answers = await Promise.all([a.anonymousCarryClaim(60_000, 5), b.anonymousCarryClaim(60_000, 5)]);
-  assert.equal(answers.filter(answer => answer.taken).length, 1);
+test('CarryClaim_WhenAnotherTabWritesItsClaimDuringTheSettle_ThenThisTabGivesWay', async () => {
+  // Two tabs that both found no claim and both wrote one: the read-back is what lets only the last writer go on.
+  const m = await tab();
+  const claiming = m.anonymousCarryClaim(60_000, 20);
+  store.set(CLAIM, JSON.stringify({ token: 'other-tab', until: Date.now() + 60_000 }));
+  assert.deepEqual(await claiming, { taken: false, token: null });
+  assert.equal(JSON.parse(store.get(CLAIM)).token, 'other-tab');
+});
+
+test('CarryClaim_WhenTheSettleReadIsRefused_ThenThePressGoesOnWithItsClaim', async () => {
+  // A read refused after a good write says nothing about another tab; turning the reader away would be untrue.
+  const m = await tab();
+  const claiming = m.anonymousCarryClaim(60_000, 20);
+  failing.get = true;
+  const answer = await claiming;
+  assert.equal(answer.taken, true);
+  assert.equal(typeof answer.token, 'string');
+});
+
+test('CarryClaim_WhenAStoredClaimReachesFurtherThanOneLifetime_ThenItStopsNoPress', async () => {
+  // A clock set back, or a value not written by this module, would otherwise hold the carry-over off indefinitely.
+  store.set(CLAIM, JSON.stringify({ token: 'far-off', until: Date.now() + 10 * 60_000 }));
+  assert.equal((await (await tab()).anonymousCarryClaim(60_000, 0)).taken, true);
 });
 
 test('CarryClaim_WhenAClosedTabsClaimHasExpired_ThenAPressTakesIt', async () => {

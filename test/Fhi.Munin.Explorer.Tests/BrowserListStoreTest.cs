@@ -25,6 +25,15 @@ public class BrowserListStoreTest : ExplorerTestContext
         Assert.Equal(new BrowserListStatus(false, 3, true, true, true, true), status);
     }
 
+    [Fact]
+    public void BrowserCarryClaim_WhenTheModulesAnswerIsRead_ThenBothFieldsLand()
+    {
+        // A renamed field reads as false: every press would be told the list is already being saved.
+        var claim = JsonSerializer.Deserialize<BrowserCarryClaim>("""{"taken":true,"token":"t-1"}""");
+
+        Assert.Equal(new BrowserCarryClaim(true, "t-1"), claim);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

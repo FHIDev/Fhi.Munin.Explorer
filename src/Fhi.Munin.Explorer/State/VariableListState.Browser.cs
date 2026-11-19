@@ -399,14 +399,15 @@ public sealed partial class VariableListState : IDisposable
     }
 
     /// <summary>
-    /// What a carry-over did: the list the rows went to and whether they also left the browser; or, when Munin refused
-    /// the variables in <see cref="Refused"/>, no list, nothing saved, and <see cref="RefusedRows"/> browser rows of them.
+    /// What a carry-over did: the list the rows went to and whether they also left the browser; when Munin refused the
+    /// variables in <see cref="Refused"/>, no list and <see cref="RefusedRows"/> browser rows of them; or, with
+    /// <see cref="AlreadyCarrying"/>, nothing touched, since another tab or view is carrying the rows.
     /// </summary>
     internal sealed record CarryOver(
         VariableList? List, bool LeftTheBrowser, IReadOnlySet<Guid>? Refused = null, int RefusedRows = 0, bool AlreadyCarrying = false);
 
-    // Long enough for a create, an add and a removal on a slow line; a claim a closed tab left stops a press no longer.
-    internal static readonly TimeSpan CarryClaimLifetime = TimeSpan.FromSeconds(60);
+    // The create and the add may each take the client's whole per-call limit; a third covers the reads and the removal.
+    internal static readonly TimeSpan CarryClaimLifetime = RequestTimeoutHandler.Default * 3;
 
     // Two tabs writing a claim in the same moment: each reads back after this, and only the one whose claim stayed goes on.
     internal static readonly TimeSpan CarryClaimSettle = TimeSpan.FromMilliseconds(50);
@@ -418,10 +419,9 @@ public sealed partial class VariableListState : IDisposable
     internal int BrowserVariablesOf(IReadOnlySet<Guid> variables) =>
         _browserKeys.Select(k => k.VariableId).Where(variables.Contains).Distinct().Count();
 
-    /// <returns>The list, also when the reader changes as its rows leave the browser; no list and the variables when Munin
-    /// names these rows; <see cref="CarryOver.AlreadyCarrying"/> when another tab or view is carrying them. Null when
-    /// signed out, empty, unread, the list gone, or the reader changed before the add answered (a list made by then
-    /// stays in Munin). Any other failure throws; when nothing is saved, the list is deleted.</returns>
+    /// <returns>A <see cref="CarryOver"/>; null when signed out, empty, unread, the list gone, or the reader changed before
+    /// the add answered (a list made by then stays in Munin). Any other failure throws; when nothing is saved, the list
+    /// is deleted.</returns>
     internal async Task<CarryOver?> CarryBrowserListOverAsync(string name, CancellationToken cancellationToken = default)
     {
         // Every await is a point at which the reader can sign out; the rows belong to the reader who pressed.

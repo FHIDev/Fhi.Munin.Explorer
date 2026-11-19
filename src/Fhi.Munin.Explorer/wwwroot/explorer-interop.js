@@ -1052,12 +1052,13 @@ export function watchAnonymousList(listener) {
 const anonymousClaimKey = 'Fhi.Munin.Explorer:anonymous-list-claim';
 let anonymousClaimSeq = 0;
 
+// The stored claim, null when there is none or it is not ours to read, or undefined when storage refused the read.
 function anonymousReadClaim() {
   try {
     const parsed = JSON.parse(localStorage.getItem(anonymousClaimKey));
     return parsed && typeof parsed.token === 'string' && typeof parsed.until === 'number' ? parsed : null;
   } catch {
-    return null;
+    return undefined;
   }
 }
 
@@ -1065,8 +1066,9 @@ function anonymousReadClaim() {
 // makes no list. It expires by itself, since a tab can close mid-press. Written, then read back after `settleMs`, so
 // of two tabs writing at once only the one whose token stayed goes on. Storage that refuses gives no claim to take.
 export async function anonymousCarryClaim(ttlMs, settleMs) {
+  // A claim further off than one lifetime is a clock set back or not ours, and stops no press.
   const live = anonymousReadClaim();
-  if (live !== null && live.until > Date.now()) {
+  if (live && live.until > Date.now() && live.until - Date.now() <= ttlMs) {
     return { taken: false, token: null };
   }
   const token = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${++anonymousClaimSeq}`;
@@ -1076,7 +1078,11 @@ export async function anonymousCarryClaim(ttlMs, settleMs) {
     return { taken: true, token: null };
   }
   await new Promise(resolve => setTimeout(resolve, settleMs));
-  return anonymousReadClaim()?.token === token ? { taken: true, token } : { taken: false, token: null };
+  const after = anonymousReadClaim();
+  if (after === undefined) {
+    return { taken: true, token };
+  }
+  return after?.token === token ? { taken: true, token } : { taken: false, token: null };
 }
 
 // Only this press's own claim: one that expired and was taken by another tab meanwhile stays theirs.

@@ -1391,7 +1391,7 @@ Four things, each only where the host serves the package's browser module, and n
 | `sessionStorage`, per tab | `Fhi.Munin.Explorer:scroll:` + the page's path and query | the kildeutforsker list's scroll position | written when the reader leaves the list, removed when read back |
 | `localStorage` | `munin-explorer.filters-collapsed` | whether the filter panel is folded on a wide screen | when the reader folds or unfolds it |
 | `localStorage` | `Fhi.Munin.Explorer:anonymous-list` | a signed-out reader's variable list, `{"v":1,"items":[…]}`, each row the fields below | only with `MuninExplorer:Features:CodePicker` on |
-| `localStorage` | `Fhi.Munin.Explorer:anonymous-list-claim` | a random token and an expiry time, `{"token":…,"until":…}`, so two tabs do not save that list to Mine variabellister twice | while a signed-in reader's «Lagre i Mine variabellister» runs, removed when it ends, lapsing after 60 seconds |
+| `localStorage` | `Fhi.Munin.Explorer:anonymous-list-claim` | a random token and an expiry time, `{"token":…,"until":…}`, so two tabs do not save that list to Mine variabellister twice | while a signed-in reader's «Lagre i Mine variabellister» runs, removed when it ends, lapsing after 90 seconds |
 
 Stored row fields: `variabelId`, `variabelCode`, `variabelName`, `kildeId`, `kildeName`, `kildeKortNavn`, `datasamlingId`, `datasamlingName`, `variabelgruppeName`, `dataType`, `dataFrom`, `dataTo`, `versjonStatus` — the
 variable's and datasamling's ids, its code and Norwegian name, its kilde's id, name and short name, the datasamling's

@@ -1858,5 +1858,13 @@ public class AnonymousListTest : ExplorerTestContext
         Assert.Equal(0, client.AddCalls);
         Assert.Single(browser.Rows);
         Assert.Equal("another-tab", browser.Claim);
+
+        // The next press is a new outcome: a failure now says so, not that the list is still being saved elsewhere.
+        browser.Claim = null;
+        browser.ThrowingCalls.Add("keys");
+        await cut.InvokeAsync(() => ButtonSaying(cut, No.CarryBrowserListOver).Click());
+
+        cut.WaitForAssertion(() => Assert.Contains(No.CarryBrowserListOverError, cut.Find("[role=alert]:not(:empty)").TextContent));
+        Assert.DoesNotContain(No.CarryBrowserListOverAlreadySaving, cut.Markup);
     }
 }

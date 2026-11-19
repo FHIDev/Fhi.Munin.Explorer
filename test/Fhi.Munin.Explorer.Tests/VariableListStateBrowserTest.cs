@@ -897,8 +897,11 @@ public class VariableListStateBrowserTest
         var state = await SignedInAsync(browser, client);
         browser.Hold = true;
 
+        // The claim goes first and is answered; the reader changes while the keys read is the call still out.
         var carrying = state.CarryBrowserListOverAsync("Min variabelliste");
-        Assert.NotEmpty(browser.Pending);
+        Assert.Equal("claim", Assert.Single(browser.Pending).Call);
+        browser.ReleaseNewest();
+        await WaitForPendingAsync(browser, "keys");
 
         state.SetAuthenticated(false);
         state.SetAuthenticated(true);
@@ -908,6 +911,39 @@ public class VariableListStateBrowserTest
         Assert.Null(await carrying);
         Assert.Empty(client.Created);
         Assert.Empty(client.Adds);
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenAnotherReaderSignsInWhileTheClaimIsTaken_ThenNothingIsReadAndTheClaimIsGivenBack()
+    {
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var client = new ListsClient();
+        var state = await SignedInAsync(browser, client);
+        browser.Calls.Clear();
+        browser.Hold = true;
+
+        var carrying = state.CarryBrowserListOverAsync("Min variabelliste");
+        Assert.Equal("claim", Assert.Single(browser.Pending).Call);
+
+        state.SetAuthenticated(false);
+        state.SetAuthenticated(true);
+        browser.Hold = false;
+        browser.ReleaseNewest();
+
+        Assert.Null(await carrying);
+        Assert.DoesNotContain(browser.Calls, c => c.Call == "keys");
+        Assert.Empty(client.Created);
+        Assert.Null(browser.Claim);
+    }
+
+    private static async Task WaitForPendingAsync(FakeBrowserList browser, string call)
+    {
+        for (var tries = 0; !browser.Pending.Any(p => p.Call == call); tries++)
+        {
+            Assert.True(tries < 200, $"no {call} call was made");
+            await Task.Delay(10);
+        }
     }
 
     [Fact]
@@ -981,8 +1017,8 @@ public class VariableListStateBrowserTest
     [Fact]
     public void MaxBrowserListRows_WhenCompared_ThenTheWholeListFitsTheOneAddOfACarryOver() =>
         Assert.True(VariableListState.MaxBrowserListRows <= IMuninExplorerClient.MaxVariablesPerBatch);
-    // The claim across tabs (Fhi.Metadata-emsc0.3.17): two tabs signed in, both pressing before the first removal
-    // lands, made two lists of the same rows.
+
+    // Two tabs over one browser list: the claim across them (Fhi.Metadata-emsc0.3.17).
     [Fact]
     public async Task CarryBrowserListOverAsync_WhenAnotherTabIsCarryingTheRows_ThenThisPressMakesNoListAndKeepsThem()
     {
@@ -1025,6 +1061,13 @@ public class VariableListStateBrowserTest
     }
 
     [Fact]
+    public void CarryClaimLifetime_WhenComparedToTheClientsPerCallLimit_ThenACreateAndAnAddAtTheirLimitStillHoldIt()
+    {
+        // A claim that lapses mid-press lets a second tab read rows still stored and make the second list.
+        Assert.True(VariableListState.CarryClaimLifetime > Fhi.Munin.Explorer.Client.RequestTimeoutHandler.Default * 2);
+    }
+
+    [Fact]
     public async Task CarryBrowserListOverAsync_WhenTheCarryOverFails_ThenItsClaimIsReleasedAndTheNextPressWorks()
     {
         // A claim kept after a failure would turn the reader's retry away for the claim's whole lifetime.
@@ -1047,10 +1090,12 @@ public class VariableListStateBrowserTest
         browser.Rows.AddRange(Rows(2));
         var client = new ListsClient();
         var state = await SignedInAsync(browser, client);
-        browser.Throws = new InvalidOperationException("the module failed");
+        browser.ThrowingCalls.Add("claim");
+        browser.Calls.Clear();
 
         Assert.Null(await state.CarryBrowserListOverAsync("Min variabelliste"));
-        Assert.Empty(client.Adds);
+        Assert.DoesNotContain(browser.Calls, c => c.Call == "keys");
+        Assert.Empty(client.Created);
         Assert.Equal(2, browser.Rows.Count);
     }
 }
