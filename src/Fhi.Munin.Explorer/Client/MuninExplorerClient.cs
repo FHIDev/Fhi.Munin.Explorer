@@ -871,20 +871,8 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         return true;
     }
 
-    /// <summary>Sends one request, with <paramref name="body"/> as JSON when there is one.</summary>
-    /// <remarks>
-    /// A 429 never leaves this method as a response: it is thrown as
-    /// <see cref="MuninExplorerRateLimitedException"/> here, so every write inherits that branch by
-    /// going through here at all — the way every read inherits it from
-    /// <see cref="GetOrNullAsync{T}"/>. It belongs here rather than in each caller because the
-    /// writes read status in several places — <see cref="CreateMyListAsync"/>, the adds,
-    /// <see cref="SendForFoundAsync"/> and <see cref="ExportListAsync"/> — and the export proves
-    /// the point: added later, it sent its own request and did not remember.
-    /// <para>
-    /// The response is disposed before the throw, since nothing above can dispose one it never
-    /// received.
-    /// </para>
-    /// </remarks>
+    // A 429 is thrown here so every write, wherever it reads status, inherits it as every read does from
+    // GetOrNullAsync; the export once sent its own request and did not. Disposed first: no caller can dispose it.
     private async Task<HttpResponseMessage> SendAsync(
         HttpMethod method,
         string url,
