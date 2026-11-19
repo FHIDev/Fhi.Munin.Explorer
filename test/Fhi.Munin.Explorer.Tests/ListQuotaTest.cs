@@ -25,7 +25,7 @@ public class ListQuotaTest
             BaseAddress = new Uri("https://runa.munin.skytest.fhi.no/")
         });
 
-    private static Task Write(MuninExplorerClient client, string call) => call switch
+    private static Task ListWriteAsync(MuninExplorerClient client, string call) => call switch
     {
         "create" => client.CreateMyListAsync("Min liste"),
         "variables" => client.AddVariablesToMyListAsync(ListId, [Guid.NewGuid()]),
@@ -37,10 +37,10 @@ public class ListQuotaTest
     [InlineData("create")]
     [InlineData("variables")]
     [InlineData("items")]
-    public async Task AListWrite_WhenMuninAnswersTheListLimit_ThenTheQuotaIsThrownWithItsKindLimitAndText(string call)
+    public async Task ListWriteAsync_WhenMuninAnswersTheListLimit_ThenTheQuotaIsThrownWithItsKindLimitAndText(string call)
     {
         var refused = await Assert.ThrowsAsync<MuninExplorerListQuotaException>(
-            () => Write(Client(StubHttpHandler.Answering(HttpStatusCode.Conflict, ListLimit)), call));
+            () => ListWriteAsync(Client(StubHttpHandler.Answering(HttpStatusCode.Conflict, ListLimit)), call));
 
         Assert.Equal(ListQuotaKind.Lists, refused.Kind);
         Assert.Equal(50, refused.Limit);
@@ -52,10 +52,10 @@ public class ListQuotaTest
     [InlineData("create")]
     [InlineData("variables")]
     [InlineData("items")]
-    public async Task AListWrite_WhenMuninAnswersTheRowLimit_ThenTheQuotaIsThrownAsRows(string call)
+    public async Task ListWriteAsync_WhenMuninAnswersTheRowLimit_ThenTheQuotaIsThrownAsRows(string call)
     {
         var refused = await Assert.ThrowsAsync<MuninExplorerListQuotaException>(
-            () => Write(Client(StubHttpHandler.Answering(HttpStatusCode.Conflict, RowLimit)), call));
+            () => ListWriteAsync(Client(StubHttpHandler.Answering(HttpStatusCode.Conflict, RowLimit)), call));
 
         Assert.Equal((ListQuotaKind.Rows, 100_000), (refused.Kind, refused.Limit));
     }
@@ -68,19 +68,40 @@ public class ListQuotaTest
     [InlineData("create", """{"error":"x"}""")]
     [InlineData("variables", "<html>Conflict</html>")]
     [InlineData("items", "")]
-    public async Task AListWrite_WhenA409IsNotTheQuota_ThenItIsThrownAsBefore(string call, string body)
+    public async Task ListWriteAsync_WhenA409IsNotTheQuota_ThenItIsThrownAsBefore(string call, string body)
     {
         var refused = await Assert.ThrowsAsync<HttpRequestException>(
-            () => Write(Client(StubHttpHandler.Answering(HttpStatusCode.Conflict, body)), call));
+            () => ListWriteAsync(Client(StubHttpHandler.Answering(HttpStatusCode.Conflict, body)), call));
 
         Assert.IsNotType<MuninExplorerListQuotaException>(refused);
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
     }
 
     [Fact]
-    public async Task AnAdd_WhenTheListIsNotTheReaders_ThenItIsStillFalse()
+    public async Task AddVariablesToMyListAsync_WhenTheListIsNotTheReaders_ThenItIsStillFalse()
     {
         Assert.False(await Client(StubHttpHandler.Status(HttpStatusCode.NotFound)).AddVariablesToMyListAsync(ListId, [Guid.NewGuid()]));
+    }
+
+    [Theory]
+    [InlineData("""{"error":"  ","code":"row-limit","limit":5}""")]
+    [InlineData("""{"code":"row-limit","limit":5}""")]
+    public async Task CreateMyListAsync_WhenTheQuotaCarriesNoText_ThenApiTextIsNull(string body)
+    {
+        var refused = await Assert.ThrowsAsync<MuninExplorerListQuotaException>(
+            () => Client(StubHttpHandler.Answering(HttpStatusCode.Conflict, body)).CreateMyListAsync("Min liste"));
+
+        Assert.Null(refused.ApiText);
+    }
+
+    [Theory]
+    [InlineData("no")]
+    [InlineData("en")]
+    public void ListQuota_WhenTheKindIsNoneMuninNames_ThenTheReaderGetsTheSaveErrorRatherThanAWrongLimit(string language)
+    {
+        var texts = Texts.For(language);
+
+        Assert.Equal(texts.SaveError, texts.ListQuota(new MuninExplorerListQuotaException(default, 50, apiText: null)));
     }
 
     // Worded as Munin's MyListsController words its 409, so the reader reads the same sentence either side.

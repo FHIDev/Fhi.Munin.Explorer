@@ -15,6 +15,9 @@ public sealed partial class VariableListView
     private CopyFailure _copyFailure;
     private string _incompleteCopyName = "";
 
+    // A row-limit refusal after the copy was made: said after the sentence that the copy is incomplete.
+    private MuninExplorerListQuotaException? _copyQuota;
+
     private bool _confirmingEmpty;
     private bool _emptyInFlight;
     private ListActionFailure _emptyFailure;
@@ -52,11 +55,13 @@ public sealed partial class VariableListView
     {
         CopyFailure.Throttled => T.RateLimitError,
         CopyFailure.Failed => T.SaveError,
-        CopyFailure.Incomplete => T.CopyIncomplete,
-        CopyFailure.IncompleteElsewhere => T.CopyIncompleteElsewhere(_incompleteCopyName),
+        CopyFailure.Incomplete => WithCopyQuota(T.CopyIncomplete),
+        CopyFailure.IncompleteElsewhere => WithCopyQuota(T.CopyIncompleteElsewhere(_incompleteCopyName)),
         CopyFailure.SwitchFailed => T.ListLoadError,
         _ => null
     };
+
+    private string WithCopyQuota(string sentence) => _copyQuota is { } quota ? $"{sentence} {T.ListQuota(quota)}" : sentence;
 
     private string? EmptyingMessage => _emptyFailure switch
     {
@@ -68,6 +73,7 @@ public sealed partial class VariableListView
     private void ForgetCopyAndEmptyFailures()
     {
         _copyFailure = CopyFailure.None;
+        _copyQuota = null;
         _emptyFailure = ListActionFailure.None;
     }
 
@@ -157,10 +163,17 @@ public sealed partial class VariableListView
         }
         catch (MuninExplorerListQuotaException ex)
         {
-            // Said instead of the incomplete copy's sentence: the copy is shown with what landed.
             Log?.LogWarning(ex, "Munin's list quota refused copying list {ListId}", source);
-            _quotaRefusal = ex;
-            _copyFailure = created is null ? CopyFailure.None : CopyFailure.Incomplete;
+
+            if (created is null)
+            {
+                _quotaRefusal = ex;
+            }
+            else
+            {
+                _copyQuota = ex;
+                _copyFailure = CopyFailure.Incomplete;
+            }
         }
         catch (MuninExplorerRateLimitedException ex)
         {

@@ -17,7 +17,7 @@ public enum ListQuotaKind
 /// Not a fault: the reader must delete a list or remove rows, and trying again changes nothing.</remarks>
 public sealed class MuninExplorerListQuotaException(ListQuotaKind kind, int limit, string? apiText)
     : HttpRequestException(
-        $"The Munin Explorer API refused a list write at the {(kind == ListQuotaKind.Lists ? "list-limit" : "row-limit")} quota of {limit}.",
+        $"The Munin Explorer API refused a list write at the {kind switch { ListQuotaKind.Lists => "list-limit", ListQuotaKind.Rows => "row-limit", _ => kind.ToString() }} quota of {limit}.",
         null,
         HttpStatusCode.Conflict)
 {

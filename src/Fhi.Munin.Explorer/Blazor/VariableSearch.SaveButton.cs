@@ -50,7 +50,7 @@ public partial class VariableSearch
         /// <summary>The API refused the save as unauthenticated (HTTP 401/403), despite the host's own claim that the reader is signed in.</summary>
         SignInRequired,
 
-        /// <summary>Munin refused it at a list quota; <see cref="_listQuota"/> says which (Fhi.Metadata-oiips.61).</summary>
+        /// <summary>Munin refused it at a list quota; <see cref="_rowQuota"/> says which (Fhi.Metadata-oiips.61).</summary>
         ListQuota,
 
         /// <summary>The browser list is full, so the row was not added.</summary>
@@ -66,10 +66,9 @@ public partial class VariableSearch
         BrowserListUnavailable
     }
 
-    // The latest quota refusal: every row's says the same, since the quota is the person's, not the row's.
-    private MuninExplorerListQuotaException? _listQuota;
+    private readonly Dictionary<VariableDatasamlingKey, MuninExplorerListQuotaException> _rowQuota = [];
 
-    private string? ListQuotaMessage => _listQuota is { } quota ? T.ListQuota(quota) : T.SaveError;
+    private string QuotaMessage(MuninExplorerListQuotaException? quota) => quota is null ? T.SaveError : T.ListQuota(quota);
 
     /// <summary>
     /// Rows whose last save attempt threw, against how it threw. Cleared when that row is tried
@@ -195,6 +194,7 @@ public partial class VariableSearch
         }
 
         _saveError.TryGetValue(VariableDatasamlingKey.Of(v), out var failure);
+        _rowQuota.TryGetValue(VariableDatasamlingKey.Of(v), out var quota);
 
         builder.OpenElement(0, "div");
         builder.AddAttribute(1, "class", "munin-explorer-data-list__save-status");
@@ -207,7 +207,7 @@ public partial class VariableSearch
             SaveFailure.Throttled => T.RateLimitError,
             SaveFailure.SignInRequired => T.SignInRequiredError,
             SaveFailure.Failed => T.SaveError,
-            SaveFailure.ListQuota => ListQuotaMessage,
+            SaveFailure.ListQuota => QuotaMessage(quota),
             SaveFailure.BrowserListFull => T.BrowserListFull(VariableListState.MaxBrowserListRows),
             SaveFailure.BrowserListNotKept => T.BrowserListNotKept,
             SaveFailure.BrowserListForeign => T.BrowserListForeign,
@@ -268,6 +268,7 @@ public partial class VariableSearch
         try
         {
             _saveError.Remove(row);
+            _rowQuota.Remove(row);
 
             if (ListState.UsesBrowserList)
             {
@@ -296,7 +297,7 @@ public partial class VariableSearch
         catch (MuninExplorerListQuotaException ex)
         {
             Log?.LogWarning(ex, "Munin's list quota refused the save of variable {VariableId}", v.Id);
-            _listQuota = ex;
+            _rowQuota[row] = ex;
             _saveError[row] = SaveFailure.ListQuota;
         }
         catch (MuninExplorerRateLimitedException ex)

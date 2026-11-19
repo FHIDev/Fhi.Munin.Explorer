@@ -877,7 +877,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     /// <see cref="MuninExplorerRateLimitedException"/> here, so every write inherits that branch by
     /// going through here at all — the way every read inherits it from
     /// <see cref="GetOrNullAsync{T}"/>. It belongs here rather than in each caller because the
-    /// writes read status in three places — <see cref="CreateMyListAsync"/>,
+    /// writes read status in several places — <see cref="CreateMyListAsync"/>, the adds,
     /// <see cref="SendForFoundAsync"/> and <see cref="ExportListAsync"/> — and the export proves
     /// the point: added later, it sent its own request and did not remember.
     /// <para>

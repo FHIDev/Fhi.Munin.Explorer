@@ -1168,6 +1168,9 @@ export const states = {
       .catch(() => {
         throw new Error('no quota sentence after the refused create: the stub did not answer 409 list-limit, or the view drew none');
       });
+    if (await name.inputValue() !== QUOTA_LIST_NAME) {
+      throw new Error('the refused create emptied the name field: list-create-refused scans the form with the name kept');
+    }
   },
 
   // The opened row's code picker on «Ønskede data»: the first code's branch opened and one code under it ticked, so a

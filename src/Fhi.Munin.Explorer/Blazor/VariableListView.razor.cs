@@ -193,7 +193,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private DownloadFailure _downloadFailure;
     private ListActionFailure _createFailure;
 
-    // A create or an add Munin refused at a list quota, from any surface of this view (Fhi.Metadata-oiips.61).
+    // A create Munin refused at a list quota, from the view's own form or a copy (Fhi.Metadata-oiips.61).
     private MuninExplorerListQuotaException? _quotaRefusal;
 
     /// <summary>

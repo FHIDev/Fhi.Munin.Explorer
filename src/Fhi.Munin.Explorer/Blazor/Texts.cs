@@ -1286,7 +1286,12 @@ internal sealed record Texts(
 
     /// <summary>What a list write refused at Munin's quota tells the reader.</summary>
     public string ListQuota(MuninExplorerListQuotaException refusal) =>
-        refusal.Kind == ListQuotaKind.Lists ? ListLimitReached(refusal.Limit) : RowLimitReached(refusal.Limit);
+        refusal.Kind switch
+        {
+            ListQuotaKind.Lists => ListLimitReached(refusal.Limit),
+            ListQuotaKind.Rows => RowLimitReached(refusal.Limit),
+            _ => SaveError
+        };
 
     // A fixed no-break space, as Munin groups it: nb-NO's own separator differs between ICU and Windows.
     private static readonly NumberFormatInfo NorwegianGrouping = new() { NumberGroupSeparator = "\u00A0" };

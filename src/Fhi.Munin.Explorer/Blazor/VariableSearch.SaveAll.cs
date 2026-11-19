@@ -18,7 +18,10 @@ public partial class VariableSearch
 
     // What the last press produced, and for whom: a sign-in or sign-out moves the reader, and an
     // outcome recorded for another reader is not drawn.
-    private sealed record SaveAllOutcome(int Reader, SaveAllQuery Query, SaveFailure Failure, int? TooManyFrom, int? Saved, string? List, bool Empty = false);
+    private sealed record SaveAllOutcome(int Reader, SaveAllQuery Query, SaveFailure Failure, int? TooManyFrom, int? Saved, string? List, bool Empty = false)
+    {
+        public MuninExplorerListQuotaException? Quota { get; init; }
+    }
 
     private SaveAllOutcome? _saveAll;
     private (int Reader, SaveAllQuery Query)? _confirmingFor;
@@ -148,7 +151,7 @@ public partial class VariableSearch
             { Failure: SaveFailure.Throttled } => T.RateLimitError,
             { Failure: SaveFailure.SignInRequired } => T.SignInRequiredError,
             { Failure: SaveFailure.Failed } => T.SaveError,
-            { Failure: SaveFailure.ListQuota } => ListQuotaMessage,
+            { Failure: SaveFailure.ListQuota, Quota: var quota } => QuotaMessage(quota),
             _ => null
         });
         builder.CloseElement();
@@ -266,8 +269,7 @@ public partial class VariableSearch
         catch (MuninExplorerListQuotaException ex)
         {
             Log?.LogWarning(ex, "Munin's list quota refused saving the whole result");
-            _listQuota = ex;
-            _saveAll = Outcome(SaveFailure.ListQuota);
+            _saveAll = Outcome(SaveFailure.ListQuota) with { Quota = ex };
         }
         catch (MuninExplorerRateLimitedException ex)
         {

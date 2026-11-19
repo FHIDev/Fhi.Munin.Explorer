@@ -61,6 +61,9 @@ public sealed partial class VariableListView
     private bool _saveSharedInFlight;
     private ListActionFailure _saveSharedFailure;
 
+    // Its own field: the shared view's alert region is not the list view's, which draws _quotaRefusal.
+    private MuninExplorerListQuotaException? _saveSharedQuota;
+
     /// <summary>A code made for one list, and the link that opens it when there is one.</summary>
     private sealed record ShareMade(Guid ListId, string Code, string? Link);
 
@@ -120,7 +123,7 @@ public sealed partial class VariableListView
         _ => null
     };
 
-    private string? SaveSharedMessage => _saveSharedFailure switch
+    private string? SaveSharedMessage => _saveSharedQuota is { } quota ? T.ListQuota(quota) : _saveSharedFailure switch
     {
         ListActionFailure.Throttled => T.RateLimitError,
         ListActionFailure.Failed => T.SaveError,
@@ -150,6 +153,7 @@ public sealed partial class VariableListView
         _sharedListFailure = SharedListFailure.None;
         _shareFailure = ListActionFailure.None;
         _saveSharedFailure = ListActionFailure.None;
+        _saveSharedQuota = null;
     }
 
     /// <summary>Follows a code the host passed, leaving one the view already shows alone.</summary>
@@ -445,7 +449,7 @@ public sealed partial class VariableListView
         catch (MuninExplorerListQuotaException ex)
         {
             Log?.LogWarning(ex, "Munin's list quota refused saving a shared list");
-            _quotaRefusal = ex;
+            _saveSharedQuota = ex;
             return;
         }
         catch (MuninExplorerRateLimitedException ex)
