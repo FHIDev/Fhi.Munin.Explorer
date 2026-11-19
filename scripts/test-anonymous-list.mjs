@@ -363,3 +363,61 @@ test('TwoTabs_WhenRandomRefusalsInterleave_ThenStorageAlwaysMatchesTheModel', as
   console.log(`steps per tab: ${acted[0]} and ${acted[1]} of ${steps}`);
   assert.ok(acted.every(n => n >= steps * 0.3), `steps per tab ${acted}`);
 });
+
+// The carry-over's claim across tabs (Fhi.Metadata-emsc0.3.17): without it, two tabs signed in make two lists of the
+// same rows.
+const CLAIM = 'Fhi.Munin.Explorer:anonymous-list-claim';
+const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+test('CarryClaim_WhenAnotherTabHoldsALiveClaim_ThenThisTabIsRefused', async () => {
+  const first = await tab();
+  const second = await tab();
+  const held = await first.anonymousCarryClaim(60_000, 0);
+  assert.equal(held.taken, true);
+  assert.equal(typeof held.token, 'string');
+  assert.deepEqual(await second.anonymousCarryClaim(60_000, 0), { taken: false, token: null });
+});
+
+test('CarryClaim_WhenTwoTabsClaimAtOnce_ThenExactlyOneGoesOn', async () => {
+  const [a, b] = await Promise.all([tab(), tab()]);
+  const answers = await Promise.all([a.anonymousCarryClaim(60_000, 5), b.anonymousCarryClaim(60_000, 5)]);
+  assert.equal(answers.filter(answer => answer.taken).length, 1);
+});
+
+test('CarryClaim_WhenAClosedTabsClaimHasExpired_ThenAPressTakesIt', async () => {
+  const closed = await tab();
+  await closed.anonymousCarryClaim(1, 0);
+  await pause(5);
+  const next = await (await tab()).anonymousCarryClaim(60_000, 0);
+  assert.equal(next.taken, true);
+  assert.equal(JSON.parse(store.get(CLAIM)).token, next.token);
+});
+
+test('CarryRelease_WhenGivenItsOwnToken_ThenTheClaimGoesAndAnotherTokenLeavesIt', async () => {
+  const m = await tab();
+  const held = await m.anonymousCarryClaim(60_000, 0);
+  m.anonymousCarryRelease('someone-else');
+  assert.equal(store.has(CLAIM), true);
+  m.anonymousCarryRelease(held.token);
+  assert.equal(store.has(CLAIM), false);
+  assert.equal((await (await tab()).anonymousCarryClaim(60_000, 0)).taken, true);
+});
+
+test('CarryClaim_WhenStorageRefuses_ThenThePressGoesOnWithNoClaim', async () => {
+  // Storage that refuses keeps the list for this page alone, where no other tab can carry it.
+  const m = await tab();
+  failing.get = true;
+  failing.set = true;
+  assert.deepEqual(await m.anonymousCarryClaim(60_000, 0), { taken: true, token: null });
+});
+
+test('CarryClaim_WhenTheClaimKeyIsWritten_ThenTheListWatcherIsNotTold', async () => {
+  // The claim is not the list: a storage event for it must not have every tab read its keys again.
+  const m = await tab();
+  let told = 0;
+  m.watchAnonymousList({ invokeMethodAsync: () => { told++; return Promise.resolve(); } });
+  for (const listener of listeners) {
+    listener({ key: CLAIM });
+  }
+  assert.equal(told, 0);
+});

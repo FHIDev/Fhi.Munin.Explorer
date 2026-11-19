@@ -534,8 +534,9 @@ public class VariableListStateBrowserTest
     [Fact]
     public async Task CarryBrowserListOverAsync_WhenTwoPressesAreOut_ThenEachListIsOfferedNowhereUntilItsOwnAddIsIn()
     {
-        // Two mounted views can press at once: the first add landing must not offer the second press's list.
-        var browser = new FakeBrowserList();
+        // Two mounted views can press at once where storage gives no claim: the first add landing must not offer the
+        // second press's list.
+        var browser = new FakeBrowserList { ClaimUnstored = true };
         browser.Rows.AddRange(Rows(2));
         var first = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var second = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -980,4 +981,76 @@ public class VariableListStateBrowserTest
     [Fact]
     public void MaxBrowserListRows_WhenCompared_ThenTheWholeListFitsTheOneAddOfACarryOver() =>
         Assert.True(VariableListState.MaxBrowserListRows <= IMuninExplorerClient.MaxVariablesPerBatch);
+    // The claim across tabs (Fhi.Metadata-emsc0.3.17): two tabs signed in, both pressing before the first removal
+    // lands, made two lists of the same rows.
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenAnotherTabIsCarryingTheRows_ThenThisPressMakesNoListAndKeepsThem()
+    {
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange(Rows(2));
+        var hold = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new ListsClient { HoldFirstAdd = hold };
+        var firstTab = await SignedInAsync(browser, client);
+        var secondTab = await SignedInAsync(browser, client);
+
+        var carrying = firstTab.CarryBrowserListOverAsync("Min variabelliste");
+        var refused = await secondTab.CarryBrowserListOverAsync("Min variabelliste");
+
+        Assert.True(refused!.AlreadyCarrying);
+        Assert.Null(refused.List);
+        Assert.Single(client.Adds);
+        Assert.Equal(2, browser.Rows.Count);
+
+        hold.SetResult(true);
+        var carried = await carrying;
+
+        Assert.NotNull(carried!.List);
+        Assert.Null(browser.Claim);
+        Assert.Empty(browser.Rows);
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenAClosedTabLeftAClaimThatHasExpired_ThenThePressCarriesTheRows()
+    {
+        var browser = new FakeBrowserList { Claim = "a-closed-tab", ClaimExpired = true };
+        browser.Rows.AddRange(Rows(2));
+        var client = new ListsClient();
+        var state = await SignedInAsync(browser, client);
+
+        var carried = await state.CarryBrowserListOverAsync("Min variabelliste");
+
+        Assert.NotNull(carried!.List);
+        Assert.Single(client.Adds);
+        Assert.Equal(VariableListState.CarryClaimLifetime, Assert.Single(browser.ClaimLifetimes));
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenTheCarryOverFails_ThenItsClaimIsReleasedAndTheNextPressWorks()
+    {
+        // A claim kept after a failure would turn the reader's retry away for the claim's whole lifetime.
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange(Rows(2));
+        var client = new ListsClient { AddThrows = new MuninExplorerRateLimitedException() };
+        var state = await SignedInAsync(browser, client);
+
+        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => state.CarryBrowserListOverAsync("Min variabelliste"));
+
+        Assert.Null(browser.Claim);
+        client.AddThrows = null;
+        Assert.NotNull((await state.CarryBrowserListOverAsync("Min variabelliste"))!.List);
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenTheClaimCallFaults_ThenNothingIsMadeAndThePressAnswersNull()
+    {
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange(Rows(2));
+        var client = new ListsClient();
+        var state = await SignedInAsync(browser, client);
+        browser.Throws = new InvalidOperationException("the module failed");
+
+        Assert.Null(await state.CarryBrowserListOverAsync("Min variabelliste"));
+        Assert.Empty(client.Adds);
+        Assert.Equal(2, browser.Rows.Count);
+    }
 }

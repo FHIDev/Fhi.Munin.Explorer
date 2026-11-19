@@ -402,7 +402,14 @@ public sealed partial class VariableListState : IDisposable
     /// What a carry-over did: the list the rows went to and whether they also left the browser; or, when Munin refused
     /// the variables in <see cref="Refused"/>, no list, nothing saved, and <see cref="RefusedRows"/> browser rows of them.
     /// </summary>
-    internal sealed record CarryOver(VariableList? List, bool LeftTheBrowser, IReadOnlySet<Guid>? Refused = null, int RefusedRows = 0);
+    internal sealed record CarryOver(
+        VariableList? List, bool LeftTheBrowser, IReadOnlySet<Guid>? Refused = null, int RefusedRows = 0, bool AlreadyCarrying = false);
+
+    // Long enough for a create, an add and a removal on a slow line; a claim a closed tab left stops a press no longer.
+    internal static readonly TimeSpan CarryClaimLifetime = TimeSpan.FromSeconds(60);
+
+    // Two tabs writing a claim in the same moment: each reads back after this, and only the one whose claim stayed goes on.
+    internal static readonly TimeSpan CarryClaimSettle = TimeSpan.FromMilliseconds(50);
 
     /// <summary>How many rows of the browser list belong to these variables, as this page last read it.</summary>
     internal int BrowserRowsOf(IReadOnlySet<Guid> variables) => _browserKeys.Count(k => variables.Contains(k.VariableId));
@@ -412,18 +419,65 @@ public sealed partial class VariableListState : IDisposable
         _browserKeys.Select(k => k.VariableId).Where(variables.Contains).Distinct().Count();
 
     /// <returns>The list, also when the reader changes as its rows leave the browser; no list and the variables when Munin
-    /// names these rows. Null when signed out, empty, unread, the list gone, or the reader changed before the add answered
-    /// (a list made by then stays in Munin). Any other failure throws; when nothing is saved, the list is deleted.</returns>
+    /// names these rows; <see cref="CarryOver.AlreadyCarrying"/> when another tab or view is carrying them. Null when
+    /// signed out, empty, unread, the list gone, or the reader changed before the add answered (a list made by then
+    /// stays in Munin). Any other failure throws; when nothing is saved, the list is deleted.</returns>
     internal async Task<CarryOver?> CarryBrowserListOverAsync(string name, CancellationToken cancellationToken = default)
     {
         // Every await is a point at which the reader can sign out; the rows belong to the reader who pressed.
         var reader = Reader;
 
-        if (!IsAuthenticated)
+        if (!IsAuthenticated || _browserStore is not { } store)
         {
             return null;
         }
 
+        BrowserCarryClaim? claim;
+
+        try
+        {
+            // Unreachable, the module answers null here, and the read below says so.
+            claim = await store.ClaimCarryOverAsync(CarryClaimLifetime, CarryClaimSettle).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "could not claim the browser's variable list for a carry-over");
+            return null;
+        }
+
+        if (claim is { Taken: false })
+        {
+            return new CarryOver(null, LeftTheBrowser: false, AlreadyCarrying: true);
+        }
+
+        try
+        {
+            return Reader == reader ? await CarryClaimedAsync(name, reader, cancellationToken).ConfigureAwait(false) : null;
+        }
+        finally
+        {
+            if (claim?.Token is { } token)
+            {
+                await ReleaseCarryClaimAsync(store, token).ConfigureAwait(false);
+            }
+        }
+    }
+
+    // Never throws: the claim lapses by itself, and the press's own outcome is what the reader is told.
+    private async Task ReleaseCarryClaimAsync(IBrowserListStore store, string token)
+    {
+        try
+        {
+            await store.ReleaseCarryOverAsync(token).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "could not release the browser list's carry-over claim");
+        }
+    }
+
+    private async Task<CarryOver?> CarryClaimedAsync(string name, int reader, CancellationToken cancellationToken)
+    {
         var read = await ReadBrowserKeysAsync().ConfigureAwait(false);
 
         if (Reader != reader || read is null)
@@ -641,7 +695,18 @@ internal interface IBrowserListStore
 
     /// <summary>Calls <paramref name="changedElsewhere"/> when another tab changes the list; false when it could not listen.</summary>
     Task<bool> WatchAsync(Func<Task> changedElsewhere);
+
+    /// <summary>A carry-over's claim on the rows, which a press in another tab finds; it lapses after <paramref name="lifetime"/>.</summary>
+    Task<BrowserCarryClaim?> ClaimCarryOverAsync(TimeSpan lifetime, TimeSpan settle);
+
+    /// <summary>Gives up this press's claim, and no other tab's.</summary>
+    Task ReleaseCarryOverAsync(string token);
 }
+
+/// <summary>Whether a carry-over may go on; a null token where storage gave no claim to take, or to release.</summary>
+internal sealed record BrowserCarryClaim(
+    [property: JsonPropertyName("taken")] bool Taken,
+    [property: JsonPropertyName("token")] string? Token);
 
 /// <summary>What the browser answers after any call: the row count, and whether the list is stored past this page.</summary>
 /// <param name="Ok">False when the call changed nothing it was asked to: a full list.</param>

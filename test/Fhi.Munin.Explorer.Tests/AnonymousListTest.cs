@@ -1840,4 +1840,23 @@ public class AnonymousListTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Equal(focusesBefore + 1, JSInterop.Invocations[Focus].Count));
         Assert.Equal(Field(cut, "_listPicker").Id, ((ElementReference)JSInterop.Invocations[Focus][^1].Arguments[0]!).Id);
     }
+
+    [Fact]
+    public async Task VariableListView_WhenAnotherTabIsSavingTheBrowserList_ThenThePressSaysSoAndKeepsTheRows()
+    {
+        // The second tab's reader is told why nothing happened, rather than a failure (Fhi.Metadata-emsc0.3.17).
+        var browser = new FakeBrowserList { Claim = "another-tab" };
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var client = new Client();
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
+
+        await cut.InvokeAsync(() => ButtonSaying(cut, No.CarryBrowserListOver).Click());
+
+        cut.WaitForAssertion(() => Assert.Contains(No.CarryBrowserListOverAlreadySaving, cut.Find("[role=alert]:not(:empty)").TextContent));
+        Assert.DoesNotContain(No.CarryBrowserListOverError, cut.Markup);
+        Assert.Equal(0, client.AddCalls);
+        Assert.Single(browser.Rows);
+        Assert.Equal("another-tab", browser.Claim);
+    }
 }

@@ -91,6 +91,22 @@ public class BrowserListStoreTest : ExplorerTestContext
     }
 
     [Fact]
+    public async Task BrowserListStore_WhenACarryOverClaims_ThenTheModuleIsAskedInMillisecondsAndReleasedByItsToken()
+    {
+        // test-anonymous-list.mjs passes the module milliseconds; seconds would make a claim lapse a thousand times early.
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        module.Setup<BrowserCarryClaim>("anonymousCarryClaim", _ => true).SetResult(new BrowserCarryClaim(true, "t-1"));
+        module.SetupVoid("anonymousCarryRelease", _ => true).SetVoidResult();
+        var store = new BrowserListStore(JSInterop.JSRuntime);
+
+        var claim = await store.ClaimCarryOverAsync(TimeSpan.FromSeconds(60), TimeSpan.FromMilliseconds(50));
+        await store.ReleaseCarryOverAsync(claim!.Token!);
+
+        Assert.Equal([60_000, 50], Assert.Single(module.Invocations["anonymousCarryClaim"]).Arguments);
+        Assert.Equal(["t-1"], Assert.Single(module.Invocations["anonymousCarryRelease"]).Arguments);
+    }
+
+    [Fact]
     public async Task BrowserListStore_WhenTheHostServesNoModule_ThenEveryCallAnswersNullRatherThanThrowing()
     {
         // The browser answers the import with a 404, as for a host that does not serve the file.

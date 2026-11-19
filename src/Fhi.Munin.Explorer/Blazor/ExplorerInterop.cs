@@ -388,6 +388,17 @@ internal sealed class ExplorerInterop : IAsyncDisposable
     internal Task<JsonDocument?> AnonymousListPageAsync(int offset, int count) =>
         AnonymousCallAsync<JsonDocument>("anonymousListPage", offset, count);
 
+    internal Task<BrowserCarryClaim?> AnonymousCarryClaimAsync(int ttlMilliseconds, int settleMilliseconds) =>
+        AnonymousCallAsync<BrowserCarryClaim>("anonymousCarryClaim", ttlMilliseconds, settleMilliseconds);
+
+    internal async Task AnonymousCarryReleaseAsync(string token)
+    {
+        if (await TryLoadAsync().ConfigureAwait(false) && _module is { } module)
+        {
+            await Tolerated(() => module.InvokeVoidAsync("anonymousCarryRelease", token)).ConfigureAwait(false);
+        }
+    }
+
     /// <summary>Tells <paramref name="listener"/> when another tab changes the list; false where the module is not there.</summary>
     internal async Task<bool> WatchAnonymousListAsync(object listener)
     {

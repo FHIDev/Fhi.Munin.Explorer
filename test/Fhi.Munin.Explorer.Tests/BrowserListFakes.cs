@@ -143,6 +143,48 @@ internal sealed class FakeBrowserList : IBrowserListStore
         return Task.FromResult(!Unreachable);
     }
 
+    /// <summary>The claim one tab's carry-over holds, which every tab over this instance finds, as the module's key is.</summary>
+    public string? Claim { get; set; }
+
+    /// <summary>The claim lapsed, as one a closed tab left does once its lifetime is over.</summary>
+    public bool ClaimExpired { get; set; }
+
+    /// <summary>Storage gives no claim: the module answers taken with no token.</summary>
+    public bool ClaimUnstored { get; set; }
+
+    public List<TimeSpan> ClaimLifetimes { get; } = [];
+
+    private int _claims;
+
+    public Task<BrowserCarryClaim?> ClaimCarryOverAsync(TimeSpan lifetime, TimeSpan settle) => Answer("claim", () =>
+    {
+        ClaimLifetimes.Add(lifetime);
+
+        if (ClaimUnstored)
+        {
+            return new BrowserCarryClaim(true, null);
+        }
+
+        if (Claim is not null && !ClaimExpired)
+        {
+            return new BrowserCarryClaim(false, null);
+        }
+
+        ClaimExpired = false;
+        Claim = $"claim-{++_claims}";
+        return new BrowserCarryClaim(true, Claim);
+    });
+
+    public async Task ReleaseCarryOverAsync(string token)
+    {
+        await Answer("release", () => (object)token);
+
+        if (Claim == token)
+        {
+            Claim = null;
+        }
+    }
+
     public static VariableListItem Row(string name, Guid? datasamling = null) => new()
     {
         VariableId = Guid.NewGuid(),

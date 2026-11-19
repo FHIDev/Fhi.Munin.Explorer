@@ -22,6 +22,7 @@ public sealed partial class VariableListView
     private bool _carryingOver;
     private bool _removing;
     private bool _carryOverFailed;
+    private bool _carryOverAlreadySaving;
     private string? _carriedOverAs;
     private bool _carriedOverButStillHere;
 
@@ -70,7 +71,11 @@ public sealed partial class VariableListView
 
     private bool CarryOverNoticesShown => State is { } state && state.Reader == _carryOverNoticesFor;
 
-    private bool CarryOverFailedShown => _carryOverFailed && CarryOverNoticesShown;
+    private string? CarryOverAlert =>
+        !CarryOverNoticesShown ? null
+        : _carryOverAlreadySaving ? T.CarryBrowserListOverAlreadySaving
+        : _carryOverFailed ? T.CarryBrowserListOverError
+        : null;
 
     /// <summary>The alert says the refusal, or that its rows were not removed: the remove button's sentence.</summary>
     private bool RefusalSaidShown =>
@@ -428,6 +433,13 @@ public sealed partial class VariableListView
         if (carried is null)
         {
             _carryOverFailed = true;
+            return;
+        }
+
+        // Nothing made and nothing taken: the rows stay here, and the save already under way is the one that moves them.
+        if (carried.AlreadyCarrying)
+        {
+            _carryOverAlreadySaving = true;
             return;
         }
 

@@ -28,6 +28,11 @@ internal sealed class BrowserListStore(IJSRuntime js) : IBrowserListStore, IAsyn
 
     public Task<BrowserListStatus?> ClearAsync() => _interop.AnonymousListClearAsync();
 
+    public Task<BrowserCarryClaim?> ClaimCarryOverAsync(TimeSpan lifetime, TimeSpan settle) =>
+        _interop.AnonymousCarryClaimAsync((int)lifetime.TotalMilliseconds, (int)settle.TotalMilliseconds);
+
+    public Task ReleaseCarryOverAsync(string token) => _interop.AnonymousCarryReleaseAsync(token);
+
     public async Task<IReadOnlyList<VariableDatasamlingKey>?> KeysAsync(int offset, int count) =>
         await _interop.AnonymousListKeysAsync(offset, count).ConfigureAwait(false) is { } keys
             ? [.. keys.Select(BrowserListKeys.Parse).OfType<VariableDatasamlingKey>()]
