@@ -47,7 +47,7 @@ public class SharedSaveQuotaHeldOutTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Save_WhenMuninRefusesTheAddOfASharedListAtTheRowQuota_ThenTheEmptyListTheSaveMadeIsDeleted()
+    public void VariableListView_WhenMuninRefusesTheAddOfASharedListAtTheRowQuota_ThenTheEmptyListTheSaveMadeIsDeleted()
     {
         var client = new RefusingClient();
         Services.AddSingleton<IMuninExplorerClient>(client);
