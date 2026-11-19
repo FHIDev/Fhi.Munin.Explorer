@@ -4,6 +4,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -28,10 +29,12 @@ public class ListQuotaHeldOutTest : ExplorerTestContext
         public Exception? CreateFailure { get; set; } = createRefusal;
         public List<Guid> Deleted { get; } = [];
 
+        public Exception? DeleteFailure { get; init; }
+
         public override Task<bool> DeleteMyListAsync(Guid id, CancellationToken cancellationToken = default)
         {
             Deleted.Add(id);
-            return Task.FromResult(true);
+            return DeleteFailure is not null ? throw DeleteFailure : Task.FromResult(true);
         }
 
         public override Task<SharedList?> GetSharedListAsync(string? code, CancellationToken cancellationToken = default) =>
@@ -220,5 +223,23 @@ public class ListQuotaHeldOutTest : ExplorerTestContext
         Button(cut, "Kopier listen").Click();
 
         cut.WaitForAssertion(() => Assert.Equal(texts.CopyIncomplete, Alert(cut)));
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheDeleteAfterARefusedSharedSaveFails_ThenTheLimitStillShowsAndTheFailureIsAWarning()
+    {
+        var recorder = new RecordingLoggerProvider();
+        Services.AddLogging(b => b.AddProvider(recorder).SetMinimumLevel(LogLevel.Trace));
+        var thrown = new MuninExplorerRateLimitedException();
+        var client = new SharedClient(null, new MuninExplorerListQuotaException(ListQuotaKind.Rows, 50, apiText: null)) { DeleteFailure = thrown };
+        var cut = RenderView(client, shareCode: "AB12CD");
+        cut.WaitForAssertion(() => Assert.Equal(3, cut.FindAll("table tbody tr").Count));
+
+        Button(cut, "Lagre som min liste").Click();
+        Button(cut, "Lagre listen").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(Texts.For("no").RowLimitReached(50), Alert(cut)));
+        var entry = Assert.Single(recorder.Entries, e => e.Exception == thrown);
+        Assert.Equal(LogLevel.Warning, entry.Level);
     }
 }

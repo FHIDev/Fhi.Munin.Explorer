@@ -1162,6 +1162,7 @@ export const states = {
     const name = list.locator('input[id^="munin-explorer-new-list-"]').first();
     await name.waitFor({ state: 'visible', timeout: findTimeout });
     await name.fill(QUOTA_LIST_NAME);
+    await name.dispatchEvent('change');
     await list.getByRole('button', { name: 'Opprett liste', exact: true }).click();
 
     await list.getByRole('alert').filter({ hasText: 'høyst 50 lister' }).waitFor({ state: 'visible', timeout: findTimeout })
