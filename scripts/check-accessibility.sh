@@ -51,8 +51,9 @@ HOST_PROJECT="$ROOT/samples/ModernHost/ModernHost.csproj"
 #   - the English texts, and samples/LegacyHost, the same component in the other host;
 #   - the list tab's own create, rename and delete forms, and the annotation field in a row;
 #   - an imported list's notice of what did not come over: no stub list is imported (Fhi.Metadata-9huq2.37; a state for it: Fhi.Metadata-9huq2.42);
-#   - the signed-in carry-over offer of a list kept in the browser, and its refusal state with the button that
-#     removes the refused rows: reaching it needs Munin to refuse the add (Fhi.Metadata-emsc0.3.12).
+#   - the signed-in carry-over's other ends: its busy «Lagrer …», a press that succeeds, the sentences after
+#     «Fjern disse radene» removes the rows or fails to, and a failure that names nothing. Its offer and its named
+#     refusal ARE covered, in list-carry-over-refused (Fhi.Metadata-emsc0.3.16).
 # Each is another page load and settle, about ten seconds, and none carries the risk the
 # targets below do. Add one here and in axe-states.mjs when that stops being true.
 #
@@ -87,6 +88,10 @@ REFLOW_FACETS_TARGET="/::filters-level-lines"
 # And the kilder table with every optional column on, the widest it can be drawn: the table has to
 # scroll inside its own box at 320px rather than widen the page (Fhi.Metadata-l9l2n.98).
 REFLOW_WIDEST_TARGET="/kilder::kilder-every-column"
+
+# And the signed-in carry-over refused: its offer, the sentence naming the refused rows and «Fjern disse radene» beside
+# the list's own controls, scanned by axe in TARGETS as well (Fhi.Metadata-emsc0.3.16).
+REFLOW_CARRY_OVER_TARGET="/utforsker::list-carry-over-refused"
 TARGETS=(
   "$REFLOW_EXPLORER_TARGET"
   "$REFLOW_TARGET"
@@ -128,6 +133,7 @@ TARGETS=(
   "/utforsker::list-actions-menu"
   "/utforsker::list-actions-and-columns"
   "/utforsker::list-download-and-columns"
+  "$REFLOW_CARRY_OVER_TARGET"
   "/::search-download-open"
   "/utforsker::explorer-save-all-confirm"
   "/utforsker::explorer-save-all-too-many"
@@ -306,7 +312,7 @@ if [ "$scan_status" -eq 2 ]; then
 fi
 
 # WCAG 1.4.10 Reflow is stated at 320px and nothing here measured any page there: geometry-scan.mjs
-# drives six widths and the narrowest is 843. Two pages. The kildeutforsker in three states, all
+# drives six widths and the narrowest is 843. Three pages. The kildeutforsker in three states, all
 # waiting for a row so an empty page fails as TOOLING rather than fitting 320 with nothing in it;
 # the second ticks one, since the ribbon is widest there and the untouched page fits 320 whether or
 # not the handover can wrap, and the third turns every column on, the widest the table draws.
@@ -315,13 +321,17 @@ fi
 # folds below 1024px, so only the second draws its toolbar and facets, and check-hostile-host.sh's
 # 320px step does not run in CI. (Fhi.Metadata-kd9ts, Fhi.Metadata-7484a)
 #
-# Three of the sixteen assertions. Four of the thirteen left out were measured here first; four are
-# scoped to states none of these is, three of them to the explorer-* states on /utforsker; and the
-# last three measure the detail chassis, which none of the five states here opens - both pages draw one in a detail
-# state, and neither of those is driven at 320; the two 320px card checks never ran here. Which and why: AGENTS.md, "And
+# And the composed explorer on /utforsker once, in list-carry-over-refused: the carry-over's offer and its named
+# refusal beside the saved list's own controls (Fhi.Metadata-emsc0.3.16).
+#
+# Three of the twenty assertions. Four of the seventeen left out were measured here first; seven are
+# scoped to states none of these is, three of them to the explorer-* states on /utforsker; three
+# measure a detail page's contents column and fact list, which none of the six states here opens (the list
+# view in list-carry-over-refused draws only the body, which they skip) - / and /kilder each draw a detail page in a
+# state not driven at 320; and three are not asked for and never ran here. Which and why: AGENTS.md, "And
 # check-accessibility.sh measures reflow at the one width WCAG names for it".
 echo
-# A CI shard (SCAN_SHARD=k/n, scripts/scan-shard.mjs) splits the axe states above; the five reflow pages run in
+# A CI shard (SCAN_SHARD=k/n, scripts/scan-shard.mjs) splits the axe states above; the six reflow states run in
 # shard 1 only, so each is measured once per run.
 if [ -z "${SCAN_SHARD:-}" ] || [ "${SCAN_SHARD%%/*}" = 1 ]; then
   echo "==> measuring the reflow width WCAG 1.4.10 names"
@@ -332,7 +342,7 @@ GEOMETRY_EXCEPT= \
 GEOMETRY_ASSERTIONS='no horizontal overflow,hidden means hidden,text a reader is meant to see has a box to see it in' \
     node "$ROOT/scripts/geometry-scan.mjs" \
       "${BASE}${REFLOW_TARGET}" "${BASE}${REFLOW_TICKED_TARGET}" "${BASE}${REFLOW_EXPLORER_TARGET}" \
-      "${BASE}${REFLOW_FACETS_TARGET}" "${BASE}${REFLOW_WIDEST_TARGET}"
+      "${BASE}${REFLOW_FACETS_TARGET}" "${BASE}${REFLOW_WIDEST_TARGET}" "${BASE}${REFLOW_CARRY_OVER_TARGET}"
   reflow_status=$?
   set -e
 else
@@ -477,17 +487,18 @@ if [ "$findings" -ne 0 ] || [ "$module_status" -ne 0 ]; then
 fi
 
 cat <<'EOF'
-No violations detected, and the kildeutforsker and the variable explorer's front page fit 320px,
-the kildeutforsker's with every column on, the explorer's with its facets unfolded as well as at rest.
+No violations detected, and the kildeutforsker, the variable explorer's front page and the list tab
+with the carry-over refused fit 320px, the kildeutforsker's with every column on, the explorer's with
+its facets unfolded as well as at rest.
 
 Read that literally. This gate sees the sample stylesheet, not the one the component
 ships into, and automated checking cannot see missing structure at all. A green run is
 evidence of no detected regression, and nothing more.
 
-The 320px measurement is narrower still: three of the sixteen assertions, on two pages, in
-five states - the kilder table at rest, with a row ticked and with every column on, the
-variable explorer at rest and with Vis filtre and Utvid alle pressed, and nothing else behind a
-press in the filter panel. Every other width and every other assertion belongs to
+The 320px measurement is narrower still: three of the twenty assertions, on three pages, in
+six states - the kilder table at rest, with a row ticked and with every column on, the
+variable explorer at rest and with Vis filtre and Utvid alle pressed, the list tab with the
+signed-in carry-over refused, and nothing else behind a press in the filter panel. Every other width and every other assertion belongs to
 check-hostile-host.sh.
 
 Why, at length: AGENTS.md, "Accessibility is a requirement, not a preference".
