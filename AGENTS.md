@@ -493,17 +493,22 @@ not run in CI.
 And the composed `VariableExplorer` on `/utforsker` once, in `list-carry-over-refused`: the signed-in carry-over's
 offer and its named refusal, «Fjern disse radene», beside the saved list's own controls (`Fhi.Metadata-emsc0.3.16`).
 
-It runs three of the sixteen assertions, by name through `GEOMETRY_ASSERTIONS`: `no horizontal
+It runs three of the twenty assertions, by name through `GEOMETRY_ASSERTIONS`: `no horizontal
 overflow`, `hidden means hidden`, and `text a reader is meant to see has a box to see it in`. Four
-of the thirteen left out were **measured there and then excluded**, which is a different claim from
-"they are written for HostileHost" and the only one the numbers support; four are scoped to states
-this run does not drive (the three `explorer-*` ones below and `Runa's row disclosure is big enough
-to hit`), three have nothing to measure on these pages at all, and the two newest have never run here:
+of the seventeen left out were **measured there and then excluded**, which is a different claim from
+"they are written for HostileHost" and the only one the numbers support; seven are scoped to states
+this run does not drive (the three `explorer-*` ones below, `Runa's row disclosure is big enough
+to hit`, and the three saved-list and search pins below), three have nothing to measure on these pages
+at all, and three are not asked for here and have never run here:
 
-- `a table cell holding visible text is at least 4em wide` and `the saved list shows every column at
-  767px and below` came with Stiler's 320px cards (`Fhi.Metadata-n8ygv`, `Fhi.Metadata-z4r1d`). The pin is
-  scoped to `explorer-list-tab`, which this run does not drive; the invariant is measured against the
-  real stylesheet by `check-hostile-host.sh`.
+- `a table cell holding visible text is at least 4em wide` came with Stiler's 320px cards
+  (`Fhi.Metadata-n8ygv`, `Fhi.Metadata-z4r1d`), and `a phone's kilde card shows each count's word` with
+  the kilde cards (`Fhi.Metadata-ulkw3`); `every tab fits inside its tablist` (`Fhi.Metadata-gdl6m`) has no
+  state scope, and `list-carry-over-refused` draws the tablist, so asking for it would measure it there.
+  `check-hostile-host.sh` measures all three against the real stylesheet.
+- `the saved list fits its box at every width` is scoped to `explorer-list-tab`, `saved-list menu controls
+  receive pointer input` to the saved list's open menus (`list-actions-menu` and three more), and `a shared
+  name and its code stay inside their own column` to `variables-shared-name`; this run drives none of them.
 - `the tablist clears the header`, `exactly one tab panel has content` and `no page shell class
   inside a tab panel` are scoped to the two `explorer-*` states, which are the composed
   `VariableExplorer` on `/utforsker`, which this run measures only in `list-carry-over-refused`; they

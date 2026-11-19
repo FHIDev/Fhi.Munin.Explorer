@@ -323,11 +323,11 @@ fi
 # And the composed explorer on /utforsker once, in list-carry-over-refused: the carry-over's offer and its named
 # refusal beside the saved list's own controls (Fhi.Metadata-emsc0.3.16).
 #
-# Three of the sixteen assertions. Four of the thirteen left out were measured here first; four are
-# scoped to states none of these is, three of them to the explorer-* states on /utforsker; and the
-# last three measure a detail page's contents column and fact list, which none of the six states here opens (the list
+# Three of the twenty assertions. Four of the seventeen left out were measured here first; seven are
+# scoped to states none of these is, three of them to the explorer-* states on /utforsker; three
+# measure a detail page's contents column and fact list, which none of the six states here opens (the list
 # view in list-carry-over-refused draws only the body, which they skip) - / and /kilder each draw a detail page in a
-# state not driven at 320; the two 320px card checks never ran here. Which and why: AGENTS.md, "And
+# state not driven at 320; and three are not asked for and never ran here. Which and why: AGENTS.md, "And
 # check-accessibility.sh measures reflow at the one width WCAG names for it".
 echo
 # A CI shard (SCAN_SHARD=k/n, scripts/scan-shard.mjs) splits the axe states above; the six reflow states run in
