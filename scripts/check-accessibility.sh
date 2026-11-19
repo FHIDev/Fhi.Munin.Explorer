@@ -61,7 +61,8 @@ HOST_PROJECT="$ROOT/samples/ModernHost/ModernHost.csproj"
 # and off, the shape a host ships by default, in one more: list-row-picker-off, scanned after them on the host
 # restarted with the switch overridden, in shard 1 only (Fhi.Metadata-l9l2n.172). A signed-out reader's list in the
 # browser is scanned the same way, in list-browser-list, on a host started with MuninExplorer__Features__CodePicker
-# and the sample's Sample__SignedOut (Fhi.Metadata-emsc0.3.12).
+# and the sample's Sample__SignedOut (Fhi.Metadata-emsc0.3.12), and its share in list-browser-list-share, which also
+# fails when the share's answer takes focus from a reader who pressed Tab meanwhile (Fhi.Metadata-emsc0.3.19).
 #
 # /utforsker is the only page in either sample that mounts the composed VariableExplorer, so it is
 # the only place the page-level tablist and the reader's list panel are scanned at all.
@@ -286,9 +287,9 @@ node --test "$ROOT/scripts/test-axe-states.mjs" "$ROOT/scripts/test-scan-shard.m
 # Product code, not tooling: the browser list as the package's module keeps it. A failure is a finding (Fhi.Metadata-emsc0.3.12).
 echo "==> checking the package's browser list module"
 module_status=0
-node --test "$ROOT/scripts/test-anonymous-list.mjs" "$ROOT/scripts/test-anonymous-list.heldout.mjs" || module_status=1
+node --test "$ROOT/scripts/test-anonymous-list.mjs" "$ROOT/scripts/test-anonymous-list.heldout.mjs" "$ROOT/scripts/test-focus-if-still-on.mjs" "$ROOT/scripts/test-focus-if-still-on.heldout.mjs" "$ROOT/scripts/test-focus-if-still-on.heldout2.mjs" || module_status=1
 module_failed() {
-  echo "The browser list module's own tests failed (scripts/test-anonymous-list*.mjs): a defect in the package's" >&2
+  echo "The browser list module's own tests failed (scripts/test-anonymous-list*.mjs, test-focus-if-still-on*.mjs): a defect in the package's" >&2
   echo "explorer-interop.js, not in a page and not in the tooling. See the node test output above." >&2
 }
 
@@ -408,8 +409,8 @@ if [ -z "${SCAN_SHARD:-}" ] || [ "${SCAN_SHARD%%/*}" = 1 ]; then
     browser_status=2
   else
     set +e
-    SCAN_SHARD= AXE_EXTRA_WIDTHS="${AXE_EXTRA_WIDTHS-375,320}" AXE_KNOWN_VIOLATIONS="$ROOT/test/axe-known-violations.txt" \
-      node "$ROOT/scripts/axe-scan.mjs" "${BASE}/utforsker::list-browser-list"
+    SCAN_SHARD= STUB_BASE="$STUB_BASE" AXE_EXTRA_WIDTHS="${AXE_EXTRA_WIDTHS-375,320}" AXE_KNOWN_VIOLATIONS="$ROOT/test/axe-known-violations.txt" \
+      node "$ROOT/scripts/axe-scan.mjs" "${BASE}/utforsker::list-browser-list" "${BASE}/utforsker::list-browser-list-share"
     browser_status=$?
     set -e
   fi

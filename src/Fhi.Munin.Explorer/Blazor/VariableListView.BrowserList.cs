@@ -5,6 +5,7 @@ using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -18,6 +19,7 @@ public sealed partial class VariableListView
 
     // Into the share code once the panel shows one, as a signed-in share does (Fhi.Metadata-emsc0.3.18).
     private bool _focusBrowserShareCode;
+    private bool _pressesWatched;
     private ElementReference _clearToggle;
     private bool _carryingOver;
     private bool _removing;
@@ -128,6 +130,24 @@ public sealed partial class VariableListView
 
         await state.ReadBrowserListAsync();
 
+        // Before «Del liste» can be pressed: the share's focus move asks what was pressed last (Fhi.Metadata-emsc0.3.19).
+        if (ShowsBrowserCopy && !_pressesWatched)
+        {
+            try
+            {
+                _pressesWatched = await ExplorerInterop.WatchPressesAsync(Js);
+            }
+            catch (JSException ex)
+            {
+                _pressesWatched = true;
+                Log?.LogError(ex, "the module could not watch the reader's presses for the browser list's share");
+            }
+            catch (Exception ex)
+            {
+                Log?.LogWarning(ex, "could not watch the reader's presses for the browser list's share");
+            }
+        }
+
         var wanted = (state.BrowserVersion, _sharedPageNumber, PageSize);
 
         if (ShowsBrowserCopy && state.BrowserListRead && _browserPageFor != wanted && _browserPageFailedFor != wanted)
@@ -151,9 +171,14 @@ public sealed partial class VariableListView
 
             if (ShowsBrowserCopy && _sharingBrowserList && _browserShare is not null)
             {
+                // The browser says where focus is and what was pressed last: a reader who moved on while the share was out keeps it.
                 try
                 {
-                    await _shareCodeField.FocusAsync();
+                    await ExplorerInterop.FocusIfStillOnAsync(Js, ShareToggleId, ShareCodeFieldId);
+                }
+                catch (JSException ex)
+                {
+                    Log?.LogError(ex, "the module could not move focus to the browser list's share code");
                 }
                 catch (Exception ex)
                 {
@@ -206,7 +231,6 @@ public sealed partial class VariableListView
         }
 
         _confirmingClear = !_confirmingClear;
-        _readerMoves++;
     }
 
     private async Task ClearBrowserListAsync()
@@ -245,7 +269,6 @@ public sealed partial class VariableListView
 
         _shareInFlight = true;
         var version = State.BrowserVersion;
-        var moves = _readerMoves;
 
         try
         {
@@ -286,8 +309,7 @@ public sealed partial class VariableListView
 
             _browserShare = new ShareMade(Guid.Empty, code, SharedListHref?.Invoke(code));
 
-            // A reader who acted in the list's menus, its clear question or its pager while the share was out keeps focus there.
-            _focusBrowserShareCode = _readerMoves == moves;
+            _focusBrowserShareCode = true;
         }
         catch (SharedSnapshotTooLargeException ex)
         {

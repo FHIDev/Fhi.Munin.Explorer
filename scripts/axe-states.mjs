@@ -132,6 +132,16 @@ async function collapseFilters(page, row) {
 /** States scanned at the default width only: their fold is drawn from 1024px up, so a phone has none to scan. */
 export const wideOnlyStates = new Set(['variables-filters-collapsed', 'kilder-filters-collapsed']);
 
+// A state's own check found the page wrong: a finding axe-scan records and exits 1 on, not a state it could not reach.
+export class StateDefect extends Error {
+  name = 'StateDefect';
+
+  constructor(message, criteria) {
+    super(message);
+    this.criteria = criteria;
+  }
+}
+
 export const states = {
   // The script guards inventory these literal names without launching a browser.
   'tree-collapsed': treeStates['tree-collapsed'],
@@ -1069,6 +1079,46 @@ export const states = {
     if (await list.getByText('Listen er lagret bare i denne nettleseren', { exact: false }).count() === 0) {
       throw new Error('no browser list on the tab: list-browser-list needs Sample__SignedOut=true and MuninExplorer:Features:CodePicker on');
     }
+  },
+
+  // The browser list's share open with its code. On the way, a Tab while the share is held must keep the reader where
+  // Tab took them, and reopening must put focus on the code (Fhi.Metadata-emsc0.3.19). Needs STUB_BASE, the stub the
+  // host reads; a failed focus check throws StateDefect, which axe-scan reports as a finding.
+  'list-browser-list-share': async page => {
+    await states['list-browser-list'](page);
+    const stub = process.env.STUB_BASE;
+    if (!stub) {
+      throw new Error('list-browser-list-share needs STUB_BASE, the stub the host reads, to hold the share');
+    }
+    const hold = await fetch(`${stub}/__stub/hold-next?path=/api/explorer/lists/share&ms=3000`, { method: 'POST' });
+    if (!hold.ok) {
+      throw new Error(`the stub refused to hold the share: ${hold.status}`);
+    }
+
+    const list = page.locator('[role=tabpanel]:not([hidden])').first();
+    const share = list.locator('button[id^="munin-explorer-share-toggle-"]').first();
+    const code = list.locator('input[id^="munin-explorer-share-code-"]').first();
+    const focused = () => page.evaluate(() => document.activeElement?.id ?? '');
+
+    await share.click();
+    await page.keyboard.press('Tab');
+    const movedTo = await focused();
+    if (movedTo.startsWith('munin-explorer-share-')) {
+      throw new Error(`Tab from «Del liste» did not leave it (focus on «${movedTo}»), so the check below means nothing`);
+    }
+    await code.waitFor({ state: 'visible', timeout: findTimeout });
+    await page.waitForTimeout(1000);
+    if (await focused() !== movedTo) {
+      throw new StateDefect(`the share took focus from «${movedTo}» to «${await focused()}» after the reader moved on`, ['2.4.3']);
+    }
+
+    await share.click();
+    await code.waitFor({ state: 'detached', timeout: findTimeout });
+    await share.click();
+    await page.waitForFunction(() => document.activeElement?.id?.startsWith('munin-explorer-share-code-') === true, null,
+      { timeout: findTimeout }).catch(async () => {
+      throw new StateDefect(`«Del liste» pressed again left focus on «${await focused()}», not on the code`, ['2.4.3']);
+    });
   },
 
   // Signed in with rows in the browser (Fhi.Metadata-emsc0.3.16): the carry-over offer pressed and refused, so the list

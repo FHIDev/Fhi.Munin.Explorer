@@ -10,6 +10,7 @@ namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
 /// Deleting these leaves the share's answer free to pull focus away from a control the reader moved to while it was out.
+/// Since Fhi.Metadata-emsc0.3.19 the browser decides that (scripts/test-focus-if-still-on*.mjs); these fail if the view focuses the code itself.
 /// </summary>
 public class AnonymousListShareFocusHeldOutTest : ExplorerTestContext
 {

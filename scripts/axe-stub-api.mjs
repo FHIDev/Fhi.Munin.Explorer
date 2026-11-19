@@ -256,6 +256,12 @@ function control(url, request, response) {
 
 function serve(url, request, response) {
   const path = url.pathname;
+  // A share answered with a code, so the browser list's share lands (list-browser-list-share, Fhi.Metadata-emsc0.3.19).
+  if (path === '/api/explorer/lists/share' && request.method === 'POST') {
+    request.resume();
+    request.on('end', () => response.writeHead(200, { 'content-type': 'application/json' }).end('{"code":"STUBSHARE"}'));
+    return;
+  }
   const [, kildeId, hierarchyAsked] = path.match(/^\/api\/explorer\/kilder\/([^/]+)(\/hierarchy)?$/) ?? [];
   if (syntheticKilder.has(kildeId)) {
     if (hierarchyAsked && kildeId === detailTree.FAILING_KILDE) {
