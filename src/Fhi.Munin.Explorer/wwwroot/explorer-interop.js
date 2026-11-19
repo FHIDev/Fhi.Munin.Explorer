@@ -34,6 +34,39 @@ export function isTypingInField() {
     || (active instanceof HTMLElement && active.isContentEditable);
 }
 
+// What the reader last pressed or clicked. Safari, and Firefox on macOS, leave a clicked button unfocused, so focus on
+// nothing says nothing there about whether the reader moved on; the press does (Fhi.Metadata-emsc0.3.19).
+let lastPressed = null;
+let pressesWatched = false;
+const remember = event => { lastPressed = event.target; };
+
+// Called by the browser list's view, not on import. A click too, since a screen reader may activate with only that.
+export function watchPresses() {
+  if (!pressesWatched) {
+    pressesWatched = true;
+    for (const type of ['pointerdown', 'keydown', 'click']) {
+      document.addEventListener(type, remember, true);
+    }
+  }
+  return true;
+}
+
+// Focus goes to `toId` only while it is on `fromId`, or on nothing with `fromId` the last thing pressed: a reader who
+// moved on, by any control, keeps their place. Checked and moved in one step, so no press can land between the two.
+export function focusIfStillOn(fromId, toId) {
+  const active = document.activeElement;
+  const from = document.getElementById(fromId);
+  const to = document.getElementById(toId);
+  const onNothing = active === null || active === document.body;
+  const stillThere = active !== null && active === from
+    || (onNothing && (lastPressed === null || (from !== null && from.contains(lastPressed))));
+  if (!(to instanceof HTMLElement) || !stillThere) {
+    return false;
+  }
+  to.focus();
+  return document.activeElement === to;
+}
+
 // One observer per mounted detail page, keyed by its own bar's id. Two explorers on one host page
 // each have an entry of their own, so neither can drive or disconnect the other's bar.
 const observers = new Map();

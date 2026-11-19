@@ -274,6 +274,37 @@ internal sealed class ExplorerInterop : IAsyncDisposable
         return await interop.TryLoadAsync().ConfigureAwait(false) && await interop.WatchFoldsAsync().ConfigureAwait(false);
     }
 
+    /// <summary>Has the page remember what the reader last pressed, for <see cref="FocusIfStillOnAsync"/>; once per page.</summary>
+    /// <returns>False when the module cannot be reached, so the caller asks again on a later render.</returns>
+    internal static async Task<bool> WatchPressesAsync(IJSRuntime js)
+    {
+        await using var interop = new ExplorerInterop(js);
+
+        if (!await interop.TryLoadAsync().ConfigureAwait(false) || interop._module is not { } module)
+        {
+            return false;
+        }
+
+        return await Tolerated<object>(async () => await module.InvokeAsync<bool>("watchPresses").ConfigureAwait(false))
+            .ConfigureAwait(false) is true;
+    }
+
+    /// <summary>Moves focus to <paramref name="toId"/> while it is on <paramref name="fromId"/>, or on nothing with it pressed last.</summary>
+    /// <returns>False when the reader moved on, the element is gone or the browser is out of reach.</returns>
+    /// <exception cref="JSException">A fault in the export itself, for the caller to log as one.</exception>
+    internal static async Task<bool> FocusIfStillOnAsync(IJSRuntime js, string fromId, string toId)
+    {
+        await using var interop = new ExplorerInterop(js);
+
+        if (!await interop.TryLoadAsync().ConfigureAwait(false) || interop._module is not { } module)
+        {
+            return false;
+        }
+
+        return await Tolerated<object>(async () => await module.InvokeAsync<bool>("focusIfStillOn", fromId, toId).ConfigureAwait(false))
+            .ConfigureAwait(false) is true;
+    }
+
     // Null means unknown, so callers must not mistake an unreachable control for a cleared date.
     internal async Task<DateInputState?> ReadDateInputAsync(string id)
     {
