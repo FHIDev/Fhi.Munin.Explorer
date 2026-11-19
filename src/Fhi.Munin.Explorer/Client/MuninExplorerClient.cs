@@ -335,6 +335,8 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
             throw new MuninExplorerUnauthorizedException();
         }
 
+        await ThrowIfListQuotaAsync(response, cancellationToken).ConfigureAwait(false);
+
         // 201 with the stored list as its body. A 400 — an empty name, or one over 200 characters —
         // is thrown by EnsureSuccessStatusCode, because a name the user typed and the API refused
         // is something to tell them about rather than an absence to render.
@@ -389,8 +391,19 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         ArgumentNullException.ThrowIfNull(variableIds);
         RefuseAnOversizedBatch(variableIds.Count, nameof(variableIds));
 
-        return SendForFoundAsync(
-            HttpMethod.Post, MyListVariables(id), new VariableIdsBody(variableIds), cancellationToken);
+        return AddVariablesCoreAsync(id, variableIds, cancellationToken);
+    }
+
+    private async Task<bool> AddVariablesCoreAsync(
+        Guid id,
+        IReadOnlyCollection<Guid> variableIds,
+        CancellationToken cancellationToken)
+    {
+        using var response = await SendAsync(HttpMethod.Post, MyListVariables(id), new VariableIdsBody(variableIds), cancellationToken);
+
+        await ThrowIfListQuotaAsync(response, cancellationToken).ConfigureAwait(false);
+
+        return Found(response);
     }
 
     public async Task<bool> AddItemsToMyListAsync(
@@ -409,8 +422,50 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
             throw new ListItemsRefusedException(await RefusedVariablesAsync(response, cancellationToken).ConfigureAwait(false));
         }
 
+        await ThrowIfListQuotaAsync(response, cancellationToken).ConfigureAwait(false);
+
         return Found(response);
     }
+
+    // Only a 409 naming one of the two quota codes with a positive limit is the quota; any other 409 throws as before.
+    private async Task ThrowIfListQuotaAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        if (response.StatusCode != HttpStatusCode.Conflict)
+        {
+            return;
+        }
+
+        ListQuotaBody? body;
+
+        try
+        {
+            body = await response.Content.ReadFromJsonAsync<ListQuotaBody>(Json, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception cause) when (cause is not OperationCanceledException)
+        {
+            // The 409 still throws below as it always did; only the reading of it as the quota is lost.
+            _logger?.LogWarning(cause, "a 409 body could not be read");
+            return;
+        }
+
+        ListQuotaKind? kind = body?.Code switch
+        {
+            "list-limit" => ListQuotaKind.Lists,
+            "row-limit" => ListQuotaKind.Rows,
+            _ => null
+        };
+
+        if (kind is { } k && body!.Limit is > 0 and var limit)
+        {
+            throw new MuninExplorerListQuotaException(k, limit, string.IsNullOrWhiteSpace(body.Error) ? null : body.Error);
+        }
+    }
+
+    /// <summary>Munin's 409 for a person at a list quota (Fhi.Metadata-oiips.57).</summary>
+    private sealed record ListQuotaBody(
+        [property: JsonPropertyName("error")] string? Error,
+        [property: JsonPropertyName("code")] string? Code,
+        [property: JsonPropertyName("limit")] int? Limit);
 
     private static async Task<IReadOnlyList<Guid>?> RefusedVariablesAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {

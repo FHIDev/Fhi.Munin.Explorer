@@ -890,7 +890,7 @@ else if (ShowsBrowserCopy)
                         aria-busy="@(_carryingOver ? "true" : null)"
                         @ref="_carryOverButton"
                         @onclick="CarryBrowserListOverAsync">@(_carryingOver ? T.SavingToList : T.CarryBrowserListOver)</button>
-                <p role="alert">@(CarryOverFailedShown ? T.CarryBrowserListOverError : null)</p>
+                <p role="alert">@CarryOverFailedMessage</p>
             </div>
         }
         @if (RefusedRowsShown is { } refused)

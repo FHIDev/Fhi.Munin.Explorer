@@ -442,6 +442,12 @@ public sealed partial class VariableListView
 
             await State.SetActiveListAsync(created.Id);
         }
+        catch (MuninExplorerListQuotaException ex)
+        {
+            Log?.LogWarning(ex, "Munin's list quota refused saving a shared list");
+            _quotaRefusal = ex;
+            return;
+        }
         catch (MuninExplorerRateLimitedException ex)
         {
             Log?.LogWarning(ex, "the rate limiter refused saving a shared list");

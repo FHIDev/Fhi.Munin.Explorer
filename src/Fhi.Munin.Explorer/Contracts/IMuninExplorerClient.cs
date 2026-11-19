@@ -436,6 +436,7 @@ public interface IMuninExplorerClient
     /// </remarks>
     /// <param name="name">What to call the list.</param>
     /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    /// <exception cref="MuninExplorerListQuotaException">The person already holds as many lists as Munin allows.</exception>
     Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -503,6 +504,7 @@ public interface IMuninExplorerClient
     /// and answered with a <c>400</c> the caller has to unpack.
     /// </param>
     /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    /// <exception cref="MuninExplorerListQuotaException">The add would take the person past the rows Munin allows across their lists.</exception>
     Task<bool> AddVariablesToMyListAsync(
         Guid id,
         IReadOnlyCollection<Guid> variableIds,
@@ -521,6 +523,7 @@ public interface IMuninExplorerClient
     /// <param name="id">The list to add to.</param>
     /// <param name="items">The items, at most <see cref="MaxVariablesPerBatch"/>, refused before sending otherwise.</param>
     /// <param name="cancellationToken">Cancelled when the caller goes away.</param>
+    /// <exception cref="MuninExplorerListQuotaException">The add would take the person past the rows Munin allows across their lists.</exception>
     Task<bool> AddItemsToMyListAsync(
         Guid id,
         IReadOnlyCollection<VariableDatasamlingKey> items,

@@ -49,7 +49,8 @@ HOST_PROJECT="$ROOT/samples/ModernHost/ModernHost.csproj"
 #     nothing are covered by tree-*, and an empty hierarchy by kilde-hierarchy-empty;
 #   - hierarchy shapes neither the captured kilde nor kilde-hierarchy-deep's synthetic one holds;
 #   - the English texts, and samples/LegacyHost, the same component in the other host;
-#   - the list tab's own create, rename and delete forms, and the annotation field in a row;
+#   - the list tab's own create, rename and delete forms, and the annotation field in a row; a create refused at
+#     Munin's list quota IS covered, in list-create-refused (Fhi.Metadata-oiips.61);
 #   - an imported list's notice of what did not come over: no stub list is imported (Fhi.Metadata-9huq2.37; a state for it: Fhi.Metadata-9huq2.42);
 #   - the signed-in carry-over's other ends: its busy «Lagrer …», a press that succeeds, the sentences after
 #     «Fjern disse radene» removes the rows or fails to, and a failure that names nothing. Its offer and its named
@@ -134,6 +135,7 @@ TARGETS=(
   "/utforsker::list-actions-and-columns"
   "/utforsker::list-download-and-columns"
   "$REFLOW_CARRY_OVER_TARGET"
+  "/utforsker::list-create-refused"
   "/::search-download-open"
   "/utforsker::explorer-save-all-confirm"
   "/utforsker::explorer-save-all-too-many"

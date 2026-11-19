@@ -155,6 +155,13 @@ public sealed partial class VariableListView
                 _copyFailure = CopyFailure.Incomplete;
             }
         }
+        catch (MuninExplorerListQuotaException ex)
+        {
+            // Said instead of the incomplete copy's sentence: the copy is shown with what landed.
+            Log?.LogWarning(ex, "Munin's list quota refused copying list {ListId}", source);
+            _quotaRefusal = ex;
+            _copyFailure = created is null ? CopyFailure.None : CopyFailure.Incomplete;
+        }
         catch (MuninExplorerRateLimitedException ex)
         {
             Log?.LogWarning(ex, "the rate limiter refused copying list {ListId}", source);

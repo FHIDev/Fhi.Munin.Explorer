@@ -167,6 +167,11 @@ public sealed partial class VariableListView
             ForgetNotesFor(list, VariableDatasamlingKey.Of(item));
             ForgetPicker();
         }
+        catch (MuninExplorerListQuotaException ex)
+        {
+            Log?.LogWarning(ex, "Munin's list quota refused choosing a datasamling for variable {VariableId} in list {ListId}", item.VariableId, list);
+            _pickFailure = T.ListQuota(ex);
+        }
         catch (MuninExplorerRateLimitedException ex)
         {
             Log?.LogWarning(ex, "the rate limiter refused choosing a datasamling for variable {VariableId} in list {ListId}", item.VariableId, list);

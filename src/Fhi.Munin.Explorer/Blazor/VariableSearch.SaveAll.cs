@@ -148,6 +148,7 @@ public partial class VariableSearch
             { Failure: SaveFailure.Throttled } => T.RateLimitError,
             { Failure: SaveFailure.SignInRequired } => T.SignInRequiredError,
             { Failure: SaveFailure.Failed } => T.SaveError,
+            { Failure: SaveFailure.ListQuota } => ListQuotaMessage,
             _ => null
         });
         builder.CloseElement();
@@ -261,6 +262,12 @@ public partial class VariableSearch
             _saveAll = Outcome(saved: added?.Count, list: result.ListName);
             // Unknown when the list could not be read: rows it already held must not read as new.
             ShowSavedNotices(added ?? [], result.ListName, reader);
+        }
+        catch (MuninExplorerListQuotaException ex)
+        {
+            Log?.LogWarning(ex, "Munin's list quota refused saving the whole result");
+            _listQuota = ex;
+            _saveAll = Outcome(SaveFailure.ListQuota);
         }
         catch (MuninExplorerRateLimitedException ex)
         {

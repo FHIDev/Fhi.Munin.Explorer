@@ -50,6 +50,9 @@ public partial class VariableSearch
         /// <summary>The API refused the save as unauthenticated (HTTP 401/403), despite the host's own claim that the reader is signed in.</summary>
         SignInRequired,
 
+        /// <summary>Munin refused it at a list quota; <see cref="_listQuota"/> says which (Fhi.Metadata-oiips.61).</summary>
+        ListQuota,
+
         /// <summary>The browser list is full, so the row was not added.</summary>
         BrowserListFull,
 
@@ -62,6 +65,11 @@ public partial class VariableSearch
         /// <summary>The browser could not be asked, so there is no browser list to put the row in.</summary>
         BrowserListUnavailable
     }
+
+    // The latest quota refusal: every row's says the same, since the quota is the person's, not the row's.
+    private MuninExplorerListQuotaException? _listQuota;
+
+    private string? ListQuotaMessage => _listQuota is { } quota ? T.ListQuota(quota) : T.SaveError;
 
     /// <summary>
     /// Rows whose last save attempt threw, against how it threw. Cleared when that row is tried
@@ -199,6 +207,7 @@ public partial class VariableSearch
             SaveFailure.Throttled => T.RateLimitError,
             SaveFailure.SignInRequired => T.SignInRequiredError,
             SaveFailure.Failed => T.SaveError,
+            SaveFailure.ListQuota => ListQuotaMessage,
             SaveFailure.BrowserListFull => T.BrowserListFull(VariableListState.MaxBrowserListRows),
             SaveFailure.BrowserListNotKept => T.BrowserListNotKept,
             SaveFailure.BrowserListForeign => T.BrowserListForeign,
@@ -283,6 +292,12 @@ public partial class VariableSearch
                     ? await ListState.ToggleSavedAsync(v.Id, T.FirstListName, KildeOf(v))
                     : await ListState.ToggleSavedAsync(row, T.FirstListName, KildeOf(v));
             }
+        }
+        catch (MuninExplorerListQuotaException ex)
+        {
+            Log?.LogWarning(ex, "Munin's list quota refused the save of variable {VariableId}", v.Id);
+            _listQuota = ex;
+            _saveError[row] = SaveFailure.ListQuota;
         }
         catch (MuninExplorerRateLimitedException ex)
         {

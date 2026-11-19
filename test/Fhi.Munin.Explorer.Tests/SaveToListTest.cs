@@ -72,6 +72,9 @@ public class SaveToListTest : ExplorerTestContext
         /// <summary>Refuse every add with the API's 401/403, as if IsAuthenticated were wrong.</summary>
         public bool UnauthorizedAdd { get; init; }
 
+        /// <summary>Thrown by every add, when set: the refusal a test names.</summary>
+        public Exception? AddRefusal { get; init; }
+
         /// <summary>Refuse every membership read with the API's 429 while set.</summary>
         /// <remarks>
         /// Settable rather than <c>init</c>, unlike the two above: the point of the tests using it
@@ -192,6 +195,11 @@ public class SaveToListTest : ExplorerTestContext
                 throw new MuninExplorerUnauthorizedException();
             }
 
+            if (AddRefusal is not null)
+            {
+                throw AddRefusal;
+            }
+
             if (FailAdd)
             {
                 throw new HttpRequestException("nede");
@@ -210,11 +218,11 @@ public class SaveToListTest : ExplorerTestContext
         }
     }
 
-    private IRenderedComponent<VariableSearch> RenderSignedIn(ListClient client, bool signedIn = true)
+    private IRenderedComponent<VariableSearch> RenderSignedIn(ListClient client, bool signedIn = true, string language = "no")
     {
         Services.AddSingleton<IMuninExplorerClient>(client);
         Services.AddScoped<VariableListState>();
-        return Render<VariableSearch>(p => p.Add(c => c.IsAuthenticated, signedIn));
+        return Render<VariableSearch>(p => p.Add(c => c.IsAuthenticated, signedIn).Add(c => c.Language, language));
     }
 
     /// <summary>The row's column strip, which is the element a press on the row lands in.</summary>
@@ -729,6 +737,23 @@ public class SaveToListTest : ExplorerTestContext
 
         Assert.Contains("for mange forespørsler", alert.TextContent);
         Assert.DoesNotContain("Kunne ikke lagre", alert.TextContent);
+    }
+
+    [Theory]
+    [InlineData("no")]
+    [InlineData("en")]
+    public void Row_WhenMuninRefusesTheAddAtTheRowLimit_ThenTheRowSaysTheLimitRatherThanThatSavingFailed(string language)
+    {
+        var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")))
+        {
+            AddRefusal = new MuninExplorerListQuotaException(ListQuotaKind.Rows, 100_000, "Listene dine kan til sammen ha høyst 100 000 rader.")
+        };
+        var cut = RenderSignedIn(client, language: language);
+
+        SaveButton(cut).Click();
+
+        var alert = cut.Find(".munin-explorer-data-list__save-status [role=alert]");
+        Assert.Equal(Texts.For(language).RowLimitReached(100_000), alert.TextContent.Trim());
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Fhi.Munin.Explorer.Contracts;
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -950,6 +951,9 @@ internal sealed record Texts(
     Func<int, int, string> BrowserListRefusedRemoved,
     string BrowserListRefusedNotRemoved,
     Func<int, string> BrowserListFull,
+    // Munin's per-person quotas (Fhi.Metadata-oiips.61), worded as Munin's own 409 words them.
+    Func<int, string> ListLimitReached,
+    Func<int, string> RowLimitReached,
     string ClearBrowserList,
     string ConfirmClearBrowserList,
     Func<int, string> BrowserListWaiting,
@@ -1279,6 +1283,13 @@ internal sealed record Texts(
     private const string DescendingNo = "synkende";
     private const string AscendingEn = "ascending";
     private const string DescendingEn = "descending";
+
+    /// <summary>What a list write refused at Munin's quota tells the reader.</summary>
+    public string ListQuota(MuninExplorerListQuotaException refusal) =>
+        refusal.Kind == ListQuotaKind.Lists ? ListLimitReached(refusal.Limit) : RowLimitReached(refusal.Limit);
+
+    // A fixed no-break space, as Munin groups it: nb-NO's own separator differs between ICU and Windows.
+    private static readonly NumberFormatInfo NorwegianGrouping = new() { NumberGroupSeparator = "\u00A0" };
 
     private static readonly Texts No = new(
         Title: "Variabelutforsker",
@@ -1960,6 +1971,8 @@ internal sealed record Texts(
             + (rest == 0 ? "" : rest == 1 ? " Raden som er igjen, kan lagres som ny liste i Mine variabellister." : $" De {rest} radene som er igjen, kan lagres som ny liste i Mine variabellister."),
         BrowserListRefusedNotRemoved: "Kunne ikke fjerne radene fra denne nettleseren nå.",
         BrowserListFull: max => $"Listen kan ha høyst {max} rader. Fjern noen før du legger til flere.",
+        ListLimitReached: max => $"Du kan ha høyst {max.ToString("#,0", NorwegianGrouping)} lister. Slett en liste før du lager en ny.",
+        RowLimitReached: max => $"Listene dine kan til sammen ha høyst {max.ToString("#,0", NorwegianGrouping)} rader. Fjern noen før du legger til flere.",
         ClearBrowserList: "Tøm listen",
         ConfirmClearBrowserList: "Fjerne alle variabler fra listen i denne nettleseren? Det kan ikke angres.",
         BrowserListWaiting: rows => rows == 1
@@ -2674,6 +2687,8 @@ internal sealed record Texts(
             + (rest == 0 ? "" : rest == 1 ? " The row that is left can be saved as a new list in My variable lists." : $" The {rest} rows that are left can be saved as a new list in My variable lists."),
         BrowserListRefusedNotRemoved: "Could not remove the rows from this browser just now.",
         BrowserListFull: max => $"The list can hold at most {max} rows. Remove some before adding more.",
+        ListLimitReached: max => $"You can have at most {max.ToString("#,0", CultureInfo.InvariantCulture)} lists. Delete a list before you make a new one.",
+        RowLimitReached: max => $"Your lists can hold at most {max.ToString("#,0", CultureInfo.InvariantCulture)} rows together. Remove some before you add more.",
         ClearBrowserList: "Empty the list",
         ConfirmClearBrowserList: "Remove every variable from the list in this browser? It cannot be undone.",
         BrowserListWaiting: rows => rows == 1
