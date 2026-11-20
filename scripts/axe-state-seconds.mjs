@@ -5,8 +5,9 @@
 export const REFLOW_SECONDS = 29;
 // The host restart and list-row-picker-off at three widths: 10.5 s in #747's shard 1 (Fhi.Metadata-l9l2n.174).
 export const PICKER_OFF_SECONDS = 11;
-// The same restart and list-browser-list at three widths: not yet measured in CI, so the picker pass's figure (Fhi.Metadata-emsc0.3.12).
-export const BROWSER_LIST_SECONDS = 11;
+// The same restart, list-browser-list and list-browser-list-share at three widths: not yet measured in CI, so the picker
+// pass's figure for each state and the share's 3 s hold and 1 s settle (Fhi.Metadata-emsc0.3.12, Fhi.Metadata-emsc0.3.19).
+export const BROWSER_LIST_SECONDS = 26;
 export const DEFAULT_SECONDS = 8;
 
 export const stateSeconds = {

@@ -1460,7 +1460,8 @@ view says so; a host that does not serve the module has no list, and the save bu
 kept in this browser. With `CodePicker` off, a signed-out reader has no save button and no list tab, as before.
 `check-accessibility.sh` scans it with axe in `list-browser-list`, on a host started with `CodePicker` on and with the samples'
 `Sample:SignedOut` switch, which mounts the composed explorer signed out; `check-hostile-host.sh` measures the same
-state when it runs, nightly or by hand, not on a pull request.
+state when it runs, nightly or by hand, not on a pull request. The signed-in carry-over's offer and a refusal naming
+variables, with «Fjern disse radene», are scanned by both in `list-carry-over-refused`, on the signed-in host.
 
 A new feature gets its own entry, off by default, unless it ships with an existing one, as the browser list does
 with `CodePicker`; an entry is removed once its features are on for every host.

@@ -23,6 +23,7 @@ import {
 } from './tree-fixture.mjs';
 import * as detailTree from './hierarchy-fixture.mjs';
 import * as statisticsFixture from './statistics-fixture.mjs';
+import { REFUSED_VARIABLE } from './carry-over-fixture.mjs';
 
 const port = Number(process.argv[2]);
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -255,6 +256,12 @@ function control(url, request, response) {
 
 function serve(url, request, response) {
   const path = url.pathname;
+  // A share answered with a code, so the browser list's share lands (list-browser-list-share, Fhi.Metadata-emsc0.3.19).
+  if (path === '/api/explorer/lists/share' && request.method === 'POST') {
+    request.resume();
+    request.on('end', () => response.writeHead(200, { 'content-type': 'application/json' }).end('{"code":"STUBSHARE"}'));
+    return;
+  }
   const [, kildeId, hierarchyAsked] = path.match(/^\/api\/explorer\/kilder\/([^/]+)(\/hierarchy)?$/) ?? [];
   if (syntheticKilder.has(kildeId)) {
     if (hierarchyAsked && kildeId === detailTree.FAILING_KILDE) {
@@ -459,6 +466,26 @@ const server = createServer((request, response) => {
 
 function handle(request, response) {
   const url = new URL(request.url, 'http://localhost');
+
+  // A list made by the signed-in carry-over, which deletes it again when the add is refused (Fhi.Metadata-emsc0.3.16).
+  // Answered, not kept: no other state makes one, and the next read has the captured lists.
+  if (url.pathname === '/api/explorer/my/lists' && request.method === 'POST') {
+    let sent = '';
+    request.on('data', chunk => { sent += chunk; });
+    request.on('end', () => {
+      let name = '';
+      try { name = String(JSON.parse(sent || '{}').name ?? '').trim(); } catch { name = ''; }
+      const now = new Date().toISOString();
+      response.writeHead(201, { 'content-type': 'application/json' })
+        .end(JSON.stringify({ id: randomUUID(), name, createdAt: now, updatedAt: now, variableCount: 0 }));
+    });
+    return;
+  }
+  if (request.method === 'DELETE' && /^\/api\/explorer\/my\/lists\/[^/]+$/.test(url.pathname)) {
+    response.writeHead(204).end();
+    return;
+  }
+
   if ((request.method === 'POST' || request.method === 'DELETE') && listVariables.test(url.pathname)) {
     let raw = '';
     request.on('data', chunk => { raw += chunk; });
@@ -466,6 +493,11 @@ function handle(request, response) {
       let sent = {};
       try { sent = JSON.parse(raw || '{}'); } catch { console.error(`stub: unreadable body for ${request.method} ${url.pathname}`); }
       const items = sent.items ?? (sent.variabelIds ?? []).map(variabelId => ({ variabelId, datasamlingId: null }));
+      // Munin's 400 for a row whose datasamling is not the variable's own, naming the variable; nothing is saved.
+      if (request.method === 'POST' && items.some(item => item.variabelId === REFUSED_VARIABLE)) {
+        response.writeHead(400, { 'content-type': 'application/json' }).end(JSON.stringify({ variabelIds: [REFUSED_VARIABLE] }));
+        return;
+      }
       for (const { variabelId, datasamlingId } of items) {
         const key = itemKey(variabelId, datasamlingId);
         if (request.method === 'POST') { added.set(key, { variabelId, datasamlingId: datasamlingId ?? null }); removedKeys.delete(key); removedVariables.delete(variabelId); }

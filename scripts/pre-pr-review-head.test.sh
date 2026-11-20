@@ -53,7 +53,7 @@ def f(name, patch="@@ -1 +1 @@\n-a\n+b", status="modified", prev=None):
 def own(*cs): return [{"sha": s, "parents": [{"sha": p} for p in ps], "commit": {"message": m}} for s, ps, m in cs]
 code = [f("src/a.cs")]
 more = [f("src/a.cs", "@@ -1 +1,2 @@\n-a\n+b\n+c")]
-w = {"repos/o/r/contents/.github/risk-tiers.txt": "high   roller/**\n# Files that steer agents\nmedium lanes/**\n\nmedium src/**\n"}
+w = {"repos/o/r/contents/.github/risk-tiers.txt": "high   roller/**\n!roller/notes.txt\n# a comment\n!roller/unbound.txt\n# Files that steer agents\nmedium lanes/**\n!lanes/free.txt\nmedium more-lanes/**\n\nmedium src/**\n"}
 head = R
 exempt = SECRET + "\n\nReview-exempt: nit\n"
 def after(sha, files, msg, stats=3):
@@ -98,6 +98,7 @@ elif case.startswith("exempt") or case.startswith("plain") or case.startswith("d
     files = {"exempt-ok": more, "exempt-big": more, "exempt-high": [f("roller/x.sh")],
              "exempt-rename": [f("src/b.cs", None, "renamed", "src/a.cs")], "exempt-agent": [f("AGENTS.md")],
              "exempt-nostats": more, "plain": more, "exempt-steer": [f("lanes/robin.md")],
+             "exempt-steer-after-not": [f("more-lanes/x.txt")], "exempt-steer-not": [f("lanes/free.txt")], "exempt-high-not": [f("roller/notes.txt")], "exempt-high-unbound": [f("roller/unbound.txt")],
              "exempt-renamed-edit": [f("src/b.cs", "@@ -1 +1 @@\n-a\n+b", "renamed", "src/a.cs")],
              "exempt-comments": more, "docs-nested-claude": [f("docs/x/CLAUDE.md")],
              "docs-agents-changelog": [f(".agents/CHANGELOG.md")], "docs-nested-dotclaude": [f("api/.claude/CHANGELOG.md")],
@@ -177,6 +178,11 @@ check exempt-high      1 "touches a high-risk path (roller/x.sh)"    "refused: t
 check exempt-rename    1 "renames a file or changes one with no patch" "refused: renames a file"
 check exempt-agent     1 "changes agent instructions (AGENTS.md)"    "refused: changes agent instructions"
 check exempt-steer     1 "changes agent instructions (lanes/robin.md)" "refused: changes agent instructions"
+# DevInfra-0f5.58: a «!» line takes its path out of the rule above it and does not end the «steer agents» group.
+check exempt-steer-after-not 1 "changes agent instructions (more-lanes/x.txt)" "refused: changes agent instructions"
+check exempt-steer-not 0 "declared exempt, 3 lines in 1 files."       "| exempt |"
+check exempt-high-not  0 "declared exempt, 3 lines in 1 files."       "| exempt |"
+check exempt-high-unbound 1 "touches a high-risk path (roller/unbound.txt)" "refused: touches a high-risk path"
 check two-exempt       0 "Every commit after the last round is covered." "| exempt |"
 check covered-moved    0 "covered."                                  ''
 check docs-differ      0 "only docs changed"                          ''

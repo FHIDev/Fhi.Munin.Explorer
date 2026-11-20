@@ -304,19 +304,26 @@ jobs:
                   elif g[i] == "?": out.append("[^/]"); i += 1
                   else: out.append(re.escape(g[i])); i += 1
               return re.compile("^" + "".join(out) + "$")
-          high, agent, steer = [], [], False
+          # A rule is [regex, [regexes a «!<glob>» line right under it takes out]] (DevInfra-0f5.58, as risk-tier.py reads it).
+          high, agent, steer, last = [], [], False, None
           for raw in os.environ["RULES"].splitlines():
               if raw.lstrip().startswith("#"):
-                  steer = "steer agents" in raw.lower(); continue
-              p = raw.split("#", 1)[0].split()
-              if len(p) != 2: steer = False; continue
-              if p[0] == "high": high.append(rx(p[1]))
-              if steer: agent.append(rx(p[1]))
+                  steer = "steer agents" in raw.lower(); last = None; continue
+              line = raw.split("#", 1)[0].strip()
+              if line.startswith("!"):
+                  if last is not None and line[1:].strip(): last[1].append(rx(line[1:].strip()))
+                  continue
+              p = line.split()
+              if len(p) != 2: steer = False; last = None; continue
+              last = [rx(p[1]), []]
+              if p[0] == "high": high.append(last)
+              if steer: agent.append(last)
+          hit = lambda rules, f: any(r.match(f) and not any(n.match(f) for n in out) for r, out in rules)
           always = {".github/risk-tiers.txt", ".github/risk-tiers.examples"}
           for f in sys.stdin.read().split("\n"):
               if not f: continue
-              if f in always or any(r.match(f) for r in high): print("high\t" + f)
-              elif any(r.match(f) for r in agent): print("agent\t" + f)
+              if f in always or hit(high, f): print("high\t" + f)
+              elif hit(agent, f): print("agent\t" + f)
           ' <<< "$1"
           }
           # Otherwise the head must descend from the round's commit, and each of the pull request's own later commits

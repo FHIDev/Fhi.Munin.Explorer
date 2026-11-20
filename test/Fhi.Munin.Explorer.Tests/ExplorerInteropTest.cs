@@ -283,6 +283,24 @@ public partial class ExplorerInteropTest
     }
 
     [Fact]
+    public async Task FocusIfStillOnAsync_WhenTheExportFaults_ThenTheJSExceptionTravelsToTheCaller()
+    {
+        // The browser list's share logs it at Error: a fault in our export, not a browser out of reach (Fhi.Metadata-emsc0.3.19).
+        var runtime = new LendingJsRuntime(new RefusingModule(new JSException("focusIfStillOn is not a function")));
+
+        await Assert.ThrowsAsync<JSException>(() => ExplorerInterop.FocusIfStillOnAsync(runtime, "share", "code"));
+    }
+
+    [Fact]
+    public async Task FocusIfStillOnAndWatchPresses_WhenTheModuleCannotBeImported_ThenTheyAnswerFalse()
+    {
+        var runtime = new RefusingJsRuntime(new JSException("404"));
+
+        Assert.False(await ExplorerInterop.FocusIfStillOnAsync(runtime, "share", "code"));
+        Assert.False(await ExplorerInterop.WatchPressesAsync(runtime));
+    }
+
+    [Fact]
     public async Task DisposeAsync_WhenItIsCalledTwice_ThenNothingIsReleasedASecondTime()
     {
         var module = new CountingModule();

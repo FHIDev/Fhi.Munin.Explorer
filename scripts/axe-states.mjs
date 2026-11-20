@@ -20,6 +20,7 @@
 import { treeStates } from './tree-states.mjs';
 import { hierarchyStates } from './hierarchy-states.mjs';
 import { scrollPast } from './reader-scroll.mjs';
+import { BROWSER_LIST_KEY, browserList } from './carry-over-fixture.mjs';
 import {
   loadTreeFixture, panel as filterPanel, tree as kildeTree, boxes as treeBoxes, chips as filterChips,
   until as untilTrue,
@@ -130,6 +131,16 @@ async function collapseFilters(page, row) {
 
 /** States scanned at the default width only: their fold is drawn from 1024px up, so a phone has none to scan. */
 export const wideOnlyStates = new Set(['variables-filters-collapsed', 'kilder-filters-collapsed']);
+
+// A state's own check found the page wrong: a finding axe-scan records and exits 1 on, not a state it could not reach.
+export class StateDefect extends Error {
+  name = 'StateDefect';
+
+  constructor(message, criteria) {
+    super(message);
+    this.criteria = criteria;
+  }
+}
 
 export const states = {
   // The script guards inventory these literal names without launching a browser.
@@ -1067,6 +1078,76 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
     if (await list.getByText('Listen er lagret bare i denne nettleseren', { exact: false }).count() === 0) {
       throw new Error('no browser list on the tab: list-browser-list needs Sample__SignedOut=true and MuninExplorer:Features:CodePicker on');
+    }
+  },
+
+  // The browser list's share open with its code. On the way, a Tab while the share is held must keep the reader where
+  // Tab took them, and reopening must put focus on the code (Fhi.Metadata-emsc0.3.19). Needs STUB_BASE, the stub the
+  // host reads; a failed focus check throws StateDefect, which axe-scan reports as a finding.
+  'list-browser-list-share': async page => {
+    await states['list-browser-list'](page);
+    const stub = process.env.STUB_BASE;
+    if (!stub) {
+      throw new Error('list-browser-list-share needs STUB_BASE, the stub the host reads, to hold the share');
+    }
+    const hold = await fetch(`${stub}/__stub/hold-next?path=/api/explorer/lists/share&ms=3000`, { method: 'POST' });
+    if (!hold.ok) {
+      throw new Error(`the stub refused to hold the share: ${hold.status}`);
+    }
+
+    const list = page.locator('[role=tabpanel]:not([hidden])').first();
+    const share = list.locator('button[id^="munin-explorer-share-toggle-"]').first();
+    const code = list.locator('input[id^="munin-explorer-share-code-"]').first();
+    const focused = () => page.evaluate(() => document.activeElement?.id ?? '');
+
+    await share.click();
+    await page.keyboard.press('Tab');
+    const movedTo = await focused();
+    if (movedTo.startsWith('munin-explorer-share-')) {
+      throw new Error(`Tab from «Del liste» did not leave it (focus on «${movedTo}»), so the check below means nothing`);
+    }
+    await code.waitFor({ state: 'visible', timeout: findTimeout });
+    await page.waitForTimeout(1000);
+    if (await focused() !== movedTo) {
+      throw new StateDefect(`the share took focus from «${movedTo}» to «${await focused()}» after the reader moved on`, ['2.4.3']);
+    }
+
+    await share.click();
+    await code.waitFor({ state: 'detached', timeout: findTimeout });
+    await share.click();
+    await page.waitForFunction(() => document.activeElement?.id?.startsWith('munin-explorer-share-code-') === true, null,
+      { timeout: findTimeout }).catch(async () => {
+      throw new StateDefect(`«Del liste» pressed again left focus on «${await focused()}», not on the code`, ['2.4.3']);
+    });
+  },
+
+  // Signed in with rows in the browser (Fhi.Metadata-emsc0.3.16): the carry-over offer pressed and refused, so the list
+  // tab draws the offer, the sentence naming the refused rows and «Fjern disse radene». carry-over-fixture.mjs seeds
+  // the rows; the stub refuses its reserved variable. Either control missing is TOOLING, never a clean scan.
+  'list-carry-over-refused': async page => {
+    await rowsArePresent(page, 'button.munin-explorer-dataitem-main__name');
+    await page.evaluate(([key, value]) => localStorage.setItem(key, value), [BROWSER_LIST_KEY, browserList]);
+    await page.reload();
+    await states['explorer-list-tab'](page);
+
+    const list = page.locator('[role=tabpanel]:not([hidden])').first();
+    const offer = list.getByRole('button', { name: 'Lagre i Mine variabellister', exact: true });
+    await offer.waitFor({ state: 'visible', timeout: findTimeout }).catch(() => {
+      throw new Error('no carry-over offer on the list tab: list-carry-over-refused needs a signed-in host with CodePicker on, '
+        + 'and the seeded list in the package\'s current storage shape (carry-over-fixture.mjs)');
+    });
+    await offer.click();
+
+    const remove = list.getByRole('button', { name: 'Fjern disse radene', exact: true });
+    await remove.waitFor({ state: 'visible', timeout: findTimeout }).catch(() => {
+      throw new Error('no refusal with «Fjern disse radene»: the stub did not refuse the add, or the view drew no refusal');
+    });
+    const sentence = await remove.getAttribute('aria-describedby');
+    await page.locator(`[id="${sentence}"]`).filter({ hasText: /\S/ }).waitFor({ state: 'visible', timeout: findTimeout }).catch(() => {
+      throw new Error('«Fjern disse radene» is drawn without the sentence that names the refused rows');
+    });
+    if (!await offer.isVisible()) {
+      throw new Error('the carry-over offer is gone after the refusal: list-carry-over-refused scans the two together');
     }
   },
 
