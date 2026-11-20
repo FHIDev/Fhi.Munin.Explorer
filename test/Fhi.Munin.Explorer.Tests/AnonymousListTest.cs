@@ -1481,6 +1481,26 @@ public class AnonymousListTest : ExplorerTestContext
     }
 
     [Fact]
+    public void VariableListView_WhenTheNextCarryOverSavesNothingWithoutThrowing_ThenTheLimitIsNoLongerSaid()
+    {
+        // No catch runs on this press, so only the reset at its start clears the earlier refusal.
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var client = new Client { CreateThrows = new MuninExplorerListQuotaException(ListQuotaKind.Lists, 50, apiText: null) };
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+        cut.WaitForAssertion(() => Assert.Contains(No.ListLimitReached(50), cut.Markup));
+        client.CreateThrows = null;
+        browser.ThrowingCalls.Add("keys");
+
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.CarryBrowserListOverError, cut.Markup));
+        Assert.DoesNotContain(No.ListLimitReached(50), cut.Markup);
+    }
+
+    [Fact]
     public void VariableListView_WhenACreateAfterAQuotaRefusalSucceeds_ThenTheLimitIsNoLongerSaid()
     {
         var client = new Client { CreateThrows = new MuninExplorerListQuotaException(ListQuotaKind.Lists, 50, apiText: null) };
