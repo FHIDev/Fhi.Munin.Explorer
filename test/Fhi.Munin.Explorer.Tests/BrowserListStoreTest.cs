@@ -25,6 +25,15 @@ public class BrowserListStoreTest : ExplorerTestContext
         Assert.Equal(new BrowserListStatus(false, 3, true, true, true, true), status);
     }
 
+    [Fact]
+    public void BrowserCarryClaim_WhenTheModulesAnswerIsRead_ThenBothFieldsLand()
+    {
+        // A renamed field reads as false: every press would be told the list is already being saved.
+        var claim = JsonSerializer.Deserialize<BrowserCarryClaim>("""{"taken":true,"token":"t-1"}""");
+
+        Assert.Equal(new BrowserCarryClaim(true, "t-1"), claim);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -88,6 +97,22 @@ public class BrowserListStoreTest : ExplorerTestContext
 
         var sent = Assert.IsAssignableFrom<IEnumerable<string>>(Assert.Single(module.Invocations["anonymousListRemoveKeys"]).Arguments[0]);
         Assert.Equal([$"{Variable}|{Datasamling}", $"{Variable}|"], sent);
+    }
+
+    [Fact]
+    public async Task BrowserListStore_WhenACarryOverClaims_ThenTheModuleIsAskedInMillisecondsAndReleasedByItsToken()
+    {
+        // test-anonymous-list.mjs passes the module milliseconds; seconds would make a claim lapse a thousand times early.
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        module.Setup<BrowserCarryClaim>("anonymousCarryClaim", _ => true).SetResult(new BrowserCarryClaim(true, "t-1"));
+        module.SetupVoid("anonymousCarryRelease", _ => true).SetVoidResult();
+        var store = new BrowserListStore(JSInterop.JSRuntime);
+
+        var claim = await store.ClaimCarryOverAsync(TimeSpan.FromSeconds(60), TimeSpan.FromMilliseconds(50));
+        await store.ReleaseCarryOverAsync(claim!.Token!);
+
+        Assert.Equal([60_000, 50], Assert.Single(module.Invocations["anonymousCarryClaim"]).Arguments);
+        Assert.Equal(["t-1"], Assert.Single(module.Invocations["anonymousCarryRelease"]).Arguments);
     }
 
     [Fact]

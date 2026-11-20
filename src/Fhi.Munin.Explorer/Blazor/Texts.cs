@@ -955,6 +955,7 @@ internal sealed record Texts(
     Func<int, string> BrowserListWaiting,
     string CarryBrowserListOver,
     string CarryBrowserListOverError,
+    string CarryBrowserListOverAlreadySaving,
     // A list imported from the old helsedata: what did not come over, until the reader hides it (Fhi.Metadata-9huq2.37).
     Func<int, string> ImportReportHeading,
     string ImportReportAdvice,
@@ -1967,6 +1968,7 @@ internal sealed record Texts(
             : $"Denne nettleseren har en liste fra før du logget inn, med {rows} rader. Lagrer du den i Mine variabellister, blir den en ny liste der.",
         CarryBrowserListOver: "Lagre i Mine variabellister",
         CarryBrowserListOverError: "Kunne ikke lagre listen i Mine variabellister nå. Den ligger fortsatt i denne nettleseren.",
+        CarryBrowserListOverAlreadySaving: "Listen lagres allerede i Mine variabellister, fra en annen fane eller et annet sted på siden. Den ligger i denne nettleseren til det er gjort. Prøv igjen om litt hvis den ikke forsvinner herfra.",
         ImportReportHeading: count => count switch
         {
             0 => "Importert fra den gamle listen: noe ble ikke tatt med",
@@ -2681,6 +2683,7 @@ internal sealed record Texts(
             : $"This browser holds a list from before you signed in, with {rows} rows. Saved to My variable lists, it becomes a new list there.",
         CarryBrowserListOver: "Save to My variable lists",
         CarryBrowserListOverError: "Could not save the list to My variable lists just now. It is still in this browser.",
+        CarryBrowserListOverAlreadySaving: "The list is already being saved to My variable lists, from another tab or elsewhere on the page. It stays in this browser until that is done. Try again in a moment if it does not leave here.",
         ImportReportHeading: count => count switch
         {
             0 => "Imported from the old list: some of it was not brought over",

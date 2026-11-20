@@ -1384,13 +1384,14 @@ response body or anything the reader typed — the user's access token reaches t
 
 ### What the package keeps in the reader's browser
 
-Three things, each only where the host serves the package's browser module, and none of them about the reader:
+Four things, each only where the host serves the package's browser module, and none of them about the reader:
 
 | Where | Key | What | When |
 | --- | --- | --- | --- |
 | `sessionStorage`, per tab | `Fhi.Munin.Explorer:scroll:` + the page's path and query | the kildeutforsker list's scroll position | written when the reader leaves the list, removed when read back |
 | `localStorage` | `munin-explorer.filters-collapsed` | whether the filter panel is folded on a wide screen | when the reader folds or unfolds it |
 | `localStorage` | `Fhi.Munin.Explorer:anonymous-list` | a signed-out reader's variable list, `{"v":1,"items":[…]}`, each row the fields below | only with `MuninExplorer:Features:CodePicker` on |
+| `localStorage` | `Fhi.Munin.Explorer:anonymous-list-claim` | a random token and an expiry time, `{"token":…,"until":…}`, so two tabs do not save that list to Mine variabellister twice | while a signed-in reader's «Lagre i Mine variabellister» runs, removed when it ends, lapsing after 90 seconds |
 
 Stored row fields: `variabelId`, `variabelCode`, `variabelName`, `kildeId`, `kildeName`, `kildeKortNavn`, `datasamlingId`, `datasamlingName`, `variabelgruppeName`, `dataType`, `dataFrom`, `dataTo`, `versjonStatus` — the
 variable's and datasamling's ids, its code and Norwegian name, its kilde's id, name and short name, the datasamling's
@@ -1448,7 +1449,8 @@ Munin refused, and a button described by that sentence, «Fjern disse radene» (
 every row of those variables out of the browser; the button goes with the sentence. The offer then counts the rows
 that are left and takes focus; with no rows left there is no offer, and focus goes to the list picker, or to creating
 a list when the reader has one list or none. A refused row is not remembered: if the reader keeps it, the next press
-is refused the same way. Any other failure (a refusal that names nothing, the write limiter, a lapsed sign-in, a list
+is refused the same way. A press that finds another tab or view already saving the browser list makes no list, says the list is already being saved and keeps every row.
+Any other failure (a refusal that names nothing, the write limiter, a lapsed sign-in, a list
 gone, an error) also saves nothing, deletes the new list if one was made and keeps every row; the press reads the
 reader's lists first, to name the new one, and a failure there makes nothing. A press only ever deletes the list it
 created. When that delete fails, as it can under the same write limiter, or the reader signs out during the press, the

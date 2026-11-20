@@ -32,6 +32,9 @@ internal sealed class FakeBrowserList : IBrowserListStore
     /// <summary>Calls by these names answer null, as a module that failed only those would.</summary>
     public HashSet<string> Failing { get; } = [];
 
+    /// <summary>Calls by these names throw, as a fault in only that part of the module would.</summary>
+    public HashSet<string> ThrowingCalls { get; } = [];
+
     /// <summary>
     /// While set, every call works out its answer when it is made, as the browser does, and hands it back only when
     /// a test releases it from <see cref="Pending"/>: the round trip, made as long as a test needs.
@@ -71,6 +74,11 @@ internal sealed class FakeBrowserList : IBrowserListStore
         if (Throws is { } thrown)
         {
             throw thrown;
+        }
+
+        if (ThrowingCalls.Contains(call))
+        {
+            throw new InvalidOperationException($"the module's {call} failed");
         }
 
         var answered = Unreachable || Failing.Contains(call) ? null : answer();
@@ -141,6 +149,48 @@ internal sealed class FakeBrowserList : IBrowserListStore
     {
         Watchers.Add(changedElsewhere);
         return Task.FromResult(!Unreachable);
+    }
+
+    /// <summary>The claim one tab's carry-over holds, which every tab over this instance finds, as the module's key is.</summary>
+    public string? Claim { get; set; }
+
+    /// <summary>The claim lapsed, as one a closed tab left does once its lifetime is over.</summary>
+    public bool ClaimExpired { get; set; }
+
+    /// <summary>Storage gives no claim: the module answers taken with no token.</summary>
+    public bool ClaimUnstored { get; set; }
+
+    public List<TimeSpan> ClaimLifetimes { get; } = [];
+
+    private int _claims;
+
+    public Task<BrowserCarryClaim?> ClaimCarryOverAsync(TimeSpan lifetime, TimeSpan settle) => Answer("claim", () =>
+    {
+        ClaimLifetimes.Add(lifetime);
+
+        if (ClaimUnstored)
+        {
+            return new BrowserCarryClaim(true, null);
+        }
+
+        if (Claim is not null && !ClaimExpired)
+        {
+            return new BrowserCarryClaim(false, null);
+        }
+
+        ClaimExpired = false;
+        Claim = $"claim-{++_claims}";
+        return new BrowserCarryClaim(true, Claim);
+    });
+
+    public async Task ReleaseCarryOverAsync(string token)
+    {
+        await Answer("release", () => (object)token);
+
+        if (Claim == token)
+        {
+            Claim = null;
+        }
     }
 
     public static VariableListItem Row(string name, Guid? datasamling = null) => new()
