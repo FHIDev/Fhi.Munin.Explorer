@@ -1161,4 +1161,57 @@ public class VariableListFiltersTest : ExplorerTestContext
             first.Find("[role=group]").GetAttribute("aria-labelledby"),
             second.Find("[role=group]").GetAttribute("aria-labelledby"));
     }
+
+    [Fact]
+    public void Headings_WhenTheHostSetsTheLevel_ThenTheTitleAndTheKildeHeadingAreElementsAtThatLevelAndTheNext()
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new ListClient(List((Kreftregisteret, 2))));
+        Services.AddScoped<VariableListState>();
+        var texts = Texts.For("no");
+
+        var cut = Render<VariableListFilters>(p => p
+            .Add(c => c.IsAuthenticated, true)
+            .Add(c => c.HeadingLevel, 4));
+
+        var title = cut.Find(".munin-explorer-filters > h4");
+        var kilde = cut.Find("[role=group] > h5");
+        Assert.Equal(texts.FiltersTitle, title.TextContent);
+        Assert.Equal("form-element__label", title.ClassName);
+        Assert.Equal(texts.FieldSource, kilde.TextContent);
+        Assert.Equal("form-element__label", kilde.ClassName);
+        Assert.Equal(kilde.Id, cut.Find("[role=group]").GetAttribute("aria-labelledby"));
+    }
+
+    [Fact]
+    public void Heading_WhenTheTextHoldsMarkupCharacters_ThenItIsDrawnAsText()
+    {
+        // The panel's headings went through a MarkupString, where these characters became markup.
+        const string text = "<em>Kilde</em> & <script>x</script>";
+
+        var cut = Render(DetailBlocks.Heading(3, text, "form-element__label", "kilde-heading"));
+
+        Assert.Equal(text, cut.Find("h3#kilde-heading").TextContent);
+        Assert.Empty(cut.FindAll("em"));
+        Assert.Empty(cut.FindAll("script"));
+    }
+
+    [Fact]
+    public void Sources_WhenSearchedForMarkupString_ThenThePackageNeitherCastsNorConstructsOne()
+    {
+        // Every heading here is built with OpenElement, so none of its text is ever parsed as markup.
+        var offenders = Directory
+            .EnumerateFiles(Repo.In("src", "Fhi.Munin.Explorer"), "*.*", SearchOption.AllDirectories)
+            .Where(file => file.EndsWith(".cs", StringComparison.Ordinal) || file.EndsWith(".razor", StringComparison.Ordinal))
+            .Where(file => !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
+                && !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
+            .Where(file =>
+            {
+                var source = File.ReadAllText(file);
+                return source.Contains("(MarkupString)", StringComparison.Ordinal)
+                    || source.Contains("new MarkupString(", StringComparison.Ordinal);
+            })
+            .Select(file => Path.GetRelativePath(Repo.Root, file));
+
+        Assert.Empty(offenders);
+    }
 }
