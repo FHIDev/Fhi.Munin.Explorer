@@ -1413,7 +1413,7 @@ each one off by default, so an environment's appsettings decides and production 
 Both `AddMuninExplorer` overloads read these keys from the host's configuration (the delegate overload from the
 registered `IConfiguration`, and nothing else from the section). The configuration overload reads them when it is
 called, the delegate overload when the first component needs them; either way a change takes a restart. `true` turns a feature on; absent or any other value is off. `options.Features.<Name>` set in
-the delegate wins over the key. The sample hosts turn both on in `appsettings.Development.json`, which is what
+the delegate wins over the key. The sample hosts turn every flag on in `appsettings.Development.json`, which is what
 the browser gates run; `check-accessibility.sh` also scans an opened list row once with `CodePicker` off, and the
 browser list on a signed-out sample host of its own.
 
@@ -1421,13 +1421,14 @@ browser list on a signed-out sample host of its own.
 helsedata: off by default, and helsedata turns it on. A fix, a change of text, an accessibility fix and a change of
 styling need none, and a follow-up to a feature still behind a flag goes behind that flag, not a new one. Whoever adds
 a flag files a bead at once to remove it, and the flag goes once helsedata has had it on in production through a
-release. The rule is this package's only: the Munin API routes a feature calls ship unflagged. Features released
+release; removing the key from `MuninExplorerFeatures` breaks a host that sets it in code, so its `Notes for hosts`
+fragment says so in its title. The rule is this package's only: the Munin API routes a feature calls ship unflagged. Features released
 before 20 November 2026 stay unflagged.
 
 | Key under `MuninExplorer:Features` | Turns on | Since | Removal bead |
 | --- | --- | --- | --- |
-| `CodePicker` | the code picker under «Ønskede data», and the browser list for a signed-out reader | 2.19.0 | none, added before the rule |
-| `AdvancedSearch` | avansert søk in `VariableSearch` | 2.21.0 | none, added before the rule |
+| `CodePicker` | the code picker under «Ønskede data»; and, from the next release, the browser list for a signed-out reader | 2.19.0 | Fhi.Metadata-l9l2n.199 |
+| `AdvancedSearch` | avansert søk in `VariableSearch` | 2.21.0 | Fhi.Metadata-l9l2n.200 |
 
 A new flag adds its row here, with the bead, in the PR that adds it, and its removal deletes the row.
 
@@ -1477,9 +1478,6 @@ kept in this browser. With `CodePicker` off, a signed-out reader has no save but
 `Sample:SignedOut` switch, which mounts the composed explorer signed out; `check-hostile-host.sh` measures the same
 state when it runs, nightly or by hand, not on a pull request. The signed-in carry-over's offer and a refusal naming
 variables, with «Fjern disse radene», are scanned by both in `list-carry-over-refused`, on the signed-in host.
-
-A new feature gets its own entry, off by default, unless it ships with an existing one, as the browser list does
-with `CodePicker`; an entry is removed once its features are on for every host.
 
 ### A legacy Blazor Server host on .NET 10
 

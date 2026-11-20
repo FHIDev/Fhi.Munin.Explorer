@@ -442,15 +442,17 @@ a change of text, an accessibility fix and a change of styling are not features;
 feature calls, which ship unflagged.
 
 - **A new reader-visible feature that is not behind a flag of its own is Important.** Behind a flag means: with
-  `MuninExplorer:Features:<Name>` absent, nothing of the feature is drawn, offered or stored.
+  `MuninExplorer:Features:<Name>` absent, nothing of the feature is drawn, offered or stored beyond what its
+  documented off state shows (`CodePicker` off still shows saved codes read-only).
 - **A follow-up to a feature whose flag still stands** goes behind that flag; a new flag for it is Important too, and
   so is a follow-up that shows while its feature's flag is off.
-- **A PR that adds a flag** must carry everything AGENTS.md lists: the `MuninExplorerFeatures` property and both
-  `AddMuninExplorer` overloads, the samples' `appsettings.Development.json`, a test with the flag off, the README
+- **A PR that adds a flag** must carry everything AGENTS.md lists: the `MuninExplorerFeatures` property, its `…Switch`
+  registration and both `AddMuninExplorer` overloads, the samples' `appsettings.Development.json`, a test with the flag off, the README
   table's row naming the removal bead, and a `Notes for hosts` fragment naming the key. Each one missing is
   Important; a row with no removal bead means the bead was not filed, so ask for it.
 - **A PR that removes a flag** deletes its row and its key everywhere, keeps the feature on, and says so in a
-  `Notes for hosts` fragment.
+  `Notes for hosts` fragment titled «BREAKING for hosts», since a host that sets the property in code no longer
+  compiles.
 
 ## 13. The pull request itself
 

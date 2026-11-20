@@ -44,8 +44,8 @@ public sealed class MuninExplorerOptions
 /// configuration key <c>MuninExplorer:Features:&lt;name&gt;</c> (<c>true</c> turns it on; absent or any other value is
 /// off), whichever <c>AddMuninExplorer</c> overload the host calls, so an environment's appsettings can turn it on without
 /// a code change. The configuration overload reads the key when it is called, the delegate overload when the first
-/// component needs it; either way a change takes a restart. A value set here wins over the key. An entry
-/// may turn on more than one feature, and is removed once they are on for every host.
+/// component needs it; either way a change takes a restart. A value set here wins over the key. An entry is
+/// removed, its feature then always on, once helsedata has had it on in production through a release.
 /// </summary>
 public sealed class MuninExplorerFeatures
 {

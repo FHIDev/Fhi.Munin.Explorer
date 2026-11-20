@@ -855,12 +855,14 @@ on per environment», has the rule and the table of flags; the points that decid
 - **What needs one:** a new feature a reader can see. A fix, a change of text, an accessibility fix and a change of
   styling need none.
 - **A follow-up reuses its feature's flag** while that flag stands; it does not get one of its own.
-- **The PR that adds a flag** adds it to `MuninExplorerFeatures` and to both `AddMuninExplorer` overloads the way
-  `CodePicker` and `AdvancedSearch` are, turns it on in the samples' `appsettings.Development.json`, tests the
+- **The PR that adds a flag** adds it to `MuninExplorerFeatures`, registers its `…Switch` and reads it in both
+  `AddMuninExplorer` overloads the way `CodePicker` and `AdvancedSearch` are, turns it on in the samples' `appsettings.Development.json`, tests the
   feature with the flag off as well as on, adds its row to the README's table, and says in a `Notes for hosts`
   fragment which key turns it on.
 - **Whoever adds a flag files its removal bead at once** (labels `helsedata`, `rcl`, `repo:explorer`), named in the
-  table's row. The flag goes once helsedata has had it on in production through a release.
+  table's row. The flag goes once helsedata has had it on in production through a release; that PR deletes
+  the `MuninExplorerFeatures` property, which breaks a host that sets it in code, so its `Notes for hosts` fragment's
+  title starts «BREAKING for hosts».
 - **Explorer only:** the Munin API routes a feature calls ship unflagged. Features released before 20 November 2026
   stay unflagged.
 
