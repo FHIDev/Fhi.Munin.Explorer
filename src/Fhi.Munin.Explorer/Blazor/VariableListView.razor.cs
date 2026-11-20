@@ -193,6 +193,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private DownloadFailure _downloadFailure;
     private ListActionFailure _createFailure;
 
+    // A create Munin refused at a list quota, from the view's own form or a copy (Fhi.Metadata-oiips.61).
+    private MuninExplorerListQuotaException? _quotaRefusal;
+
     /// <summary>
     /// What the reader has typed, per row. The fields render from here rather than from <c>_page</c>,
     /// so a refusal does not empty the field they were just told is too long. Reseeded on every page
@@ -635,7 +638,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// <summary>The one sentence the view's alert region says, the most recent failure first.</summary>
     private string? AlertText =>
         _failed ? T.ListLoadError
-        : CarriedOverMessage ?? SharedListMessage ?? ShareMessage ?? CopyMessage ?? EmptyingMessage ?? DownloadMessage ?? ActionMessage ?? ImportReportMessage
+        : (_quotaRefusal is { } quota ? T.ListQuota(quota) : null) ?? CarriedOverMessage ?? SharedListMessage ?? ShareMessage ?? CopyMessage ?? EmptyingMessage ?? DownloadMessage ?? ActionMessage ?? ImportReportMessage
           ?? CreateMessage ?? DesiredDataMessage ?? NotesMessage ?? (State is { ListsReadFailed: true, Lists.Count: 0 } ? T.ListLoadError : null);
 
     /// <summary>The lists are still being read, so an empty list says nothing about the reader yet.</summary>
@@ -1336,11 +1339,13 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _carriedOverAs = null;
         _carriedOverButStillHere = false;
         _carryOverFailed = false;
+        _carryOverQuota = null;
         _carryOverAlreadySaving = false;
         _refusal = null;
         _refusalSaid = null;
         _refusedRemoved = null;
         _createFailure = ListActionFailure.None;
+        _quotaRefusal = null;
         _actionFailure = ListActionFailure.None;
         _downloadFailure = DownloadFailure.None;
         _desiredDataFailure = DesiredDataFailure.None;
@@ -1445,6 +1450,12 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         try
         {
             created = await State.CreateAsync(name);
+        }
+        catch (MuninExplorerListQuotaException ex)
+        {
+            Log?.LogWarning(ex, "Munin's list quota refused a list creation");
+            _quotaRefusal = ex;
+            return;
         }
         catch (MuninExplorerRateLimitedException ex)
         {

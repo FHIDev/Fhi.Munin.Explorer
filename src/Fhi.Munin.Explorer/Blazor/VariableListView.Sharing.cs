@@ -61,6 +61,9 @@ public sealed partial class VariableListView
     private bool _saveSharedInFlight;
     private ListActionFailure _saveSharedFailure;
 
+    // Its own field: the shared view's alert region is not the list view's, which draws _quotaRefusal.
+    private MuninExplorerListQuotaException? _saveSharedQuota;
+
     /// <summary>A code made for one list, and the link that opens it when there is one.</summary>
     private sealed record ShareMade(Guid ListId, string Code, string? Link);
 
@@ -120,7 +123,7 @@ public sealed partial class VariableListView
         _ => null
     };
 
-    private string? SaveSharedMessage => _saveSharedFailure switch
+    private string? SaveSharedMessage => _saveSharedQuota is { } quota ? T.ListQuota(quota) : _saveSharedFailure switch
     {
         ListActionFailure.Throttled => T.RateLimitError,
         ListActionFailure.Failed => T.SaveError,
@@ -150,6 +153,7 @@ public sealed partial class VariableListView
         _sharedListFailure = SharedListFailure.None;
         _shareFailure = ListActionFailure.None;
         _saveSharedFailure = ListActionFailure.None;
+        _saveSharedQuota = null;
     }
 
     /// <summary>Follows a code the host passed, leaving one the view already shows alone.</summary>
@@ -404,6 +408,18 @@ public sealed partial class VariableListView
         }
     }
 
+    private async Task DiscardRefusedSaveAsync(Guid list)
+    {
+        try
+        {
+            await State!.DeleteAsync(list);
+        }
+        catch (Exception ex)
+        {
+            Log?.LogWarning(ex, "could not delete list {ListId} after the quota refused its rows", list);
+        }
+    }
+
     private async Task SaveSharedListOnceAsync()
     {
         if (State is null || !IsAuthenticated || _sharedList is not { } shared)
@@ -416,7 +432,7 @@ public sealed partial class VariableListView
         ForgetFailures();
         _saveNameProblem = SaveNameProblem.None;
 
-        VariableList? created;
+        VariableList? created = null;
 
         try
         {
@@ -441,6 +457,19 @@ public sealed partial class VariableListView
             }
 
             await State.SetActiveListAsync(created.Id);
+        }
+        catch (MuninExplorerListQuotaException ex)
+        {
+            Log?.LogWarning(ex, "Munin's list quota refused saving a shared list");
+            _saveSharedQuota = ex;
+
+            // As the carry-over does: the list the save made, rows or none, would take the name the reader retries.
+            if (created is not null)
+            {
+                await DiscardRefusedSaveAsync(created.Id);
+            }
+
+            return;
         }
         catch (MuninExplorerRateLimitedException ex)
         {

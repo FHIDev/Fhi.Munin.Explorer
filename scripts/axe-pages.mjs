@@ -17,7 +17,7 @@ const PAGES = {
   'explorer/variabelliste': [
     'explorer-list-tab', 'list-row-panel', 'list-actions-menu', 'list-actions-and-columns', 'list-download-and-columns',
     'list-row-notes', 'list-row-picker', 'list-row-picker-off', 'list-browser-list', 'list-browser-list-share',
-    'list-carry-over-refused',
+    'list-carry-over-refused', 'list-create-refused',
   ],
   'explorer/kildeutforsker': [
     'kilder-list', 'kildeutforsker-list', 'kilder-ticked', 'kilder-filters-collapsed', 'kilde-facet-ticked',

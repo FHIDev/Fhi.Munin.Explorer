@@ -24,6 +24,8 @@ public class SaveAllTest : ExplorerTestContext
         public int CreateCalls { get; private set; }
         public bool TooMany { get; init; }
         public bool RateLimitAdd { get; init; }
+
+        public Exception? AddRefusal { get; init; }
         public bool HasList { get; init; } = true;
         public bool RateLimitMembership { get; set; }
 
@@ -130,6 +132,11 @@ public class SaveAllTest : ExplorerTestContext
             if (RateLimitAdd)
             {
                 throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
+
+            if (AddRefusal is not null)
+            {
+                throw AddRefusal;
             }
 
             Adds.Add(variableIds);
@@ -623,6 +630,20 @@ public class SaveAllTest : ExplorerTestContext
 
         Assert.Contains("for mange forespørsler", Alert(cut));
         Assert.Equal("Lagre disse variablene", SaveAll(cut)!.TextContent.Trim());
+    }
+
+    [Fact]
+    public void SaveAll_WhenMuninRefusesTheAddAtTheRowLimit_ThenItSaysTheLimitRatherThanThatSavingFailed()
+    {
+        var rows = new[] { Variable("Vekt") };
+        var cut = Render(new Client(rows, 1, [rows[0].Id])
+        {
+            AddRefusal = new MuninExplorerListQuotaException(ListQuotaKind.Rows, 100_000, apiText: null)
+        });
+
+        SaveAll(cut)!.Click();
+
+        Assert.Equal(Texts.For("no").RowLimitReached(100_000), Alert(cut));
     }
 
     [Fact]

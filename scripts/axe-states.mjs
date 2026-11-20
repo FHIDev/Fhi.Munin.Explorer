@@ -21,6 +21,7 @@ import { treeStates } from './tree-states.mjs';
 import { hierarchyStates } from './hierarchy-states.mjs';
 import { scrollPast } from './reader-scroll.mjs';
 import { BROWSER_LIST_KEY, browserList } from './carry-over-fixture.mjs';
+import { QUOTA_LIST_NAME } from './list-quota-fixture.mjs';
 import {
   loadTreeFixture, panel as filterPanel, tree as kildeTree, boxes as treeBoxes, chips as filterChips,
   until as untilTrue,
@@ -1148,6 +1149,28 @@ export const states = {
     });
     if (!await offer.isVisible()) {
       throw new Error('the carry-over offer is gone after the refusal: list-carry-over-refused scans the two together');
+    }
+  },
+
+  // A new list refused at Munin's list quota (Fhi.Metadata-oiips.61): the create form open, its name kept, and the
+  // alert saying the limit. The stub refuses the reserved name with Munin's 409; no sentence is TOOLING, not a clean scan.
+  'list-create-refused': async page => {
+    await states['explorer-list-tab'](page);
+
+    const list = page.locator('[role=tabpanel]:not([hidden])').first();
+    await list.locator('button[id^="munin-explorer-create-toggle-"]').first().click();
+    const name = list.locator('input[id^="munin-explorer-new-list-"]').first();
+    await name.waitFor({ state: 'visible', timeout: findTimeout });
+    await name.fill(QUOTA_LIST_NAME);
+    await name.dispatchEvent('change');
+    await list.getByRole('button', { name: 'Opprett liste', exact: true }).click();
+
+    await list.getByRole('alert').filter({ hasText: 'høyst 50 lister' }).waitFor({ state: 'visible', timeout: findTimeout })
+      .catch(() => {
+        throw new Error('no quota sentence after the refused create: the stub did not answer 409 list-limit, or the view drew none');
+      });
+    if (await name.inputValue() !== QUOTA_LIST_NAME) {
+      throw new Error('the refused create emptied the name field: list-create-refused scans the form with the name kept');
     }
   },
 

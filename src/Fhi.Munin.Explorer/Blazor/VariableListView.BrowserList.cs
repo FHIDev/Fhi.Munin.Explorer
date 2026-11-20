@@ -24,6 +24,7 @@ public sealed partial class VariableListView
     private bool _carryingOver;
     private bool _removing;
     private bool _carryOverFailed;
+    private MuninExplorerListQuotaException? _carryOverQuota;
     private bool _carryOverAlreadySaving;
     private string? _carriedOverAs;
     private bool _carriedOverButStillHere;
@@ -76,7 +77,7 @@ public sealed partial class VariableListView
     private string? CarryOverAlert =>
         !CarryOverNoticesShown ? null
         : _carryOverAlreadySaving ? T.CarryBrowserListOverAlreadySaving
-        : _carryOverFailed ? T.CarryBrowserListOverError
+        : _carryOverFailed ? (_carryOverQuota is { } quota ? T.ListQuota(quota) : T.CarryBrowserListOverError)
         : null;
 
     /// <summary>The alert says the refusal, or that its rows were not removed: the remove button's sentence.</summary>
@@ -428,7 +429,9 @@ public sealed partial class VariableListView
         }
         catch (Exception ex)
         {
-            if (ex is MuninExplorerRateLimitedException or MuninExplorerUnauthorizedException)
+            _carryOverQuota = ex as MuninExplorerListQuotaException;
+
+            if (ex is MuninExplorerRateLimitedException or MuninExplorerUnauthorizedException or MuninExplorerListQuotaException)
             {
                 Log?.LogWarning(ex, "the API refused saving the browser list as a new list");
             }

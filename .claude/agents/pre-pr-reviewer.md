@@ -340,6 +340,11 @@ defect we ship becomes helsedata's to answer for, on their domain.
   `&&` operand the diff adds to a rule, name, by reading the tests, the one that fails with that piece deleted. Rate a piece
   no test fails without per REVIEW.md, **Important** when it changes what a reader sees; a PR body that says
   each condition was mutated when one was not is a doc claim. A blank-code filter survived three rounds so.
+- **Every reset the diff adds is a leg too.** For each field the diff clears when an action starts (`ForgetFailures`
+  and its like), find the test whose later action leaves the earlier value standing without that line: one that ends
+  by an early return or a null answer, so no catch or assignment overwrites the field. A test whose later action
+  reassigns the field does not count. Rate a missing one as above. #802's `_carryOverQuota` reset was covered only by
+  presses that threw again.
 - **A layout fix needs an assertion that fails at every width where the defect shows.** When the defect
   paints over a neighbouring cell while staying inside the mount (a name or code over the next column at
   desktop widths), the mount and overflow checks miss it. Ask for an assertion that compares the content,

@@ -15,6 +15,9 @@ public sealed partial class VariableListView
     private CopyFailure _copyFailure;
     private string _incompleteCopyName = "";
 
+    // A row-limit refusal after the copy was made: said after the sentence that the copy is incomplete.
+    private MuninExplorerListQuotaException? _copyQuota;
+
     private bool _confirmingEmpty;
     private bool _emptyInFlight;
     private ListActionFailure _emptyFailure;
@@ -52,11 +55,13 @@ public sealed partial class VariableListView
     {
         CopyFailure.Throttled => T.RateLimitError,
         CopyFailure.Failed => T.SaveError,
-        CopyFailure.Incomplete => T.CopyIncomplete,
-        CopyFailure.IncompleteElsewhere => T.CopyIncompleteElsewhere(_incompleteCopyName),
+        CopyFailure.Incomplete => WithCopyQuota(T.CopyIncomplete),
+        CopyFailure.IncompleteElsewhere => WithCopyQuota(T.CopyIncompleteElsewhere(_incompleteCopyName)),
         CopyFailure.SwitchFailed => T.ListLoadError,
         _ => null
     };
+
+    private string WithCopyQuota(string sentence) => _copyQuota is { } quota ? $"{sentence} {T.ListQuota(quota)}" : sentence;
 
     private string? EmptyingMessage => _emptyFailure switch
     {
@@ -68,6 +73,7 @@ public sealed partial class VariableListView
     private void ForgetCopyAndEmptyFailures()
     {
         _copyFailure = CopyFailure.None;
+        _copyQuota = null;
         _emptyFailure = ListActionFailure.None;
     }
 
@@ -152,6 +158,20 @@ public sealed partial class VariableListView
             // that is not on screen; the sibling save of a shared list does the same.
             if (!await AddEveryItemAsync(created.Id, items))
             {
+                _copyFailure = CopyFailure.Incomplete;
+            }
+        }
+        catch (MuninExplorerListQuotaException ex)
+        {
+            Log?.LogWarning(ex, "Munin's list quota refused copying list {ListId}", source);
+
+            if (created is null)
+            {
+                _quotaRefusal = ex;
+            }
+            else
+            {
+                _copyQuota = ex;
                 _copyFailure = CopyFailure.Incomplete;
             }
         }

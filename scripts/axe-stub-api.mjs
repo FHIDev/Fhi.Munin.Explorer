@@ -24,6 +24,7 @@ import {
 import * as detailTree from './hierarchy-fixture.mjs';
 import * as statisticsFixture from './statistics-fixture.mjs';
 import { REFUSED_VARIABLE } from './carry-over-fixture.mjs';
+import { QUOTA_LIST_NAME } from './list-quota-fixture.mjs';
 
 const port = Number(process.argv[2]);
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -475,6 +476,13 @@ function handle(request, response) {
     request.on('end', () => {
       let name = '';
       try { name = String(JSON.parse(sent || '{}').name ?? '').trim(); } catch { name = ''; }
+      // Munin's 409 at the person's list quota, for list-create-refused's reserved name (Fhi.Metadata-oiips.61). English
+      // text, so the Norwegian sentence the state waits for can only be the package's own.
+      if (name === QUOTA_LIST_NAME) {
+        response.writeHead(409, { 'content-type': 'application/json' }).end(JSON.stringify(
+          { error: 'You can have at most 50 lists. Delete a list before you make a new one.', code: 'list-limit', limit: 50 }));
+        return;
+      }
       const now = new Date().toISOString();
       response.writeHead(201, { 'content-type': 'application/json' })
         .end(JSON.stringify({ id: randomUUID(), name, createdAt: now, updatedAt: now, variableCount: 0 }));

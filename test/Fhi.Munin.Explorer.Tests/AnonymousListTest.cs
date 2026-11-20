@@ -1441,6 +1441,83 @@ public class AnonymousListTest : ExplorerTestContext
     }
 
     [Fact]
+    public void VariableListView_WhenMuninRefusesTheCarryOverAtTheListLimit_ThenItSaysTheLimitAtWarningAndTheRowsStay()
+    {
+        var recorder = new RecordingLoggerProvider();
+        Services.AddLogging(b => b.AddProvider(recorder).SetMinimumLevel(LogLevel.Trace));
+        var thrown = new MuninExplorerListQuotaException(ListQuotaKind.Lists, 50, apiText: null);
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var client = new Client();
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
+        client.CreateThrows = thrown;
+
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.ListLimitReached(50), cut.Markup));
+        Assert.DoesNotContain(No.CarryBrowserListOverError, cut.Markup);
+        Assert.Single(browser.Rows);
+        var entry = Assert.Single(recorder.Entries, e => e.Category == typeof(VariableListView).FullName && e.Exception == thrown);
+        Assert.Equal(LogLevel.Warning, entry.Level);
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheNextCarryOverFailsForAnotherReason_ThenTheLimitGivesWayToThatFailure()
+    {
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var client = new Client { CreateThrows = new MuninExplorerListQuotaException(ListQuotaKind.Lists, 50, apiText: null) };
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+        cut.WaitForAssertion(() => Assert.Contains(No.ListLimitReached(50), cut.Markup));
+        client.CreateThrows = new HttpRequestException("nede");
+
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.CarryBrowserListOverError, cut.Markup));
+        Assert.DoesNotContain(No.ListLimitReached(50), cut.Markup);
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheNextCarryOverSavesNothingWithoutThrowing_ThenTheLimitIsNoLongerSaid()
+    {
+        // No catch runs on this press, so only the reset at its start clears the earlier refusal.
+        var browser = new FakeBrowserList();
+        browser.Rows.Add(FakeBrowserList.Row("Alder"));
+        var client = new Client { CreateThrows = new MuninExplorerListQuotaException(ListQuotaKind.Lists, 50, apiText: null) };
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(1), cut.Markup));
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+        cut.WaitForAssertion(() => Assert.Contains(No.ListLimitReached(50), cut.Markup));
+        client.CreateThrows = null;
+        browser.ThrowingCalls.Add("keys");
+
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.CarryBrowserListOverError, cut.Markup));
+        Assert.DoesNotContain(No.ListLimitReached(50), cut.Markup);
+    }
+
+    [Fact]
+    public void VariableListView_WhenACreateAfterAQuotaRefusalSucceeds_ThenTheLimitIsNoLongerSaid()
+    {
+        var client = new Client { CreateThrows = new MuninExplorerListQuotaException(ListQuotaKind.Lists, 50, apiText: null) };
+        var cut = ListView(client, browser: null, signedIn: true);
+        cut.Find("button[id^='munin-explorer-create-toggle-']").Click();
+        cut.Find("input[id^='munin-explorer-new-list-']").Change("Hjerte og kar");
+        ButtonSaying(cut, "Opprett liste").Click();
+        cut.WaitForAssertion(() => Assert.Contains(No.ListLimitReached(50), cut.Markup));
+        client.CreateThrows = null;
+
+        ButtonSaying(cut, "Opprett liste").Click();
+
+        cut.WaitForAssertion(() => Assert.DoesNotContain(No.ListLimitReached(50), cut.Markup));
+        Assert.Contains("Listen er opprettet.", cut.Markup);
+    }
+
+    [Fact]
     public void VariableListView_WhenTheCarryOverFails_ThenTheBrowserListStaysAndTheReaderIsTold()
     {
         var browser = new FakeBrowserList();

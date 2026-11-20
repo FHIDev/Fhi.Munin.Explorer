@@ -54,6 +54,7 @@ public class ListItemsPerDatasamlingTest : ExplorerTestContext
         public List<(Guid ItemId, string? Text)> DesiredByItem { get; } = [];
         public int VariableRouteWrites { get; private set; }
         public bool FailAdd { get; init; }
+        public Exception? AddRefusal { get; init; }
 
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<VariableList>>([new VariableList { Id = ListId, Name = "Kreft", VariableCount = Items.Count }]);
@@ -78,6 +79,11 @@ public class ListItemsPerDatasamlingTest : ExplorerTestContext
             if (FailAdd)
             {
                 throw new HttpRequestException("nede");
+            }
+
+            if (AddRefusal is not null)
+            {
+                throw AddRefusal;
             }
 
             Items.AddRange(items.Select(i => Item(i.DatasamlingId, null)));
@@ -310,6 +316,25 @@ public class ListItemsPerDatasamlingTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Equal(
             "Kunne ikke lagre valget nå. Prøv igjen om litt.", Picker(cut).QuerySelector("[role=alert]")!.TextContent));
         Assert.Equal([$"add {Livmorhals}"], client.Calls);
+        Assert.Equal("Datasamling ikke valgt", DatasamlingCell(Rows(cut)[0]));
+    }
+
+    [Fact]
+    public void Unresolved_WhenMuninRefusesTheAddAtTheRowLimit_ThenThePickerSaysTheLimit()
+    {
+        var client = new ItemClient(Unresolved())
+        {
+            AddRefusal = new MuninExplorerListQuotaException(ListQuotaKind.Rows, 100_000, apiText: null)
+        };
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Single(Rows(cut)));
+        OpenRow(cut, 0);
+
+        Tick(cut, "Livmorhals");
+        SaveChoice(cut).Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(
+            Texts.For("no").RowLimitReached(100_000), Picker(cut).QuerySelector("[role=alert]")!.TextContent));
         Assert.Equal("Datasamling ikke valgt", DatasamlingCell(Rows(cut)[0]));
     }
 }
