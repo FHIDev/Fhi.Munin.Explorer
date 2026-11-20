@@ -1046,6 +1046,29 @@ public class VariableListStateBrowserTest
     }
 
     [Fact]
+    public async Task CarryBrowserListOverAsync_WhenTheRowsAreLeavingTheBrowser_ThenAnotherTabsPressIsStillRefused()
+    {
+        // Until the removal lands the rows are still stored, so a claim released earlier lets a second list be made.
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange(Rows(2));
+        var client = new ListsClient { BeforeAdd = () => browser.Hold = true };
+        var firstTab = await SignedInAsync(browser, client);
+        var secondTab = await SignedInAsync(browser, client);
+
+        var carrying = firstTab.CarryBrowserListOverAsync("Min variabelliste");
+        await WaitForPendingAsync(browser, "removeKeys");
+        browser.Hold = false;
+        var refused = await secondTab.CarryBrowserListOverAsync("Min variabelliste");
+
+        Assert.True(refused!.AlreadyCarrying);
+        Assert.Single(client.Created);
+
+        browser.ReleaseNewest();
+        Assert.NotNull((await carrying)!.List);
+        Assert.Null(browser.Claim);
+    }
+
+    [Fact]
     public async Task CarryBrowserListOverAsync_WhenAClosedTabLeftAClaimThatHasExpired_ThenThePressCarriesTheRows()
     {
         var browser = new FakeBrowserList { Claim = "a-closed-tab", ClaimExpired = true };

@@ -423,7 +423,7 @@ test('CarryRelease_WhenGivenItsOwnToken_ThenTheClaimGoesAndAnotherTokenLeavesIt'
 });
 
 test('CarryClaim_WhenStorageRefuses_ThenThePressGoesOnWithNoClaim', async () => {
-  // Storage that refuses keeps the list for this page alone, where no other tab can carry it.
+  // No claim can be written, so the press goes on as it did before the claim existed.
   const m = await tab();
   failing.get = true;
   failing.set = true;
