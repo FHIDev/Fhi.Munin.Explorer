@@ -1,2 +1,0 @@
-category: Changed
-- **The variable list's filter headings are built as elements, not markup.** The panel title and the Kilde heading in `VariableListFilters` were assembled as strings and drawn through a `MarkupString`, so any markup characters in their text would have been parsed as HTML. They are now built with `OpenElement`, like every other heading in the package, and render the same: the same levels, class and id.

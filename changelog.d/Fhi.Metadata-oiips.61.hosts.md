@@ -1,2 +1,0 @@
-category: Notes for hosts
-- **`CreateMyListAsync`, `AddVariablesToMyListAsync` and `AddItemsToMyListAsync` throw `MuninExplorerListQuotaException` at Munin's list quota.** It carries `Kind` (`ListQuotaKind.Lists` or `Rows`), `Limit` and `ApiText`, Munin's own sentence. It derives from `HttpRequestException` with status 409, so a host that catches that keeps catching it; every other 409 is thrown as before. A host with its own `IMuninExplorerClient` throws it for the components to name the quota.
