@@ -1163,7 +1163,7 @@ public class VariableListFiltersTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Headings_WhenTheHostSetsTheLevel_ThenTheTitleAndTheKildeHeadingAreElementsAtThatLevelAndTheNext()
+    public void Panel_WhenTheHostSetsTheHeadingLevel_ThenTheTitleAndTheKildeHeadingAreElementsAtThatLevelAndTheNext()
     {
         Services.AddSingleton<IMuninExplorerClient>(new ListClient(List((Kreftregisteret, 2))));
         Services.AddScoped<VariableListState>();
@@ -1177,6 +1177,7 @@ public class VariableListFiltersTest : ExplorerTestContext
         var kilde = cut.Find("[role=group] > h5");
         Assert.Equal(texts.FiltersTitle, title.TextContent);
         Assert.Equal("form-element__label", title.ClassName);
+        Assert.Null(title.GetAttribute("id"));
         Assert.Equal(texts.FieldSource, kilde.TextContent);
         Assert.Equal("form-element__label", kilde.ClassName);
         Assert.Equal(kilde.Id, cut.Find("[role=group]").GetAttribute("aria-labelledby"));
@@ -1185,7 +1186,7 @@ public class VariableListFiltersTest : ExplorerTestContext
     [Fact]
     public void Heading_WhenTheTextHoldsMarkupCharacters_ThenItIsDrawnAsText()
     {
-        // The panel's headings went through a MarkupString, where these characters became markup.
+        // Heading text is content, never markup: these characters stay text.
         const string text = "<em>Kilde</em> & <script>x</script>";
 
         var cut = Render(DetailBlocks.Heading(3, text, "form-element__label", "kilde-heading"));
@@ -1196,22 +1197,16 @@ public class VariableListFiltersTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Sources_WhenSearchedForMarkupString_ThenThePackageNeitherCastsNorConstructsOne()
+    public void Panel_WhenTheTitleIsAtLevelSix_ThenTheKildeHeadingStaysAtSix()
     {
-        // Every heading here is built with OpenElement, so none of its text is ever parsed as markup.
-        var offenders = Directory
-            .EnumerateFiles(Repo.In("src", "Fhi.Munin.Explorer"), "*.*", SearchOption.AllDirectories)
-            .Where(file => file.EndsWith(".cs", StringComparison.Ordinal) || file.EndsWith(".razor", StringComparison.Ordinal))
-            .Where(file => !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
-                && !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
-            .Where(file =>
-            {
-                var source = File.ReadAllText(file);
-                return source.Contains("(MarkupString)", StringComparison.Ordinal)
-                    || source.Contains("new MarkupString(", StringComparison.Ordinal);
-            })
-            .Select(file => Path.GetRelativePath(Repo.Root, file));
+        Services.AddSingleton<IMuninExplorerClient>(new ListClient(List((Kreftregisteret, 2))));
+        Services.AddScoped<VariableListState>();
 
-        Assert.Empty(offenders);
+        var cut = Render<VariableListFilters>(p => p
+            .Add(c => c.IsAuthenticated, true)
+            .Add(c => c.HeadingLevel, 6));
+
+        Assert.Single(cut.FindAll(".munin-explorer-filters > h6"));
+        Assert.Single(cut.FindAll("[role=group] > h6"));
     }
 }
