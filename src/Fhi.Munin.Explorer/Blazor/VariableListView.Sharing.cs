@@ -463,7 +463,7 @@ public sealed partial class VariableListView
             Log?.LogWarning(ex, "Munin's list quota refused saving a shared list");
             _saveSharedQuota = ex;
 
-            // As the carry-over does: an empty list left behind would take the name the reader retries with.
+            // As the carry-over does: the list the save made, rows or none, would take the name the reader retries.
             if (created is not null)
             {
                 await DiscardRefusedSaveAsync(created.Id);

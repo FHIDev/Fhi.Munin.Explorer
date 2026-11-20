@@ -68,8 +68,6 @@ public partial class VariableSearch
 
     private readonly Dictionary<VariableDatasamlingKey, MuninExplorerListQuotaException> _rowQuota = [];
 
-    private string QuotaMessage(MuninExplorerListQuotaException? quota) => quota is null ? T.SaveError : T.ListQuota(quota);
-
     /// <summary>
     /// Rows whose last save attempt threw, against how it threw. Cleared when that row is tried
     /// again.
@@ -207,7 +205,7 @@ public partial class VariableSearch
             SaveFailure.Throttled => T.RateLimitError,
             SaveFailure.SignInRequired => T.SignInRequiredError,
             SaveFailure.Failed => T.SaveError,
-            SaveFailure.ListQuota => QuotaMessage(quota),
+            SaveFailure.ListQuota when quota is not null => T.ListQuota(quota),
             SaveFailure.BrowserListFull => T.BrowserListFull(VariableListState.MaxBrowserListRows),
             SaveFailure.BrowserListNotKept => T.BrowserListNotKept,
             SaveFailure.BrowserListForeign => T.BrowserListForeign,

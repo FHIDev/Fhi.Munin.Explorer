@@ -151,7 +151,7 @@ public partial class VariableSearch
             { Failure: SaveFailure.Throttled } => T.RateLimitError,
             { Failure: SaveFailure.SignInRequired } => T.SignInRequiredError,
             { Failure: SaveFailure.Failed } => T.SaveError,
-            { Failure: SaveFailure.ListQuota, Quota: var quota } => QuotaMessage(quota),
+            { Failure: SaveFailure.ListQuota, Quota: { } quota } => T.ListQuota(quota),
             _ => null
         });
         builder.CloseElement();
