@@ -1427,7 +1427,7 @@ to main before 20 November 2026 stay unflagged; among them the browser list for 
 
 | Key under `MuninExplorer:Features` | Turns on | Since | Removal bead |
 | --- | --- | --- | --- |
-| `CodePicker` | the code picker under «Ønskede data»; and, from the next release, the browser list for a signed-out reader | 2.19.0 | Fhi.Metadata-l9l2n.199 |
+| `CodePicker` | the code picker under «Ønskede data»; and, from 2.24.0, the browser list for a signed-out reader | 2.19.0 | Fhi.Metadata-l9l2n.199 |
 | `AdvancedSearch` | avansert søk in `VariableSearch` | 2.21.0 | Fhi.Metadata-l9l2n.200 |
 
 A new flag adds its row here, with the bead, in the PR that adds it, and its removal deletes the row.
