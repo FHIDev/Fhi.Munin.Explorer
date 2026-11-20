@@ -1423,7 +1423,8 @@ styling need none, and a follow-up to a feature still behind a flag goes behind 
 a flag files a bead at once to remove it, and the flag goes once helsedata has had it on in production through a
 release; removing the key from `MuninExplorerFeatures` breaks a host that sets it in code, so its `Notes for hosts`
 fragment says so in its title. The rule is this package's only: the Munin API routes a feature calls ship unflagged. Features merged
-to main before 20 November 2026 stay unflagged; among them the browser list for a signed-out reader stays on `CodePicker`.
+to main before 20 November 2026 keep their place without a flag of their own: an unflagged one stays unflagged, and the
+browser list for a signed-out reader stays on `CodePicker`.
 
 | Key under `MuninExplorer:Features` | Turns on | Since | Removal bead |
 | --- | --- | --- | --- |

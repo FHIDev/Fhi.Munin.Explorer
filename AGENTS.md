@@ -864,7 +864,8 @@ on per environment», has the rule and the table of flags; the points that decid
   the `MuninExplorerFeatures` property, which breaks a host that sets it in code, so its `Notes for hosts` fragment's
   title starts «BREAKING for hosts».
 - **Explorer only:** the Munin API routes a feature calls ship unflagged. Features merged to main before 20 November
-  2026 stay unflagged; among them the browser list for a signed-out reader stays on `CodePicker`.
+  2026 keep their place without a flag of their own: an unflagged one stays unflagged, and the browser list for a
+  signed-out reader stays on `CodePicker`.
 
 The pre-PR reviewer treats a new reader-visible feature without its own flag as Important.
 
