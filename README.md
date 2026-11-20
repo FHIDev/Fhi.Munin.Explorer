@@ -1415,7 +1415,21 @@ registered `IConfiguration`, and nothing else from the section). The configurati
 called, the delegate overload when the first component needs them; either way a change takes a restart. `true` turns a feature on; absent or any other value is off. `options.Features.<Name>` set in
 the delegate wins over the key. The sample hosts turn both on in `appsettings.Development.json`, which is what
 the browser gates run; `check-accessibility.sh` also scans an opened list row once with `CodePicker` off, and the
-browser list on a signed-out sample host of its own. Today there are two:
+browser list on a signed-out sample host of its own.
+
+**Every new feature a reader can see ships behind a flag of its own** (Fhi.Metadata-l9l2n.198), the agreement with
+helsedata: off by default, and helsedata turns it on. A fix, a change of text, an accessibility fix and a change of
+styling need none, and a follow-up to a feature still behind a flag goes behind that flag, not a new one. Whoever adds
+a flag files a bead at once to remove it, and the flag goes once helsedata has had it on in production through a
+release. The rule is this package's only: the Munin API routes a feature calls ship unflagged. Features released
+before 20 November 2026 stay unflagged.
+
+| Key under `MuninExplorer:Features` | Turns on | Since | Removal bead |
+| --- | --- | --- | --- |
+| `CodePicker` | the code picker under «Ønskede data», and the browser list for a signed-out reader | 2.19.0 | none, added before the rule |
+| `AdvancedSearch` | avansert søk in `VariableSearch` | 2.21.0 | none, added before the rule |
+
+A new flag adds its row here, with the bead, in the PR that adds it, and its removal deletes the row.
 
 - `CodePicker`, the code picker under «Ønskede data» in a saved list; with it off, «Ønskede data» is
   one free-text field and codes saved through Munin show read-only. The same key turns on the browser list below.

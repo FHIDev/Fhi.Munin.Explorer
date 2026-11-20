@@ -434,6 +434,24 @@ Every file should relate to the stated task. Flag unrelated files, and flag a di
 something the bead explicitly ruled out of scope without the bead being updated to record the
 reversal — reviewers read the bead to decide what the change is supposed to contain.
 
+## 12a. A new feature behind its own flag
+
+AGENTS.md, «A new feature ships behind its own flag», is the rule (Fhi.Metadata-l9l2n.198). Decide first whether the
+diff adds a feature a reader can see: something drawn, offered or stored that the package did not do before. A fix,
+a change of text, an accessibility fix and a change of styling are not features; neither are the Munin API routes a
+feature calls, which ship unflagged.
+
+- **A new reader-visible feature that is not behind a flag of its own is Important.** Behind a flag means: with
+  `MuninExplorer:Features:<Name>` absent, nothing of the feature is drawn, offered or stored.
+- **A follow-up to a feature whose flag still stands** goes behind that flag; a new flag for it is Important too, and
+  so is a follow-up that shows while its feature's flag is off.
+- **A PR that adds a flag** must carry everything AGENTS.md lists: the `MuninExplorerFeatures` property and both
+  `AddMuninExplorer` overloads, the samples' `appsettings.Development.json`, a test with the flag off, the README
+  table's row naming the removal bead, and a `Notes for hosts` fragment naming the key. Each one missing is
+  Important; a row with no removal bead means the bead was not filed, so ask for it.
+- **A PR that removes a flag** deletes its row and its key everywhere, keeps the feature on, and says so in a
+  `Notes for hosts` fragment.
+
 ## 13. The pull request itself
 
 - **`Closes-Bead: <bead-id>`** on a line of its own when the PR finishes the bead — it is what
@@ -476,6 +494,7 @@ reversal — reviewers read the bead to decide what the change is supposed to co
 – Accessibility:          markup untouched
 ✓ Tests:                  22 new, invariants asserted
 ✓ Scope:                  6 files, all related
+– Feature flag:           a fix, no new feature
 ✗ PR reference:           body says "Closes FHIDev/Munin#5375" — needs Closes-Bead: <bead-id>
 
 **Verdict: 4 issues to fix before opening the PR**
