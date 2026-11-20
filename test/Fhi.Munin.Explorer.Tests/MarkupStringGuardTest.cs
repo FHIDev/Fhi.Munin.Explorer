@@ -3,23 +3,23 @@ using System.Text.RegularExpressions;
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
-/// Nothing in the package hands text to the renderer as markup: every heading and every catalogue string is built
-/// with <c>OpenElement</c> and <c>AddContent</c>, so none of it is parsed as HTML (Fhi.Metadata-oiips.70).
+/// The package contains no <c>MarkupString</c> and no <c>AddMarkupContent</c>, so no text it renders is parsed as
+/// HTML (Fhi.Metadata-oiips.70).
 /// </summary>
 public partial class MarkupStringGuardTest
 {
     [Fact]
     public void Package_WhenScannedForMarkupSinks_ThenNoneIsFound()
     {
-        var offenders = Directory
+        var scanned = Directory
             .EnumerateFiles(Repo.In("src", "Fhi.Munin.Explorer"), "*.*", SearchOption.AllDirectories)
             .Where(file => file.EndsWith(".cs", StringComparison.Ordinal) || file.EndsWith(".razor", StringComparison.Ordinal))
-            .Where(file => !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
-                && !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
-            .Where(file => MarkupSinks(File.ReadAllText(file)).Count > 0)
-            .Select(file => Path.GetRelativePath(Repo.Root, file));
+            .Select(file => Path.GetRelativePath(Repo.Root, file))
+            .Where(relative => !relative.Split(Path.DirectorySeparatorChar).Any(segment => segment is "bin" or "obj"))
+            .ToList();
 
-        Assert.Empty(offenders);
+        Assert.Contains(Path.Combine("src", "Fhi.Munin.Explorer", "Blazor", "VariableListFilters.razor"), scanned);
+        Assert.Empty(scanned.Where(relative => MarkupSinks(File.ReadAllText(Path.Combine(Repo.Root, relative))).Count > 0));
     }
 
     [Theory]
@@ -28,6 +28,14 @@ public partial class MarkupStringGuardTest
     [InlineData("var m = new MarkupString (text);")]
     [InlineData("MarkupString m = new(text);")]
     [InlineData("builder.AddMarkupContent(3, text);")]
+    [InlineData("// note\nbuilder.AddMarkupContent(1, t);")]
+    [InlineData("/* c */ builder.AddMarkupContent(1, t);")]
+    [InlineData("@* c *@ @((MarkupString)x)")]
+    [InlineData("<a href=\"https://x\">@((MarkupString)y)</a>")]
+    [InlineData("var u = \"https://x\"; var m = (MarkupString)y;")]
+    [InlineData("var g = \"/*\";\nvar m = (MarkupString)y;\n/* x */")]
+    [InlineData("var p = @\"C:\dir\\\"; var m = (MarkupString)y;")]
+    [InlineData("var q = '\"'; var m = (MarkupString)y;")]
     public void MarkupSinks_WhenTheSourceWritesASink_ThenItIsFound(string source) =>
         Assert.NotEmpty(MarkupSinks(source));
 
@@ -37,18 +45,20 @@ public partial class MarkupStringGuardTest
     [InlineData("@* drawn without a MarkupString *@")]
     [InlineData("/* AddMarkupContent( is the sink */ builder.AddContent(1, text);")]
     [InlineData("builder.AddContent(1, text);")]
-    public void MarkupSinks_WhenOnlyACommentNamesASink_ThenNothingIsFound(string source) =>
+    [InlineData("var s = \"MarkupString\"; // AddMarkupContent(")]
+    public void MarkupSinks_WhenNoCodeWritesASink_ThenNothingIsFound(string source) =>
         Assert.Empty(MarkupSinks(source));
 
-    /// <summary>The sinks <paramref name="source"/> writes outside its comments.</summary>
+    /// <summary>The sinks <paramref name="source"/> writes outside its comments and string literals.</summary>
     internal static IReadOnlyList<string> MarkupSinks(string source)
     {
-        var code = Comments().Replace(source, " ");
+        var code = CommentsAndLiterals().Replace(source, " ");
         return [.. Sinks().Matches(code).Select(match => match.Value)];
     }
 
-    [GeneratedRegex(@"@\*.*?\*@|/\*.*?\*/|//[^\n]*", RegexOptions.Singleline, matchTimeoutMilliseconds: 1000)]
-    private static partial Regex Comments();
+    // One pass, so a comment opener inside a string, or a quote inside a comment, is read as what it is.
+    [GeneratedRegex(@"\$?@\$?""(?:[^""]|"""")*""|""(?:\.|[^""\\n])*""|'(?:\.|[^'\\n])'|@\*.*?\*@|/\*.*?\*/|//[^\n]*", RegexOptions.Singleline, matchTimeoutMilliseconds: 1000)]
+    private static partial Regex CommentsAndLiterals();
 
     [GeneratedRegex(@"\bMarkupString\b|\bAddMarkupContent\s*\(", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
     private static partial Regex Sinks();
