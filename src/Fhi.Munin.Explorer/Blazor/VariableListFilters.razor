@@ -9,7 +9,7 @@
        track, through a CHILD combinator on `.munin-explorer` — see the note in VariableSearch.razor
        where this fragment is drawn, which is why it is drawn there. *@
     <div class="munin-explorer-filters">
-        @((MarkupString)$"<h{TitleLevel} class=\"form-element__label\">{T.FiltersTitle}</h{TitleLevel}>")
+        @DetailBlocks.Heading(TitleLevel, T.FiltersTitle, "form-element__label")
 
         @* The same fold as the search tab's and Kelda's: behind Vis filtre on a narrow screen, where the
            panel otherwise stood over the list and pushed its menus below the fold. Stiler hides the
@@ -34,7 +34,7 @@
                through a filter panel by heading, and a legend is not one. One facet only, so it is not
                a disclosure the way Kelda's four and the variable explorer's are. *@
             <div role="group" aria-labelledby="@KildeHeadingId">
-                @((MarkupString)$"<h{SubTitleLevel} class=\"form-element__label\" id=\"{KildeHeadingId}\">{T.FieldSource}</h{SubTitleLevel}>")
+                @DetailBlocks.Heading(SubTitleLevel, T.FieldSource, "form-element__label", KildeHeadingId)
 
                 @* Three states, not two. The sentence is only true once the whole list has been read —
                    said while the walk is still running, or after one that was refused, it would report

@@ -1161,4 +1161,52 @@ public class VariableListFiltersTest : ExplorerTestContext
             first.Find("[role=group]").GetAttribute("aria-labelledby"),
             second.Find("[role=group]").GetAttribute("aria-labelledby"));
     }
+
+    [Fact]
+    public void Panel_WhenTheHostSetsTheHeadingLevel_ThenTheTitleAndTheKildeHeadingAreElementsAtThatLevelAndTheNext()
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new ListClient(List((Kreftregisteret, 2))));
+        Services.AddScoped<VariableListState>();
+        var texts = Texts.For("no");
+
+        var cut = Render<VariableListFilters>(p => p
+            .Add(c => c.IsAuthenticated, true)
+            .Add(c => c.HeadingLevel, 4));
+
+        var title = cut.Find(".munin-explorer-filters > h4");
+        var kilde = cut.Find("[role=group] > h5");
+        Assert.Equal(texts.FiltersTitle, title.TextContent);
+        Assert.Equal("form-element__label", title.ClassName);
+        Assert.Null(title.GetAttribute("id"));
+        Assert.Equal(texts.FieldSource, kilde.TextContent);
+        Assert.Equal("form-element__label", kilde.ClassName);
+        Assert.Equal(kilde.Id, cut.Find("[role=group]").GetAttribute("aria-labelledby"));
+    }
+
+    [Fact]
+    public void Heading_WhenTheTextHoldsMarkupCharacters_ThenItIsDrawnAsText()
+    {
+        // Heading text is content, never markup: these characters stay text.
+        const string text = "<em>Kilde</em> & <script>x</script>";
+
+        var cut = Render(DetailBlocks.Heading(3, text, "form-element__label", "kilde-heading"));
+
+        Assert.Equal(text, cut.Find("h3#kilde-heading").TextContent);
+        Assert.Empty(cut.FindAll("em"));
+        Assert.Empty(cut.FindAll("script"));
+    }
+
+    [Fact]
+    public void Panel_WhenTheTitleIsAtLevelSix_ThenTheKildeHeadingStaysAtSix()
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new ListClient(List((Kreftregisteret, 2))));
+        Services.AddScoped<VariableListState>();
+
+        var cut = Render<VariableListFilters>(p => p
+            .Add(c => c.IsAuthenticated, true)
+            .Add(c => c.HeadingLevel, 6));
+
+        Assert.Single(cut.FindAll(".munin-explorer-filters > h6"));
+        Assert.Single(cut.FindAll("[role=group] > h6"));
+    }
 }
