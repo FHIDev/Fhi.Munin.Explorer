@@ -21,7 +21,8 @@
 #   - whether it LOOKS right. Boxes in the right places can still be the wrong design;
 #   - the code picker off, except in list-row-picker-off at the end (the six widths, 320, 1279; axe at 1440):
 #     the sample turns it on in Development. Likewise a signed-out reader's list in the browser, only in
-#     list-browser-list, on a host started with MuninExplorer__Features__CodePicker and Sample__SignedOut.
+#     list-browser-list, on a host started with MuninExplorer__Features__CodePicker and Sample__SignedOut;
+#     its share (list-browser-list-share) is not driven here: check-accessibility.sh scans it (Fhi.Metadata-emsc0.3.19).
 #   - of the signed-in carry-over, only its offer and its named refusal, in list-carry-over-refused; not its busy state,
 #     a press that succeeds, the sentences after «Fjern disse radene», or a failure that names nothing (Fhi.Metadata-emsc0.3.16).
 #
