@@ -19,7 +19,7 @@ public partial class MarkupStringGuardTest
             .ToList();
 
         Assert.Contains(Path.Combine("src", "Fhi.Munin.Explorer", "Blazor", "VariableListFilters.razor"), scanned);
-        Assert.Empty(scanned.Where(relative => MarkupSinks(File.ReadAllText(Path.Combine(Repo.Root, relative))).Count > 0));
+        Assert.DoesNotContain(scanned, relative => MarkupSinks(File.ReadAllText(Path.Combine(Repo.Root, relative))).Count > 0);
     }
 
     [Theory]
@@ -34,7 +34,7 @@ public partial class MarkupStringGuardTest
     [InlineData("<a href=\"https://x\">@((MarkupString)y)</a>")]
     [InlineData("var u = \"https://x\"; var m = (MarkupString)y;")]
     [InlineData("var g = \"/*\";\nvar m = (MarkupString)y;\n/* x */")]
-    [InlineData("var p = @\"C:\dir\\\"; var m = (MarkupString)y;")]
+    [InlineData("var p = @\"C:\\dir\\\"; var m = (MarkupString)y;")]
     [InlineData("var q = '\"'; var m = (MarkupString)y;")]
     public void MarkupSinks_WhenTheSourceWritesASink_ThenItIsFound(string source) =>
         Assert.NotEmpty(MarkupSinks(source));
@@ -57,7 +57,7 @@ public partial class MarkupStringGuardTest
     }
 
     // One pass, so a comment opener inside a string, or a quote inside a comment, is read as what it is.
-    [GeneratedRegex(@"\$?@\$?""(?:[^""]|"""")*""|""(?:\.|[^""\\n])*""|'(?:\.|[^'\\n])'|@\*.*?\*@|/\*.*?\*/|//[^\n]*", RegexOptions.Singleline, matchTimeoutMilliseconds: 1000)]
+    [GeneratedRegex(@"\$?@\$?""(?:[^""]|"""")*""|""(?:\\.|[^""\\\n])*""|'(?:\\.|[^'\\\n])'|@\*.*?\*@|/\*.*?\*/|//[^\n]*", RegexOptions.Singleline, matchTimeoutMilliseconds: 1000)]
     private static partial Regex CommentsAndLiterals();
 
     [GeneratedRegex(@"\bMarkupString\b|\bAddMarkupContent\s*\(", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
