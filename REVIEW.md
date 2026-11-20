@@ -17,6 +17,9 @@ the change could:
   step with each other.
 - **Send the host's token somewhere else.** The bearer-token handler, the client's base address, or the token
   contracts.
+- **Ship a new feature unflagged.** A new feature a reader can see that is not behind a `MuninExplorer:Features`
+  flag of its own, off by default, or a PR adding a flag without what AGENTS.md («A new feature ships behind its own
+  flag») lists. Fixes, text, accessibility and styling need no flag, and a follow-up reuses its feature's flag.
 - **Publish the wrong package.** The package csproj, `Directory.Build.props`, the release and packing scripts.
 - **State what the code does not do.** A claim in the PR body, a changelog fragment or a doc the change touches, about
   behaviour, security, a command, a number, a file, a flag or an endpoint, that no code or test backs (the doc-claim
