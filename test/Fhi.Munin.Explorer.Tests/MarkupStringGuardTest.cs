@@ -3,8 +3,8 @@ using System.Text.RegularExpressions;
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
-/// The package contains no <c>MarkupString</c> and no <c>AddMarkupContent</c>, so no text it renders is parsed as
-/// HTML (Fhi.Metadata-oiips.70).
+/// The package's C# and Razor write no <c>MarkupString</c> and no <c>AddMarkupContent</c> (Fhi.Metadata-oiips.70).
+/// A text scan, not a parser: the PR names the shapes it cannot see.
 /// </summary>
 public partial class MarkupStringGuardTest
 {
@@ -36,6 +36,7 @@ public partial class MarkupStringGuardTest
     [InlineData("var g = \"/*\";\nvar m = (MarkupString)y;\n/* x */")]
     [InlineData("var p = @\"C:\\dir\\\"; var m = (MarkupString)y;")]
     [InlineData("var q = '\"'; var m = (MarkupString)y;")]
+    [InlineData("Action<int, string> add = builder.AddMarkupContent;")]
     public void MarkupSinks_WhenTheSourceWritesASink_ThenItIsFound(string source) =>
         Assert.NotEmpty(MarkupSinks(source));
 
@@ -60,6 +61,6 @@ public partial class MarkupStringGuardTest
     [GeneratedRegex(@"\$?@\$?""(?:[^""]|"""")*""|""(?:\\.|[^""\\\n])*""|'(?:\\.|[^'\\\n])'|@\*.*?\*@|/\*.*?\*/|//[^\n]*", RegexOptions.Singleline, matchTimeoutMilliseconds: 1000)]
     private static partial Regex CommentsAndLiterals();
 
-    [GeneratedRegex(@"\bMarkupString\b|\bAddMarkupContent\s*\(", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
+    [GeneratedRegex(@"\bMarkupString\b|\bAddMarkupContent\b", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
     private static partial Regex Sinks();
 }
