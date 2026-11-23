@@ -24,7 +24,8 @@
 #     list-browser-list, on a host started with MuninExplorer__Features__CodePicker and Sample__SignedOut;
 #     its share (list-browser-list-share) is not driven here: check-accessibility.sh scans it (Fhi.Metadata-emsc0.3.19).
 #   - of the signed-in carry-over, only its offer and its named refusal, in list-carry-over-refused; not its busy state,
-#     a press that succeeds, the sentences after «Fjern disse radene», or a failure that names nothing (Fhi.Metadata-emsc0.3.16).
+#     a press that succeeds, the sentences after «Fjern disse radene», a failure that names nothing (Fhi.Metadata-emsc0.3.16),
+#     or the «already being saved» sentence of a press that finds another tab's claim (Fhi.Metadata-emsc0.3.22).
 #
 # Exits: 0 measured and correct; 1 measured and wrong; 3 not measured, because a geometry assertion
 #        stopped firing against the defect it exists for; 2 could not measure at all (TOOLING).
