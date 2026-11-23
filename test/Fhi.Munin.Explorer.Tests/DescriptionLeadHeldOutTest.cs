@@ -16,7 +16,7 @@ public sealed class DescriptionLeadHeldOutTest
         };
         var text = "Kilden samler flere registre som beskrives under.\n" + string.Join("\n", items.Select(item => "- " + item));
 
-        var (lead, folded) = DescriptionLead.Split(text);
+        var (lead, folded) = DescriptionLead.Split(text, formatted: true);
 
         Assert.NotNull(folded);
         Assert.All(items, item => Assert.True(
