@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Bunit;
+using Microsoft.Extensions.DependencyInjection;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
@@ -2239,5 +2240,30 @@ public class VariableViewTest : ExplorerTestContext
         Assert.Equal(["Kommentar"],
                      cut.Find($"#{DetailSectionIds.Metadata}")
                         .QuerySelectorAll("dl dt").Select(dt => dt.TextContent));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Formatting_WhenKommentarAndTheDescriptionHoldBoldAndLists_ThenTheFlagDecidesWhetherTheyAreElements(bool on)
+    {
+        // #7449's own field on the whole-variable page, beside the description above it.
+        Services.AddSingleton(new CatalogueFormattingSwitch(on));
+
+        var detail = Detail() with
+        {
+            Description = "Skalaen **maaler**:\n- tale",
+            AdditionalProperties = new Dictionary<string, string?> { ["Kommentar"] = CatalogueFormattingTest.BarnetsHelseKommentar },
+        };
+        var cut = Render(detail);
+
+        var description = cut.Find(".munin-explorer-whole__description");
+        Assert.Equal(on ? "div" : "p", description.TagName.ToLowerInvariant());
+        Assert.Equal(on, description.QuerySelector("strong") is not null);
+
+        var kommentar = cut.FindAll("dd").Single(dd => dd.TextContent.Contains("kodestrengen", StringComparison.Ordinal));
+        Assert.Equal(on ? 1 : 0, kommentar.QuerySelectorAll("ol").Length);
+        Assert.Equal(on ? 2 : 0, kommentar.QuerySelectorAll("ul").Length);
+        Assert.Equal(on ? 3 : 0, kommentar.QuerySelectorAll("strong").Length);
     }
 }

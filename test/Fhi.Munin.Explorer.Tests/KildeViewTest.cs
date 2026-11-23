@@ -3256,4 +3256,51 @@ public class KildeViewTest : ExplorerTestContext
         Assert.DoesNotContain("Beskrevet utenfor helsedata.no", cut.Markup, StringComparison.Ordinal);
         Assert.Contains("https://eksempel.no/v", cut.Markup, StringComparison.Ordinal);
     }
+
+    private const string FormattedText = "Om **registeret**:\n- første\n- andre";
+
+    [Theory]
+    [InlineData(true, "div", 2)]
+    [InlineData(false, "p", 0)]
+    public void Formatting_WhenTheKildesDescriptionHoldsBoldAndAList_ThenTheFlagDecidesWhetherTheyAreElements(
+        bool on, string container, int items)
+    {
+        Services.AddSingleton(new CatalogueFormattingSwitch(on));
+
+        var description = Render(Kilde() with { Description = FormattedText }).Find(".munin-explorer-kilde__description");
+
+        Assert.Equal(container, description.TagName.ToLowerInvariant());
+        Assert.Equal(items, description.QuerySelectorAll("ul > li").Length);
+        Assert.Equal(on, description.QuerySelector("strong") is not null);
+    }
+
+    [Theory]
+    [InlineData(true, "div", 2)]
+    [InlineData(false, "p", 0)]
+    public void Formatting_WhenADelkildesDescriptionHoldsBoldAndAList_ThenTheFlagDecidesWhetherTheyAreElements(
+        bool on, string container, int items)
+    {
+        Services.AddSingleton(new CatalogueFormattingSwitch(on));
+
+        var kilde = Kilde() with { Delkilder = [Delkilde("Tromsø 4", [], description: FormattedText)] };
+        var description = Render(kilde).Find(".munin-explorer-kilde__delkilde-description");
+
+        Assert.Equal(container, description.TagName.ToLowerInvariant());
+        Assert.Equal(items, description.QuerySelectorAll("ul > li").Length);
+        Assert.Equal(on, description.QuerySelector("strong") is not null);
+    }
+
+    [Theory]
+    [InlineData(true, 2)]
+    [InlineData(false, 0)]
+    public void Formatting_WhenADatasamlingsDescriptionHoldsBoldAndAList_ThenTheFlagDecidesWhetherTheyAreElements(
+        bool on, int items)
+    {
+        Services.AddSingleton(new CatalogueFormattingSwitch(on));
+
+        var cut = Render(Kilde() with { Datasamlinger = [Collection("Inklusjon", rank: 1, description: FormattedText)] });
+
+        Assert.Equal(items, cut.FindAll("td ul > li").Count);
+        Assert.Equal(on, cut.FindAll("td strong").Count > 0);
+    }
 }

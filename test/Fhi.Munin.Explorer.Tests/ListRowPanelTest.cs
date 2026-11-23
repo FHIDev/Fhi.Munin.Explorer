@@ -52,6 +52,8 @@ public class ListRowPanelTest : ExplorerTestContext
 
         public bool WithExtraFields { get; init; }
 
+        public string? Description { get; init; }
+
         public List<bool> HistoricalAskedFor { get; } = [];
 
         public List<(Guid Variable, string? Text)> NotesWritten { get; } = [];
@@ -230,7 +232,7 @@ public class ListRowPanelTest : ExplorerTestContext
                 Id = id,
                 Code = item.VariableCode ?? "",
                 PreferredTerm = item.VariableName ?? "",
-                Description = $"Om {item.VariableName}.",
+                Description = Description ?? $"Om {item.VariableName}.",
                 KildeName = "Hjerte- og karregisteret",
                 DatasamlingName = "Alle variabler",
                 VariabelgruppeName = "Datakilde",
@@ -1578,5 +1580,24 @@ public class ListRowPanelTest : ExplorerTestContext
         var cut = OpenInExplorer(new PanelClient(DatabaseVersion with { VariableCode = null }));
 
         Assert.DoesNotContain("Del variabel", cut.Find("[role=region][id^='munin-explorer-list-panel-']").TextContent);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Panel_WhenTheDescriptionHoldsBoldAndAList_ThenTheFlagDecidesWhetherTheyAreElements(bool on)
+    {
+        Services.AddSingleton(new CatalogueFormattingSwitch(on));
+
+        var cut = RenderView(new PanelClient(DatabaseVersion) { Description = "Versjon av **databasen**:\n- 1.0\n- 2.0" });
+
+        NameButton(cut, "Databaseversjon").Click();
+        var panel = cut.WaitForElement("[role=region][id^='munin-explorer-list-panel-']");
+        var description = panel.QuerySelectorAll("dl > div")
+            .Single(row => row.QuerySelector("dt")?.TextContent == "Beskrivelse")
+            .QuerySelector("dd")!;
+
+        Assert.Equal(on ? 2 : 0, description.QuerySelectorAll($"ul.{CatalogueMarkdown.ListClass} > li").Length);
+        Assert.Equal(on, description.QuerySelector("strong") is not null);
     }
 }

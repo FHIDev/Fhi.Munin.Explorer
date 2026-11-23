@@ -18289,4 +18289,41 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.Equal("8485 (2)", AccessibleName.Of(FacetBox(cut, "8485")));
     }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void About_WhenKommentarAndTheDescriptionHoldBoldAndLists_ThenTheFlagDecidesWhetherTheyAreElements(bool on)
+    {
+        // The row panel is where #7449 was seen on helsedata (Fhi.Metadata-7vquc.3).
+        Services.AddSingleton(new CatalogueFormattingSwitch(on));
+
+        var id = Guid.NewGuid();
+        var detail = Detail(id) with
+        {
+            Description = "Hvordan er **talen**?\n- tydelig",
+            PropertyMetadata =
+            [
+                new()
+                {
+                    Key = "Kommentar",
+                    Type = "Text",
+                    SortOrder = 50,
+                    DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Kommentar" },
+                },
+            ],
+            AdditionalProperties = new Dictionary<string, string?> { ["Kommentar"] = CatalogueFormattingTest.BarnetsHelseKommentar },
+        };
+        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(detail));
+
+        Toggles(cut)[0].Click();
+
+        var about = ShowAbout(cut);
+        var lists = about.QuerySelectorAll($".{CatalogueMarkdown.ListClass}");
+
+        Assert.Equal(on ? 4 : 0, lists.Length);
+        Assert.Equal(on ? 4 : 0, about.QuerySelectorAll("strong").Length);
+        Assert.All(lists, list => Assert.Null(list.Closest("span")));
+        Assert.Equal(!on, about.TextContent.Contains("**kodeblokker**", StringComparison.Ordinal));
+    }
 }

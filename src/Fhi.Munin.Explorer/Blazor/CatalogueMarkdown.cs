@@ -18,11 +18,10 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// HTML — taken one step further because this component is embedded on helsedata.no: the Markdig
 /// AST is walked into the <see cref="RenderTreeBuilder"/> directly, so no markdown-to-HTML string
 /// and no <see cref="MarkupString"/> exist anywhere in the path. Catalogue text can only produce
-/// the elements this class writes a case for — an anchor or a break, and, where the host turns
-/// <c>CatalogueFormatting</c> on, <c>strong</c>, <c>em</c>, <c>ul</c>, <c>ol</c> and <c>li</c>
-/// (Fhi.Metadata-7vquc.3) — and every text node goes through Blazor's own encoding. A construct
-/// without a case (raw HTML, a heading, <c>_</c> emphasis, a <c>*</c> or <c>+</c> bullet, a
-/// <c>1)</c> list, a code block, a <c>javascript:</c> link) renders as its literal source text.
+/// the elements this class writes a case for (anchor and break; strong, em, ul, ol, li with CatalogueFormatting),
+/// and every text node goes through Blazor's own encoding. A construct without a case (raw HTML, a heading, _
+/// emphasis, a code block, a <c>javascript:</c> link) renders as its literal source text, exactly as the whole
+/// value did before.
 /// </remarks>
 internal static partial class CatalogueMarkdown
 {

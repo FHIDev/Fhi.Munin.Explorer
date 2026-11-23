@@ -5,14 +5,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
 
-/// <summary>
-/// Catalogue text with <c>CatalogueFormatting</c> on: <c>*</c> emphasis and <c>-</c> and <c>1.</c>
-/// lists become elements, and nothing else does (Fhi.Metadata-7vquc.3, FHIDev/Munin#7449).
-/// </summary>
-/// <remarks>
-/// The element-set test is the security pin: widening what catalogue text may draw was Robin's
-/// decision for emphasis and lists only, so any further element must fail here first.
-/// </remarks>
+/// <summary>Catalogue text with <c>CatalogueFormatting</c> on (Fhi.Metadata-7vquc.3, FHIDev/Munin#7449).</summary>
+/// <remarks>The element-set test is the security pin: Robin allowed emphasis and lists only, so any further
+/// element catalogue text can draw must fail there first.</remarks>
 public class CatalogueFormattingTest : ExplorerTestContext
 {
     private static readonly HashSet<string> AllowedElements =

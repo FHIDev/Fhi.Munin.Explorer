@@ -1162,6 +1162,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-switch` | handle |
   | `munin-explorer-switch__thumb` | meaning |
   | `munin-explorer-switch__track` | meaning |
+  | `munin-explorer-text__list` | meaning |
   | `munin-explorer-validity` | id |
   | `munin-explorer-variablegroups` | id |
   | `munin-explorer-variables` | id |
@@ -1407,7 +1408,7 @@ Features a host may want on in one environment before another are switched under
 each one off by default, so an environment's appsettings decides and production needs nothing:
 
 ```json
-"MuninExplorer": { "Features": { "CodePicker": true, "AdvancedSearch": true } }
+"MuninExplorer": { "Features": { "CodePicker": true, "AdvancedSearch": true, "CatalogueFormatting": true } }
 ```
 
 Both `AddMuninExplorer` overloads read these keys from the host's configuration (the delegate overload from the
@@ -1430,6 +1431,7 @@ browser list for a signed-out reader stays on `CodePicker`.
 | --- | --- | --- | --- |
 | `CodePicker` | the code picker under «Ønskede data»; and, from 2.24.0, the browser list for a signed-out reader | 2.19.0 | Fhi.Metadata-l9l2n.199 |
 | `AdvancedSearch` | avansert søk in `VariableSearch` | 2.21.0 | Fhi.Metadata-l9l2n.200 |
+| `CatalogueFormatting` | bold, italic and lists in the catalogue's authored text | unreleased | Fhi.Metadata-7vquc.5 |
 
 A new flag adds its row here, with the bead, in the PR that adds it, and its removal deletes the row.
 
@@ -1440,6 +1442,11 @@ A new flag adds its row here, with the bead, in the PR that adds it, and its rem
   `VariableFilter.Conditions`, written as the API's repeated `vilkar`, so a link with them restores the search. With
   it off, none of that is drawn and conditions a link carries are dropped, and `FilterChanged` tells the host so its
   address loses them too.
+- `CatalogueFormatting`, in the catalogue's authored text (the descriptions and the fields in
+  `CatalogueProperties.AuthoredKeys`): `**bold**` and `*italic*` as `strong` and `em`, and lists written with `-` or
+  `1.` as `ul` and `ol` with the class `munin-explorer-text__list`. `_` emphasis, `*` and `+` bullets and `1)` lists
+  stay text. Turn it on only with a Stiler that styles that class (Fhi.Metadata-7vquc.4): Stiler draws an `ol` in a
+  row panel's `dd` as a kilde trail. With it off, the markers show as written.
 
 The browser list behind `CodePicker` is a variable list for a reader who is not signed in, kept only in their
 browser's local storage under `Fhi.Munin.Explorer:anonymous-list`: each row's catalogue fields, exactly those named

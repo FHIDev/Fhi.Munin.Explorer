@@ -1002,6 +1002,23 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
   color: var(--grey60);
 }
 
+/* Catalogue text's own lists (Fhi.Metadata-7vquc.3): numbered or bulleted wherever they stand, the
+   row panel's trail rule above included. Stiler's rule is Fhi.Metadata-7vquc.4. */
+.munin-explorer-text__list,
+.munin-explorer-detail dd ol.munin-explorer-text__list {
+  display: block;
+  margin: 8px 0;
+  padding-left: 24px;
+}
+
+.munin-explorer-detail dd ol.munin-explorer-text__list {
+  list-style: decimal;
+}
+
+.munin-explorer-detail dd ol.munin-explorer-text__list li + li::before {
+  content: none;
+}
+
 /* ---- not Stiler either: base element styling for the kilde and datasamling drill-in ----
 
    The same reason a third time: what "Vis datakilde" and "Vis datasamling" open is a heading and a
