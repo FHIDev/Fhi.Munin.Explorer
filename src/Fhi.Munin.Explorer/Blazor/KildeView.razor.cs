@@ -949,11 +949,8 @@ public sealed partial class KildeView : ComponentBase, IDisposable
 
             if (!string.IsNullOrWhiteSpace(description.Text))
             {
-                builder.OpenElement(seq++, "p");
-                builder.AddAttribute(seq++, "class", "munin-explorer-kilde__delkilde-description");
-                builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign(description.Norwegian, Reader));
-                builder.AddContent(seq++, CatalogueMarkdown.Render(description.Text));
-                builder.CloseElement();
+                builder.AddContent(seq++, CatalogueText.Of(description.Text, "p", "munin-explorer-kilde__delkilde-description",
+                                                           CatalogueProperties.Foreign(description.Norwegian, Reader)));
             }
 
             Children(builder, ref seq, KildeChildren.Of(delkilde), Math.Min(level + 1, 6));

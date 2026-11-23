@@ -1123,7 +1123,7 @@ else if (ShowsBrowserCopy)
                     <dt class="headline headline-xxs margin--none">@T.FieldDescription</dt>
                     @if (RowPanelDescription(detail) is { } description)
                     {
-                        <dd lang="@(description.Norwegian ? "no" : null)">@CatalogueMarkdown.Render(description.Text)</dd>
+                        <dd lang="@(description.Norwegian ? "no" : null)">@CatalogueText.Of(description.Text)</dd>
                     }
                     else
                     {

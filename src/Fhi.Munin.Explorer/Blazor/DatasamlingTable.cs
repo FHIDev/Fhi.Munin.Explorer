@@ -204,7 +204,7 @@ internal static class DatasamlingTable
         builder.OpenElement(seq++, "td");
         builder.AddAttribute(seq++, "data-label", label);
         builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign(value.Norwegian, reader));
-        builder.AddContent(seq++, CatalogueMarkdown.Render(value.Text));
+        builder.AddContent(seq++, CatalogueText.Of(value.Text));
         builder.CloseElement();
     }
 

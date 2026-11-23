@@ -67,6 +67,12 @@ public sealed class MuninExplorerFeatures
     /// of it is drawn and a link's <c>vilkar</c> are dropped, so nothing narrows the list that the reader cannot
     /// see or remove.</summary>
     public bool? AdvancedSearch { get; set; }
+
+    /// <summary>Bold and italic with <c>*</c>, and lists written with <c>-</c> or <c>1.</c>, in the catalogue's authored
+    /// text; key <c>MuninExplorer:Features:CatalogueFormatting</c>. The lists wear <c>munin-explorer-text__list</c>, which
+    /// needs a Stiler that styles it: without it, a numbered list in a row panel is drawn as a kilde trail. Off, the text
+    /// shows those markers as written, and links and line breaks render as before.</summary>
+    public bool? CatalogueFormatting { get; set; }
 }
 
 /// <summary>The one call a host makes to use the explorer components.</summary>
@@ -173,6 +179,10 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton(provider => new Blazor.AdvancedSearchSwitch(
             advancedSearch ?? FeatureOn(provider.GetService<IConfiguration>(), nameof(MuninExplorerFeatures.AdvancedSearch))));
 
+        var catalogueFormatting = options.Features.CatalogueFormatting;
+        services.TryAddSingleton(provider => new Blazor.CatalogueFormattingSwitch(
+            catalogueFormatting ?? FeatureOn(provider.GetService<IConfiguration>(), nameof(MuninExplorerFeatures.CatalogueFormatting))));
+
         services.AddHttpClient<IMuninExplorerClient, MuninExplorerClient>(client =>
         {
             // Trailing slash so relative routes ("api/explorer/...") resolve against the
@@ -235,6 +245,7 @@ public static class ServiceCollectionExtensions
             o.AccessLinks = accessLinks;
             o.Features.CodePicker = FeatureOn(configuration, nameof(MuninExplorerFeatures.CodePicker));
             o.Features.AdvancedSearch = FeatureOn(configuration, nameof(MuninExplorerFeatures.AdvancedSearch));
+            o.Features.CatalogueFormatting = FeatureOn(configuration, nameof(MuninExplorerFeatures.CatalogueFormatting));
         });
     }
 

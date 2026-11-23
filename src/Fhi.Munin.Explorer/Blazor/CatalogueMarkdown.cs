@@ -18,10 +18,11 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// HTML — taken one step further because this component is embedded on helsedata.no: the Markdig
 /// AST is walked into the <see cref="RenderTreeBuilder"/> directly, so no markdown-to-HTML string
 /// and no <see cref="MarkupString"/> exist anywhere in the path. Catalogue text can only produce
-/// the elements this class writes a case for — an anchor or a break — and every text node goes
-/// through Blazor's own encoding. A construct without a case (raw HTML, a heading, emphasis, a
-/// code block, a <c>javascript:</c> link) renders as its literal source text, exactly as the whole
-/// value did before.
+/// the elements this class writes a case for — an anchor or a break, and, where the host turns
+/// <c>CatalogueFormatting</c> on, <c>strong</c>, <c>em</c>, <c>ul</c>, <c>ol</c> and <c>li</c>
+/// (Fhi.Metadata-7vquc.3) — and every text node goes through Blazor's own encoding. A construct
+/// without a case (raw HTML, a heading, <c>_</c> emphasis, a <c>*</c> or <c>+</c> bullet, a
+/// <c>1)</c> list, a code block, a <c>javascript:</c> link) renders as its literal source text.
 /// </remarks>
 internal static partial class CatalogueMarkdown
 {
@@ -246,15 +247,16 @@ internal static partial class CatalogueMarkdown
     internal static bool Prose(string? raw) =>
         LinkList(raw) is null && (Link(raw) is not { } link || !IsAddress(link));
 
-    /// <summary>The catalogue text as a fragment: anchors, breaks, and literal text for the rest.</summary>
-    internal static RenderFragment Render(string? text) => builder =>
+    /// <summary>The catalogue text as a fragment: anchors, breaks, and literal text for the rest; <c>formatted</c>
+    /// also draws <c>*</c> emphasis and <c>-</c> and <c>1.</c> lists as elements.</summary>
+    internal static RenderFragment Render(string? text, bool formatted = false) => builder =>
     {
         if (string.IsNullOrWhiteSpace(text))
         {
             return;
         }
 
-        var source = BrTag().Replace(text.Replace("\r\n", "\n"), "\n");
+        var source = Source(text);
         var seq = 0;
 
         // The cap answers for the stored value, so it is the stored length that is measured:
@@ -265,27 +267,48 @@ internal static partial class CatalogueMarkdown
             return;
         }
 
-        var first = true;
+        Blocks(builder, ref seq, Drawn(Markdown.Parse(source, Pipeline), formatted), source, formatted);
+    };
 
-        foreach (var block in Drawn(Markdown.Parse(source, Pipeline)))
+    /// <summary>Whether <see cref="Render"/> draws a list element for the text, which no <c>p</c> or <c>span</c> may hold.</summary>
+    internal static bool DrawsList(string? text, bool formatted) =>
+        formatted
+        && !string.IsNullOrWhiteSpace(text)
+        && text.Length <= MaxParsedLength
+        && Markdown.Parse(Source(text), Pipeline).Descendants<ListBlock>().Any(Formatted);
+
+    private static string Source(string text) => BrTag().Replace(text.Replace("\r\n", "\n"), "\n");
+
+    /// <summary>Only the two list kinds the catalogue writes; <c>*</c>, <c>+</c> and <c>1)</c> stay lines of text.</summary>
+    private static bool Formatted(ListBlock list) =>
+        list.IsOrdered ? list.OrderedDelimiter == '.' : list.BulletType == '-';
+
+    private static bool IsList(Block block, bool formatted) => formatted && block is ListBlock list && Formatted(list);
+
+    /// <summary>Blocks one after another, a blank line between them except beside a list, which is a block of its own.</summary>
+    private static void Blocks(RenderTreeBuilder builder, ref int seq, IEnumerable<Block> blocks, string source, bool formatted)
+    {
+        Block? previous = null;
+
+        foreach (var block in blocks)
         {
-            if (!first)
+            if (previous is not null && !IsList(previous, formatted) && !IsList(block, formatted))
             {
                 Break(builder, ref seq);
                 Break(builder, ref seq);
             }
 
-            first = false;
-            Block(builder, ref seq, block, source);
+            previous = block;
+            Block(builder, ref seq, block, source, formatted);
         }
-    };
+    }
 
     /// <summary>The blocks in source order, each reference definition drawn as its source unless a drawn
     /// anchor took its URL. Markdig files the definitions in one group whose span means nothing.</summary>
-    private static IEnumerable<Block> Drawn(MarkdownDocument document)
+    private static IEnumerable<Block> Drawn(MarkdownDocument document, bool formatted)
     {
         var lent = Paragraphs(document)
-            .SelectMany(paragraph => paragraph.Inline is { } inlines ? Anchored(inlines) : [])
+            .SelectMany(paragraph => paragraph.Inline is { } inlines ? Anchored(inlines, formatted) : [])
             .Select(link => link.Reference)
             .OfType<LinkReferenceDefinition>()
             .ToHashSet();
@@ -327,26 +350,34 @@ internal static partial class CatalogueMarkdown
         });
 
     /// <summary>The links <see cref="Inlines"/> draws as anchors, found by the same cases.</summary>
-    private static IEnumerable<LinkInline> Anchored(ContainerInline container) =>
+    private static IEnumerable<LinkInline> Anchored(ContainerInline container, bool formatted) =>
         container.SelectMany(inline => inline switch
         {
             LinkInline { IsImage: false } link when AllowedScheme(link.Url) => [link],
-            DelimiterInline delimiter => Anchored(delimiter),
+            DelimiterInline delimiter => Anchored(delimiter, formatted),
+            EmphasisInline emphasis when formatted && Emphasised(emphasis) => Anchored(emphasis, formatted),
             _ => Enumerable.Empty<LinkInline>(),
         });
+
+    /// <summary>Only <c>*</c> emphasis: <c>_</c> is in variable names and code strings far more often than in prose.</summary>
+    private static bool Emphasised(EmphasisInline emphasis) =>
+        emphasis is { DelimiterChar: '*', DelimiterCount: 1 or 2 };
 
     /// <summary>Whether an item's children are walked, or the item is drawn as its source.</summary>
     private static bool Walked(ListItemBlock item) => item.Count > 0 && item[0].Span.Start > item.Span.Start;
 
-    private static void Block(RenderTreeBuilder builder, ref int seq, Block block, string source)
+    private static void Block(RenderTreeBuilder builder, ref int seq, Block block, string source, bool formatted)
     {
         switch (block)
         {
             case ParagraphBlock { Inline: { } inlines }:
-                Inlines(builder, ref seq, inlines, source);
+                Inlines(builder, ref seq, inlines, source, formatted);
+                break;
+            case ListBlock list when IsList(list, formatted):
+                List(builder, ref seq, list, source);
                 break;
             case ListBlock list:
-                ListItems(builder, ref seq, list, source);
+                ListItems(builder, ref seq, list, source, formatted);
                 break;
             default:
                 PlainLines(builder, ref seq, Sliced(source, block.Span));
@@ -354,8 +385,41 @@ internal static partial class CatalogueMarkdown
         }
     }
 
+    /// <summary>A list as a <c>ul</c> or an <c>ol</c>, each item's blocks inside its <c>li</c>.</summary>
+    private static void List(RenderTreeBuilder builder, ref int seq, ListBlock list, string source)
+    {
+        builder.OpenElement(seq++, list.IsOrdered ? "ol" : "ul");
+        builder.AddAttribute(seq++, "class", ListClass);
+
+        if (list.IsOrdered && int.TryParse(list.OrderedStart, out var start) && start != 1)
+        {
+            builder.AddAttribute(seq++, "start", start);
+        }
+
+        foreach (var item in list.OfType<ListItemBlock>())
+        {
+            builder.OpenElement(seq++, "li");
+
+            if (Walked(item))
+            {
+                Blocks(builder, ref seq, item, source, formatted: true);
+            }
+            else if (item.Count > 0)
+            {
+                PlainLines(builder, ref seq, Sliced(source, item.Span));
+            }
+
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+    }
+
+    /// <summary>The handle a host styles the lists by; the detail panel's own <c>dd ol</c> is a trail.</summary>
+    internal const string ListClass = "munin-explorer-text__list";
+
     /// <summary>A list as the lines it was written in, its markers literal and its items' links live.</summary>
-    private static void ListItems(RenderTreeBuilder builder, ref int seq, ListBlock list, string source)
+    private static void ListItems(RenderTreeBuilder builder, ref int seq, ListBlock list, string source, bool formatted)
     {
         var firstItem = true;
 
@@ -398,12 +462,12 @@ internal static partial class CatalogueMarkdown
                 }
 
                 previous = child;
-                Block(builder, ref seq, child, source);
+                Block(builder, ref seq, child, source, formatted);
             }
         }
     }
 
-    private static void Inlines(RenderTreeBuilder builder, ref int seq, ContainerInline container, string source)
+    private static void Inlines(RenderTreeBuilder builder, ref int seq, ContainerInline container, string source, bool formatted)
     {
         foreach (var inline in container)
         {
@@ -421,12 +485,17 @@ internal static partial class CatalogueMarkdown
                     builder.AddContent(seq++, entity.Transcoded.ToString());
                     break;
                 case LinkInline { IsImage: false } link when AllowedScheme(link.Url):
-                    Anchor(builder, ref seq, link, source);
+                    Anchor(builder, ref seq, link, source, formatted);
+                    break;
+                case EmphasisInline emphasis when formatted && Emphasised(emphasis):
+                    builder.OpenElement(seq++, emphasis.DelimiterCount == 2 ? "strong" : "em");
+                    Inlines(builder, ref seq, emphasis, source, formatted);
+                    builder.CloseElement();
                     break;
                 // An unmatched [ or ![ spans only itself and holds the text after it as children.
                 case DelimiterInline delimiter:
                     PlainLines(builder, ref seq, Sliced(source, delimiter.Span));
-                    Inlines(builder, ref seq, delimiter, source);
+                    Inlines(builder, ref seq, delimiter, source, formatted);
                     break;
                 default:
                     PlainLines(builder, ref seq, Sliced(source, inline.Span));
@@ -435,7 +504,7 @@ internal static partial class CatalogueMarkdown
         }
     }
 
-    private static void Anchor(RenderTreeBuilder builder, ref int seq, LinkInline link, string source)
+    private static void Anchor(RenderTreeBuilder builder, ref int seq, LinkInline link, string source, bool formatted)
     {
         builder.OpenComponent<CatalogueLink>(seq++);
         builder.AddComponentParameter(seq++, nameof(CatalogueLink.Href), link.Url ?? "");
@@ -449,7 +518,7 @@ internal static partial class CatalogueMarkdown
             }
             else
             {
-                Inlines(inner, ref at, link, source);
+                Inlines(inner, ref at, link, source, formatted);
             }
         }));
         builder.CloseComponent();
