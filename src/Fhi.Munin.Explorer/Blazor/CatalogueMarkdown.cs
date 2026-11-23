@@ -9,7 +9,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
 /// Renders the catalogue's authored text: markdown links become anchors, line breaks become
-/// <c>&lt;br&gt;</c>, and everything else stays literal text.
+/// <c>&lt;br&gt;</c>, with CatalogueFormatting emphasis becomes strong or em and lists ul or ol; the rest stays text.
 /// </summary>
 /// <remarks>
 /// The catalogue's beskrivelse and hjemmeside fields are authored with markdown links and
@@ -18,9 +18,9 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// HTML — taken one step further because this component is embedded on helsedata.no: the Markdig
 /// AST is walked into the <see cref="RenderTreeBuilder"/> directly, so no markdown-to-HTML string
 /// and no <see cref="MarkupString"/> exist anywhere in the path. Catalogue text can only produce
-/// the elements this class writes a case for (anchor and break; strong, em, ul, ol, li with CatalogueFormatting),
-/// and every text node goes through Blazor's own encoding. A construct without a case (raw HTML, a heading, _
-/// emphasis, a code block, a <c>javascript:</c> link) renders as its literal source text, exactly as the whole
+/// the elements this class writes a case for, named in the summary, and every text node goes
+/// through Blazor's own encoding. A construct without a case (raw HTML, a heading, <c>_</c> emphasis, a
+/// code block, a <c>javascript:</c> link) renders as its literal source text, exactly as the whole
 /// value did before.
 /// </remarks>
 internal static partial class CatalogueMarkdown
@@ -276,11 +276,37 @@ internal static partial class CatalogueMarkdown
         && text.Length <= MaxParsedLength
         && Markdown.Parse(Source(text), Pipeline).Descendants<ListBlock>().Any(Formatted);
 
+    /// <summary>The text's top-level blocks as spans of its normalised source, so a cut can fall between them.</summary>
+    internal static (string Source, IReadOnlyList<SourceSpan> Blocks) TopBlocks(string text)
+    {
+        var source = Source(text);
+
+        return (source, Markdown.Parse(source, Pipeline)
+            .Where(block => block is not LinkReferenceDefinitionGroup)
+            .Select(block => block.Span)
+            .ToList());
+    }
+
     private static string Source(string text) => BrTag().Replace(text.Replace("\r\n", "\n"), "\n");
 
-    /// <summary>Only the two list kinds the catalogue writes; <c>*</c>, <c>+</c> and <c>1)</c> stay lines of text.</summary>
+    /// <summary>Only the two list kinds the catalogue writes, three deep and with every item holding text; <c>*</c>,
+    /// <c>+</c>, <c>1)</c>, a lone <c>-</c> placeholder and deeper lists stay lines of text, as quoted ones do.</summary>
     private static bool Formatted(ListBlock list) =>
-        list.IsOrdered ? list.OrderedDelimiter == '.' : list.BulletType == '-';
+        (list.IsOrdered ? list.OrderedDelimiter == '.' : list.BulletType == '-')
+        && list.OfType<ListItemBlock>().All(item => item.Count > 0)
+        && Ancestors(list).Count(block => block is ListBlock) < MaxDepth
+        && !Ancestors(list).Any(block => block is QuoteBlock);
+
+    /// <summary>How deep lists or emphasis may nest as elements; editable master data must not build a deep tree.</summary>
+    private const int MaxDepth = 3;
+
+    private static IEnumerable<Block> Ancestors(Block block)
+    {
+        for (var parent = block.Parent; parent is not null; parent = parent.Parent)
+        {
+            yield return parent;
+        }
+    }
 
     private static bool IsList(Block block, bool formatted) => formatted && block is ListBlock list && Formatted(list);
 
@@ -360,7 +386,19 @@ internal static partial class CatalogueMarkdown
 
     /// <summary>Only <c>*</c> emphasis: <c>_</c> is in variable names and code strings far more often than in prose.</summary>
     private static bool Emphasised(EmphasisInline emphasis) =>
-        emphasis is { DelimiterChar: '*', DelimiterCount: 1 or 2 };
+        emphasis is { DelimiterChar: '*', DelimiterCount: 1 or 2 } && EmphasisDepth(emphasis) < MaxDepth;
+
+    private static int EmphasisDepth(Inline inline)
+    {
+        var depth = 0;
+
+        for (var parent = inline.Parent; parent is not null; parent = parent.Parent)
+        {
+            depth += parent is EmphasisInline ? 1 : 0;
+        }
+
+        return depth;
+    }
 
     /// <summary>Whether an item's children are walked, or the item is drawn as its source.</summary>
     private static bool Walked(ListItemBlock item) => item.Count > 0 && item[0].Span.Start > item.Span.Start;
@@ -403,7 +441,7 @@ internal static partial class CatalogueMarkdown
             {
                 Blocks(builder, ref seq, item, source, formatted: true);
             }
-            else if (item.Count > 0)
+            else
             {
                 PlainLines(builder, ref seq, Sliced(source, item.Span));
             }

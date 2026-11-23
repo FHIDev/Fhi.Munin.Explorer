@@ -110,4 +110,40 @@ public class DescriptionLeadTest
 
         Assert.Equal((text, null), DescriptionLead.Split(text));
     }
+
+    /// <summary>A tight list of items that each hold two sentences, the shape a sentence cut would split.</summary>
+    private static string Items(int count) =>
+        string.Join("\n", Enumerable.Range(1, count).Select(i => $"- {Sentence('p', 40)} {Sentence('q', 30)}"));
+
+    [Fact]
+    public void Split_WhenFormattedAndALongListFollowsItsLeadIn_ThenTheCutFallsBeforeTheListNotInsideIt()
+    {
+        var list = Items(12);
+
+        // No blank line: unformatted, the lead-in and the list are one paragraph and the cut falls inside it.
+        var (lead, folded) = DescriptionLead.Split("Liste:\n" + list + "\n\n" + Sentence('b', 50), formatted: true);
+
+        Assert.Equal("Liste:", lead);
+        Assert.StartsWith(list, folded, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Split_WhenFormattedAndTheFirstBlockIsALongList_ThenTheWholeListIsTheLead()
+    {
+        var list = Items(12);
+
+        var (lead, folded) = DescriptionLead.Split(list + "\n\n" + Sentence('b', 50), formatted: true);
+
+        Assert.Equal(list, lead);
+        Assert.Equal(Sentence('b', 50), folded);
+    }
+
+    [Fact]
+    public void Split_WhenNotFormatted_ThenAListIsCutAsBeforeAfterASentence()
+    {
+        // The flag-off path is unchanged: the same text is cut inside the list's first long paragraph.
+        var text = Items(12) + "\n\n" + Sentence('b', 50);
+
+        Assert.NotEqual(Items(12), DescriptionLead.Split(text).Lead);
+    }
 }

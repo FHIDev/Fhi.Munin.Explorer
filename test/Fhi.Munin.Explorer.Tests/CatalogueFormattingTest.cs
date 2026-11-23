@@ -6,14 +6,14 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>Catalogue text with <c>CatalogueFormatting</c> on (Fhi.Metadata-7vquc.3, FHIDev/Munin#7449).</summary>
-/// <remarks>The element-set test is the security pin: Robin allowed emphasis and lists only, so any further
+/// <remarks>The element-set test is the security pin: the decision allowed emphasis and lists only, so any further
 /// element catalogue text can draw must fail there first.</remarks>
 public class CatalogueFormattingTest : ExplorerTestContext
 {
     private static readonly HashSet<string> AllowedElements =
         new(["a", "br", "strong", "em", "ul", "ol", "li"], StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>V_MFR.BARNETS_HELSE's Kommentar as #7449's Runa screenshot shows it stored, shortened.</summary>
+    /// <summary>V_MFR.BARNETS_HELSE's Kommentar as it is stored, shortened.</summary>
     internal const string BarnetsHelseKommentar =
         "Innholdet i kodestrengen vil begrenses til det som er nødvendig for å oppnå formålet, i tråd med prinsippet "
         + "om dataminimering gitt av personvernforordningen (GDPR) artikkel 5.\n\n"
@@ -206,10 +206,80 @@ public class CatalogueFormattingTest : ExplorerTestContext
     [InlineData("* a", true, false)]
     [InlineData("**fet**", true, false)]
     [InlineData("", true, false)]
+    [InlineData("> - a", true, false)]
+    [InlineData("-", true, false)]
     public void DrawsList_WhenAskedForAText_ThenItAnswersWhetherRenderDrawsAListElement(string text, bool formatted, bool expected)
     {
         Assert.Equal(expected, CatalogueMarkdown.DrawsList(text, formatted));
         Assert.Equal(expected, Render(CatalogueMarkdown.Render(text, formatted)).FindAll("ul, ol").Count > 0);
+    }
+
+    [Fact]
+    public void DrawsList_WhenTheTextIsOverTheCap_ThenItIsNoWithoutParsing()
+    {
+        // Render draws plain lines past the cap, so a container must stay what it was.
+        var text = "- a\n" + new string('x', CatalogueMarkdown.MaxParsedLength);
+
+        Assert.False(CatalogueMarkdown.DrawsList(text, formatted: true));
+        Assert.Empty(Render(CatalogueMarkdown.Render(text, formatted: true)).FindAll("ul"));
+    }
+
+    [Theory]
+    [InlineData("-", "-")]
+    [InlineData("- ", "- ")]
+    [InlineData("1.", "1.")]
+    [InlineData("- a\n-", "- a<br />-")]
+    public void Render_WhenAListHasAnEmptyItem_ThenItStaysTextRatherThanAnEmptyBullet(string text, string markup)
+    {
+        // A lone "-" is the catalogue's placeholder for "nothing", and an empty bullet would hide it.
+        Assert.Equal(markup, Formatted(text).Markup);
+    }
+
+    [Fact]
+    public void Render_WhenListsNestPastThreeDeep_ThenTheFourthStaysLinesOfText()
+    {
+        var cut = Formatted("- 1\n  - 2\n    - 3\n      - 4");
+
+        Assert.Equal(3, cut.FindAll("ul").Count);
+        Assert.Contains("- 4", cut.Find("ul ul ul li").TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Render_WhenEmphasisNestsPastThreeDeep_ThenTheFourthStaysText()
+    {
+        var cut = Formatted("**a *b **c *d* c** b* a**");
+
+        Assert.Equal(3, cut.FindAll("strong, em").Count);
+        Assert.Contains("*d*", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Render_WhenALinksLabelIsBold_ThenTheStrongIsInsideTheAnchor()
+    {
+        Assert.Equal("x", Formatted("[**x**](https://example.org)").Find("a strong").TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenABracketNeverClosesBeforeBold_ThenTheBracketStaysAndTheBoldRenders()
+    {
+        var cut = Formatted("[uten slutt **fet**");
+
+        Assert.Equal("fet", cut.Find("strong").TextContent);
+        Assert.StartsWith("[uten slutt ", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("- <b>x</b>", "b")]
+    [InlineData("**`kode`**", "code")]
+    [InlineData("- ![i](https://x.no/i.png)", "img")]
+    [InlineData("- # h", "h1")]
+    [InlineData("- > q", "blockquote")]
+    public void Render_WhenAConstructWithoutACaseSitsInsideAnItemOrEmphasis_ThenItStaysText(string text, string element)
+    {
+        var cut = Formatted(text);
+
+        Assert.Empty(cut.FindAll(element));
+        Assert.NotEmpty(cut.FindAll("li, strong"));
     }
 
     [Theory]

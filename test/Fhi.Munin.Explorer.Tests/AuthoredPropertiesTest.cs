@@ -158,7 +158,7 @@ public class AuthoredPropertiesTest : ExplorerTestContext
     [Fact]
     public void AuthoredKeys_WhenFormattingWasDecided_ThenTheyWereTheseTwelve()
     {
-        // Robin's yes for 7vquc.3 covered these twelve and left the list as it stood.
+        // The formatting decision covered these twelve and left the list as it stood; a new key needs its own.
         Assert.Equal(12, CatalogueProperties.AuthoredKeys.Count);
     }
 
@@ -205,5 +205,25 @@ public class AuthoredPropertiesTest : ExplorerTestContext
 
         Assert.Equal("forskning", cut.Find("dd > div > ul > li").TextContent);
         Assert.Equal("Purpose: research", cut.Find("dd > span").TextContent);
+    }
+
+    [Fact]
+    public void Group_WhenFormattingIsOffAndOneLanguagesValueHoldsAList_ThenBothValuesKeepTheirSpans()
+    {
+        Services.AddSingleton(new CatalogueFormattingSwitch(false));
+
+        var cut = RenderGroup(
+            [Entry("FormaalFlerspraklig", 10, type: "LangTaggedList")],
+            new()
+            {
+                ["FormaalFlerspraklig"] =
+                    """
+                    [{"value":"Formål:\n- forskning","language":"nb"},
+                     {"value":"Purpose: research","language":"en"}]
+                    """,
+            });
+
+        Assert.Equal(2, cut.FindAll("dd > span").Count);
+        Assert.Empty(cut.FindAll("dd > div, ul"));
     }
 }

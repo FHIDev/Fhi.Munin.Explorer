@@ -229,7 +229,9 @@ public sealed partial class KildeView : ComponentBase, IDisposable
 
     /// <summary>The description as the name block draws it, or null where the catalogue holds none.</summary>
     private (string Lead, string? Folded)? Description =>
-        ShownDescription.Text is { } text && !string.IsNullOrWhiteSpace(text) ? DescriptionLead.Split(text) : null;
+        ShownDescription.Text is { } text && !string.IsNullOrWhiteSpace(text)
+            ? DescriptionLead.Split(text, Services.GetService<CatalogueFormattingSwitch>()?.On == true)
+            : null;
 
     private (string? Text, bool Norwegian) ShownDescription =>
         ReaderLanguage.Pick(Kilde?.Description, Kilde?.DescriptionEn, Reader);

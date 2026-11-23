@@ -1,10 +1,10 @@
 using System.Text.Json;
 using Bunit;
-using Microsoft.Extensions.DependencyInjection;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -2252,7 +2252,7 @@ public class VariableViewTest : ExplorerTestContext
 
         var detail = Detail() with
         {
-            Description = "Skalaen **maaler**:\n- tale",
+            Description = "Skalaen **måler**:\n- tale",
             AdditionalProperties = new Dictionary<string, string?> { ["Kommentar"] = CatalogueFormattingTest.BarnetsHelseKommentar },
         };
         var cut = Render(detail);
@@ -2265,5 +2265,23 @@ public class VariableViewTest : ExplorerTestContext
         Assert.Equal(on ? 1 : 0, kommentar.QuerySelectorAll("ol").Length);
         Assert.Equal(on ? 2 : 0, kommentar.QuerySelectorAll("ul").Length);
         Assert.Equal(on ? 3 : 0, kommentar.QuerySelectorAll("strong").Length);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Versions_WhenAnOpenedVersionsDescriptionHoldsBoldAndAList_ThenTheFlagDecidesWhetherTheyAreElements(bool on)
+    {
+        // The version history is the one caller of the authored LinkedFacts path.
+        Services.AddSingleton(new CatalogueFormattingSwitch(on));
+
+        var detail = Detail() with { Versions = [Version(Guid.NewGuid(), description: "Ny **skala**:\n- 0 til 4")] };
+        var cut = Render(detail);
+        cut.Find(".munin-explorer-versions > li > button").Click();
+
+        var panel = cut.Find(".munin-explorer-versions__detail");
+
+        Assert.Equal(on ? 1 : 0, panel.QuerySelectorAll($"ul.{CatalogueMarkdown.ListClass} > li").Length);
+        Assert.Equal(on, panel.QuerySelector("strong") is not null);
     }
 }

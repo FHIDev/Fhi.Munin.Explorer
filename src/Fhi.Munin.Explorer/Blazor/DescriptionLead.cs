@@ -15,12 +15,17 @@ internal static partial class DescriptionLead
     /// Whole paragraphs while they fit within <see cref="Limit"/>; where the first alone is longer, that
     /// paragraph up to its last whole sentence that fits. <c>Folded</c> is null where nothing is held back.
     /// </summary>
-    internal static (string Lead, string? Folded) Split(string text)
+    internal static (string Lead, string? Folded) Split(string text, bool formatted = false)
     {
         // Past the cap Render draws plain lines; split halves would each fall under it and parse.
         if (text.Length > CatalogueMarkdown.MaxParsedLength)
         {
             return (text, null);
+        }
+
+        if (CatalogueMarkdown.DrawsList(text, formatted))
+        {
+            return BetweenBlocks(text);
         }
 
         var paragraphs = ParagraphBreak().Split(BrTag().Replace(text.Replace("\r\n", "\n"), "\n").Trim())
@@ -68,6 +73,29 @@ internal static partial class DescriptionLead
         }
 
         return (first[..cut].TrimEnd(), Join(paragraphs.Skip(1).Prepend(first[cut..].TrimStart())));
+    }
+
+    /// <summary>Whole top-level blocks while they fit, the first always: a drawn list is never cut inside.</summary>
+    private static (string Lead, string? Folded) BetweenBlocks(string text)
+    {
+        var (source, blocks) = CatalogueMarkdown.TopBlocks(text);
+        var lengths = blocks.Select(span => Visible(source[span.Start..(span.End + 1)])).ToList();
+
+        if (lengths.Sum() <= Limit)
+        {
+            return (text, null);
+        }
+
+        var shown = 1;
+
+        for (var length = lengths[0]; shown < blocks.Count && length + lengths[shown] <= Limit; shown++)
+        {
+            length += lengths[shown];
+        }
+
+        return shown == blocks.Count
+            ? (text, null)
+            : (source[..(blocks[shown - 1].End + 1)].TrimEnd(), source[blocks[shown].Start..].Trim());
     }
 
     /// <summary>The characters a reader sees: a markdown link counts by its label, not its address.</summary>
