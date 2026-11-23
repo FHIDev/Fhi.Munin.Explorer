@@ -30,7 +30,7 @@ public class CatalogueFormattingHeldOutTest : ExplorerTestContext
         Assert.True(
             !lastLine.StartsWith("- ") || lastLine.EndsWith("ord."),
             $"The lead ends inside a list item: «{lastLine}»");
-        Assert.DoesNotContain("Den andre", folded.Split('\n')[0]);
+        Assert.StartsWith("- ", folded.Split('\n')[0], StringComparison.Ordinal);
     }
 
     [Fact]
