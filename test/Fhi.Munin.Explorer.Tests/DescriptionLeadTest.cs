@@ -141,9 +141,40 @@ public class DescriptionLeadTest
     [Fact]
     public void Split_WhenNotFormatted_ThenAListIsCutAsBeforeAfterASentence()
     {
-        // The flag-off path is unchanged: the same text is cut inside the list's first long paragraph.
-        var text = Items(12) + "\n\n" + Sentence('b', 50);
+        // The flag-off path is unchanged: the same text is cut after a sentence inside an item.
+        var (lead, folded) = DescriptionLead.Split(Items(12) + "\n\n" + Sentence('b', 50));
 
-        Assert.NotEqual(Items(12), DescriptionLead.Split(text).Lead);
+        Assert.EndsWith(Sentence('p', 40), lead, StringComparison.Ordinal);
+        Assert.StartsWith(Sentence('q', 30), folded, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Split_WhenFormattedAndALongFirstParagraphComesBeforeAList_ThenThatParagraphIsCutAfterASentence()
+    {
+        var (lead, folded) = DescriptionLead.Split(
+            Sentence('a', 300) + " " + Sentence('b', 200) + " " + Sentence('c', 200) + "\n\n" + Items(2), formatted: true);
+
+        Assert.Equal(Sentence('a', 300) + " " + Sentence('b', 200), lead);
+        Assert.Equal(Sentence('c', 200) + "\n\n" + Items(2), folded);
+    }
+
+    [Fact]
+    public void Split_WhenFormattedAndASentenceEndsInsideBold_ThenTheCutIsNotThere()
+    {
+        // Unformatted, the cut falls after «Viktig.», leaving «**» on each side as text.
+        var (lead, _) = DescriptionLead.Split(
+            Sentence('a', 300) + " **Viktig. Les dette.** " + new string('b', 300) + ". Slutt.", formatted: true);
+
+        Assert.EndsWith(new string('b', 300) + ".", lead, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Split_WhenFormattedAndADefinitionSitsBetweenTheCutBlocks_ThenItStaysInTheLead()
+    {
+        var (lead, folded) = DescriptionLead.Split(
+            "Se [nettsiden][1].\n\n[1]: https://a.no\n\n" + Items(12), formatted: true);
+
+        Assert.Equal("Se [nettsiden][1].\n\n[1]: https://a.no", lead);
+        Assert.Equal(Items(12), folded);
     }
 }

@@ -3303,4 +3303,16 @@ public class KildeViewTest : ExplorerTestContext
         Assert.Equal(items, cut.FindAll("td ul > li").Count);
         Assert.Equal(on, cut.FindAll("td strong").Count > 0);
     }
+
+    [Fact]
+    public void Formatting_WhenALongDescriptionHoldsAList_ThenReadMoreFoldsItBetweenWholeItems()
+    {
+        Services.AddSingleton(new CatalogueFormattingSwitch(true));
+
+        var items = Enumerable.Range(1, 12).Select(i => $"Punkt {i} om registeret. Den andre setningen utdyper punkt {i}.").ToList();
+        var cut = Render(Kilde() with { Description = "Registeret har:\n" + string.Join("\n", items.Select(item => "- " + item)) });
+
+        Assert.Empty(cut.Find(".munin-explorer-kilde__description").QuerySelectorAll("li"));
+        Assert.Equal(items, cut.FindAll(".munin-explorer-kilde__description-rest li").Select(li => li.TextContent.Trim()));
+    }
 }

@@ -18295,7 +18295,7 @@ public class VariableSearchTest : ExplorerTestContext
     [InlineData(false)]
     public void About_WhenKommentarAndTheDescriptionHoldBoldAndLists_ThenTheFlagDecidesWhetherTheyAreElements(bool on)
     {
-        // The row panel is where #7449 was seen on helsedata (Fhi.Metadata-7vquc.3).
+        // The row panel draws Kommentar through Rows and the description through its own span.
         Services.AddSingleton(new CatalogueFormattingSwitch(on));
 
         var id = Guid.NewGuid();

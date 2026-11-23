@@ -9,7 +9,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
 /// Renders the catalogue's authored text: markdown links become anchors, line breaks become
-/// <c>&lt;br&gt;</c>, with CatalogueFormatting emphasis becomes strong or em and lists ul or ol; the rest stays text.
+/// <c>&lt;br&gt;</c>, and, with CatalogueFormatting on, emphasis strong or em and lists ul or ol with li; the rest stays text.
 /// </summary>
 /// <remarks>
 /// The catalogue's beskrivelse and hjemmeside fields are authored with markdown links and
@@ -277,15 +277,21 @@ internal static partial class CatalogueMarkdown
         && Markdown.Parse(Source(text), Pipeline).Descendants<ListBlock>().Any(Formatted);
 
     /// <summary>The text's top-level blocks as spans of its normalised source, so a cut can fall between them.</summary>
-    internal static (string Source, IReadOnlyList<SourceSpan> Blocks) TopBlocks(string text)
+    internal static (string Source, IReadOnlyList<(SourceSpan Span, bool IsList)> Blocks) TopBlocks(string text)
     {
         var source = Source(text);
 
         return (source, Markdown.Parse(source, Pipeline)
             .Where(block => block is not LinkReferenceDefinitionGroup)
-            .Select(block => block.Span)
+            .Select(block => (block.Span, block is ListBlock))
             .ToList());
     }
+
+    /// <summary>Where the emphasis Render draws as elements sits in a paragraph, so a cut can stay out of it.</summary>
+    internal static IReadOnlyList<SourceSpan> EmphasisSpans(string paragraph) =>
+        paragraph.Length > MaxParsedLength
+            ? []
+            : Markdown.Parse(Source(paragraph), Pipeline).Descendants<EmphasisInline>().Where(Emphasised).Select(e => e.Span).ToList();
 
     private static string Source(string text) => BrTag().Replace(text.Replace("\r\n", "\n"), "\n");
 

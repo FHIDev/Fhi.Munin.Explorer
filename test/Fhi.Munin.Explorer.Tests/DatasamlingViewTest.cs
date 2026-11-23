@@ -3047,4 +3047,16 @@ public class DatasamlingViewTest : ExplorerTestContext
             Assert.Equal(on, prose.QuerySelector("strong") is not null);
         }
     }
+
+    [Fact]
+    public void Description_WhenLongAndHoldingAListWithFormattingOn_ThenReadMoreFoldsItBetweenWholeItems()
+    {
+        Services.AddSingleton(new CatalogueFormattingSwitch(true));
+
+        var items = Enumerable.Range(1, 12).Select(i => $"Punkt {i} om skjemaet. Den andre setningen utdyper punkt {i}.").ToList();
+        var cut = Render(Datasamling() with { Description = "Skjemaet har:\n" + string.Join("\n", items.Select(item => "- " + item)) });
+
+        Assert.Empty(cut.Find(".munin-explorer-datasamling__description").QuerySelectorAll("li"));
+        Assert.Equal(items, cut.FindAll(".munin-explorer-datasamling__description-rest li").Select(li => li.TextContent.Trim()));
+    }
 }

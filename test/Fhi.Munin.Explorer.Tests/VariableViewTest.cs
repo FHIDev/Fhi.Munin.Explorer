@@ -2247,7 +2247,7 @@ public class VariableViewTest : ExplorerTestContext
     [InlineData(false)]
     public void Formatting_WhenKommentarAndTheDescriptionHoldBoldAndLists_ThenTheFlagDecidesWhetherTheyAreElements(bool on)
     {
-        // #7449's own field on the whole-variable page, beside the description above it.
+        // Kommentar through Rows and the description through Prose, on the same page.
         Services.AddSingleton(new CatalogueFormattingSwitch(on));
 
         var detail = Detail() with
