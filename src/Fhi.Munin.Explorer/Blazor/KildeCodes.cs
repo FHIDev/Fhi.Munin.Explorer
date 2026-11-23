@@ -44,9 +44,7 @@ internal static class KildeCodes
     public static bool IsDatasamlingLinkCode(string? value) => Client.DatasamlingCodes.IsLinkCode(value);
 
     /// <summary>A code folded as Munin compares catalogue codes: ÆØÅ as AE, OE and AA, then upper case.</summary>
-    public static string Canonical(string code) =>
-        code.Trim().Replace("Æ", "AE").Replace("æ", "ae").Replace("Ø", "OE").Replace("ø", "oe")
-            .Replace("Å", "AA").Replace("å", "aa").ToUpperInvariant();
+    public static string Canonical(string code) => Client.DatasamlingCodes.Canonical(code);
 
     /// <summary>
     /// A datasamling code as a link may write it, folded and without «K_», so K_KREG.CRC, KREG.CRC and kreg.crc compare

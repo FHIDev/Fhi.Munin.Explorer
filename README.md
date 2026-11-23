@@ -1554,7 +1554,8 @@ filters of its own beside the code, such as one the explorer wrote for a reader,
 variable opens as a search for the code, so the list's own empty state is the not-found view. The links it writes, in
 the address and in «Kopier lenke», name the open variable by its code and its row's datasamling by `datasamling`, the
 datasamling's code, the primary one included (Fhi.Metadata-l9l2n.204). A datasamling code is matched among the
-variable's datasamlinger as Munin's list import matches one; where Munin sends no code for it, the row is named by
+variable's datasamlinger as Munin's list import matches one, so unlike the kilde page's `datasamling` it needs its
+«K_»: a link and an imported row with the same code open the same datasamling. Where Munin sends no code, the row is named by
 `datasamlingId` as before, and the primary row by the variable's code alone. It writes a code only once Munin has answered
 one, so against a Munin without the route, or a client on the contract's default body, its links keep naming the
 variable by id as before. A `datasamling` or `datasamlingId` the variable does not have, such as an id from another environment,

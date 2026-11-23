@@ -55,7 +55,7 @@ internal static class DatasamlingCodes
     }
 
     /// <summary>A code folded as Munin compares catalogue codes: ÆØÅ as AE, OE and AA, then upper case.</summary>
-    private static string Canonical(string code) =>
+    public static string Canonical(string code) =>
         code.Trim().Replace("Æ", "AE").Replace("æ", "ae").Replace("Ø", "OE").Replace("ø", "oe")
             .Replace("Å", "AA").Replace("å", "aa").ToUpperInvariant();
 

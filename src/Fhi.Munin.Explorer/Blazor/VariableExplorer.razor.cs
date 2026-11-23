@@ -245,8 +245,11 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             var wanted = (wantedCode is null ? null : DatasamlingCodes.Find(detail.AllDatasamlinger, wantedCode))
                 ?? arrived.SelectedDatasamlingId;
             var found = wanted is { } id && (id == detail.DatasamlingId || detail.AllDatasamlinger.Any(d => d.Id == id));
+            // A Munin that sends no datasamling code cannot say whether a code link's datasamling is there.
+            var codeUnanswerable = wantedCode is not null && arrived.SelectedDatasamlingId is null
+                && known.Datasamlinger.Count == 0;
             _linkNote = (wantedCode is not null || arrived.SelectedDatasamlingId is not null) && !found
-                && detail.AllDatasamlinger.Count > 1;
+                && !codeUnanswerable && detail.AllDatasamlinger.Count > 1;
 
             // A bare link searches the code, which ranks first and so puts the pinned row on the first page; an
             // address the explorer wrote itself keeps the reader's own search and filters, as an id link does.
@@ -276,7 +279,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     /// The state as the address writes it: the open variable by its code once Munin has answered that code, its row's
     /// datasamling by code where Munin sent one, and no search or filter when the code alone makes them again.
     /// </summary>
-    private ExplorerUrlState Coded(ExplorerUrlState state)
+    private ExplorerUrlState Coded(ExplorerUrlState state, bool datasamlingById = false)
     {
         if (state.SelectedVariableId is not { } id)
         {
@@ -293,7 +296,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             return state with { SelectedVariableCode = null, SelectedDatasamlingCode = null };
         }
 
-        var coded = WithDatasamling(state with { SelectedVariableCode = known.Code }, known, state.SelectedDatasamlingId);
+        var coded = WithDatasamling(state with { SelectedVariableCode = known.Code }, known, state.SelectedDatasamlingId, datasamlingById);
         var arrival = new ExplorerUrlState
         {
             Search = known.Code,
@@ -472,7 +475,8 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         StateHasChanged();
     }
 
-    // Every spelling of the view on screen: by code, by id, and as the code link it arrived as.
+    // Every spelling of the view on screen: by code, by id, as the code link it arrived as, and with the row's
+    // datasamling by id as the explorer wrote it before codes reached datasamlinger.
     private bool IsShown(string query)
     {
         var current = _state.ToState();
@@ -480,6 +484,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
         // While a code is looked up there is no id spelling: without the variable, it would be the plain list.
         return query == coded
+            || query == Linkable(Coded(current, datasamlingById: true)).ToQueryString()
             || current.SelectedVariableId is not null && query == Linkable(current with { SelectedVariableCode = null }).ToQueryString()
             || _alias is { } alias && alias.Arrived == query && alias.Resolved == coded;
     }
@@ -566,8 +571,8 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         ? null
         : Navigation.ToAbsoluteUri(_mirror.Address(""));
 
-    // A variable is linked by its code, the same in every environment; its datasamling still by id, which another
-    // environment falls back from to the variable's primary row (Fhi.Metadata-l9l2n.182).
+    // A variable is linked by its code and its row's datasamling by its code, the same in every environment; by id
+    // where Munin sends no datasamling code (Fhi.Metadata-l9l2n.182, Fhi.Metadata-l9l2n.204).
     private Func<VariableListItem, string?>? VariableHref => DeclinedVariable
         ? null
         : _variableAddress ??= item =>
@@ -578,7 +583,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         ? null
         : _searchVariableAddress ??= v => VariableAddress(v.Code, v.KildeId, v.VersionStatus, v.Id, v.DatasamlingId);
 
-    // By code once Munin has answered one, leaving out a primary datasamling already known. Until then the id link that
+    // By code once Munin has answered one, the datasamling as WithDatasamling names it. Until then the id link that
     // worked before: the search keeps a selection only on a row its first page shows, so it searches the code.
     private string? VariableAddress(string? code, Guid? kildeId, string? versionStatus, Guid variableId, Guid? datasamlingId)
     {
@@ -621,10 +626,10 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
     // The row's datasamling by its code, the primary's too, so a link opens the same row in every environment
     // (Fhi.Metadata-l9l2n.204). Without a code, by id as before, and not at all for the primary row.
-    private ExplorerUrlState WithDatasamling(ExplorerUrlState state, Known known, Guid? datasamlingId)
+    private ExplorerUrlState WithDatasamling(ExplorerUrlState state, Known known, Guid? datasamlingId, bool byId = false)
     {
         var row = datasamlingId ?? known.Primary;
-        if (!Declined("datasamling") && row is { } id && known.Datasamlinger.TryGetValue(id, out var code))
+        if (!byId && !Declined("datasamling") && row is { } id && known.Datasamlinger.TryGetValue(id, out var code))
         {
             return state with { SelectedDatasamlingCode = code, SelectedDatasamlingId = null };
         }
@@ -644,7 +649,8 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     // A code is not read where it would never be written back out.
     private bool Owns(string key) =>
         ExplorerUrlState.QueryKeys.Contains(key) && !Declined(key)
-        && !(NoCodes && string.Equals(key, "variabel", StringComparison.OrdinalIgnoreCase));
+        && !(NoCodes && (string.Equals(key, "variabel", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(key, "datasamling", StringComparison.OrdinalIgnoreCase)));
 
     // Declining variabelId keeps the open variable out of the address, its code and datasamling with it.
     private bool DeclinedVariable => Declined("variabelId");
@@ -705,7 +711,6 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
                 if (value != _selectedVariableId)
                 {
                     SelectedVariableCode = null;
-                    SelectedDatasamlingCode = null;
                 }
 
                 _selectedVariableId = value;
@@ -714,23 +719,9 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
         public string? SelectedVariableCode { get; set; }
 
-        private Guid? _selectedDatasamlingId;
+        public Guid? SelectedDatasamlingId { get; set; }
 
-        // The arrival's datasamling code names only the row it arrived with.
-        public Guid? SelectedDatasamlingId
-        {
-            get => _selectedDatasamlingId;
-            set
-            {
-                if (value != _selectedDatasamlingId)
-                {
-                    SelectedDatasamlingCode = null;
-                }
-
-                _selectedDatasamlingId = value;
-            }
-        }
-
+        // Only an arrival's, until ResolveAsync turns it into SelectedDatasamlingId.
         public string? SelectedDatasamlingCode { get; set; }
 
         public Guid? SelectedInstrumentId { get; set; }

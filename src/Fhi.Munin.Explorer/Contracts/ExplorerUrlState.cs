@@ -66,10 +66,10 @@ public sealed record ExplorerUrlState
     public string? SelectedVariableCode { get; init; }
 
     /// <summary>
-    /// The datasamling of the open row, written as <c>datasamlingId</c> beside <c>variabelId</c> or <c>variabel</c>: a
-    /// variable has a row per datasamling, so the variable alone does not name the row. A link without
-    /// it opens the variable's first row. Never written without <see cref="SelectedVariableId"/> or
-    /// <see cref="SelectedVariableCode"/>.
+    /// The datasamling of the open row, written as <c>datasamlingId</c> beside <c>variabelId</c>, or beside
+    /// <c>variabel</c> when <see cref="SelectedDatasamlingCode"/> is not set: a variable has a row per datasamling, so
+    /// the variable alone does not name the row. A link without either opens the variable's first row. Never written
+    /// without <see cref="SelectedVariableId"/> or <see cref="SelectedVariableCode"/>.
     /// </summary>
     public Guid? SelectedDatasamlingId { get; init; }
 
@@ -79,8 +79,9 @@ public sealed record ExplorerUrlState
     /// </summary>
     /// <remarks>
     /// Read and written only beside <see cref="SelectedVariableCode"/>. <see cref="Blazor.VariableExplorer"/> matches it
-    /// among the variable's datasamlinger as Munin's list import matches a datasamling code, and opens the primary row,
-    /// saying so, when it names none of them. Wins over <c>datasamlingId</c> when both arrive.
+    /// among the variable's datasamlinger as Munin's list import matches a datasamling code, so a «K_» is not left
+    /// optional as the kilde page leaves it. When both arrive, the row this names opens, else the one <c>datasamlingId</c>
+    /// names, else the primary row, which is said when the variable has more than one datasamling.
     /// </remarks>
     public string? SelectedDatasamlingCode { get; init; }
 
