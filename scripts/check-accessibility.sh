@@ -53,8 +53,8 @@ HOST_PROJECT="$ROOT/samples/ModernHost/ModernHost.csproj"
 #     Munin's list quota IS covered, in list-create-refused (Fhi.Metadata-oiips.61);
 #   - an imported list's notice of what did not come over: no stub list is imported (Fhi.Metadata-9huq2.37; a state for it: Fhi.Metadata-9huq2.42);
 #   - the signed-in carry-over's other ends: its busy «Lagrer …», a press that succeeds, the sentences after
-#     «Fjern disse radene» removes the rows or fails to, a failure that names nothing, and the «already being saved»
-#     sentence of a press that finds another tab's claim (Fhi.Metadata-emsc0.3.22). Its offer and its named
+#     «Fjern disse radene» removes the rows or fails to, a failure that names nothing, and «Listen lagres allerede …»
+#     when another tab or view holds the claim (Fhi.Metadata-emsc0.3.22). The carry-over's offer and its named
 #     refusal ARE covered, in list-carry-over-refused (Fhi.Metadata-emsc0.3.16).
 # Each is another page load and settle, about ten seconds, and none carries the risk the
 # targets below do. Add one here and in axe-states.mjs when that stops being true.
