@@ -767,6 +767,35 @@ public class SearchShareTest : ExplorerTestContext
         Assert.NotNull(cut.Find(".munin-explorer-detail"));
     }
 
+    [Fact]
+    public async Task ShareLink_WhenMuninSendsNoDatasamlingCodes_ThenEachRowsLinkIsTodaysLinkAndOpensThatRow()
+    {
+        // A Munin older than FHIDev/Munin#7515 sends no code: the links are the ones this package wrote before, unchanged.
+        var client = new ShareClient { FindsTheOtherRow = true };
+        var first = RenderExplorer(client);
+        OpenRow(first);
+        var primaryLink = "";
+        first.WaitForAssertion(() =>
+        {
+            primaryLink = MailLink(ShareGroup(first.Find(".munin-explorer-detail")));
+            AssertTheLinkOpensThisVariable(primaryLink);
+        });
+        OpenTheOtherRow(first);
+        var otherLink = "";
+        first.WaitForAssertion(() =>
+        {
+            otherLink = MailLink(ShareGroup(first.Find(".munin-explorer-detail")));
+            AssertTheLinkOpensThisVariable(otherLink, OtherDatasamlingId);
+        });
+        await Renderer.DisposeComponents();
+
+        Services.GetRequiredService<NavigationManager>().NavigateTo(otherLink);
+        var cut = Render<VariableExplorer>();
+
+        cut.WaitForAssertion(() => Assert.Contains("Hjertesvikt", OpenRowsDatasamling(cut)));
+        Assert.Equal("", Note(cut));
+    }
+
     private static void OpenTheOtherRow(IRenderedComponent<VariableExplorer> cut)
     {
         cut.WaitForElements("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name")
