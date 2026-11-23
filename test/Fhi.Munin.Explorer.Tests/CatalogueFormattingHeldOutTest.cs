@@ -23,7 +23,7 @@ public class CatalogueFormattingHeldOutTest : ExplorerTestContext
             .Select(i => $"- Punkt {i} forklarer en ting om registeret. Den andre setningen utdyper punkt {i} med flere ord.");
         var text = "Kilden inneholder følgende opplysninger:\n" + string.Join("\n", items);
 
-        var (lead, folded) = DescriptionLead.Split(text);
+        var (lead, folded) = DescriptionLead.Split(text, formatted: true);
 
         Assert.NotNull(folded);
         var lastLine = lead.Split('\n')[^1];
