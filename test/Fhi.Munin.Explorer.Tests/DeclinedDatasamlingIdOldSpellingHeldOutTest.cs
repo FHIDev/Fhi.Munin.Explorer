@@ -83,6 +83,7 @@ public class DeclinedDatasamlingIdOldSpellingHeldOutTest : ExplorerTestContext
         cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name")
             .Single(b => b.ParentElement!.ParentElement!.TextContent.Contains("Hjerneslag")).Click();
         cut.WaitForAssertion(() => Assert.Equal("Hjerneslag", OpenRowText(cut, "Hjerneslag")));
+        cut.WaitForAssertion(() => Assert.Contains("datasamling=K_HJERNESLAG", history.Written.LastOrDefault() ?? ""));
 
         navigation.NavigateTo($"http://localhost/variabler?search=kjonn&variabel={Code}");
 

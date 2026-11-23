@@ -846,6 +846,21 @@ public class SearchShareTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Navigate_WhenTheHostDeclinesDatasamlingIdAndTheVariableAloneArrivesOverThePrimaryRow_ThenNothingRemounts()
+    {
+        var client = CodedClient(findsTheOtherRow: true);
+        var cut = RenderExplorer(client, declined: ["datasamlingId"]);
+        OpenRow(cut);
+        cut.WaitForAssertion(() => Assert.Contains($"datasamling={PrimaryRowCode}", Address(cut)));
+        var (searches, asked) = (client.Searches.Count, client.CodesAsked.Count);
+
+        Services.GetRequiredService<NavigationManager>().NavigateTo($"http://localhost/variabler?search=kjonn&variabel={Code}");
+
+        Assert.Equal((searches, asked), (client.Searches.Count, client.CodesAsked.Count));
+        Assert.Contains("Hjerteinfarkt", OpenRowsDatasamling(cut));
+    }
+
+    [Fact]
     public void OpenRow_WhenTheHostDeclinesDatasamlingIdAlone_ThenTheLinkStillNamesTheDatasamlingByCode()
     {
         var cut = RenderExplorer(CodedClient(), declined: ["datasamlingId"]);
