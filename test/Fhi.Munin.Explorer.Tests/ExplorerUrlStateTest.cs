@@ -444,6 +444,7 @@ public class ExplorerUrlStateTest
     [InlineData("?datasamling=KREG.SIDKRG")]
     [InlineData("?variabelId=7a1f0c4e-2b8d-4e5a-9c3f-1d2e3f4a5b6c&datasamling=KREG.SIDKRG")]
     [InlineData("?variabel=V_KREG.S_SIDKRG&datasamling=KREG%20SIDKRG")]
+    [InlineData("?variabel=V_KREG.S_SIDKRG&datasamling=K_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")]
     public void Parse_WhenTheDatasamlingCodeIsNotBesideAVariableCodeOrIsMalformed_ThenItIsNotRead(string query) =>
         Assert.Null(ExplorerUrlState.Parse(query).SelectedDatasamlingCode);
 }

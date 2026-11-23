@@ -484,10 +484,15 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
         // While a code is looked up there is no id spelling: without the variable, it would be the plain list.
         return query == coded
-            || query == Linkable(Coded(current, datasamlingById: true)).ToQueryString()
+            || OldSpellingNamesTheRow(current) && query == Linkable(Coded(current, datasamlingById: true)).ToQueryString()
             || current.SelectedVariableId is not null && query == Linkable(current with { SelectedVariableCode = null }).ToQueryString()
             || _alias is { } alias && alias.Arrived == query && alias.Resolved == coded;
     }
+
+    // Declining datasamlingId leaves every row's old spelling as the variable alone, which names only the primary row.
+    private bool OldSpellingNamesTheRow(ExplorerUrlState current) =>
+        !Declined("datasamlingId") || current.SelectedDatasamlingId is not { } row
+        || current.SelectedVariableId is { } id && _known.TryGetValue(id, out var known) && known.Primary == row;
 
     /// <inheritdoc />
     public ValueTask DisposeAsync()

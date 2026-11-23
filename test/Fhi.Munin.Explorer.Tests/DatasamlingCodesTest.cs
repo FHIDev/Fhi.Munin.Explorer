@@ -77,7 +77,7 @@ public class DatasamlingCodesTest
         Assert.Null(DatasamlingCodes.Find(Datasamlinger, "KREG.SIDKRG"));
 
     [Fact]
-    public void Find_WhenTheLinksÆFoldsToE_ThenTheStoredSpellingWithEIsFound()
+    public void Find_WhenTheLinksAeLetterFoldsToE_ThenTheStoredSpellingWithEIsFound()
     {
         var stored = Guid.NewGuid();
 
@@ -87,7 +87,7 @@ public class DatasamlingCodesTest
     [Theory]
     [InlineData("K_ÆÆÆÆÆÆ", "K_AEAEAEAEAEAE")]
     [InlineData("K_ÆÆÆÆÆÆ", "K_EEEEEE")]
-    public void Find_WhenTheLinkHasMoreÆThanFoldIndependently_ThenOnlyTheAllAEAndAllESpellingsAreTried(string link, string stored)
+    public void Find_WhenTheLinkHasMoreAeLettersThanFoldIndependently_ThenOnlyTheAllAEAndAllESpellingsAreTried(string link, string stored)
     {
         var id = Guid.NewGuid();
         DatasamlingReference[] one = [new() { Id = id, Code = stored }];

@@ -1559,7 +1559,8 @@ variable's datasamlinger as Munin's list import matches one, so unlike the kilde
 `datasamlingId` as before, and the primary row by the variable's code alone. It writes a code only once Munin has answered
 one, so against a Munin without the route, or a client on the contract's default body, its links keep naming the
 variable by id as before. A `datasamling` or `datasamlingId` the variable does not have, such as an id from another environment,
-opens the primary row instead and says so, when the variable has more than one datasamling. A `variabelId` link keeps
+opens the primary row instead and says so, when the variable has more than one datasamling (for a `datasamling` code,
+when Munin also sends the datasamlinger's codes, since without them it cannot tell). A `variabelId` link keeps
 working. Declining `variabel` keeps codes out of the address, which then names the open variable by `variabelId` as
 before; declining `variabelId` keeps the open variable out of the address altogether.
 

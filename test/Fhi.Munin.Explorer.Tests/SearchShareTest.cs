@@ -61,6 +61,7 @@ public class SearchShareTest : ExplorerTestContext
                         DatasamlingId = DatasamlingId,
                         DatasamlingName = "Hjerteinfarkt",
                         VersionStatus = VersionStatus,
+                        RowKey = FindsTheOtherRow ? $"{VariableId}:{DatasamlingId}" : null,
                     },
                     .. FindsTheOtherRow
                         ? [new VariableSummary
@@ -72,6 +73,7 @@ public class SearchShareTest : ExplorerTestContext
                             DatasamlingId = OtherDatasamlingId,
                             DatasamlingName = "Hjertesvikt",
                             VersionStatus = VersionStatus,
+                            RowKey = $"{VariableId}:{OtherDatasamlingId}",
                         }]
                         : Array.Empty<VariableSummary>(),
                 ],
@@ -598,16 +600,16 @@ public class SearchShareTest : ExplorerTestContext
     }
 
     // Fhi.Metadata-l9l2n.204: the datasamling by its code, the same in every environment, the primary one included.
-    // DatasamlingId's code, Hjerteinfarkt, and OtherDatasamlingId's, Hjertesvikt.
-    private const string InfarktCode = "K_HKR.HJERTEINFARKT";
-    private const string SviktCode = "K_HKR.HJERTESVIKT_SØVN";
+    // DatasamlingId (Hjerteinfarkt, the record's primary unless a test says otherwise) and OtherDatasamlingId (Hjertesvikt).
+    private const string PrimaryRowCode = "K_HKR.HJERTEINFARKT";
+    private const string OtherRowCode = "K_HKR.HJERTESVIKT_SØVN";
 
     private static ShareClient CodedClient(bool findsTheOtherRow = false, Guid? primary = null, bool twice = false) => new()
     {
         DetailDatasamlingId = primary ?? DatasamlingId,
         FindsTheOtherRow = findsTheOtherRow,
         AllDatasamlinger = twice ? [DatasamlingId, OtherDatasamlingId, OtherDatasamlingId] : [DatasamlingId, OtherDatasamlingId],
-        DatasamlingCodes = new Dictionary<Guid, string> { [DatasamlingId] = InfarktCode, [OtherDatasamlingId] = SviktCode },
+        DatasamlingCodes = new Dictionary<Guid, string> { [DatasamlingId] = PrimaryRowCode, [OtherDatasamlingId] = OtherRowCode },
     };
 
     private static void AssertTheLinkNamesTheDatasamlingByCode(string link, string datasamlingCode)
@@ -626,10 +628,10 @@ public class SearchShareTest : ExplorerTestContext
         var cut = RenderExplorer(CodedClient());
         OpenRow(cut);
 
-        cut.WaitForAssertion(() => AssertTheLinkNamesTheDatasamlingByCode(MailLink(ShareGroup(cut.Find(".munin-explorer-detail"))), InfarktCode));
+        cut.WaitForAssertion(() => AssertTheLinkNamesTheDatasamlingByCode(MailLink(ShareGroup(cut.Find(".munin-explorer-detail"))), PrimaryRowCode));
         ShareGroup(cut.Find(".munin-explorer-detail")).Copy.Click();
-        cut.WaitForAssertion(() => AssertTheLinkNamesTheDatasamlingByCode((string)copied.Invocations.Single().Arguments.Single()!, InfarktCode));
-        cut.WaitForAssertion(() => Assert.EndsWith($"variabel={Code}&datasamling={InfarktCode}", Address(cut)));
+        cut.WaitForAssertion(() => AssertTheLinkNamesTheDatasamlingByCode((string)copied.Invocations.Single().Arguments.Single()!, PrimaryRowCode));
+        cut.WaitForAssertion(() => Assert.EndsWith($"variabel={Code}&datasamling={PrimaryRowCode}", Address(cut)));
     }
 
     [Fact]
@@ -640,7 +642,7 @@ public class SearchShareTest : ExplorerTestContext
 
         cut.FindAll(".munin-explorer-detail button").Single(b => b.TextContent == "Vis hele variabelen").Click();
         cut.WaitForAssertion(() => AssertTheLinkNamesTheDatasamlingByCode(
-            MailLink(ShareGroup(cut.Find("[id^='munin-variable-'][role=region]"))), InfarktCode));
+            MailLink(ShareGroup(cut.Find("[id^='munin-variable-'][role=region]"))), PrimaryRowCode));
     }
 
     [Theory]
@@ -649,14 +651,14 @@ public class SearchShareTest : ExplorerTestContext
     public void Arrive_WhenTheLinkNamesAnotherDatasamlingByCode_ThenThatRowOpensWithoutANoteInEitherOrder(string query)
     {
         var client = CodedClient(findsTheOtherRow: true);
-        var cut = RenderExplorer(client, "http://localhost/variabler" + string.Format(query, Code, SviktCode));
+        var cut = RenderExplorer(client, "http://localhost/variabler" + string.Format(query, Code, OtherRowCode));
 
         cut.WaitForAssertion(() =>
         {
             var open = cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name")
                 .Single(b => b.GetAttribute("aria-expanded") == "true");
             Assert.Contains("Hjertesvikt", open.ParentElement!.ParentElement!.TextContent);
-            Assert.EndsWith($"/variabler?variabel={Code}&datasamling={Uri.EscapeDataString(SviktCode)}", Address(cut));
+            Assert.EndsWith($"/variabler?variabel={Code}&datasamling={Uri.EscapeDataString(OtherRowCode)}", Address(cut));
         });
         Assert.Equal("", Note(cut));
     }
@@ -668,7 +670,7 @@ public class SearchShareTest : ExplorerTestContext
     {
         var cut = RenderExplorer(CodedClient(findsTheOtherRow: true), $"http://localhost/variabler?variabel={Code}&datasamling={spelling}");
 
-        cut.WaitForAssertion(() => Assert.EndsWith($"datasamling={Uri.EscapeDataString(SviktCode)}", Address(cut)));
+        cut.WaitForAssertion(() => Assert.EndsWith($"datasamling={Uri.EscapeDataString(OtherRowCode)}", Address(cut)));
         Assert.Equal("", Note(cut));
     }
 
@@ -681,7 +683,7 @@ public class SearchShareTest : ExplorerTestContext
         {
             Assert.NotNull(cut.Find(".munin-explorer-detail"));
             Assert.Equal("Fant ikke datasamlingen lenken viste til. Variabelen vises i sin hoveddatasamling.", Note(cut));
-            Assert.EndsWith($"/variabler?variabel={Code}&datasamling={InfarktCode}", Address(cut));
+            Assert.EndsWith($"/variabler?variabel={Code}&datasamling={PrimaryRowCode}", Address(cut));
         });
     }
 
@@ -690,7 +692,7 @@ public class SearchShareTest : ExplorerTestContext
     {
         var cut = RenderExplorer(CodedClient(findsTheOtherRow: true), $"http://localhost/variabler?variabel={Code}&datasamlingId={OtherDatasamlingId}");
 
-        cut.WaitForAssertion(() => Assert.EndsWith($"/variabler?variabel={Code}&datasamling={Uri.EscapeDataString(SviktCode)}", Address(cut)));
+        cut.WaitForAssertion(() => Assert.EndsWith($"/variabler?variabel={Code}&datasamling={Uri.EscapeDataString(OtherRowCode)}", Address(cut)));
         Assert.Equal("", Note(cut));
     }
 
@@ -699,7 +701,7 @@ public class SearchShareTest : ExplorerTestContext
     {
         var cut = RenderExplorer(CodedClient(), $"http://localhost/variabler?variabel={Code}");
 
-        cut.WaitForAssertion(() => Assert.EndsWith($"/variabler?variabel={Code}&datasamling={InfarktCode}", Address(cut)));
+        cut.WaitForAssertion(() => Assert.EndsWith($"/variabler?variabel={Code}&datasamling={PrimaryRowCode}", Address(cut)));
         Assert.Equal("", Note(cut));
     }
 
@@ -716,7 +718,7 @@ public class SearchShareTest : ExplorerTestContext
         cut.WaitForAssertion(() =>
         {
             Assert.Contains("Hjertesvikt", OpenRowsDatasamling(cut));
-            Assert.EndsWith($"variabel={Code}&datasamling={Uri.EscapeDataString(SviktCode)}", Address(cut));
+            Assert.EndsWith($"variabel={Code}&datasamling={Uri.EscapeDataString(OtherRowCode)}", Address(cut));
         });
     }
 
@@ -734,7 +736,7 @@ public class SearchShareTest : ExplorerTestContext
     public void Arrive_WhenTheVariableListsADatasamlingTwice_ThenItsCodeStillOpensItsRow()
     {
         var cut = RenderExplorer(CodedClient(findsTheOtherRow: true, twice: true),
-            $"http://localhost/variabler?variabel={Code}&datasamling={Uri.EscapeDataString(SviktCode)}");
+            $"http://localhost/variabler?variabel={Code}&datasamling={Uri.EscapeDataString(OtherRowCode)}");
 
         cut.WaitForAssertion(() => Assert.Contains("Hjertesvikt", OpenRowsDatasamling(cut)));
         Assert.Equal("", Note(cut));
@@ -744,7 +746,7 @@ public class SearchShareTest : ExplorerTestContext
     public void Arrive_WhenThisMuninSendsNoDatasamlingCodes_ThenACodeLinkOpensThePrimaryRowWithoutANote()
     {
         // Whether the datasamling is there cannot be told, so the reader is not told it is missing.
-        var cut = RenderExplorer(new ShareClient(), $"http://localhost/variabler?variabel={Code}&datasamling={InfarktCode}");
+        var cut = RenderExplorer(new ShareClient(), $"http://localhost/variabler?variabel={Code}&datasamling={PrimaryRowCode}");
 
         cut.WaitForAssertion(() => Assert.NotNull(cut.Find(".munin-explorer-detail")));
         Assert.Equal("", Note(cut));
@@ -756,7 +758,7 @@ public class SearchShareTest : ExplorerTestContext
         var client = CodedClient();
         var cut = RenderExplorer(client);
         OpenRow(cut);
-        cut.WaitForAssertion(() => Assert.Contains($"variabel={Code}&datasamling={InfarktCode}", Address(cut)));
+        cut.WaitForAssertion(() => Assert.Contains($"variabel={Code}&datasamling={PrimaryRowCode}", Address(cut)));
         var (searches, asked) = (client.Searches.Count, client.CodesAsked.Count);
 
         Services.GetRequiredService<NavigationManager>().NavigateTo($"http://localhost/variabler?search=kjonn&variabel={Code}");
@@ -765,13 +767,62 @@ public class SearchShareTest : ExplorerTestContext
         Assert.NotNull(cut.Find(".munin-explorer-detail"));
     }
 
+    private static void OpenTheOtherRow(IRenderedComponent<VariableExplorer> cut)
+    {
+        cut.WaitForElements("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name")
+            .Single(b => b.ParentElement!.ParentElement!.TextContent.Contains("Hjertesvikt", StringComparison.Ordinal)).Click();
+        cut.WaitForAssertion(() => Assert.Contains("Hjertesvikt", OpenRowsDatasamling(cut)));
+    }
+
+    [Fact]
+    public void Navigate_WhenTheHostNavigatesToAnotherRowsOldSpellingOfTheOpenRow_ThenNothingRemounts()
+    {
+        var client = CodedClient(findsTheOtherRow: true);
+        var cut = RenderExplorer(client);
+        OpenTheOtherRow(cut);
+        cut.WaitForAssertion(() => Assert.Contains($"datasamling={Uri.EscapeDataString(OtherRowCode)}", Address(cut)));
+        var (searches, asked) = (client.Searches.Count, client.CodesAsked.Count);
+
+        Services.GetRequiredService<NavigationManager>().NavigateTo(
+            $"http://localhost/variabler?search=kjonn&variabel={Code}&datasamlingId={OtherDatasamlingId}");
+
+        Assert.Equal((searches, asked), (client.Searches.Count, client.CodesAsked.Count));
+        Assert.Contains("Hjertesvikt", OpenRowsDatasamling(cut));
+    }
+
+    [Fact]
+    public void Navigate_WhenAnOldSpellingNamesADifferentRow_ThenThatRowOpens()
+    {
+        var cut = RenderExplorer(CodedClient(findsTheOtherRow: true));
+        OpenRow(cut);
+        cut.WaitForAssertion(() => Assert.Contains($"datasamling={PrimaryRowCode}", Address(cut)));
+
+        Services.GetRequiredService<NavigationManager>().NavigateTo(
+            $"http://localhost/variabler?search=kjonn&variabel={Code}&datasamlingId={OtherDatasamlingId}");
+
+        cut.WaitForAssertion(() => Assert.Contains("Hjertesvikt", OpenRowsDatasamling(cut)));
+    }
+
+    [Fact]
+    public void Navigate_WhenTheHostDeclinesDatasamlingIdAndTheVariableAloneArrivesOverAnotherRow_ThenThePrimaryRowOpens()
+    {
+        // With datasamlingId declined the variable alone names only the primary row, not the other one on screen.
+        var cut = RenderExplorer(CodedClient(findsTheOtherRow: true), declined: ["datasamlingId"]);
+        OpenTheOtherRow(cut);
+        cut.WaitForAssertion(() => Assert.Contains($"datasamling={Uri.EscapeDataString(OtherRowCode)}", Address(cut)));
+
+        Services.GetRequiredService<NavigationManager>().NavigateTo($"http://localhost/variabler?search=kjonn&variabel={Code}");
+
+        cut.WaitForAssertion(() => Assert.Contains("Hjerteinfarkt", OpenRowsDatasamling(cut)));
+    }
+
     [Fact]
     public void OpenRow_WhenTheHostDeclinesDatasamlingIdAlone_ThenTheLinkStillNamesTheDatasamlingByCode()
     {
         var cut = RenderExplorer(CodedClient(), declined: ["datasamlingId"]);
         OpenRow(cut);
 
-        cut.WaitForAssertion(() => AssertTheLinkNamesTheDatasamlingByCode(MailLink(ShareGroup(cut.Find(".munin-explorer-detail"))), InfarktCode));
+        cut.WaitForAssertion(() => AssertTheLinkNamesTheDatasamlingByCode(MailLink(ShareGroup(cut.Find(".munin-explorer-detail"))), PrimaryRowCode));
     }
 
     [Fact]
