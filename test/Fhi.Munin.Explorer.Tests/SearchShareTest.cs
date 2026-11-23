@@ -35,6 +35,9 @@ public class SearchShareTest : ExplorerTestContext
         /// <summary>The variable's datasamlinger as its record lists them.</summary>
         public IReadOnlyList<Guid> AllDatasamlinger { get; init; } = [DatasamlingId, OtherDatasamlingId];
 
+        /// <summary>The datasamlinger's codes, which a Munin older than the field does not send.</summary>
+        public IReadOnlyDictionary<Guid, string> DatasamlingCodes { get; init; } = new Dictionary<Guid, string>();
+
         /// <summary>Whether the search finds the variable's row in its other datasamling as well.</summary>
         public bool FindsTheOtherRow { get; init; }
 
@@ -123,7 +126,10 @@ public class SearchShareTest : ExplorerTestContext
                 DatasamlingId = DetailDatasamlingId,
                 DatasamlingName = "Hjerteinfarkt",
                 VersionStatus = VersionStatus,
-                AllDatasamlinger = [.. AllDatasamlinger.Select(id => new DatasamlingReference { Id = id })],
+                AllDatasamlinger =
+                [
+                    .. AllDatasamlinger.Select(id => new DatasamlingReference { Id = id, Code = DatasamlingCodes.GetValueOrDefault(id) }),
+                ],
             };
     }
 
@@ -589,6 +595,129 @@ public class SearchShareTest : ExplorerTestContext
         Assert.Empty(cut.FindAll(".munin-explorer-detail"));
         Assert.NotEmpty(_history!.Written);
         Assert.All(_history.Written, url => Assert.Contains("variabel=vertens-egen", url, StringComparison.Ordinal));
+    }
+
+    // Fhi.Metadata-l9l2n.204: the datasamling by its code, the same in every environment, the primary one included.
+    private const string PrimaryCode = "HKR.HJERTEINFARKT";
+    private const string OtherCode = "HKR.HJERTESVIKT_SØVN";
+
+    private static ShareClient CodedClient(bool findsTheOtherRow = false, Guid? primary = null) => new()
+    {
+        DetailDatasamlingId = primary ?? DatasamlingId,
+        FindsTheOtherRow = findsTheOtherRow,
+        DatasamlingCodes = new Dictionary<Guid, string> { [DatasamlingId] = PrimaryCode, [OtherDatasamlingId] = OtherCode },
+    };
+
+    private static void AssertTheLinkNamesTheDatasamlingByCode(string link, string datasamlingCode)
+    {
+        var query = QueryHelpers.ParseQuery(new Uri(link).Query);
+        Assert.Equal(new[] { "datasamling", "variabel" }, query.Keys.Order());
+        Assert.Equal((Code, datasamlingCode), (query["variabel"].ToString(), query["datasamling"].ToString()));
+    }
+
+    [Fact]
+    public void OpenRow_WhenTheRowIsThePrimaryDatasamling_ThenTheLinkStillNamesItByCode()
+    {
+        // The defect: the primary row's link carried the variable alone, so a variable in 14 datasamlinger lost its row.
+        var copied = JSInterop.SetupVoid("navigator.clipboard.writeText", _ => true);
+        copied.SetVoidResult();
+        var cut = RenderExplorer(CodedClient());
+        OpenRow(cut);
+
+        cut.WaitForAssertion(() => AssertTheLinkNamesTheDatasamlingByCode(MailLink(ShareGroup(cut.Find(".munin-explorer-detail"))), PrimaryCode));
+        ShareGroup(cut.Find(".munin-explorer-detail")).Copy.Click();
+        cut.WaitForAssertion(() => AssertTheLinkNamesTheDatasamlingByCode((string)copied.Invocations.Single().Arguments.Single()!, PrimaryCode));
+        cut.WaitForAssertion(() => Assert.EndsWith($"variabel={Code}&datasamling={PrimaryCode}", Address(cut)));
+    }
+
+    [Fact]
+    public void ShowWholeVariable_WhenTheRowIsNotThePrimaryDatasamling_ThenTheLinkNamesItsDatasamlingByCodeNotId()
+    {
+        var cut = RenderExplorer(CodedClient(primary: OtherDatasamlingId));
+        OpenRow(cut);
+
+        cut.FindAll(".munin-explorer-detail button").Single(b => b.TextContent == "Vis hele variabelen").Click();
+        cut.WaitForAssertion(() => AssertTheLinkNamesTheDatasamlingByCode(
+            MailLink(ShareGroup(cut.Find("[id^='munin-variable-'][role=region]"))), PrimaryCode));
+    }
+
+    [Theory]
+    [InlineData("?variabel={0}&datasamling={1}")]
+    [InlineData("?datasamling={1}&variabel={0}")]
+    public void Arrive_WhenTheLinkNamesAnotherDatasamlingByCode_ThenThatRowOpensWithoutANoteInEitherOrder(string query)
+    {
+        var client = CodedClient(findsTheOtherRow: true);
+        var cut = RenderExplorer(client, "http://localhost/variabler" + string.Format(query, Code, OtherCode));
+
+        cut.WaitForAssertion(() =>
+        {
+            var open = cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name")
+                .Single(b => b.GetAttribute("aria-expanded") == "true");
+            Assert.Contains("Hjertesvikt", open.ParentElement!.ParentElement!.TextContent);
+            Assert.EndsWith($"/variabler?variabel={Code}&datasamling={Uri.EscapeDataString(OtherCode)}", Address(cut));
+        });
+        Assert.Equal("", Note(cut));
+    }
+
+    [Theory]
+    [InlineData("hkr.hjertesvikt_søvn")]
+    [InlineData("HKR.HJERTESVIKT_SOEVN")]
+    public void Arrive_WhenTheDatasamlingCodeIsSpelledAnotherWay_ThenItIsMatchedAsTheListImportMatchesOne(string spelling)
+    {
+        var cut = RenderExplorer(CodedClient(findsTheOtherRow: true), $"http://localhost/variabler?variabel={Code}&datasamling={spelling}");
+
+        cut.WaitForAssertion(() => Assert.EndsWith($"datasamling={Uri.EscapeDataString(OtherCode)}", Address(cut)));
+        Assert.Equal("", Note(cut));
+    }
+
+    [Fact]
+    public void Arrive_WhenTheDatasamlingCodeNamesNoneOfTheVariables_ThenThePrimaryRowOpensWithANote()
+    {
+        var cut = RenderExplorer(CodedClient(), $"http://localhost/variabler?variabel={Code}&datasamling=HKR.FINNES_IKKE");
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.NotNull(cut.Find(".munin-explorer-detail"));
+            Assert.Equal("Fant ikke datasamlingen lenken viste til. Variabelen vises i sin hoveddatasamling.", Note(cut));
+            Assert.EndsWith($"/variabler?variabel={Code}&datasamling={PrimaryCode}", Address(cut));
+        });
+    }
+
+    [Fact]
+    public void Arrive_WhenAnOldLinkNamesTheDatasamlingById_ThenThatRowOpensAndTheAddressNamesItByCode()
+    {
+        var cut = RenderExplorer(CodedClient(findsTheOtherRow: true), $"http://localhost/variabler?variabel={Code}&datasamlingId={OtherDatasamlingId}");
+
+        cut.WaitForAssertion(() => Assert.EndsWith($"/variabler?variabel={Code}&datasamling={Uri.EscapeDataString(OtherCode)}", Address(cut)));
+        Assert.Equal("", Note(cut));
+    }
+
+    [Fact]
+    public void Arrive_WhenAnOldLinkNamesTheVariableAlone_ThenThePrimaryRowOpensQuietly()
+    {
+        var cut = RenderExplorer(CodedClient(), $"http://localhost/variabler?variabel={Code}");
+
+        cut.WaitForAssertion(() => Assert.EndsWith($"/variabler?variabel={Code}&datasamling={PrimaryCode}", Address(cut)));
+        Assert.Equal("", Note(cut));
+    }
+
+    [Fact]
+    public void Arrive_WhenAnOldIdLinkNamesTheRow_ThenItOpens()
+    {
+        var cut = RenderExplorer(CodedClient(findsTheOtherRow: true),
+            $"http://localhost/variabler?search={Code}&variabelId={VariableId}&datasamlingId={OtherDatasamlingId}");
+
+        cut.WaitForAssertion(() => Assert.EndsWith($"variabel={Code}&datasamling={Uri.EscapeDataString(OtherCode)}", Address(cut)));
+    }
+
+    [Fact]
+    public void OpenRow_WhenTheHostDeclinesDatasamling_ThenTheLinkNamesTheRowByIdAsBefore()
+    {
+        var cut = RenderExplorer(CodedClient(primary: OtherDatasamlingId), declined: ["datasamling"]);
+        OpenRow(cut);
+
+        cut.WaitForAssertion(() => AssertTheLinkOpensThisVariable(MailLink(ShareGroup(cut.Find(".munin-explorer-detail"))), DatasamlingId));
+        Assert.DoesNotContain("datasamling=", Address(cut));
     }
 
     [Fact]

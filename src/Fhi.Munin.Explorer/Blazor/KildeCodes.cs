@@ -41,13 +41,7 @@ internal static class KildeCodes
     /// Whether <paramref name="value"/> could be a datasamling code: as <see cref="IsLinkCode"/>, and «.» as well, which
     /// datasamling codes carry (K_ALS.INKLUSJON).
     /// </summary>
-    public static bool IsDatasamlingLinkCode(string? value)
-    {
-        var trimmed = value?.Trim();
-
-        return !string.IsNullOrEmpty(trimmed) && trimmed.Length <= MaxLength
-            && trimmed.All(c => char.IsLetterOrDigit(c) || c is '_' or '-' or '.');
-    }
+    public static bool IsDatasamlingLinkCode(string? value) => Client.DatasamlingCodes.IsLinkCode(value);
 
     /// <summary>A code folded as Munin compares catalogue codes: ÆØÅ as AE, OE and AA, then upper case.</summary>
     public static string Canonical(string code) =>

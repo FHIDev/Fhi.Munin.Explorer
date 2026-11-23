@@ -413,4 +413,37 @@ public class ExplorerUrlStateTest
         Assert.Contains("delekode", ExplorerUrlState.QueryKeys);
         Assert.Contains("delekode", ExplorerUrlState.ScalarQueryKeys);
     }
+
+    // Fhi.Metadata-l9l2n.204: the row's datasamling by code, beside the variable's.
+    [Fact]
+    public void ToQueryString_WhenTheDatasamlingHasACode_ThenItIsWrittenInPlaceOfItsId()
+    {
+        var state = new ExplorerUrlState
+        {
+            SelectedVariableCode = "V_KREG.S_SIDKRG",
+            SelectedDatasamlingCode = "KREG.SIDKRG",
+            SelectedDatasamlingId = Guid.NewGuid(),
+        };
+
+        Assert.Equal("variabel=V_KREG.S_SIDKRG&datasamling=KREG.SIDKRG", state.ToQueryString());
+        Assert.Contains("datasamling", ExplorerUrlState.ScalarQueryKeys);
+    }
+
+    [Theory]
+    [InlineData("?variabel=V_KREG.S_SIDKRG&datasamling=KREG.SIDKRG")]
+    [InlineData("?datasamling=KREG.SIDKRG&variabel=V_KREG.S_SIDKRG")]
+    public void Parse_WhenTheDatasamlingCodeArrivesBeforeOrAfterTheVariable_ThenBothAreRead(string query)
+    {
+        var state = ExplorerUrlState.Parse(query);
+
+        Assert.Equal(("V_KREG.S_SIDKRG", "KREG.SIDKRG"), (state.SelectedVariableCode, state.SelectedDatasamlingCode));
+        Assert.Equal("variabel=V_KREG.S_SIDKRG&datasamling=KREG.SIDKRG", state.ToQueryString());
+    }
+
+    [Theory]
+    [InlineData("?datasamling=KREG.SIDKRG")]
+    [InlineData("?variabelId=7a1f0c4e-2b8d-4e5a-9c3f-1d2e3f4a5b6c&datasamling=KREG.SIDKRG")]
+    [InlineData("?variabel=V_KREG.S_SIDKRG&datasamling=KREG%20SIDKRG")]
+    public void Parse_WhenTheDatasamlingCodeIsNotBesideAVariableCodeOrIsMalformed_ThenItIsNotRead(string query) =>
+        Assert.Null(ExplorerUrlState.Parse(query).SelectedDatasamlingCode);
 }

@@ -160,15 +160,28 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     private bool? _codesResolve;
 
     // What the address needs to name an open variable by its code, learned once per variable and only from Munin's
-    // answer to that code: the code, its primary datasamling, and whether it is historical.
-    private readonly Dictionary<Guid, (string Code, Guid? Primary, bool Historical)> _known = [];
+    // answer to that code: the code, its primary datasamling, whether it is historical, and its datasamlinger's codes.
+    private readonly Dictionary<Guid, Known> _known = [];
+
+    private sealed record Known(string Code, Guid? Primary, bool Historical, IReadOnlyDictionary<Guid, string> Datasamlinger)
+    {
+        // A Munin older than the datasamling's code sends none, and the address names the row by id as before.
+        public static Known Of(VariableDetail detail) => new(
+            detail.Code,
+            detail.DatasamlingId,
+            VersionStatusRule.IsHistorical(detail.VersionStatus),
+            detail.AllDatasamlinger
+                .Where(d => DatasamlingCodes.IsLinkCode(d.Code))
+                .GroupBy(d => d.Id)
+                .ToDictionary(g => g.Key, g => g.First().Code!.Trim()));
+    }
     private readonly HashSet<Guid> _asked = [];
 
     private static bool NeedsResolving(Binding state) =>
         state.SelectedVariableCode is not null && state.SelectedVariableId is null;
 
     private static ExplorerUrlState WithoutVariable(ExplorerUrlState state) =>
-        state with { SelectedVariableId = null, SelectedVariableCode = null, SelectedDatasamlingId = null };
+        state with { SelectedVariableId = null, SelectedVariableCode = null, SelectedDatasamlingId = null, SelectedDatasamlingCode = null };
 
     // A link naming the variable and nothing else, whose search and filter are the arrival's to make.
     private static bool IsBare(ExplorerUrlState state) => WithoutVariable(state).ToQueryString().Length == 0;
@@ -183,7 +196,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
         var arrived = _state.ToState();
         var code = arrived.SelectedVariableCode!;
-        var wanted = arrived.SelectedDatasamlingId;
+        var wantedCode = arrived.SelectedDatasamlingCode;
         var bare = IsBare(arrived);
         _resolving = true;
 
@@ -217,18 +230,23 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             state.SelectedVariableId = null;
             state.SelectedVariableCode = null;
             state.SelectedDatasamlingId = null;
+            state.SelectedDatasamlingCode = null;
             state.Search = string.IsNullOrWhiteSpace(state.Search) ? code : state.Search;
         }
         else
         {
             _codesResolve = true;
-            var historical = VersionStatusRule.IsHistorical(detail.VersionStatus);
-            _known[detail.Id] = (detail.Code, detail.DatasamlingId, historical);
+            var known = Known.Of(detail);
+            var historical = known.Historical;
+            _known[detail.Id] = known;
 
-            // A datasamling id from another environment falls back to the primary row. Said only when the variable has
-            // more than one, since with one a missing id can only have meant that one.
+            // A datasamling code or id that names none of the variable's falls back to the primary row. Said only when the
+            // variable has more than one, since with one a missing datasamling can only have meant that one.
+            var wanted = (wantedCode is null ? null : DatasamlingCodes.Find(detail.AllDatasamlinger, wantedCode))
+                ?? arrived.SelectedDatasamlingId;
             var found = wanted is { } id && (id == detail.DatasamlingId || detail.AllDatasamlinger.Any(d => d.Id == id));
-            _linkNote = wanted is not null && !found && detail.AllDatasamlinger.Count > 1;
+            _linkNote = (wantedCode is not null || arrived.SelectedDatasamlingId is not null) && !found
+                && detail.AllDatasamlinger.Count > 1;
 
             // A bare link searches the code, which ranks first and so puts the pinned row on the first page; an
             // address the explorer wrote itself keeps the reader's own search and filters, as an id link does.
@@ -241,6 +259,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             state.SelectedVariableId = detail.Id;
             state.SelectedVariableCode = detail.Code;
             state.SelectedDatasamlingId = found ? wanted : detail.DatasamlingId;
+            state.SelectedDatasamlingCode = null;
         }
 
         // Arrived like any link, or like the entry pushed from the list that Back or Forward reached.
@@ -254,8 +273,8 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     }
 
     /// <summary>
-    /// The state as the address writes it: the open variable by its code once Munin has answered that code, the
-    /// datasamling only when it is not the primary one, and no search or filter when the code alone makes them again.
+    /// The state as the address writes it: the open variable by its code once Munin has answered that code, its row's
+    /// datasamling by code where Munin sent one, and no search or filter when the code alone makes them again.
     /// </summary>
     private ExplorerUrlState Coded(ExplorerUrlState state)
     {
@@ -271,14 +290,10 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
                 Learn(id);
             }
 
-            return state with { SelectedVariableCode = null };
+            return state with { SelectedVariableCode = null, SelectedDatasamlingCode = null };
         }
 
-        var coded = state with
-        {
-            SelectedVariableCode = known.Code,
-            SelectedDatasamlingId = state.SelectedDatasamlingId == known.Primary ? null : state.SelectedDatasamlingId,
-        };
+        var coded = WithDatasamling(state with { SelectedVariableCode = known.Code }, known, state.SelectedDatasamlingId);
         var arrival = new ExplorerUrlState
         {
             Search = known.Code,
@@ -319,7 +334,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
                 // The same view said another way, so a section the address arrived with stays in it.
                 var before = Linkable(Coded(_state.ToState())).ToQueryString();
-                _known[id] = (detail.Code, detail.DatasamlingId, VersionStatusRule.IsHistorical(detail.VersionStatus));
+                _known[id] = Known.Of(detail);
                 _codesResolve = true;
                 _mirror.Reown(before, Linkable(Coded(_state.ToState())).ToQueryString());
                 StateHasChanged();
@@ -580,13 +595,8 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
                 Learn(variableId, code.Trim());
             }
 
-            return Absolute(new ExplorerUrlState
-            {
-                SelectedVariableCode = code.Trim(),
-                SelectedDatasamlingId = _known.TryGetValue(variableId, out var known) && known.Primary == datasamlingId
-                    ? null
-                    : datasamlingId,
-            });
+            var link = new ExplorerUrlState { SelectedVariableCode = code.Trim(), SelectedDatasamlingId = datasamlingId };
+            return Absolute(_known.TryGetValue(variableId, out var known) ? WithDatasamling(link, known, datasamlingId) : link);
         }
 
         if (!NoCodes)
@@ -607,6 +617,23 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
                 SelectedVariableId = variableId,
                 SelectedDatasamlingId = datasamlingId,
             });
+    }
+
+    // The row's datasamling by its code, the primary's too, so a link opens the same row in every environment
+    // (Fhi.Metadata-l9l2n.204). Without a code, by id as before, and not at all for the primary row.
+    private ExplorerUrlState WithDatasamling(ExplorerUrlState state, Known known, Guid? datasamlingId)
+    {
+        var row = datasamlingId ?? known.Primary;
+        if (!Declined("datasamling") && row is { } id && known.Datasamlinger.TryGetValue(id, out var code))
+        {
+            return state with { SelectedDatasamlingCode = code, SelectedDatasamlingId = null };
+        }
+
+        return state with
+        {
+            SelectedDatasamlingCode = null,
+            SelectedDatasamlingId = datasamlingId == known.Primary ? null : datasamlingId,
+        };
     }
 
     private string Absolute(ExplorerUrlState state) =>
@@ -642,6 +669,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             SelectedVariableId = DeclinedVariable ? null : state.SelectedVariableId,
             SelectedVariableCode = NoCodes ? null : state.SelectedVariableCode,
             SelectedDatasamlingId = DeclinedVariable || Declined("datasamlingId") ? null : state.SelectedDatasamlingId,
+            SelectedDatasamlingCode = DeclinedVariable || Declined("datasamling") ? null : state.SelectedDatasamlingCode,
             SelectedInstrumentId = Declined("instrumentId") ? null : state.SelectedInstrumentId,
             ShareCode = Declined("delekode") ? null : state.ShareCode,
             Sort = Declined("sort") ? SortField.Default : state.Sort,
@@ -677,6 +705,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
                 if (value != _selectedVariableId)
                 {
                     SelectedVariableCode = null;
+                    SelectedDatasamlingCode = null;
                 }
 
                 _selectedVariableId = value;
@@ -685,7 +714,24 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
         public string? SelectedVariableCode { get; set; }
 
-        public Guid? SelectedDatasamlingId { get; set; }
+        private Guid? _selectedDatasamlingId;
+
+        // The arrival's datasamling code names only the row it arrived with.
+        public Guid? SelectedDatasamlingId
+        {
+            get => _selectedDatasamlingId;
+            set
+            {
+                if (value != _selectedDatasamlingId)
+                {
+                    SelectedDatasamlingCode = null;
+                }
+
+                _selectedDatasamlingId = value;
+            }
+        }
+
+        public string? SelectedDatasamlingCode { get; set; }
 
         public Guid? SelectedInstrumentId { get; set; }
 
@@ -702,6 +748,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             SelectedVariableId = state.SelectedVariableId,
             SelectedVariableCode = state.SelectedVariableCode,
             SelectedDatasamlingId = state.SelectedDatasamlingId,
+            SelectedDatasamlingCode = state.SelectedDatasamlingCode,
             SelectedInstrumentId = state.SelectedInstrumentId,
             ShareCode = state.ShareCode,
         };
@@ -717,6 +764,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             SelectedVariableId = SelectedVariableId,
             SelectedVariableCode = SelectedVariableCode,
             SelectedDatasamlingId = SelectedDatasamlingId,
+            SelectedDatasamlingCode = SelectedDatasamlingCode,
             SelectedInstrumentId = SelectedInstrumentId,
             ShareCode = ShareCode,
         };
