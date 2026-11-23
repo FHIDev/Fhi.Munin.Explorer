@@ -177,4 +177,34 @@ public class DescriptionLeadTest
         Assert.Equal("Se [nettsiden][1].\n\n[1]: https://a.no", lead);
         Assert.Equal(Items(12), folded);
     }
+
+    [Fact]
+    public void Split_WhenFormattedAndAShortFirstParagraphWithTwoSentencesComesBeforeAList_ThenItIsShownWhole()
+    {
+        var (lead, folded) = DescriptionLead.Split("Første setning. Andre setning.\n\n" + Items(12), formatted: true);
+
+        Assert.Equal("Første setning. Andre setning.", lead);
+        Assert.Equal(Items(12), folded);
+    }
+
+    [Fact]
+    public void Split_WhenFormattedAndADefinitionOpensTheText_ThenTheLongParagraphAfterItIsCutAtItsOwnSentence()
+    {
+        // The cut is found in the paragraph and placed in the whole text, so its offset there must count.
+        var (lead, folded) = DescriptionLead.Split(
+            "[1]: https://a.no\n\n" + Sentence('a', 300) + " " + Sentence('b', 200) + " " + Sentence('c', 200) + "\n\n" + Items(2),
+            formatted: true);
+
+        Assert.Equal("[1]: https://a.no\n\n" + Sentence('a', 300) + " " + Sentence('b', 200), lead);
+        Assert.Equal(Sentence('c', 200) + "\n\n" + Items(2), folded);
+    }
+
+    [Fact]
+    public void Split_WhenFormattedAndASentenceEndsInsideBoldBeforeAList_ThenTheCutIsNotThere()
+    {
+        var (lead, _) = DescriptionLead.Split(
+            Sentence('a', 300) + " **Viktig. Les dette.** " + new string('b', 300) + ". Slutt.\n\n- en\n- to", formatted: true);
+
+        Assert.EndsWith(new string('b', 300) + ".", lead, StringComparison.Ordinal);
+    }
 }

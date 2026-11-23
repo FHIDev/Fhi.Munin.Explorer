@@ -151,7 +151,7 @@ public class AuthoredPropertiesTest : ExplorerTestContext
             cut.FindAll("dd span a").Select(a => a.GetAttribute("href")));
     }
 
-    public static TheoryData<string> AuthoredKeys => new(CatalogueProperties.AuthoredKeys);
+    public static TheoryData<string> AuthoredKeys => [.. CatalogueProperties.AuthoredKeys];
 
     private const string BoldAndList = "**Merk:**\n- en\n- to";
 
