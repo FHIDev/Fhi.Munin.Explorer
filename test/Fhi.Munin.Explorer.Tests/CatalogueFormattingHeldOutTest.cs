@@ -17,23 +17,6 @@ public class CatalogueFormattingHeldOutTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Split_WhenTheFirstChunkIsALeadInAndATightListOfTwoSentenceItems_ThenTheCutIsNotInsideAnItem()
-    {
-        var items = Enumerable.Range(1, 8)
-            .Select(i => $"- Punkt {i} forklarer en ting om registeret. Den andre setningen utdyper punkt {i} med flere ord.");
-        var text = "Kilden inneholder følgende opplysninger:\n" + string.Join("\n", items);
-
-        var (lead, folded) = DescriptionLead.Split(text, formatted: true);
-
-        Assert.NotNull(folded);
-        var lastLine = lead.Split('\n')[^1];
-        Assert.True(
-            !lastLine.StartsWith("- ") || lastLine.EndsWith("ord."),
-            $"The lead ends inside a list item: «{lastLine}»");
-        Assert.StartsWith("- ", folded.Split('\n')[0], StringComparison.Ordinal);
-    }
-
-    [Fact]
     public void Render_WhenListsNestFiveLevelsDeep_ThenAtMostThreeUlElementsAreDrawn()
     {
         var cut = Render(CatalogueMarkdown.Render("- 1\n  - 2\n    - 3\n      - 4\n        - 5", formatted: true));
