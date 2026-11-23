@@ -350,6 +350,12 @@ public sealed record DatasamlingReference
     [JsonPropertyName("nameEn")] public string? NameEn { get; init; }
 
     /// <summary>
+    /// The datasamling's code, which a shared link names it by, since its <see cref="Id"/> differs between environments.
+    /// Null from an API older than the field, and empty where Munin cannot read the datasamling.
+    /// </summary>
+    [JsonPropertyName("code")] public string? Code { get; init; }
+
+    /// <summary>
     /// When the variable entered this datasamling. Note this is a catalogue timestamp on the
     /// membership, not the data period — that is <see cref="DataFrom"/>.
     /// </summary>

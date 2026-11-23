@@ -87,7 +87,7 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
     internal static string Shown(string markup) =>
         Regex.Replace(
             markup,
-            "\\s(id|for|name|href|aria-(labelledby|describedby|controls)|blazor:[A-Za-z]+)=\"[^\"]*\"",
+            "\\s(id|for|name|href|aria-(labelledby|describedby|controls)|blazor:[A-Za-z]+|data-munin-explorer-version)=\"[^\"]*\"",
             " ");
 
     [Fact]
@@ -97,8 +97,10 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
         var reference = Shown("""<button id="x" blazor:elementReference="11111111-46c4-822b-b748e65b0001" blazor:onclick="0001">Save</button>""");
         var title = Shown("""<span title="0001-01-01">period</span>""");
         var text = Shown("""<td>01.01.0001</td>""");
+        var version = Shown("""<div data-munin-explorer-version="0.1.0+a8e981103841ef000129c148bd0f42eb1a1">x</div>""");
 
         Assert.DoesNotContain("0001", reference, StringComparison.Ordinal);
+        Assert.DoesNotContain("0001", version, StringComparison.Ordinal);
         Assert.Contains("0001", title, StringComparison.Ordinal);
         Assert.Contains("0001", text, StringComparison.Ordinal);
     }

@@ -59,19 +59,31 @@ public sealed record ExplorerUrlState
     /// through Munin before it opens anything; a code that names no variable opens as a search for the code.
     /// </summary>
     /// <remarks>
-    /// Written whenever it is set, with <see cref="SelectedDatasamlingId"/> beside it when that is set too: a link to the
-    /// row of another of the variable's datasamlinger still names that datasamling by its id. A link with
-    /// <c>variabelId</c> keeps working, and wins when both arrive.
+    /// Written whenever it is set, with <see cref="SelectedDatasamlingCode"/> beside it, or
+    /// <see cref="SelectedDatasamlingId"/> where no code is set. A link with <c>variabelId</c> keeps working, and wins
+    /// when both arrive.
     /// </remarks>
     public string? SelectedVariableCode { get; init; }
 
     /// <summary>
-    /// The datasamling of the open row, written as <c>datasamlingId</c> beside <c>variabelId</c> or <c>variabel</c>: a
-    /// variable has a row per datasamling, so the variable alone does not name the row. A link without
-    /// it opens the variable's first row. Never written without <see cref="SelectedVariableId"/> or
-    /// <see cref="SelectedVariableCode"/>.
+    /// The datasamling of the open row, written as <c>datasamlingId</c> beside <c>variabelId</c>, or beside
+    /// <c>variabel</c> when <see cref="SelectedDatasamlingCode"/> is not set: a variable has a row per datasamling, so
+    /// the variable alone does not name the row. A link without either opens the variable's first row. Never written
+    /// without <see cref="SelectedVariableId"/> or <see cref="SelectedVariableCode"/>.
     /// </summary>
     public Guid? SelectedDatasamlingId { get; init; }
+
+    /// <summary>
+    /// The open row's datasamling by its code, written as <c>datasamling</c> beside <c>variabel</c> in place of
+    /// <c>datasamlingId</c>, since a code is the same in every environment (Fhi.Metadata-l9l2n.204).
+    /// </summary>
+    /// <remarks>
+    /// Read and written only beside <see cref="SelectedVariableCode"/>. <see cref="Blazor.VariableExplorer"/> matches it
+    /// among the variable's datasamlinger as Munin's list import matches a datasamling code, so a «K_» is not left
+    /// optional as the kilde page leaves it. When both arrive, the row this names opens, else the one <c>datasamlingId</c>
+    /// names, else the primary row, which is said when the variable has more than one datasamling.
+    /// </remarks>
+    public string? SelectedDatasamlingCode { get; init; }
 
     /// <summary>The instrument whose page is open, or null when the reader is not on one.</summary>
     /// <remarks>
@@ -181,7 +193,11 @@ public sealed record ExplorerUrlState
         {
             Append(query, "variabel", code);
 
-            if (SelectedDatasamlingId is { } datasamling)
+            if (!string.IsNullOrWhiteSpace(SelectedDatasamlingCode))
+            {
+                Append(query, "datasamling", SelectedDatasamlingCode.Trim());
+            }
+            else if (SelectedDatasamlingId is { } datasamling)
             {
                 Append(query, "datasamlingId", datasamling.ToString());
             }
@@ -234,7 +250,10 @@ public sealed record ExplorerUrlState
         }
 
         // An id names the variable outright, so a code beside it is not read: ToQueryString would write the code instead.
-        return state.SelectedVariableId is null ? state : state with { SelectedVariableCode = null };
+        // A datasamling's code is read only beside a variable's, the one place ToQueryString writes it.
+        return state.SelectedVariableId is null && state.SelectedVariableCode is not null
+            ? state
+            : state with { SelectedVariableCode = null, SelectedDatasamlingCode = null };
     }
 
     private static ExplorerUrlState Apply(ExplorerUrlState state, string name, string value)
@@ -289,6 +308,11 @@ public sealed record ExplorerUrlState
             return VariableCodes.IsLinkCode(value) ? state with { SelectedVariableCode = value.Trim() } : state;
         }
 
+        if (Is(name, "datasamling"))
+        {
+            return DatasamlingCodes.IsLinkCode(value) ? state with { SelectedDatasamlingCode = value.Trim() } : state;
+        }
+
         // On the same terms as the variable; a datasamling it has no row in leaves the row closed.
         if (Is(name, "datasamlingId"))
         {
@@ -325,11 +349,12 @@ public sealed record ExplorerUrlState
     /// something by either, and so is <c>delekode</c>, which a host may already use for sharing
     /// of its own. <c>variabel</c> is the variable's code: declining it keeps codes out of the address, which then names the
     /// open variable by <c>variabelId</c> as before. Declining <c>variabelId</c> leaves the open variable out altogether,
-    /// its code and <c>datasamlingId</c> with it. Declining <c>datasamlingId</c> leaves out only that.
+    /// its code and datasamling with it. Declining <c>datasamling</c> names the open row's datasamling by
+    /// <c>datasamlingId</c> as before, and declining <c>datasamlingId</c> leaves out only that key.
     /// </remarks>
     public static IReadOnlySet<string> ScalarQueryKeys { get; } =
         new HashSet<string>(
-            ["search", "sort", "sortDir", "page", "pageSize", "variabelId", "variabel", "datasamlingId", "instrumentId", "delekode"],
+            ["search", "sort", "sortDir", "page", "pageSize", "variabelId", "variabel", "datasamling", "datasamlingId", "instrumentId", "delekode"],
             StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The keys this type reads and writes, so a host can tell them from its own.</summary>
