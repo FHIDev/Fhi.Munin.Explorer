@@ -41,9 +41,15 @@ public class DeclinedDatasamlingIdOldSpellingHeldOutTest : ExplorerTestContext
         private static VariableSummary Row(Guid datasamling, string name) =>
             new()
             {
-                Id = VariableId, Code = Code, PreferredTerm = "Kjønn", KildeId = KildeId,
-                KildeName = "Hjerte- og karregisteret", DatasamlingId = datasamling,
-                DatasamlingName = name, RowKey = $"{VariableId}:{datasamling}", VersionStatus = "Active",
+                Id = VariableId,
+                Code = Code,
+                PreferredTerm = "Kjønn",
+                KildeId = KildeId,
+                KildeName = "Hjerte- og karregisteret",
+                DatasamlingId = datasamling,
+                DatasamlingName = name,
+                RowKey = $"{VariableId}:{datasamling}",
+                VersionStatus = "Active",
             };
 
         private static VariableDetail Detail(Guid opened) =>
