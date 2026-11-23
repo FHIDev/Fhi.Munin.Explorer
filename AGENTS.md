@@ -1,6 +1,6 @@
 # AGENTS.md: FHIDev/Fhi.Munin.Explorer
 
-<!-- team-doc:begin sha256=11d0a31ce337f889c38acd554415855625027f6f66892123ee16e2bfa4046768 source=FHIDev/Fhi.Munin.DevInfra/docs/team/working-together.md -->
+<!-- team-doc:begin sha256=4d8a6bb9a5e2abec9704596f2d2b9b4d78aa08c944188527cf1f7b1f6a0497ba source=FHIDev/Fhi.Munin.DevInfra/docs/team/working-together.md -->
 ## The team's rules, in short
 
 Full text: FHIDev/Fhi.Munin.DevInfra `docs/team/working-together.md`. This block is a synced copy; edit the
@@ -27,6 +27,8 @@ canonical doc, not this block.
 - **Open PRs without asking.** A PR merges when CI is green and its risk tier's review requirements are met
   (DevInfra `docs/review-risk-tiers.md`); who approves and who merges is each owner's own arrangement, in their
   lanes file. Never touch someone else's PR or branch.
+- **Each new user-visible Fhi.Munin.Explorer feature ships behind its own flag** (`MuninExplorer:Features:<Name>`), off
+  until helsedata turns it on; details in Explorer's README.
 - **Work hours** are each owner's, set on Varde. Outside them messages wait in the inbox; where Varde's relay runs,
   it wakes a session only for a stop or the owner's codeword to their coordinator, and wakes each once when hours open.
 - **Never print the environment** or a secret, never roll, deploy or touch prod yourself, and do not work around a
