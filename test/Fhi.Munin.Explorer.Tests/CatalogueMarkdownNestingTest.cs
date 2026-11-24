@@ -116,8 +116,18 @@ public class CatalogueMarkdownNestingTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData(60, 1)]
-    [InlineData(130, 0)]
+    [InlineData(125, 1)]
+    [InlineData(126, 0)]
+    public void TopBlocks_WhenQuotesNestAtTheCap_ThenOnlyThoseUnderItAreParsed(int depth, int blocks)
+    {
+        var text = string.Concat(Enumerable.Repeat("> ", depth)) + "a";
+
+        Assert.Equal(blocks, CatalogueMarkdown.TopBlocks(text).Blocks.Count);
+    }
+
+    [Theory]
+    [InlineData(124, 1)]
+    [InlineData(125, 0)]
     public void Render_WhenUnclosedBracketsRunPastTheCap_ThenTheirParagraphsLinksStayText(int count, int anchors)
     {
         Assert.Equal(anchors, Render(CatalogueMarkdown.Render(Brackets(count), formatted: true)).FindAll("a").Count);
