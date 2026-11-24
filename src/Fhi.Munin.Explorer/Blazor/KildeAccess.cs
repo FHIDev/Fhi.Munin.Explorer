@@ -24,8 +24,11 @@ internal static partial class KildeAccess
 
     internal sealed record Link(string Text, string Href, bool Primary);
 
-    /// <summary>A catalogue word set into a sentence; Norwegian when the catalogue wrote it in Norwegian.</summary>
-    internal sealed record Fill(string Text, bool Norwegian);
+    /// <summary>
+    /// A catalogue word set into a sentence; Norwegian when the catalogue wrote it in Norwegian. With
+    /// <paramref name="Href"/> it is drawn as a link.
+    /// </summary>
+    internal sealed record Fill(string Text, bool Norwegian, string? Href = null);
 
     /// <summary>One sentence and its links. <paramref name="Format"/> holds {0} and {1} for the catalogue's words.</summary>
     internal sealed record Offer(string Level, string Format, IReadOnlyList<Fill> Fills, IReadOnlyList<Link> Links);
@@ -61,7 +64,8 @@ internal static partial class KildeAccess
         return buttons;
     }
 
-    internal static IReadOnlyList<Offer> Offers(KildeDetail kilde, KildeAccessLinks? links, Texts t)
+    // openDataWithoutPage: the host's wording for a kilde with no open-data address; null or blank takes the package's.
+    internal static IReadOnlyList<Offer> Offers(KildeDetail kilde, KildeAccessLinks? links, Texts t, string? openDataWithoutPage = null)
     {
         var codes = AccessLevels.Codes(kilde.AdditionalProperties);
         var named = t.Named(kilde.PreferredTerm, kilde.Code);
@@ -80,13 +84,30 @@ internal static partial class KildeAccess
             offers.Add(direct);
         }
 
-        if ((Has(codes, OpenData) || Has(codes, StatisticsBank))
-            && (Url(Value(kilde, OpenDataUrlKey)) ?? DisplayText.Trimmed(links?.OpenDataHref)) is { } open)
+        if (Has(codes, OpenData) || Has(codes, StatisticsBank))
         {
-            offers.Add(new Offer(OpenData, t.AccessOpenData, [name], [new Link(t.AccessSeeOpenData, open, Primary: false)]));
+            offers.Add((Url(Value(kilde, OpenDataUrlKey)) ?? DisplayText.Trimmed(links?.OpenDataHref)) is { } open
+                ? new Offer(OpenData, t.AccessOpenData, [name], [new Link(t.AccessSeeOpenData, open, Primary: false)])
+                : WithoutPage(kilde, name, t, openDataWithoutPage));
         }
 
         return offers;
+    }
+
+    // No link, so no button: the sentence says so, and names the kilde's own site when the catalogue has one (Fhi.Metadata-9huq2.54).
+    private static Offer WithoutPage(KildeDetail kilde, Fill name, Texts t, string? hostText)
+    {
+        var lead = DisplayText.Trimmed(hostText) ?? t.AccessOpenDataNoLink;
+        lead = lead.TrimEnd().TrimEnd('.', '!').TrimEnd();
+        return WebsiteKeys.Select(key => Url(Website(Value(kilde, key)))).FirstOrDefault(href => href is not null) is { } site
+            ? new Offer(OpenData, lead + t.AccessOpenDataHomepage, [name, new Fill(Domain(site), Norwegian: false, site)], [])
+            : new Offer(OpenData, lead + ".", [name], []);
+    }
+
+    private static string Domain(string href)
+    {
+        var host = new Uri(href).Host;
+        return host.StartsWith("www.", StringComparison.OrdinalIgnoreCase) ? host[4..] : host;
     }
 
     private static Offer? ThroughHost(KildeDetail kilde, KildeAccessLinks? links, Texts t)

@@ -1715,6 +1715,15 @@ Four things are worth knowing before mounting one.
   ships no default and translates nothing: pass the text in the page's own language, and change it
   without waiting for a release. Leave it null or blank and no element is drawn at all, because
   Stiler gives the lede a grid row of its own only when the element is there.
+- **The open-data sentence for a kilde with no open-data address of its own is yours to reword.**
+  `OpenDataWithoutPage` — declared on `KildeExplorer`, `VariableExplorer` and `KildeView` — replaces
+  «Publisert statistikk fra {0} er åpent tilgjengelig, uten søknad. Vi har ikke en direkte lenke til
+  statistikken», with `{0}` for the kilde's name, in «Tilgang og ansvar». The package then adds «, men
+  hjemmesiden er {domain}.» (English «, but the website is {domain}.») with the domain as a link when
+  the kilde has a website, else «.», so write the text to read on into that; a closing full stop or
+  exclamation mark is dropped first. Null or blank gives the package's text in the reader's language.
+  Such a kilde gets no «Se åpne data» button unless you set `MuninExplorer:AccessLinks:OpenDataHref`
+  to an open-data page of your own.
 - **Each item view can name itself in the page title, if you give the pattern.** `TitleTemplate` —
   declared on the same four components — is a string with `{0}` where the item's name goes, e.g.
   `"{0} – Kildeutforsker – helsedata.no"`. On an open kilde, datasamling or whole variable the

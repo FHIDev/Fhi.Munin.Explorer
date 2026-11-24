@@ -82,6 +82,10 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     /// </remarks>
     [Parameter] public string? Lede { get; set; }
 
+    /// <inheritdoc cref="KildeView.OpenDataWithoutPage"/>
+    /// <remarks>Passed down to every kilde page this mount opens; a CMS host fills it from a page field.</remarks>
+    [Parameter] public string? OpenDataWithoutPage { get; set; }
+
     /// <inheritdoc cref="VariableSearch.TitleTemplate"/>
     [Parameter] public string? TitleTemplate { get; set; }
 

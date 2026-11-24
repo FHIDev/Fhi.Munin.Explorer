@@ -9,7 +9,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// «Søknad via helsedata.no». Without it that kilde gets no button.</param>
 /// <param name="PersonalDataGuideHref">The application guide for personally identifiable data.</param>
 /// <param name="AnonymousDataGuideHref">The application guide for anonymous, aggregated data.</param>
-/// <param name="OpenDataHref">The host's open-data page, for a kilde with open data but no link of its own.</param>
+/// <param name="OpenDataHref">The host's open-data page, for a kilde with open data but no link of its own. None by
+/// default: such a kilde gets a sentence that says so, and its website when it has one (Fhi.Metadata-9huq2.54).</param>
 public sealed record KildeAccessLinks(
     string? ApplicationHref = null,
     string? PersonalDataGuideHref = null,
@@ -20,8 +21,7 @@ public sealed record KildeAccessLinks(
     public static KildeAccessLinks Helsedata { get; } = new(
         ApplicationHref: "/{language}/soknader/?opprettSoknad=min-oversikt",
         PersonalDataGuideHref: "/{language}/soknadsveiledning-oversikt/personidentifiserbare-opplysninger/",
-        AnonymousDataGuideHref: "/{language}/soknadsveiledning-oversikt/sok-om-anonyme-data/",
-        OpenDataHref: "/{language}/apne-data/");
+        AnonymousDataGuideHref: "/{language}/soknadsveiledning-oversikt/sok-om-anonyme-data/");
 
     /// <summary>
     /// Overrides for one language, keyed <c>no</c> or <c>en</c>. A link it leaves null is the shared one; an empty one

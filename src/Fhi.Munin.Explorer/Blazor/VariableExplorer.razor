@@ -17,6 +17,7 @@
 {
 <CascadingValue Name="@DetailToc.PageAddressName" Value="@PageAddress">
 <CascadingValue Name="@VariableSearch.LinkNoteName" Value="@_linkNote">
+<CascadingValue Name="@KildeView.OpenDataWithoutPageName" Value="@OpenDataWithoutPage">
     <VariableSearch @key="_arrival"
                     @bind-Search="state.Search"
                     @bind-Filter="state.Filter"
@@ -40,6 +41,7 @@
                     VariableHref="@SearchVariableHref"
                     VariableList="@ReaderLists"
                     VariableListFilters="@ReaderListFilters" />
+</CascadingValue>
 </CascadingValue>
 </CascadingValue>
 }
