@@ -296,18 +296,51 @@ internal static partial class CatalogueMarkdown
     private static IReadOnlyList<SourceSpan> EmphasisSpansIn(string source) =>
         Parsed(source)?.Descendants<EmphasisInline>().Where(e => Emphasised(e, source)).Select(e => e.Span).ToList() ?? [];
 
-    /// <summary>The parsed text, or nothing where Markdig refuses it: nesting past its depth limit throws, and one stored
-    /// value must not end the circuit for every reader of the page (Fhi.Metadata-7vquc.8).</summary>
+    /// <summary>The parsed text, or nothing where it nests too deep: Markdig throws past its block limit, and nested
+    /// <c>![</c> it accepts would overflow the stack of the walk below (Fhi.Metadata-7vquc.8).</summary>
     private static MarkdownDocument? Parsed(string source)
     {
         try
         {
-            return Markdown.Parse(source, Pipeline);
+            var document = Markdown.Parse(source, Pipeline);
+
+            return Shallow(document) ? document : null;
         }
         catch (ArgumentException)
         {
             return null;
         }
+    }
+
+    /// <summary>The deepest tree the recursive walk may meet, Markdig's own default limit.</summary>
+    private const int MaxNesting = 128;
+
+    private static bool Shallow(MarkdownDocument document)
+    {
+        var pending = new Stack<(MarkdownObject Node, int Depth)>([(document, 0)]);
+
+        while (pending.TryPop(out var top))
+        {
+            if (top.Depth > MaxNesting)
+            {
+                return false;
+            }
+
+            IEnumerable<MarkdownObject> children = top.Node switch
+            {
+                ContainerBlock container => container,
+                LeafBlock { Inline: { } inline } => [inline],
+                ContainerInline container => container,
+                _ => [],
+            };
+
+            foreach (var child in children)
+            {
+                pending.Push((child, top.Depth + 1));
+            }
+        }
+
+        return true;
     }
 
     private static string Source(string text) => BrTag().Replace(text.Replace("\r\n", "\n"), "\n");
