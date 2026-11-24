@@ -49,7 +49,7 @@
                    The inline display is because Stiler's `div { display: block }` outranks [hidden]. *@
                 @if (Description is { } description)
                 {
-                    var (lead, folded) = DescriptionLead.Split(description);
+                    var (lead, folded) = DescriptionLead.Split(description, Formatted);
                     var descriptionLang = CatalogueProperties.Foreign(ShownDescription.Norwegian, Reader);
 
                     @DetailBlocks.Prose(lead, "ingress munin-explorer-datasamling__description",

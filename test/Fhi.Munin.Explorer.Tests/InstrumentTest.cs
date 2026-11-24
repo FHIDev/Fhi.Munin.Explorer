@@ -973,4 +973,19 @@ public class InstrumentTest : ExplorerTestContext
         Assert.Equal(Sf36, state.SelectedInstrumentId);
         Assert.Equal($"instrumentId={Sf36}", state.ToQueryString());
     }
+
+    [Theory]
+    [InlineData(true, "div", 2)]
+    [InlineData(false, "p", 0)]
+    public void Description_WhenItHoldsBoldAndAList_ThenTheFlagDecidesWhetherTheyAreElements(bool on, string container, int items)
+    {
+        Services.AddSingleton(new CatalogueFormattingSwitch(on));
+
+        var cut = Render<InstrumentView>(b => b.Add(c => c.Instrument, Instrument() with { Description = "Skjemaet **måler**:\n- fysisk\n- psykisk" }));
+        var prose = cut.FindAll(".ingress").Single(e => e.TextContent.Contains("Skjemaet", StringComparison.Ordinal));
+
+        Assert.Equal(container, prose.TagName.ToLowerInvariant());
+        Assert.Equal(items, prose.QuerySelectorAll("ul > li").Length);
+        Assert.Equal(on, prose.QuerySelector("strong") is not null);
+    }
 }

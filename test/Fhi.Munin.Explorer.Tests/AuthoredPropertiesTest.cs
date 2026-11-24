@@ -3,6 +3,7 @@ using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -148,5 +149,81 @@ public class AuthoredPropertiesTest : ExplorerTestContext
         Assert.Equal(
             ["https://www.fhi.no/nois", "https://www.fhi.no/en/nois"],
             cut.FindAll("dd span a").Select(a => a.GetAttribute("href")));
+    }
+
+    public static TheoryData<string> AuthoredKeys => [.. CatalogueProperties.AuthoredKeys];
+
+    private const string BoldAndList = "**Merk:**\n- en\n- to";
+
+    [Fact]
+    public void AuthoredKeys_WhenFormattingWasDecided_ThenTheyWereTheseTwelve()
+    {
+        // The formatting decision covered these twelve and left the list as it stood; a new key needs its own.
+        Assert.Equal(12, CatalogueProperties.AuthoredKeys.Count);
+    }
+
+    [Theory]
+    [MemberData(nameof(AuthoredKeys))]
+    public void Group_WhenFormattingIsOnAndAListedKeyHasBoldAndAList_ThenTheyRenderAsElements(string key)
+    {
+        Services.AddSingleton(new CatalogueFormattingSwitch(true));
+
+        var cell = Cell(RenderGroup([Entry(key, 10)], new() { [key] = BoldAndList }), key);
+
+        Assert.Equal("Merk:", cell.QuerySelector("strong")?.TextContent);
+        Assert.Equal(2, cell.QuerySelectorAll($"ul.{CatalogueMarkdown.ListClass} > li").Length);
+    }
+
+    [Theory]
+    [MemberData(nameof(AuthoredKeys))]
+    public void Group_WhenFormattingIsOffAndAListedKeyHasBoldAndAList_ThenTheMarkersStayText(string key)
+    {
+        Services.AddSingleton(new CatalogueFormattingSwitch(false));
+
+        var cell = Cell(RenderGroup([Entry(key, 10)], new() { [key] = BoldAndList }), key);
+
+        Assert.Empty(cell.QuerySelectorAll("strong, ul, li"));
+        Assert.Contains("**Merk:**", cell.TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Group_WhenFormattingIsOnAndOneLanguagesValueHoldsAList_ThenThatValueIsADivNotASpan()
+    {
+        // A span may not hold a ul; the other language, with no list, keeps its span.
+        Services.AddSingleton(new CatalogueFormattingSwitch(true));
+
+        var cut = RenderGroup(
+            [Entry("FormaalFlerspraklig", 10, type: "LangTaggedList")],
+            new()
+            {
+                ["FormaalFlerspraklig"] =
+                    """
+                    [{"value":"Formål:\n- forskning","language":"nb"},
+                     {"value":"Purpose: research","language":"en"}]
+                    """,
+            });
+
+        Assert.Equal("forskning", cut.Find("dd > div > ul > li").TextContent);
+        Assert.Equal("Purpose: research", cut.Find("dd > span").TextContent);
+    }
+
+    [Fact]
+    public void Group_WhenFormattingIsOffAndOneLanguagesValueHoldsAList_ThenBothValuesKeepTheirSpans()
+    {
+        Services.AddSingleton(new CatalogueFormattingSwitch(false));
+
+        var cut = RenderGroup(
+            [Entry("FormaalFlerspraklig", 10, type: "LangTaggedList")],
+            new()
+            {
+                ["FormaalFlerspraklig"] =
+                    """
+                    [{"value":"Formål:\n- forskning","language":"nb"},
+                     {"value":"Purpose: research","language":"en"}]
+                    """,
+            });
+
+        Assert.Equal(2, cut.FindAll("dd > span").Count);
+        Assert.Empty(cut.FindAll("dd > div, ul"));
     }
 }

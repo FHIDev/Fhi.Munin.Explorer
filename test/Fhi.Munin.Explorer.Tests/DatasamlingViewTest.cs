@@ -5,6 +5,7 @@ using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -3020,5 +3021,42 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         Assert.Equal("https://uit.no/tromso7", website.QuerySelector("a")!.GetAttribute("href"));
         Assert.Equal("Arvet fra delkilden Tromsø7", website.QuerySelector("dd p.caption")!.TextContent);
+    }
+
+    [Theory]
+    [InlineData(true, "div", 2)]
+    [InlineData(false, "p", 0)]
+    public void Description_WhenItAndTheCriteriaHoldBoldAndAList_ThenTheFlagDecidesWhetherTheyAreElements(
+        bool on, string container, int items)
+    {
+        Services.AddSingleton(new CatalogueFormattingSwitch(on));
+
+        var cut = Render(Datasamling() with
+        {
+            Description = "Skjemaet **har**:\n- en\n- to",
+            InclusionAndExclusionCriteria = "**Inklusjon**:\n- alle\n- fødte",
+            EffectiveInclusionAndExclusionCriteria = null,
+        });
+
+        foreach (var cssClass in new[] { "munin-explorer-datasamling__description", "munin-explorer-datasamling__criteria" })
+        {
+            var prose = cut.Find($".{cssClass}");
+
+            Assert.Equal(container, prose.TagName.ToLowerInvariant());
+            Assert.Equal(items, prose.QuerySelectorAll("ul > li").Length);
+            Assert.Equal(on, prose.QuerySelector("strong") is not null);
+        }
+    }
+
+    [Fact]
+    public void Description_WhenLongAndHoldingAListWithFormattingOn_ThenReadMoreFoldsItBetweenWholeItems()
+    {
+        Services.AddSingleton(new CatalogueFormattingSwitch(true));
+
+        var items = Enumerable.Range(1, 12).Select(i => $"Punkt {i} om skjemaet. Den andre setningen utdyper punkt {i}.").ToList();
+        var cut = Render(Datasamling() with { Description = "Skjemaet har:\n" + string.Join("\n", items.Select(item => "- " + item)) });
+
+        Assert.Empty(cut.Find(".munin-explorer-datasamling__description").QuerySelectorAll("li"));
+        Assert.Equal(items, cut.FindAll(".munin-explorer-datasamling__description-rest li").Select(li => li.TextContent.Trim()));
     }
 }

@@ -12,15 +12,20 @@ internal static partial class DescriptionLead
     internal const int Limit = 560;
 
     /// <summary>
-    /// Whole paragraphs while they fit within <see cref="Limit"/>; where the first alone is longer, that
-    /// paragraph up to its last whole sentence that fits. <c>Folded</c> is null where nothing is held back.
+    /// Whole paragraphs while they fit within <see cref="Limit"/>, or whole blocks where a formatted list is drawn;
+    /// where the first alone is longer, up to its last whole sentence that fits. <c>Folded</c> is null where nothing is held back.
     /// </summary>
-    internal static (string Lead, string? Folded) Split(string text)
+    internal static (string Lead, string? Folded) Split(string text, bool formatted = false)
     {
         // Past the cap Render draws plain lines; split halves would each fall under it and parse.
         if (text.Length > CatalogueMarkdown.MaxParsedLength)
         {
             return (text, null);
+        }
+
+        if (CatalogueMarkdown.DrawsList(text, formatted))
+        {
+            return BetweenBlocks(text);
         }
 
         var paragraphs = ParagraphBreak().Split(BrTag().Replace(text.Replace("\r\n", "\n"), "\n").Trim())
@@ -44,22 +49,8 @@ internal static partial class DescriptionLead
             return (Join(paragraphs.Take(shown)), Join(paragraphs.Skip(shown)));
         }
 
-        // A first paragraph longer than the limit: cut after a sentence, never inside one, and after
-        // the first sentence where even that is longer than the limit.
         var first = paragraphs[0];
-        var links = InlineLink().Matches(first).ToList();
-        var ends = SentenceEnd().Matches(first)
-            .Where(match => !Abbreviated(first, match.Index)
-                            && !InsideBrackets(first, match.Index)
-                            && !links.Any(link => match.Index >= link.Index && match.Index < link.Index + link.Length))
-            .Select(match => match.Index + 1)
-            .ToList();
-        var cut = ends.LastOrDefault(end => Visible(first[..end]) <= Limit);
-
-        if (cut == 0)
-        {
-            cut = ends.FirstOrDefault();
-        }
+        var cut = SentenceCut(first, formatted);
 
         // One sentence too long to cut: the first paragraph whole, and the rest at the paragraph break.
         if (cut == 0)
@@ -68,6 +59,65 @@ internal static partial class DescriptionLead
         }
 
         return (first[..cut].TrimEnd(), Join(paragraphs.Skip(1).Prepend(first[cut..].TrimStart())));
+    }
+
+    /// <summary>
+    /// Where a first paragraph longer than the limit is cut: after its last sentence that fits, never inside
+    /// one, and after the first sentence where even that is longer. Zero where it has no sentence end.
+    /// </summary>
+    private static int SentenceCut(string first, bool formatted)
+    {
+        var links = InlineLink().Matches(first).ToList();
+        var emphasis = formatted ? CatalogueMarkdown.EmphasisSpans(first) : [];
+        var ends = SentenceEnd().Matches(first)
+            .Where(match => !Abbreviated(first, match.Index)
+                            && !InsideBrackets(first, match.Index)
+                            && !emphasis.Any(span => match.Index >= span.Start && match.Index <= span.End)
+                            && !links.Any(link => match.Index >= link.Index && match.Index < link.Index + link.Length))
+            .Select(match => match.Index + 1)
+            .ToList();
+        var cut = ends.LastOrDefault(end => Visible(first[..end]) <= Limit);
+
+        return cut == 0 ? ends.FirstOrDefault() : cut;
+    }
+
+    /// <summary>Whole top-level blocks while they fit, the first always, so a drawn list is never cut inside; a
+    /// first paragraph longer than the limit is cut after a sentence, as unformatted text is.</summary>
+    private static (string Lead, string? Folded) BetweenBlocks(string text)
+    {
+        var (source, blocks) = CatalogueMarkdown.TopBlocks(text);
+        var lengths = blocks.Select(block => Visible(source[block.Span.Start..(block.Span.End + 1)])).ToList();
+
+        if (lengths.Sum() <= Limit)
+        {
+            return (text, null);
+        }
+
+        if (lengths[0] > Limit && !blocks[0].IsList
+            && SentenceCut(source[blocks[0].Span.Start..(blocks[0].Span.End + 1)], formatted: true) is > 0 and var cut)
+        {
+            var at = blocks[0].Span.Start + cut;
+
+            return (source[..at].TrimEnd(), source[at..].Trim());
+        }
+
+        var shown = 1;
+
+        for (var length = lengths[0]; shown < blocks.Count && length + lengths[shown] <= Limit; shown++)
+        {
+            length += lengths[shown];
+        }
+
+        if (shown == blocks.Count)
+        {
+            return (text, null);
+        }
+
+        // From the start of the next block's line, so a reference definition between the two stays in the lead and an
+        // indented list keeps its first item's indent and is parsed alone as the same list.
+        var line = source.LastIndexOf('\n', blocks[shown].Span.Start) + 1;
+
+        return (source[..line].TrimEnd(), source[line..].TrimEnd());
     }
 
     /// <summary>The characters a reader sees: a markdown link counts by its label, not its address.</summary>

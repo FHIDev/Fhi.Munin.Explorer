@@ -229,7 +229,9 @@ public sealed partial class KildeView : ComponentBase, IDisposable
 
     /// <summary>The description as the name block draws it, or null where the catalogue holds none.</summary>
     private (string Lead, string? Folded)? Description =>
-        ShownDescription.Text is { } text && !string.IsNullOrWhiteSpace(text) ? DescriptionLead.Split(text) : null;
+        ShownDescription.Text is { } text && !string.IsNullOrWhiteSpace(text)
+            ? DescriptionLead.Split(text, Services.GetService<CatalogueFormattingSwitch>()?.On == true)
+            : null;
 
     private (string? Text, bool Norwegian) ShownDescription =>
         ReaderLanguage.Pick(Kilde?.Description, Kilde?.DescriptionEn, Reader);
@@ -949,11 +951,8 @@ public sealed partial class KildeView : ComponentBase, IDisposable
 
             if (!string.IsNullOrWhiteSpace(description.Text))
             {
-                builder.OpenElement(seq++, "p");
-                builder.AddAttribute(seq++, "class", "munin-explorer-kilde__delkilde-description");
-                builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign(description.Norwegian, Reader));
-                builder.AddContent(seq++, CatalogueMarkdown.Render(description.Text));
-                builder.CloseElement();
+                builder.AddContent(seq++, CatalogueText.Of(description.Text, "p", "munin-explorer-kilde__delkilde-description",
+                                                           CatalogueProperties.Foreign(description.Norwegian, Reader)));
             }
 
             Children(builder, ref seq, KildeChildren.Of(delkilde), Math.Min(level + 1, 6));

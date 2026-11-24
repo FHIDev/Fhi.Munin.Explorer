@@ -110,4 +110,101 @@ public class DescriptionLeadTest
 
         Assert.Equal((text, null), DescriptionLead.Split(text));
     }
+
+    /// <summary>A tight list of items that each hold two sentences, the shape a sentence cut would split.</summary>
+    private static string Items(int count) =>
+        string.Join("\n", Enumerable.Range(1, count).Select(i => $"- {Sentence('p', 40)} {Sentence('q', 30)}"));
+
+    [Fact]
+    public void Split_WhenFormattedAndALongListFollowsItsLeadIn_ThenTheCutFallsBeforeTheListNotInsideIt()
+    {
+        var list = Items(12);
+
+        // No blank line: unformatted, the lead-in and the list are one paragraph and the cut falls inside it.
+        var (lead, folded) = DescriptionLead.Split("Liste:\n" + list + "\n\n" + Sentence('b', 50), formatted: true);
+
+        Assert.Equal("Liste:", lead);
+        Assert.StartsWith(list, folded, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Split_WhenFormattedAndTheFirstBlockIsALongList_ThenTheWholeListIsTheLead()
+    {
+        var list = Items(12);
+
+        var (lead, folded) = DescriptionLead.Split(list + "\n\n" + Sentence('b', 50), formatted: true);
+
+        Assert.Equal(list, lead);
+        Assert.Equal(Sentence('b', 50), folded);
+    }
+
+    [Fact]
+    public void Split_WhenNotFormatted_ThenAListIsCutAsBeforeAfterASentence()
+    {
+        // The flag-off path is unchanged: the same text is cut after a sentence inside an item.
+        var (lead, folded) = DescriptionLead.Split(Items(12) + "\n\n" + Sentence('b', 50));
+
+        Assert.EndsWith(Sentence('p', 40), lead, StringComparison.Ordinal);
+        Assert.StartsWith(Sentence('q', 30), folded, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Split_WhenFormattedAndALongFirstParagraphComesBeforeAList_ThenThatParagraphIsCutAfterASentence()
+    {
+        var (lead, folded) = DescriptionLead.Split(
+            Sentence('a', 300) + " " + Sentence('b', 200) + " " + Sentence('c', 200) + "\n\n" + Items(2), formatted: true);
+
+        Assert.Equal(Sentence('a', 300) + " " + Sentence('b', 200), lead);
+        Assert.Equal(Sentence('c', 200) + "\n\n" + Items(2), folded);
+    }
+
+    [Fact]
+    public void Split_WhenFormattedAndASentenceEndsInsideBold_ThenTheCutIsNotThere()
+    {
+        // Unformatted, the cut falls after «Viktig.», leaving «**» on each side as text.
+        var (lead, _) = DescriptionLead.Split(
+            Sentence('a', 300) + " **Viktig. Les dette.** " + new string('b', 300) + ". Slutt.", formatted: true);
+
+        Assert.EndsWith(new string('b', 300) + ".", lead, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Split_WhenFormattedAndADefinitionSitsBetweenTheCutBlocks_ThenItStaysInTheLead()
+    {
+        var (lead, folded) = DescriptionLead.Split(
+            "Se [nettsiden][1].\n\n[1]: https://a.no\n\n" + Items(12), formatted: true);
+
+        Assert.Equal("Se [nettsiden][1].\n\n[1]: https://a.no", lead);
+        Assert.Equal(Items(12), folded);
+    }
+
+    [Fact]
+    public void Split_WhenFormattedAndAShortFirstParagraphWithTwoSentencesComesBeforeAList_ThenItIsShownWhole()
+    {
+        var (lead, folded) = DescriptionLead.Split("Første setning. Andre setning.\n\n" + Items(12), formatted: true);
+
+        Assert.Equal("Første setning. Andre setning.", lead);
+        Assert.Equal(Items(12), folded);
+    }
+
+    [Fact]
+    public void Split_WhenFormattedAndADefinitionOpensTheText_ThenTheLongParagraphAfterItIsCutAtItsOwnSentence()
+    {
+        // The cut is found in the paragraph and placed in the whole text, so its offset there must count.
+        var (lead, folded) = DescriptionLead.Split(
+            "[1]: https://a.no\n\n" + Sentence('a', 300) + " " + Sentence('b', 200) + " " + Sentence('c', 200) + "\n\n" + Items(2),
+            formatted: true);
+
+        Assert.Equal("[1]: https://a.no\n\n" + Sentence('a', 300) + " " + Sentence('b', 200), lead);
+        Assert.Equal(Sentence('c', 200) + "\n\n" + Items(2), folded);
+    }
+
+    [Fact]
+    public void Split_WhenFormattedAndASentenceEndsInsideBoldBeforeAList_ThenTheCutIsNotThere()
+    {
+        var (lead, _) = DescriptionLead.Split(
+            Sentence('a', 300) + " **Viktig. Les dette.** " + new string('b', 300) + ". Slutt.\n\n- en\n- to", formatted: true);
+
+        Assert.EndsWith(new string('b', 300) + ".", lead, StringComparison.Ordinal);
+    }
 }

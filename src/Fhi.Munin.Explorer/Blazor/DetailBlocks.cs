@@ -117,7 +117,7 @@ internal static class DetailBlocks
             }
             else if (authored)
             {
-                builder.AddContent(seq + 11, CatalogueMarkdown.Render(value));
+                builder.AddContent(seq + 11, CatalogueText.Of(value));
             }
             else if (label == linkedLabel && CatalogueMarkdown.HasWebAddress(value))
             {
@@ -203,10 +203,17 @@ internal static class DetailBlocks
                 builder.AddContent(seq + 12, text.LanguageName(slot.Language));
                 builder.CloseElement();
 
-                builder.OpenElement(seq + 13, "span");
-                builder.AddAttribute(seq + 14, "lang", CatalogueProperties.Foreign(slot.Language, reader));
-                Text(builder, seq + 15, slot.Text, row);
-                builder.CloseElement();
+                if (row is { Authored: true, Href: null, Hrefs: null })
+                {
+                    builder.AddContent(seq + 16, CatalogueText.Of(slot.Text, "span", lang: CatalogueProperties.Foreign(slot.Language, reader)));
+                }
+                else
+                {
+                    builder.OpenElement(seq + 13, "span");
+                    builder.AddAttribute(seq + 14, "lang", CatalogueProperties.Foreign(slot.Language, reader));
+                    Text(builder, seq + 15, slot.Text, row);
+                    builder.CloseElement();
+                }
             }
 
             if (index == last && row.Caption is { } caption)
@@ -252,7 +259,7 @@ internal static class DetailBlocks
         {
             if (row.Authored)
             {
-                builder.AddContent(seq + 5, CatalogueMarkdown.Render(value));
+                builder.AddContent(seq + 5, CatalogueText.Of(value));
             }
             else if (row.InlineLinks)
             {
@@ -394,11 +401,7 @@ internal static class DetailBlocks
             return;
         }
 
-        builder.OpenElement(0, "p");
-        builder.AddAttribute(1, "class", cssClass);
-        builder.AddAttribute(2, "lang", language);
-        builder.AddContent(3, CatalogueMarkdown.Render(text));
-        builder.CloseElement();
+        builder.AddContent(0, CatalogueText.Of(text, "p", cssClass, language));
     };
 
     // The catch-all's own names, which no host stylesheet defines: the package invents them and the

@@ -294,9 +294,15 @@ internal sealed class VariablePanelTabs : ComponentBase
             return;
         }
 
+        if (authored)
+        {
+            builder.AddContent(4, CatalogueText.Of(value, "span", lang: norwegian ? "no" : null));
+            return;
+        }
+
         builder.OpenElement(1, "span");
         builder.AddAttribute(2, "lang", norwegian ? "no" : null);
-        builder.AddContent(3, authored ? CatalogueMarkdown.Render(value) : (RenderFragment)(b => b.AddContent(0, value)));
+        builder.AddContent(3, value);
         builder.CloseElement();
     };
 }

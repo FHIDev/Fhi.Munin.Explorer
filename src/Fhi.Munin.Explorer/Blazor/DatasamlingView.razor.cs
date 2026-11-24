@@ -35,6 +35,8 @@ public sealed partial class DatasamlingView : ComponentBase
 {
     [Inject] private IServiceProvider Services { get; set; } = null!;
 
+    private bool Formatted => Services.GetService<CatalogueFormattingSwitch>()?.On == true;
+
     private readonly KildeTypeVocabulary _kildeTypes = new();
 
     /// <summary>The explorer's own, when one mounted this view, so the view and its explorer say one word.</summary>

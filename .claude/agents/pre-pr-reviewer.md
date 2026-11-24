@@ -301,6 +301,18 @@ When the diff adds or widens one, check it against `VariableFilter`'s establishe
 - A theory covering the boundaries and the rubbish (`0`, negative, one past the maximum, a huge
   number, a non-number), in both directions.
 
+**Catalogue text that a parser turns into elements** (`CatalogueMarkdown`, `DescriptionLead`). When the diff widens
+what the parser's output may draw, feed it the text the catalogue really holds, not only the shape the feature is for.
+Each of these is **Important** when it changes what a reader sees:
+
+- **Prose the syntax claims by accident.** Try formulas and marks: `2*3*4`, `vekt*10000/(høyde*høyde)`, `A(*) og
+  B(*)`. A construct that eats characters the author typed as content is a defect.
+- **Content the parser normalises.** A numbered list written `1. 2. 9.` is a code list; the reader must see the
+  numbers as written, not as counted.
+- **A slice parsed on its own.** Code that cuts source text at a block's span and parses the piece again loses the
+  context before the span. Try the cut with a two- and three-space indented list, and compare the piece's parse with
+  the whole's.
+
 ## 10. Accessibility
 
 WCAG 2.1 AA applies to this package **by law** — forskrift om universell utforming av IKT. A
