@@ -142,7 +142,7 @@ public class KildeAccessTest : ExplorerTestContext
     [Theory]
     [InlineData("""["apne-data"]""")]
     [InlineData("""["statistikkbank"]""")]
-    public void OpenData_ThenItsOwnLink_ElseAHostsPage(string levels)
+    public void OpenData_WhenThereIsAnAddress_ThenItsOwnLink_ElseAHostsPage(string levels)
     {
         var own = Offers(Kilde(levels, ("AapneDataUrl", "https://norgeshelsa.no/"))).Single();
         Assert.Equal("https://norgeshelsa.no/", own.Links.Single().Href);
@@ -159,7 +159,7 @@ public class KildeAccessTest : ExplorerTestContext
     [Theory]
     [InlineData("""["apne-data"]""")]
     [InlineData("""["statistikkbank"]""")]
-    public void OpenData_WithNoAddress_ThenTheSentenceSaysSo_AndNamesTheWebsite(string levels)
+    public void OpenData_WhenThereIsNoAddress_ThenTheSentenceSaysSo_AndNamesTheWebsite(string levels)
     {
         var offer = Offers(Kilde(levels, ("Hjemmeside", "https://www.stolav.no/nhr/"))).Single();
 
@@ -175,10 +175,30 @@ public class KildeAccessTest : ExplorerTestContext
     }
 
     [Theory]
+    [InlineData("Hjemmeside", "www.example.org", "https://www.example.org", "example.org")]
+    [InlineData("Hjemmeside", "[Registeret](https://register.example.org/om)", "https://register.example.org/om", "register.example.org")]
+    [InlineData("landingPage", "https://example.org/register", "https://example.org/register", "example.org")]
+    public void OpenData_WhenThereIsNoAddress_ThenTheWebsiteComesFromEitherKeyInAnyForm(string key, string value, string href, string domain)
+    {
+        var offer = Offers(Kilde("""["apne-data"]""", (key, value))).Single();
+
+        var link = KildeAccess.Pieces(offer).Select(p => p.Fill).Single(f => f?.Href is not null)!;
+        Assert.Equal((domain, href), (link.Text, link.Href));
+    }
+
+    [Fact]
+    public void OpenData_WhenTheHjemmesideIsNoWebPage_ThenTheLandingPageIsTheWebsite()
+    {
+        var offer = Offers(Kilde("""["apne-data"]""", ("Hjemmeside", "mailto:post@example.org"), ("landingPage", "https://example.org/register"))).Single();
+
+        Assert.Equal("https://example.org/register", KildeAccess.Pieces(offer).Select(p => p.Fill?.Href).Single(h => h is not null));
+    }
+
+    [Theory]
     [InlineData(null)]
     [InlineData("mailto:post@example.org")]
     [InlineData("ikke en adresse")]
-    public void OpenData_WithNoAddress_AndNoWebsite_ThenTheSentenceEnds(string? website)
+    public void OpenData_WhenThereIsNoAddressAndNoWebsite_ThenTheSentenceEnds(string? website)
     {
         var kilde = website is null ? Kilde("""["apne-data"]""") : Kilde("""["apne-data"]""", ("Hjemmeside", website));
         var offer = Offers(kilde).Single();
@@ -194,7 +214,9 @@ public class KildeAccessTest : ExplorerTestContext
     [InlineData("Statistikken fra {0} er åpen! ", "Statistikken fra Testregisteret er åpen, men hjemmesiden er example.org.")]
     [InlineData("Åpen statistikk", "Åpen statistikk, men hjemmesiden er example.org.")]
     [InlineData("  ", "Publisert statistikk fra Testregisteret er åpent tilgjengelig, uten søknad. Vi har ikke en direkte lenke til statistikken, men hjemmesiden er example.org.")]
-    public void OpenData_WithNoAddress_TheHostsWordingLeadsTheSentence(string hostText, string expected)
+    [InlineData(".", "Publisert statistikk fra Testregisteret er åpent tilgjengelig, uten søknad. Vi har ikke en direkte lenke til statistikken, men hjemmesiden er example.org.")]
+    [InlineData("Se {1} for {0} {٣}", "Se  for Testregisteret {٣}, men hjemmesiden er example.org.")]
+    public void OpenData_WhenTheHostWordsIt_ThenTheHostsWordingLeadsTheSentence(string hostText, string expected)
     {
         var offer = KildeAccess.Offers(Kilde("""["apne-data"]""", ("Hjemmeside", "https://example.org")), HostLinks.For("no"), Texts.For("no"), hostText).Single();
 
@@ -304,7 +326,7 @@ public class KildeAccessTest : ExplorerTestContext
     }
 
     [Fact]
-    public void KildeView_OpenDataWithNoAddress_ThenNoButton_AndTheWebsiteIsALinkInTheSentence()
+    public void KildeView_WhenOpenDataHasNoAddress_ThenNoButton_AndTheWebsiteIsALinkInTheSentence()
     {
         var cut = RenderKilde(Kilde("""["apne-data"]""", ("Hjemmeside", "https://www.stolav.no/nhr/")));
 
@@ -317,26 +339,26 @@ public class KildeAccessTest : ExplorerTestContext
     }
 
     [Fact]
-    public void KildeView_TakesTheHostsWording_AsAParameter_OrFromTheExplorerAroundIt()
+    public void KildeView_WhenTheHostWordsTheSentence_ThenItsParameterWinsOverTheExplorersCascade()
     {
         var kilde = Kilde("""["apne-data"]""");
-        const string Expected = "Statistikken fra Testregisteret er åpen.";
 
         var given = Render<KildeView>(b => b.Add(c => c.Kilde, kilde).Add(c => c.AccessLinks, HostLinks)
-            .Add(c => c.OpenDataWithoutPage, "Statistikken fra {0} er åpen"));
-        Assert.Equal(Expected, AccessSection(given).QuerySelector(".editor-content p")!.TextContent);
+            .Add(c => c.OpenDataWithoutPage, "Statistikken fra {0} er åpen")
+            .AddCascadingValue(KildeView.OpenDataWithoutPageName, "Utforskerens tekst om {0}"));
+        Assert.Equal("Statistikken fra Testregisteret er åpen.", AccessSection(given).QuerySelector(".editor-content p")!.TextContent);
 
         var cascaded = Render<KildeView>(b => b.Add(c => c.Kilde, kilde).Add(c => c.AccessLinks, HostLinks)
-            .AddCascadingValue(KildeView.OpenDataWithoutPageName, "Statistikken fra {0} er åpen"));
-        Assert.Equal(Expected, AccessSection(cascaded).QuerySelector(".editor-content p")!.TextContent);
+            .AddCascadingValue(KildeView.OpenDataWithoutPageName, "Utforskerens tekst om {0}"));
+        Assert.Equal("Utforskerens tekst om Testregisteret.", AccessSection(cascaded).QuerySelector(".editor-content p")!.TextContent);
     }
 
-    // A CMS host sets parameters by name on the type it mounts; one the mounted type does not declare is dropped silently.
+    // helsedata's CMS passes a key only to a mounted type that declares it, so an undeclared one never arrives.
     [Theory]
     [InlineData(typeof(KildeExplorer))]
     [InlineData(typeof(VariableExplorer))]
     [InlineData(typeof(KildeView))]
-    public void TheMountsAHostNames_DeclareOpenDataWithoutPage(Type component)
+    public void HostMounts_WhenACmsPassesOpenDataWithoutPage_ThenTheTypeDeclaresIt(Type component)
     {
         var property = component.GetProperty("OpenDataWithoutPage");
         Assert.NotNull(property);

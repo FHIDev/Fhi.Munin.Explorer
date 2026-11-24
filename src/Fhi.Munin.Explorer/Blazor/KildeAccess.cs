@@ -46,7 +46,7 @@ internal static partial class KildeAccess
 
     /// <summary>
     /// The kilde page's buttons: «Søk om tilgang» to the application's target, then «Se åpne data» where the kilde has
-    /// open data too; with open data alone, that one is the primary.
+    /// open data and an address for it, its own or the host's; with open data alone, that one is the primary.
     /// </summary>
     internal static IReadOnlyList<Link> Buttons(IReadOnlyList<Offer> offers, Texts t)
     {
@@ -97,12 +97,15 @@ internal static partial class KildeAccess
     // No link, so no button: the sentence says so, and names the kilde's own site when the catalogue has one (Fhi.Metadata-9huq2.54).
     private static Offer WithoutPage(KildeDetail kilde, Fill name, Texts t, string? hostText)
     {
-        var lead = DisplayText.Trimmed(hostText) ?? t.AccessOpenDataNoLink;
-        lead = lead.TrimEnd().TrimEnd('.', '!').TrimEnd();
+        // Only {0} is the host's to use: any other hole would place or drop the website link inside its text.
+        var host = DisplayText.Trimmed(hostText) is { } given ? HolePattern().Replace(given, m => m.Value == "{0}" ? m.Value : "") : null;
+        var lead = Lead(host) is { Length: > 0 } wanted ? wanted : Lead(t.AccessOpenDataNoLink);
         return WebsiteKeys.Select(key => Url(Website(Value(kilde, key)))).FirstOrDefault(href => href is not null) is { } site
             ? new Offer(OpenData, lead + t.AccessOpenDataHomepage, [name, new Fill(Domain(site), Norwegian: false, site)], [])
             : new Offer(OpenData, lead + ".", [name], []);
     }
+
+    private static string Lead(string? text) => (text ?? "").TrimEnd().TrimEnd('.', '!').TrimEnd();
 
     private static string Domain(string href)
     {
@@ -169,6 +172,6 @@ internal static partial class KildeAccess
 
     private static bool Has(IReadOnlyList<string> codes, string code) => codes.Contains(code, StringComparer.OrdinalIgnoreCase);
 
-    [GeneratedRegex(@"\{(\d)\}")]
+    [GeneratedRegex(@"\{([0-9])\}")]
     private static partial Regex HolePattern();
 }
