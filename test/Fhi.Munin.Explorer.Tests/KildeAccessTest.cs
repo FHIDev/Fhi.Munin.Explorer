@@ -178,6 +178,8 @@ public class KildeAccessTest : ExplorerTestContext
     [InlineData("Hjemmeside", "www.example.org", "https://www.example.org", "example.org")]
     [InlineData("Hjemmeside", "[Registeret](https://register.example.org/om)", "https://register.example.org/om", "register.example.org")]
     [InlineData("landingPage", "https://example.org/register", "https://example.org/register", "example.org")]
+    [InlineData("Hjemmeside", "https://WWW.Example.ORG/om", "https://WWW.Example.ORG/om", "example.org")]
+    [InlineData("Hjemmeside", "https://one.example.org/a;https://two.example.org/b", "https://one.example.org/a", "one.example.org")]
     public void OpenData_WhenThereIsNoAddress_ThenTheWebsiteComesFromEitherKeyInAnyForm(string key, string value, string href, string domain)
     {
         var offer = Offers(Kilde("""["apne-data"]""", (key, value))).Single();
@@ -192,6 +194,15 @@ public class KildeAccessTest : ExplorerTestContext
         var offer = Offers(Kilde("""["apne-data"]""", ("Hjemmeside", "mailto:post@example.org"), ("landingPage", "https://example.org/register"))).Single();
 
         Assert.Equal("https://example.org/register", KildeAccess.Pieces(offer).Select(p => p.Fill?.Href).Single(h => h is not null));
+    }
+
+    [Fact]
+    public void OpenData_WhenItHasNoAddressBesideAnApplication_ThenTheApplicationIsTheOnlyButton()
+    {
+        var offers = Offers(Kilde("""["apne-data","tilgang-krever-soknad"]""", ("SoknadOmTilgangUrl", "https://example.org/sok")));
+
+        Assert.Equal([("Søk om tilgang", "https://example.org/sok", true)],
+            KildeAccess.Buttons(offers, Texts.For("no")).Select(b => (b.Text, b.Href, b.Primary)));
     }
 
     [Theory]
@@ -214,6 +225,8 @@ public class KildeAccessTest : ExplorerTestContext
     [InlineData("Statistikken fra {0} er åpen! ", "Statistikken fra Testregisteret er åpen, men hjemmesiden er example.org.")]
     [InlineData("Åpen statistikk", "Åpen statistikk, men hjemmesiden er example.org.")]
     [InlineData("  ", "Publisert statistikk fra Testregisteret er åpent tilgjengelig, uten søknad. Vi har ikke en direkte lenke til statistikken, men hjemmesiden er example.org.")]
+    [InlineData("Åpen statistikk . ", "Åpen statistikk, men hjemmesiden er example.org.")]
+    [InlineData("Se {{1}1} for {0}", "Se  for Testregisteret, men hjemmesiden er example.org.")]
     [InlineData(".", "Publisert statistikk fra Testregisteret er åpent tilgjengelig, uten søknad. Vi har ikke en direkte lenke til statistikken, men hjemmesiden er example.org.")]
     [InlineData("Se {1} for {0} {٣}", "Se  for Testregisteret {٣}, men hjemmesiden er example.org.")]
     public void OpenData_WhenTheHostWordsIt_ThenTheHostsWordingLeadsTheSentence(string hostText, string expected)
@@ -334,7 +347,9 @@ public class KildeAccessTest : ExplorerTestContext
         var block = AccessSection(cut).QuerySelector(".munin-explorer-kilde__access")!;
         var link = block.QuerySelector("p a")!;
         // A domain is in no language, so the link carries none.
-        Assert.Equal(("stolav.no", "https://www.stolav.no/nhr/", null), (link.TextContent, link.GetAttribute("href"), link.GetAttribute("lang")));
+        Assert.Equal(("https://www.stolav.no/nhr/", null, "_blank"), (link.GetAttribute("href"), link.GetAttribute("lang"), link.GetAttribute("target")));
+        // The same link the fact list draws for this address: another site, a new window, and said so.
+        Assert.StartsWith("stolav.no ", link.TextContent, StringComparison.Ordinal);
         Assert.Empty(block.QuerySelectorAll("p.margin--none"));
     }
 

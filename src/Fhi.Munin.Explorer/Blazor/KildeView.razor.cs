@@ -121,6 +121,15 @@ public sealed partial class KildeView : ComponentBase, IDisposable
 
     internal const string OpenDataWithoutPageName = "MuninExplorerOpenDataWithoutPage";
 
+    // The same link the fact list draws for a catalogue address, so the kilde's website opens alike in both places.
+    private static RenderFragment WebsiteLink(string href, string text) => builder =>
+    {
+        builder.OpenComponent<CatalogueLink>(0);
+        builder.AddComponentParameter(1, nameof(CatalogueLink.Href), href);
+        builder.AddComponentParameter(2, nameof(CatalogueLink.ChildContent), (RenderFragment)(child => child.AddContent(0, text)));
+        builder.CloseComponent();
+    };
+
     [CascadingParameter(Name = OpenDataWithoutPageName)] private string? CascadedOpenDataWithoutPage { get; set; }
 
     private IReadOnlyList<KildeAccess.Offer> AccessOffers =>

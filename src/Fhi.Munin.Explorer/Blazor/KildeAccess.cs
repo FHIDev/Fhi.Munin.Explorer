@@ -98,11 +98,25 @@ internal static partial class KildeAccess
     private static Offer WithoutPage(KildeDetail kilde, Fill name, Texts t, string? hostText)
     {
         // Only {0} is the host's to use: any other hole would place or drop the website link inside its text.
-        var host = DisplayText.Trimmed(hostText) is { } given ? HolePattern().Replace(given, m => m.Value == "{0}" ? m.Value : "") : null;
+        var host = DisplayText.Trimmed(hostText) is { } given ? OnlyNameHoles(given) : null;
         var lead = Lead(host) is { Length: > 0 } wanted ? wanted : Lead(t.AccessOpenDataNoLink);
         return WebsiteKeys.Select(key => Url(Website(Value(kilde, key)))).FirstOrDefault(href => href is not null) is { } site
             ? new Offer(OpenData, lead + t.AccessOpenDataHomepage, [name, new Fill(Domain(site), Norwegian: false, site)], [])
             : new Offer(OpenData, lead + ".", [name], []);
+    }
+
+    // Repeated, since taking one hole out can join the braces around it into another.
+    private static string OnlyNameHoles(string text)
+    {
+        string before;
+        do
+        {
+            before = text;
+            text = HolePattern().Replace(text, m => m.Value == "{0}" ? m.Value : "");
+        }
+        while (text != before);
+
+        return text;
     }
 
     private static string Lead(string? text) => (text ?? "").TrimEnd().TrimEnd('.', '!').TrimEnd();

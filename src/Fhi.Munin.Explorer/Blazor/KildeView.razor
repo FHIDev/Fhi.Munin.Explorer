@@ -136,7 +136,7 @@
                             @text
                             @if (fill?.Href is { } href)
                             {
-                                <a href="@href">@fill.Text</a>
+                                @WebsiteLink(href, fill.Text)
                             }
                             else if (fill is not null)
                             {

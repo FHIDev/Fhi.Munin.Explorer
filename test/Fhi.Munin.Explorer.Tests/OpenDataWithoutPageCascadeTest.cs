@@ -16,7 +16,7 @@ namespace Fhi.Munin.Explorer.Tests;
 public class OpenDataWithoutPageCascadeTest : ExplorerTestContext
 {
     private const string HostText = "Statistikken fra {0} er åpen";
-    private const string Expected = "Statistikken fra Testregisteret er åpen, men hjemmesiden er example.org.";
+    private const string Expected = "Statistikken fra Testregisteret er åpen, men hjemmesiden er example.org";
 
     private static readonly Guid VariableId = new("aaaaaaaa-0000-0000-0000-0000000000a1");
 
