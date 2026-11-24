@@ -3045,6 +3045,7 @@ public class DatasamlingViewTest : ExplorerTestContext
             Assert.Equal(container, prose.TagName.ToLowerInvariant());
             Assert.Equal(items, prose.QuerySelectorAll("ul > li").Length);
             Assert.Equal(on, prose.QuerySelector("strong") is not null);
+            Assert.Null(prose.GetAttribute("style"));
         }
     }
 

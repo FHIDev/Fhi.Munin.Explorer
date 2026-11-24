@@ -24,7 +24,7 @@ internal sealed class CatalogueText : ComponentBase
     /// <summary>Where a <c>p</c> becomes a <c>div</c>, the div keeps the browser's paragraph margins, for a class no host rule spaces.</summary>
     [Parameter] public bool ParagraphMargins { get; set; }
 
-    internal const string ParagraphMarginStyle = "margin-block: 1em";
+    private const string ParagraphMarginStyle = "margin-block: 1em";
 
     /// <summary>The text as a fragment, for the static builders that draw it.</summary>
     internal static RenderFragment Of(string? text, string? element = null, string? cssClass = null, string? lang = null,

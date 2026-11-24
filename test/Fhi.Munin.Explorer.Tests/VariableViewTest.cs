@@ -2260,6 +2260,7 @@ public class VariableViewTest : ExplorerTestContext
         var description = cut.Find(".munin-explorer-whole__description");
         Assert.Equal(on ? "div" : "p", description.TagName.ToLowerInvariant());
         Assert.Equal(on, description.QuerySelector("strong") is not null);
+        Assert.Null(description.GetAttribute("style"));
 
         var kommentar = cut.FindAll("dd").Single(dd => dd.TextContent.Contains("kodestrengen", StringComparison.Ordinal));
         Assert.Equal(on ? 1 : 0, kommentar.QuerySelectorAll("ol").Length);

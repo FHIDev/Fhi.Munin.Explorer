@@ -975,7 +975,7 @@ public class InstrumentTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData(true, "div", 2, CatalogueText.ParagraphMarginStyle)]
+    [InlineData(true, "div", 2, "margin-block: 1em")]
     [InlineData(false, "p", 0, null)]
     public void Description_WhenItHoldsBoldAndAList_ThenTheFlagDecidesWhetherTheyAreElements(bool on, string container, int items, string? style)
     {

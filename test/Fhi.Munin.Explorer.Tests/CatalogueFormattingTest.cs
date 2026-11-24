@@ -345,7 +345,7 @@ public class CatalogueFormattingTest : ExplorerTestContext
 
     // The instrument ingress has no host rule to space a div by; every other caller's class has one, which a style would beat.
     [Theory]
-    [InlineData("Liste:\n- a", true, CatalogueText.ParagraphMarginStyle)]
+    [InlineData("Liste:\n- a", true, "margin-block: 1em")]
     [InlineData("Liste:\n- a", false, null)]
     [InlineData("Bare tekst.", true, null)]
     public void Of_WhenAskedToKeepParagraphMargins_ThenOnlyADivStandingInForAParagraphCarriesThem(string text, bool keep, string? style)
