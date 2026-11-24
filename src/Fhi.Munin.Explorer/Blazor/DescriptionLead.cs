@@ -108,10 +108,16 @@ internal static partial class DescriptionLead
             length += lengths[shown];
         }
 
-        // Up to where the next block starts, so a reference definition between the two stays in the lead.
-        return shown == blocks.Count
-            ? (text, null)
-            : (source[..blocks[shown].Span.Start].TrimEnd(), source[blocks[shown].Span.Start..].Trim());
+        if (shown == blocks.Count)
+        {
+            return (text, null);
+        }
+
+        // From the start of the next block's line, so a reference definition between the two stays in the lead and an
+        // indented list keeps its first item's indent and is parsed alone as the same list.
+        var line = source.LastIndexOf('\n', blocks[shown].Span.Start) + 1;
+
+        return (source[..line].TrimEnd(), source[line..].TrimEnd());
     }
 
     /// <summary>The characters a reader sees: a markdown link counts by its label, not its address.</summary>

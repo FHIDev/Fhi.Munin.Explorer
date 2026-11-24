@@ -266,7 +266,7 @@ internal static partial class CatalogueMarkdown
             return;
         }
 
-        Blocks(builder, ref seq, Drawn(Markdown.Parse(source, Pipeline), formatted), source, formatted);
+        Blocks(builder, ref seq, Drawn(Markdown.Parse(source, Pipeline), source, formatted), source, formatted);
     };
 
     /// <summary>Whether <see cref="Render"/> draws a list element for the text, which no <c>p</c> or <c>span</c> may hold.</summary>
@@ -291,7 +291,10 @@ internal static partial class CatalogueMarkdown
     internal static IReadOnlyList<SourceSpan> EmphasisSpans(string paragraph) =>
         paragraph.Length > MaxParsedLength
             ? []
-            : Markdown.Parse(Source(paragraph), Pipeline).Descendants<EmphasisInline>().Where(Emphasised).Select(e => e.Span).ToList();
+            : EmphasisSpansIn(Source(paragraph));
+
+    private static IReadOnlyList<SourceSpan> EmphasisSpansIn(string source) =>
+        Markdown.Parse(source, Pipeline).Descendants<EmphasisInline>().Where(e => Emphasised(e, source)).Select(e => e.Span).ToList();
 
     private static string Source(string text) => BrTag().Replace(text.Replace("\r\n", "\n"), "\n");
 
@@ -336,10 +339,10 @@ internal static partial class CatalogueMarkdown
 
     /// <summary>The blocks in source order, each reference definition drawn as its source unless a drawn
     /// anchor took its URL. Markdig files the definitions in one group whose span means nothing.</summary>
-    private static IEnumerable<Block> Drawn(MarkdownDocument document, bool formatted)
+    private static IEnumerable<Block> Drawn(MarkdownDocument document, string source, bool formatted)
     {
         var lent = Paragraphs(document)
-            .SelectMany(paragraph => paragraph.Inline is { } inlines ? Anchored(inlines, formatted) : [])
+            .SelectMany(paragraph => paragraph.Inline is { } inlines ? Anchored(inlines, source, formatted) : [])
             .Select(link => link.Reference)
             .OfType<LinkReferenceDefinition>()
             .ToHashSet();
@@ -381,18 +384,57 @@ internal static partial class CatalogueMarkdown
         });
 
     /// <summary>The links <see cref="Inlines"/> draws as anchors, found by the same cases.</summary>
-    private static IEnumerable<LinkInline> Anchored(ContainerInline container, bool formatted) =>
+    private static IEnumerable<LinkInline> Anchored(ContainerInline container, string source, bool formatted) =>
         container.SelectMany(inline => inline switch
         {
             LinkInline { IsImage: false } link when AllowedScheme(link.Url) => [link],
-            DelimiterInline delimiter => Anchored(delimiter, formatted),
-            EmphasisInline emphasis when formatted && Emphasised(emphasis) => Anchored(emphasis, formatted),
+            DelimiterInline delimiter => Anchored(delimiter, source, formatted),
+            EmphasisInline emphasis when formatted && Emphasised(emphasis, source) => Anchored(emphasis, source, formatted),
             _ => Enumerable.Empty<LinkInline>(),
         });
 
-    /// <summary>Only <c>*</c> emphasis: <c>_</c> is in variable names and code strings far more often than in prose.</summary>
-    private static bool Emphasised(EmphasisInline emphasis) =>
-        emphasis is { DelimiterChar: '*', DelimiterCount: 1 or 2 } && EmphasisDepth(emphasis) < MaxDepth;
+    /// <summary>Only <c>*</c> emphasis: <c>_</c> is in variable names and code strings far more often than in prose, and
+    /// so is a <c>*</c> that could both open and close, as in <c>2*3*4</c> or <c>B(*)</c>.</summary>
+    private static bool Emphasised(EmphasisInline emphasis, string source) =>
+        emphasis is { DelimiterChar: '*', DelimiterCount: 1 or 2 }
+        && EmphasisDepth(emphasis) < MaxDepth
+        && !BothFlanking(source, emphasis.Span.Start)
+        && !BothFlanking(source, emphasis.Span.End);
+
+    /// <summary>Whether the run of <c>*</c> at <paramref name="at"/> is both left- and right-flanking in CommonMark's
+    /// terms: neither side is whitespace and both sides, or neither, are punctuation.</summary>
+    private static bool BothFlanking(string source, int at)
+    {
+        if (at < 0 || at >= source.Length || source[at] != '*')
+        {
+            return false;
+        }
+
+        var start = at;
+        var end = at;
+
+        while (start > 0 && source[start - 1] == '*')
+        {
+            start--;
+        }
+
+        while (end < source.Length - 1 && source[end + 1] == '*')
+        {
+            end++;
+        }
+
+        if (start == 0 || end == source.Length - 1)
+        {
+            return false;
+        }
+
+        var before = source[start - 1];
+        var after = source[end + 1];
+
+        return !char.IsWhiteSpace(before) && !char.IsWhiteSpace(after) && Punctuation(before) == Punctuation(after);
+    }
+
+    private static bool Punctuation(char c) => char.IsPunctuation(c) || char.IsSymbol(c);
 
     private static int EmphasisDepth(Inline inline)
     {
@@ -434,14 +476,24 @@ internal static partial class CatalogueMarkdown
         builder.OpenElement(seq++, list.IsOrdered ? "ol" : "ul");
         builder.AddAttribute(seq++, "class", ListClass);
 
-        if (list.IsOrdered && int.TryParse(list.OrderedStart, out var start) && start != 1)
+        var next = int.TryParse(list.OrderedStart, out var start) ? start : 1;
+
+        if (list.IsOrdered && next != 1)
         {
-            builder.AddAttribute(seq++, "start", start);
+            builder.AddAttribute(seq++, "start", next);
         }
 
         foreach (var item in list.OfType<ListItemBlock>())
         {
             builder.OpenElement(seq++, "li");
+
+            // The number is the content in a code list, so one that does not follow the last is written, not counted on.
+            if (list.IsOrdered && item.Order != next)
+            {
+                builder.AddAttribute(seq++, "value", item.Order);
+            }
+
+            next = item.Order + 1;
 
             if (Walked(item))
             {
@@ -530,7 +582,7 @@ internal static partial class CatalogueMarkdown
                 case LinkInline { IsImage: false } link when AllowedScheme(link.Url):
                     Anchor(builder, ref seq, link, source, formatted);
                     break;
-                case EmphasisInline emphasis when formatted && Emphasised(emphasis):
+                case EmphasisInline emphasis when formatted && Emphasised(emphasis, source):
                     builder.OpenElement(seq++, emphasis.DelimiterCount == 2 ? "strong" : "em");
                     Inlines(builder, ref seq, emphasis, source, formatted);
                     builder.CloseElement();
