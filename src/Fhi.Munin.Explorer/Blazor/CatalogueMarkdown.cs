@@ -131,7 +131,7 @@ internal static partial class CatalogueMarkdown
             return null;
         }
 
-        if (Markdown.Parse(trimmed, Pipeline) is not [ParagraphBlock { Inline: { } inlines }]
+        if (Parsed(trimmed) is not [ParagraphBlock { Inline: { } inlines }]
             || inlines.FirstChild is not LinkInline { IsImage: false, NextSibling: null } link
             || !AllowedScheme(link.Url))
         {
@@ -260,13 +260,13 @@ internal static partial class CatalogueMarkdown
 
         // The cap answers for the stored value, so it is the stored length that is measured:
         // normalising first would let 24 000 characters of <br> shrink under it and be parsed.
-        if (text.Length > MaxParsedLength)
+        if (text.Length > MaxParsedLength || Parsed(source) is not { } document)
         {
             PlainLines(builder, ref seq, source);
             return;
         }
 
-        Blocks(builder, ref seq, Drawn(Markdown.Parse(source, Pipeline), source, formatted), source, formatted);
+        Blocks(builder, ref seq, Drawn(document, source, formatted), source, formatted);
     };
 
     /// <summary>Whether <see cref="Render"/> draws a list element for the text, which no <c>p</c> or <c>span</c> may hold.</summary>
@@ -274,14 +274,14 @@ internal static partial class CatalogueMarkdown
         formatted
         && !string.IsNullOrWhiteSpace(text)
         && text.Length <= MaxParsedLength
-        && Markdown.Parse(Source(text), Pipeline).Descendants<ListBlock>().Any(Formatted);
+        && Parsed(Source(text))?.Descendants<ListBlock>().Any(Formatted) == true;
 
     /// <summary>The text's top-level blocks as spans of its normalised source, so a cut can fall between them.</summary>
     internal static (string Source, IReadOnlyList<(SourceSpan Span, bool IsList)> Blocks) TopBlocks(string text)
     {
         var source = Source(text);
 
-        return (source, Markdown.Parse(source, Pipeline)
+        return (source, ((IEnumerable<Block>?)Parsed(source) ?? [])
             .Where(block => block is not LinkReferenceDefinitionGroup)
             .Select(block => (block.Span, block is ListBlock))
             .ToList());
@@ -294,7 +294,21 @@ internal static partial class CatalogueMarkdown
             : EmphasisSpansIn(Source(paragraph));
 
     private static IReadOnlyList<SourceSpan> EmphasisSpansIn(string source) =>
-        Markdown.Parse(source, Pipeline).Descendants<EmphasisInline>().Where(e => Emphasised(e, source)).Select(e => e.Span).ToList();
+        Parsed(source)?.Descendants<EmphasisInline>().Where(e => Emphasised(e, source)).Select(e => e.Span).ToList() ?? [];
+
+    /// <summary>The parsed text, or nothing where Markdig refuses it: nesting past its depth limit throws, and one stored
+    /// value must not end the circuit for every reader of the page (Fhi.Metadata-7vquc.8).</summary>
+    private static MarkdownDocument? Parsed(string source)
+    {
+        try
+        {
+            return Markdown.Parse(source, Pipeline);
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+    }
 
     private static string Source(string text) => BrTag().Replace(text.Replace("\r\n", "\n"), "\n");
 
