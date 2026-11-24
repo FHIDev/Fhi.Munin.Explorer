@@ -3,8 +3,8 @@ category: Added
   flag on, the descriptions and the authored fields (Kommentar, Kvalitetsnote, Formål and the rest of
   `CatalogueProperties.AuthoredKeys`) draw `**bold**` and `*italic*` as `strong` and `em`, and lists written with `-`
   or `1.` as `ul` and `ol`, nested as written up to three deep and numbered as written (FHIDev/Munin#7449). A lone
-  `-` stays text, and so does a `*` with a letter or digit on both sides, or a punctuation mark on both sides, as in
-  `2*3*4` or `B(*)`. A long kilde or datasamling description holding a list folds behind «Les mer» after a sentence of
+  `-` stays text, and so does a `*` with a letter or digit on both sides, or an opening `*` with a punctuation mark on
+  both sides, as in `2*3*4` or `B(*)`. A long kilde or datasamling description holding a list folds behind «Les mer» after a sentence of
   its first paragraph or between blocks, never inside the list. It is still a walk of the parsed text into Blazor's
   render tree: raw HTML other than `<br>`, headings, code, `_` emphasis, `*` and `+` bullets, `1)` lists and
   `javascript:` links stay text. Off by default; with it off nothing changes.

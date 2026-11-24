@@ -394,22 +394,18 @@ internal static partial class CatalogueMarkdown
         });
 
     /// <summary>Only <c>*</c> emphasis: <c>_</c> is in variable names and code strings far more often than in prose, and
-    /// so is a <c>*</c> that could both open and close, as in <c>2*3*4</c> or <c>B(*)</c>.</summary>
+    /// so is a <c>*</c> inside a word or opening between two marks, as in <c>2*3*4</c> or <c>B(*)</c>. A closing <c>*</c>
+    /// between marks stays, as in <c>**[lenke]**.</c></summary>
     private static bool Emphasised(EmphasisInline emphasis, string source) =>
         emphasis is { DelimiterChar: '*', DelimiterCount: 1 or 2 }
         && EmphasisDepth(emphasis) < MaxDepth
-        && !BothFlanking(source, emphasis.Span.Start)
-        && !BothFlanking(source, emphasis.Span.End);
+        && !Between(source, emphasis.Span.Start, char.IsLetterOrDigit)
+        && !Between(source, emphasis.Span.End, char.IsLetterOrDigit)
+        && !Between(source, emphasis.Span.Start, Mark);
 
-    /// <summary>Whether the run of <c>*</c> at <paramref name="at"/> is both left- and right-flanking in CommonMark's
-    /// terms: neither side is whitespace and both sides, or neither, are punctuation.</summary>
-    private static bool BothFlanking(string source, int at)
+    /// <summary>Whether the run of <c>*</c> at <paramref name="at"/> has a character of the kind on both sides.</summary>
+    private static bool Between(string source, int at, Func<char, bool> kind)
     {
-        if (at < 0 || at >= source.Length || source[at] != '*')
-        {
-            return false;
-        }
-
         var start = at;
         var end = at;
 
@@ -423,18 +419,10 @@ internal static partial class CatalogueMarkdown
             end++;
         }
 
-        if (start == 0 || end == source.Length - 1)
-        {
-            return false;
-        }
-
-        var before = source[start - 1];
-        var after = source[end + 1];
-
-        return !char.IsWhiteSpace(before) && !char.IsWhiteSpace(after) && Punctuation(before) == Punctuation(after);
+        return start > 0 && end < source.Length - 1 && kind(source[start - 1]) && kind(source[end + 1]);
     }
 
-    private static bool Punctuation(char c) => char.IsPunctuation(c) || char.IsSymbol(c);
+    private static bool Mark(char c) => char.IsPunctuation(c) || char.IsSymbol(c);
 
     private static int EmphasisDepth(Inline inline)
     {

@@ -64,6 +64,17 @@ public class CatalogueFormattingTest : ExplorerTestContext
         Assert.Equal("https://example.org/v", anchor.GetAttribute("href"));
     }
 
+    [Theory]
+    [InlineData("Faktor a*b og c* til slutt.")]
+    [InlineData("*Ledd b og c*d til slutt.")]
+    public void Render_WhenOnlyOneEndOfTheEmphasisIsInsideAWord_ThenTheTextStaysLiteral(string text)
+    {
+        var cut = Formatted(text);
+
+        Assert.Empty(cut.FindAll("em"));
+        Assert.Equal(text, cut.Markup);
+    }
+
     [Fact]
     public void Render_WhenEmphasisHoldsAReferenceLink_ThenTheDefinitionIsNotDrawnAsWell()
     {
