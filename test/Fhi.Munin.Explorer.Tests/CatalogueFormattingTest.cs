@@ -78,6 +78,7 @@ public class CatalogueFormattingTest : ExplorerTestContext
     [Theory]
     [InlineData("Verdi x**2 + y**2 her.")]
     [InlineData("Ledd a**b**c her.")]
+    [InlineData("Ledd a**b** her.")]
     [InlineData("Ledd ***a***b her.")]
     public void Render_WhenADoubleStarRunSitsInsideAWord_ThenTheTextStaysLiteral(string text)
     {

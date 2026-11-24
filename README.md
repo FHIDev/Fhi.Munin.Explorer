@@ -1442,8 +1442,9 @@ A new flag adds its row here, with the bead, in the PR that adds it, and its rem
   `VariableFilter.Conditions`, written as the API's repeated `vilkar`, so a link with them restores the search. With
   it off, none of that is drawn and conditions a link carries are dropped, and `FilterChanged` tells the host so its
   address loses them too.
-- `CatalogueFormatting`, in the catalogue's authored text (the descriptions and the fields in
-  `CatalogueProperties.AuthoredKeys`): `**bold**` and `*italic*` as `strong` and `em`, and lists written with `-` or
+- `CatalogueFormatting`, in the catalogue's authored text (the descriptions and the free-text fields Kommentar,
+  Kvalitetsnote, Formål, Forskrift, JuridiskNote, Innsamlingsmetode, GeografiskAvgrensning and
+  InklusjonsOgEksklusjonskriterier): `**bold**` and `*italic*` as `strong` and `em`, and lists written with `-` or
   `1.` as `ul` and `ol` with the class `munin-explorer-text__list`. `_` emphasis, `*` and `+` bullets and `1)` lists
   stay text. Turn it on only with a Stiler that styles that class (Fhi.Metadata-7vquc.4): Stiler draws an `ol` in a
   row panel's `dd` as a kilde trail. With it off, the markers show as written.
