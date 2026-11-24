@@ -75,6 +75,40 @@ public class CatalogueFormattingTest : ExplorerTestContext
         Assert.Equal(text, cut.Markup);
     }
 
+    [Theory]
+    [InlineData("Verdi x**2 + y**2 her.")]
+    [InlineData("Ledd a**b**c her.")]
+    [InlineData("Ledd ***a***b her.")]
+    public void Render_WhenADoubleStarRunSitsInsideAWord_ThenTheTextStaysLiteral(string text)
+    {
+        var cut = Formatted(text);
+
+        Assert.Empty(cut.FindAll("strong, em"));
+        Assert.Equal(text, cut.Markup);
+    }
+
+    [Theory]
+    [InlineData("3. c\n2. b\n1. a", "3", "2", "1")]
+    [InlineData("1. a\n1. b\n1. c", "1", "1", "1")]
+    [InlineData("0. a\n1. b\n2. c", "0", "1", "2")]
+    public void Render_WhenANumberedListIsNotCountedUpFromItsStart_ThenEachItemShowsItsOwnNumber(
+        string text, string first, string second, string third)
+    {
+        var list = Formatted(text).Find("ol");
+        var number = int.Parse(list.GetAttribute("start") ?? "1");
+        var drawn = new List<string>();
+
+        // Counted the way a browser numbers an ol: start, then one up from the last, unless an li has a value.
+        foreach (var item in list.Children)
+        {
+            number = item.GetAttribute("value") is { } value ? int.Parse(value) : number;
+            drawn.Add(number.ToString());
+            number++;
+        }
+
+        Assert.Equal([first, second, third], drawn);
+    }
+
     [Fact]
     public void Render_WhenEmphasisHoldsAReferenceLink_ThenTheDefinitionIsNotDrawnAsWell()
     {
