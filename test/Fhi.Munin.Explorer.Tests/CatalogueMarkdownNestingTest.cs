@@ -8,19 +8,25 @@ namespace Fhi.Munin.Explorer.Tests;
 /// on; either way one stored value would end the circuit, or the process, for every reader (Fhi.Metadata-7vquc.8).</summary>
 public class CatalogueMarkdownNestingTest : ExplorerTestContext
 {
-    private static readonly string DeepList = string.Concat(Enumerable.Repeat("- ", 64)) + "a";
+    private static readonly string DeepList = Lists(64);
 
     private static readonly string DeepQuote = string.Concat(Enumerable.Repeat("> ", 128)) + "a";
 
     private static readonly string DeepImages = string.Concat(Enumerable.Repeat("![", 9_990)) + "a";
 
-    public static TheoryData<string> DeepTexts() => [DeepList, DeepQuote, DeepImages];
+    private static readonly string DeepBrackets = new string('[', 19_999) + "a";
+
+    private static string Lists(int depth) => string.Concat(Enumerable.Repeat("- ", depth)) + "a";
+
+    private static string Brackets(int count) => new string('[', count) + " [a](https://uit.no)";
+
+    public static TheoryData<string> DeepTexts() => [DeepList, DeepQuote, DeepImages, DeepBrackets];
 
     public static TheoryData<string, bool> DeepTextsWithFlag()
     {
         var data = new TheoryData<string, bool>();
 
-        foreach (var text in new[] { DeepList, DeepQuote, DeepImages })
+        foreach (var text in new[] { DeepList, DeepQuote, DeepImages, DeepBrackets })
         {
             data.Add(text, false);
             data.Add(text, true);
@@ -41,7 +47,7 @@ public class CatalogueMarkdownNestingTest : ExplorerTestContext
 
     [Theory]
     [MemberData(nameof(DeepTextsWithFlag))]
-    public void CatalogueText_WhenMarkersNestTooDeep_ThenItKeepsItsElementAroundPlainText(string text, bool formatted)
+    public void Of_WhenMarkersNestTooDeep_ThenItKeepsItsElementAroundPlainText(string text, bool formatted)
     {
         Services.AddSingleton(new CatalogueFormattingSwitch(formatted));
 
@@ -59,10 +65,10 @@ public class CatalogueMarkdownNestingTest : ExplorerTestContext
     }
 
     [Theory]
-    [MemberData(nameof(DeepTextsWithFlag))]
-    public void DrawsList_WhenMarkersNestTooDeep_ThenItIsFalse(string text, bool formatted)
+    [MemberData(nameof(DeepTexts))]
+    public void DrawsList_WhenMarkersNestTooDeep_ThenItIsFalse(string text)
     {
-        Assert.False(CatalogueMarkdown.DrawsList(text, formatted));
+        Assert.False(CatalogueMarkdown.DrawsList(text, formatted: true));
     }
 
     [Theory]
@@ -90,24 +96,30 @@ public class CatalogueMarkdownNestingTest : ExplorerTestContext
         Assert.Equal((text, null), DescriptionLead.Split(text, formatted));
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void Split_WhenALongTextNestsTooDeep_ThenItIsCutAsUnformattedTextIs(bool formatted)
+    [Fact]
+    public void Split_WhenALongFirstParagraphNestsTooDeep_ThenItIsCutAsUnformattedTextIs()
     {
         var text = DeepList + " Slutt. " + string.Concat(Enumerable.Repeat("Dette er en setning. ", 40));
 
-        var (lead, folded) = DescriptionLead.Split(text, formatted);
+        var (lead, folded) = DescriptionLead.Split(text, formatted: true);
 
         Assert.Equal(DescriptionLead.Split(text, formatted: false), (lead, folded));
         Assert.NotNull(folded);
     }
 
-    [Fact]
-    public void Render_WhenListsNestUnderTheCap_ThenTheFirstThreeStillDrawAsLists()
+    [Theory]
+    [InlineData(62, 3)]
+    [InlineData(63, 0)]
+    public void Render_WhenListsNestAtTheCap_ThenOnlyThoseUnderItDrawAsLists(int depth, int lists)
     {
-        var text = string.Concat(Enumerable.Repeat("- ", 20)) + "a";
+        Assert.Equal(lists, Render(CatalogueMarkdown.Render(Lists(depth), formatted: true)).FindAll("ul").Count);
+    }
 
-        Assert.Equal(3, Render(CatalogueMarkdown.Render(text, formatted: true)).FindAll("ul").Count);
+    [Theory]
+    [InlineData(60, 1)]
+    [InlineData(130, 0)]
+    public void Render_WhenUnclosedBracketsRunPastTheCap_ThenTheirParagraphsLinksStayText(int count, int anchors)
+    {
+        Assert.Equal(anchors, Render(CatalogueMarkdown.Render(Brackets(count), formatted: true)).FindAll("a").Count);
     }
 }
