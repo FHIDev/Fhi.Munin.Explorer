@@ -1446,8 +1446,8 @@ A new flag adds its row here, with the bead, in the PR that adds it, and its rem
   Kvalitetsnote, Formål, Forskrift, JuridiskNote, Innsamlingsmetode, GeografiskAvgrensning and
   InklusjonsOgEksklusjonskriterier): `**bold**` and `*italic*` as `strong` and `em`, and lists written with `-` or
   `1.` as `ul` and `ol` with the class `munin-explorer-text__list`. `_` emphasis, `*` and `+` bullets and `1)` lists
-  stay text. Turn it on only with a Stiler that styles that class (Fhi.Metadata-7vquc.4): Stiler draws an `ol` in a
-  row panel's `dd` as a kilde trail. With it off, the markers show as written.
+  stay text. Turn it on only with Stiler 0.1.218 or later, the first that styles that class (Fhi.Metadata-7vquc.4):
+  an earlier Stiler draws an `ol` in a row panel's `dd` as a kilde trail. With it off, the markers show as written.
 
 The browser list behind `CodePicker` is a variable list for a reader who is not signed in, kept only in their
 browser's local storage under `Fhi.Munin.Explorer:anonymous-list`: each row's catalogue fields, exactly those named

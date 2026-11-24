@@ -565,5 +565,7 @@ unstyled-name||.munin-explorer-list-import|
 unstyled-name||.munin-explorer-list-import__entry|
 
 # Fhi.Metadata-7vquc.3: catalogue text's lists behind CatalogueFormatting; its Stiler rule is Fhi.Metadata-7vquc.4.
-# Delete this line when helsedata pins a Stiler that carries it.
+# Delete this line when helsedata pins a Stiler that carries it (0.1.218 or later). With that pin both sample
+# stylesheets also take 0.1.218's criteria focus-fill selector from Stiler's _datasamling.scss:
+# .munin-explorer-datasamling__main .munin-explorer-datasamling__criteria :is(a, button):focus-visible
 unstyled-name||.munin-explorer-text__list|
