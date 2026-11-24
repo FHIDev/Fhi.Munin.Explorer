@@ -975,9 +975,9 @@ public class InstrumentTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData(true, "div", 2)]
-    [InlineData(false, "p", 0)]
-    public void Description_WhenItHoldsBoldAndAList_ThenTheFlagDecidesWhetherTheyAreElements(bool on, string container, int items)
+    [InlineData(true, "div", 2, CatalogueText.ParagraphMarginStyle)]
+    [InlineData(false, "p", 0, null)]
+    public void Description_WhenItHoldsBoldAndAList_ThenTheFlagDecidesWhetherTheyAreElements(bool on, string container, int items, string? style)
     {
         Services.AddSingleton(new CatalogueFormattingSwitch(on));
 
@@ -987,5 +987,18 @@ public class InstrumentTest : ExplorerTestContext
         Assert.Equal(container, prose.TagName.ToLowerInvariant());
         Assert.Equal(items, prose.QuerySelectorAll("ul > li").Length);
         Assert.Equal(on, prose.QuerySelector("strong") is not null);
+        Assert.Equal(style, prose.GetAttribute("style"));
+    }
+
+    [Fact]
+    public void Description_WhenItIsPlainProseWithTheFlagOn_ThenItStaysAParagraphWithNoStyleOfOurs()
+    {
+        Services.AddSingleton(new CatalogueFormattingSwitch(true));
+
+        var cut = Render<InstrumentView>(b => b.Add(c => c.Instrument, Instrument()));
+        var prose = cut.Find(".ingress");
+
+        Assert.Equal("p", prose.TagName.ToLowerInvariant());
+        Assert.Null(prose.GetAttribute("style"));
     }
 }
