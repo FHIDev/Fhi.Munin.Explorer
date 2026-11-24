@@ -269,6 +269,9 @@ internal static partial class CatalogueMarkdown
         Blocks(builder, ref seq, Drawn(document, source, formatted), source, formatted);
     };
 
+    /// <summary>Whether <see cref="Render"/> parses the text rather than drawing it as plain lines.</summary>
+    internal static bool Parses(string text) => text.Length <= MaxParsedLength && Parsed(Source(text)) is not null;
+
     /// <summary>Whether <see cref="Render"/> draws a list element for the text, which no <c>p</c> or <c>span</c> may hold.</summary>
     internal static bool DrawsList(string? text, bool formatted) =>
         formatted

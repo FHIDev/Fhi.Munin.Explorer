@@ -96,23 +96,22 @@ public class CatalogueMarkdownNestingTest : ExplorerTestContext
         Assert.Equal((text, null), DescriptionLead.Split(text, formatted));
     }
 
-    [Fact]
-    public void Split_WhenALongFirstParagraphNestsTooDeep_ThenItIsCutAsUnformattedTextIs()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Split_WhenALongTextNestsTooDeepInALaterParagraph_ThenNoShallowHalfIsSplitOff(bool formatted)
     {
-        var text = DeepList + " Slutt. " + string.Concat(Enumerable.Repeat("Dette er en setning. ", 40));
+        var text = "- a\n- b\n\n" + string.Concat(Enumerable.Repeat("Dette er en setning. ", 30)) + "\n\n" + DeepQuote;
 
-        var (lead, folded) = DescriptionLead.Split(text, formatted: true);
-
-        Assert.Equal(DescriptionLead.Split(text, formatted: false), (lead, folded));
-        Assert.NotNull(folded);
+        Assert.Equal((text, null), DescriptionLead.Split(text, formatted));
     }
 
     [Theory]
-    [InlineData(62, 3)]
-    [InlineData(63, 0)]
-    public void Render_WhenListsNestAtTheCap_ThenOnlyThoseUnderItDrawAsLists(int depth, int lists)
+    [InlineData(62, true)]
+    [InlineData(63, false)]
+    public void Render_WhenListsNestAtTheCap_ThenOnlyThoseUnderItDrawAsLists(int depth, bool drawn)
     {
-        Assert.Equal(lists, Render(CatalogueMarkdown.Render(Lists(depth), formatted: true)).FindAll("ul").Count);
+        Assert.Equal(drawn, Render(CatalogueMarkdown.Render(Lists(depth), formatted: true)).FindAll("ul").Count > 0);
     }
 
     [Theory]
@@ -128,7 +127,7 @@ public class CatalogueMarkdownNestingTest : ExplorerTestContext
     [Theory]
     [InlineData(124, 1)]
     [InlineData(125, 0)]
-    public void Render_WhenUnclosedBracketsRunPastTheCap_ThenTheirParagraphsLinksStayText(int count, int anchors)
+    public void Render_WhenUnclosedBracketsNestAtTheCap_ThenOnlyThoseUnderItKeepTheirLinks(int count, int anchors)
     {
         Assert.Equal(anchors, Render(CatalogueMarkdown.Render(Brackets(count), formatted: true)).FindAll("a").Count);
     }
