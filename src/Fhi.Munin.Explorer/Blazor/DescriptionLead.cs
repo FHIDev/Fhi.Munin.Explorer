@@ -17,7 +17,7 @@ internal static partial class DescriptionLead
     /// </summary>
     internal static (string Lead, string? Folded) Split(string text, bool formatted = false)
     {
-        // Where Render draws plain lines, split halves would each parse on their own and draw formatted.
+        // Where Render draws plain lines, a half cut from it could parse on its own and draw formatted.
         if (!CatalogueMarkdown.Parses(text))
         {
             return (text, null);

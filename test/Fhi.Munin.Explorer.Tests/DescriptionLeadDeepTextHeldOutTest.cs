@@ -4,7 +4,7 @@ namespace Fhi.Munin.Explorer.Tests;
 
 public class DescriptionLeadDeepTextHeldOutTest
 {
-    // Render draws too-deep text as plain lines; halves cut from it would each parse and draw a list.
+    // Render draws too-deep text as plain lines; a half cut from it could parse and draw a list.
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
