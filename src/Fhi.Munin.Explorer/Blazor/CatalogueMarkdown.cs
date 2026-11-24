@@ -312,7 +312,7 @@ internal static partial class CatalogueMarkdown
         }
     }
 
-    /// <summary>The deepest tree the recursive walk may meet, Markdig's own default limit.</summary>
+    /// <summary>The deepest tree the recursive walk may meet: Markdig's own number, counted here over the whole tree.</summary>
     private const int MaxNesting = 128;
 
     private static bool Shallow(MarkdownDocument document)
