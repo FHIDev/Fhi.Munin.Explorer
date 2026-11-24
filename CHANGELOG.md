@@ -29,6 +29,33 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 2.25.0 — 2026-11-23
+
+### Added
+
+- **`DatasamlingReference.Code` and `ExplorerUrlState.SelectedDatasamlingCode`.** The first is a datasamling's code on
+  the variable detail, null from a Munin that does not send it; the second is the open row's datasamling as the
+  `datasamling` query key names it, read and written only beside `variabel`. (Fhi.Metadata-l9l2n.204)
+
+### Fixed
+
+- **«Del variabel» and «Kopier lenke» name the row's datasamling by code, the primary one included.** A shared link
+  read `?variabel=<code>` alone for the row of the variable's primary datasamling, and `?datasamlingId=<id>` for any
+  other, an id that differs between environments, so a link to a variable in many datasamlinger opened the wrong row
+  elsewhere. Links now read `?variabel=<code>&datasamling=<code>`, and an arriving datasamling code is matched among the
+  variable's datasamlinger as Munin's list import matches one, with its «K_». A code that names none of them opens the
+  primary row, and says so when the variable has more than one datasamling and Munin sends their codes. `?variabel=`
+  alone, `?datasamlingId=` and `?variabelId=` links keep opening as before, and against a Munin that does not yet send a
+  datasamling's code the links are written as before. (Fhi.Metadata-l9l2n.204)
+
+### Notes for hosts
+
+- **`VariableExplorer` reads and writes a new query key, `datasamling`.** It is in `ExplorerUrlState.ScalarQueryKeys`,
+  so a host whose page already means something by `?datasamling=` can decline it through `DeclinedKeys`; the open row's
+  datasamling is then written as `datasamlingId`, as before. Declining `datasamlingId` alone no longer keeps the
+  datasamling out of the explorer's links: decline both for that. The code reaches a link only from a Munin that sends
+  each datasamling's `code` on the variable detail. (Fhi.Metadata-l9l2n.204)
+
 ## 2.24.0 — 2026-11-20
 
 ### Added

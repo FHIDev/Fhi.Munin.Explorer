@@ -1082,6 +1082,21 @@ public class MuninExplorerClientTest
 
     // ------------------------------------------------- wire names the capture cannot pin
 
+    [Fact]
+    public async Task GetVariableByCodeAsync_WhenItsDatasamlingerCarryCodes_ThenEachCodeIsRead()
+    {
+        // The capture predates the field, so the wire name a shared link depends on is pinned here (Fhi.Metadata-l9l2n.204).
+        var detail = await WithJson($$"""
+            {"id": "{{Guid.NewGuid()}}", "code": "V_KREG.S_SIDKRG", "alleDatasamlinger": [
+              {"id": "{{Guid.NewGuid()}}", "name": "Sidekreft", "code": "K_KREG.SIDKRG"},
+              {"id": "{{Guid.NewGuid()}}", "name": "Uleselig", "code": ""},
+              {"id": "{{Guid.NewGuid()}}", "name": "Eldre Munin"}
+            ]}
+            """).GetVariableByCodeAsync("V_KREG.S_SIDKRG");
+
+        Assert.Equal(["K_KREG.SIDKRG", "", null], detail!.AllDatasamlinger.Select(d => d.Code));
+    }
+
     private const string InheritedFields = """
         {
           "Hjemmeside": {"value": "https://uit.no/research/tromsostudy", "sourceLevel": "kilde",
