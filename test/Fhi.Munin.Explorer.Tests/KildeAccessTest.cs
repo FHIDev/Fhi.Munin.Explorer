@@ -148,7 +148,7 @@ public class KildeAccessTest : ExplorerTestContext
 
         var fallback = Offers(Kilde(levels)).Single();
         Assert.Equal((KildeAccess.OpenData, "/no/apne-data/"), (fallback.Level, fallback.Links.Single().Href));
-        Assert.Equal("Statistikk fra Testregisteret er åpent tilgjengelig, uten søknad.", Sentence(fallback));
+        Assert.Equal("Publisert statistikk fra Testregisteret er åpent tilgjengelig, uten søknad.", Sentence(fallback));
         Assert.Empty(Offers(Kilde(levels), new KildeAccessLinks()));
     }
 
