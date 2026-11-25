@@ -415,7 +415,9 @@ public class MuninExplorerClientTest
         Assert.Null(link.DisplayName); // unresolved name is normal — fall back to the reference
 
         Assert.Equal(["Funksjonsscore", "Funksjonsskala"], variable.AllVariabelgrupper.Select(group => group.Name));
-        Assert.Equal("Inklusjon", Assert.Single(variable.AllDatasamlinger).Name);
+        var datasamling = Assert.Single(variable.AllDatasamlinger);
+        Assert.Equal("Inklusjon", datasamling.Name);
+        Assert.Equal("K_ALS.F1", datasamling.Code);
     }
 
     [Fact]
@@ -1080,12 +1082,13 @@ public class MuninExplorerClientTest
                      handler.LastUri?.AbsolutePath);
     }
 
-    // ------------------------------------------------- wire names the capture cannot pin
+    // ------------------------------------------------- wire cases the capture cannot pin
 
     [Fact]
     public async Task GetVariableByCodeAsync_WhenItsDatasamlingerCarryCodes_ThenEachCodeIsRead()
     {
-        // The capture predates the field, so the wire name a shared link depends on is pinned here (Fhi.Metadata-l9l2n.204).
+        // The capture carries one plain code; the empty code and the absent field a shared link must survive are pinned here
+        // (Fhi.Metadata-l9l2n.204).
         var detail = await WithJson($$"""
             {"id": "{{Guid.NewGuid()}}", "code": "V_KREG.S_SIDKRG", "alleDatasamlinger": [
               {"id": "{{Guid.NewGuid()}}", "name": "Sidekreft", "code": "K_KREG.SIDKRG"},
