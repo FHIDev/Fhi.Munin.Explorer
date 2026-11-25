@@ -31,7 +31,8 @@
                     <p class="caption margin--none">@instrument.Code</p>
                 }
 
-                @DetailBlocks.Prose(Described.Text, "ingress", DescriptionLang)
+                @* Bare `ingress` has no host rule here, so a list's div carries a p's browser-default margin inline. (Fhi.Metadata-7vquc.9) *@
+                @DetailBlocks.Prose(Described.Text, "ingress", DescriptionLang, paragraphMargins: true)
             </div>
         </Header>
         <ChildContent>
