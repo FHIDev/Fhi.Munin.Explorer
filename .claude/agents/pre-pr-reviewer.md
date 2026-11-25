@@ -109,11 +109,12 @@ that line.
 - **A changelog fragment is a claim to a host developer.** It is copied into `CHANGELOG.md`
   verbatim, so it must describe what the released package actually does — including any floor it
   imposes (a `Fhi.Helsedata.Stiler` version, a render mode, a required registration call).
-- **An inline style that copies a host value is a claim about every host.** When markup writes a fixed `style`
-  to match what the host gives a sibling element (a `div` standing in for a `p` with `margin-block: 1em`), the value
-  is the browser default, not the host's: a host that sets its own rule for the sibling (Bootstrap's reboot gives a
-  `p` `margin-bottom: 1rem`) moves one and not the other, and no host rule beats the inline style without
-  `!important`. Prose calling it "the `p`'s own margin" is a **Nit**; the fragment owes the host that line.
+- **An inline style that copies a host value is a claim about every host.** When markup writes a
+  fixed `style` to match what the host gives a sibling element (a `div` standing in for a `p`, say),
+  the value is the browser default, not necessarily the host's: a host with its own rule for the
+  sibling (Bootstrap's reboot gives a `p` `margin-bottom: 1rem`) moves one and not the other, and no
+  host rule beats the inline style without `!important`. Prose that calls the value the host's, and
+  a `Notes for hosts` fragment that does not say how to override it, are each a **Nit**.
 - **Severity, for the PR body, the changelog fragment and every guide or doc the change touches** (the doc-claim check, DevInfra `docs/review-risk-tiers.md`): a claim above about behaviour, security, a command, a number, a file, a flag or an endpoint that no code or test backs is **Important**, also after the first review; a wording point is a Nit.
 
 ## 2. A rule stated in one place must hold everywhere else in the same change
