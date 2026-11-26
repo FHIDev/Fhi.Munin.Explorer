@@ -1,6 +1,6 @@
 # AGENTS.md: FHIDev/Fhi.Munin.Explorer
 
-<!-- team-doc:begin sha256=4d8a6bb9a5e2abec9704596f2d2b9b4d78aa08c944188527cf1f7b1f6a0497ba source=FHIDev/Fhi.Munin.DevInfra/docs/team/working-together.md -->
+<!-- team-doc:begin sha256=00243d6cd7129690490239f98e72286679bf95a6f0014b50662c943c1dcbfc10 source=FHIDev/Fhi.Munin.DevInfra/docs/team/working-together.md -->
 ## The team's rules, in short
 
 Full text: FHIDev/Fhi.Munin.DevInfra `docs/team/working-together.md`. This block is a synced copy; edit the
@@ -20,10 +20,10 @@ canonical doc, not this block.
   says. A question left only in a bead note has not been asked.
 - **Every PR body** has one `Pre-PR review:` line, `Testing:`, `Risk:` (matching the `risk:` label) and `How to revert:` lines,
   `Closes-Bead:` or `Bead:`, and `Fixes-PR: #N` when it fixes a bug an earlier merged PR brought in. Run the pre-PR review before
-  opening it, and register each round with the commit it read (`head`). A fix after the last round gets a new round: a full one for
-  an Important finding, otherwise a short confirming round (Sonnet, effort medium) over the new commits, a fix after the independent
-  review included. On PRs opened from 10 November 2026 the check requires a round over the head unless the later commit is docs
-  only, a merge of main with no change of its own, or a comment-only change marked `Review-exempt: comments` (the munin-lane skill).
+  opening it, and register each round with the commit it read (`head`). A fix after the last round gets a full round when it
+  changes code to answer an Important finding, otherwise a confirming round (Sonnet medium) since the last round's head, a text-only
+  Important fix included. The check requires a round over the head unless a later commit is docs only, a merge of main with no
+  change of its own, or comment-only with `Review-exempt: comments`; it cannot see what a commit answers (the munin-lane skill).
 - **Open PRs without asking.** A PR merges when CI is green and its risk tier's review requirements are met
   (DevInfra `docs/review-risk-tiers.md`); who approves and who merges is each owner's own arrangement, in their
   lanes file. Never touch someone else's PR or branch.
