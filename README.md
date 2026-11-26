@@ -1551,7 +1551,8 @@ link was made on. `?datasamlingId=` goes beside `?variabelId=`: a variable is a 
 it is delivered from, so the pair names the open row and the list shows only that row, opened, until
 the reader searches, filters, sorts, changes the page size or presses «Vis alle treff». A host that
 mirrors the open row therefore reopens a reloaded page on that one row. A link with the variable alone
-opens its first row over the whole list. The full set is `ExplorerUrlState.ScalarQueryKeys` — `search`, `sort`, `sortDir`,
+opens its first row over the whole list; where the host declines `datasamlingId` and the explorer already knows the
+variable's code, a navigation to it opens the primary row instead, narrowed as above, as `?variabel=` does. The full set is `ExplorerUrlState.ScalarQueryKeys` — `search`, `sort`, `sortDir`,
 `page`, `pageSize`, `variabelId`, `variabel`, `datasamling`, `datasamlingId`, `instrumentId` and `delekode` — plus
 `VariableFilter.QueryKeys`, and any of the scalars can be declined.
 

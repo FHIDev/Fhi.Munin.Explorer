@@ -449,6 +449,14 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             // A remount: the browser already shows this address, and a late write could overwrite a Forward entry.
             // A lookup still pending belongs to the view being left.
             mirror.Arrived();
+
+            // The variable alone names its primary row, as ResolveAsync pins it for the code spelling; left to the
+            // search, it would open whichever row the list puts first.
+            if (Declined("datasamlingId") && arrived.SelectedVariableId is { } id && _known.TryGetValue(id, out var known))
+            {
+                arrived.SelectedDatasamlingId = known.Primary;
+            }
+
             _state = arrived;
             var generation = ++_resolution;
             _resolving = NeedsResolving(arrived);
@@ -485,11 +493,13 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         // While a code is looked up there is no id spelling: without the variable, it would be the plain list.
         return query == coded
             || OldSpellingNamesTheRow(current) && query == Linkable(Coded(current, datasamlingById: true)).ToQueryString()
-            || current.SelectedVariableId is not null && query == Linkable(current with { SelectedVariableCode = null }).ToQueryString()
+            || current.SelectedVariableId is not null && OldSpellingNamesTheRow(current)
+               && query == Linkable(current with { SelectedVariableCode = null }).ToQueryString()
             || _alias is { } alias && alias.Arrived == query && alias.Resolved == coded;
     }
 
-    // Declining datasamlingId leaves every row's old spelling as the variable alone, which names only the primary row.
+    // Declining datasamlingId leaves every row's old spelling, by code or by id, as the variable alone, which names
+    // only the primary row once the code is known.
     private bool OldSpellingNamesTheRow(ExplorerUrlState current) =>
         !Declined("datasamlingId") || current.SelectedDatasamlingId is not { } row
         || current.SelectedVariableId is { } id && _known.TryGetValue(id, out var known) && known.Primary == row;
