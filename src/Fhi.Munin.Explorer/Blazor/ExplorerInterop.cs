@@ -305,6 +305,22 @@ internal sealed class ExplorerInterop : IAsyncDisposable
             .ConfigureAwait(false) is true;
     }
 
+    /// <summary>Moves focus to <paramref name="toId"/> while focus is on nothing and the last press left the page with it.</summary>
+    /// <returns>False when the reader moved on, the element is gone or the browser is out of reach.</returns>
+    /// <exception cref="JSException">A fault in the export itself, for the caller to log as one.</exception>
+    internal static async Task<bool> FocusIfLostAsync(IJSRuntime js, string toId)
+    {
+        await using var interop = new ExplorerInterop(js);
+
+        if (!await interop.TryLoadAsync().ConfigureAwait(false) || interop._module is not { } module)
+        {
+            return false;
+        }
+
+        return await Tolerated<object>(async () => await module.InvokeAsync<bool>("focusIfLost", toId).ConfigureAwait(false))
+            .ConfigureAwait(false) is true;
+    }
+
     // Null means unknown, so callers must not mistake an unreachable control for a cleared date.
     internal async Task<DateInputState?> ReadDateInputAsync(string id)
     {

@@ -15,11 +15,13 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </summary>
 public class AnonymousListRemoveRowTest : ExplorerTestContext
 {
-    private const string Focus = "Blazor._internal.domWrapper.focus";
+    private const string FocusIfLost = "focusIfLost";
 
     private static readonly Texts No = Texts.For("no");
 
     private sealed class Client : EmptyMuninExplorerClient;
+
+    private BunitJSModuleInterop? _module;
 
     private IRenderedComponent<VariableListView> ListView(FakeBrowserList browser, int pageSize = 25)
     {
@@ -32,6 +34,7 @@ public class AnonymousListRemoveRowTest : ExplorerTestContext
             return state;
         });
         Services.AddSingleton(new CodePickerSwitch(true));
+        _module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
 
         return Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, false).Add(c => c.PageSize, pageSize));
     }
@@ -54,15 +57,13 @@ public class AnonymousListRemoveRowTest : ExplorerTestContext
     private static string Status(IRenderedComponent<VariableListView> cut) =>
         cut.Find("[role=status]").TextContent.Trim();
 
+    // The id the browser is asked to move focus to, once the reader's place has left with the pressed «Fjern».
     private string FocusedId(IRenderedComponent<VariableListView> cut) =>
-        ((ElementReference)JSInterop.Invocations[Focus][^1].Arguments[0]!).Id;
+        (string)FocusAsks[^1].Arguments[0]!;
 
-    private static ElementReference Field(IRenderedComponent<VariableListView> cut, string name) =>
-        (ElementReference)typeof(VariableListView)
-            .GetField(name, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(cut.Instance)!;
+    private IReadOnlyList<JSRuntimeInvocation> FocusAsks => _module!.Invocations[FocusIfLost];
 
-    // bUnit writes an element's reference only into the render that created it, so it is read before the press.
-    private static string ReferenceOf(IElement element) => element.GetAttribute("blazor:elementReference")!;
+
 
     [Fact]
     public void VariableListView_WhenTheBrowserListShows_ThenEveryRowHasARemoveButtonNamedByItsVariable()
@@ -81,7 +82,7 @@ public class AnonymousListRemoveRowTest : ExplorerTestContext
         var browser = Holding("Alder", "Kjønn", "Vekt");
         var cut = ListView(browser);
         cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
-        var vekt = ReferenceOf(RemoveButtonOf(cut, "Vekt"));
+        var vekt = RemoveButtonOf(cut, "Vekt").Id;
 
         RemoveButtonOf(cut, "Kjønn").Click();
 
@@ -96,7 +97,7 @@ public class AnonymousListRemoveRowTest : ExplorerTestContext
     {
         var cut = ListView(Holding("Alder", "Kjønn"));
         cut.WaitForAssertion(() => Assert.Equal(2, RowNames(cut).Count));
-        var alder = ReferenceOf(RemoveButtonOf(cut, "Alder"));
+        var alder = RemoveButtonOf(cut, "Alder").Id;
 
         RemoveButtonOf(cut, "Kjønn").Click();
 
@@ -115,7 +116,7 @@ public class AnonymousListRemoveRowTest : ExplorerTestContext
         RemoveButtonOf(cut, "Vekt").Click();
 
         cut.WaitForAssertion(() => Assert.Equal(["Alder", "Kjønn"], RowNames(cut)));
-        cut.WaitForAssertion(() => Assert.Equal(ReferenceOf(RemoveButtonOf(cut, "Kjønn")), FocusedId(cut)));
+        cut.WaitForAssertion(() => Assert.Equal(RemoveButtonOf(cut, "Kjønn").Id, FocusedId(cut)));
     }
 
     [Fact]
@@ -130,9 +131,9 @@ public class AnonymousListRemoveRowTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Contains(No.EmptyList, cut.Markup));
         Assert.Empty(browser.Rows);
 
-        // The heading can take focus only from code; nothing else in this view asks for it after a removal.
+        // The heading can take focus only from code.
         Assert.Equal("-1", cut.Find("h2, h1, h3").GetAttribute("tabindex"));
-        cut.WaitForAssertion(() => Assert.Equal(Field(cut, "_browserHeading").Id, FocusedId(cut)));
+        cut.WaitForAssertion(() => Assert.Equal(cut.Find("[id^=munin-explorer-list-heading-]").Id, FocusedId(cut)));
     }
 
     [Fact]
@@ -149,7 +150,7 @@ public class AnonymousListRemoveRowTest : ExplorerTestContext
         await SettleAsync(cut);
         Assert.Equal(2, browser.Rows.Count);
         Assert.Equal("", Status(cut));
-        Assert.Empty(JSInterop.Invocations[Focus]);
+        Assert.Empty(FocusAsks);
     }
 
     [Fact]
@@ -209,13 +210,13 @@ public class AnonymousListRemoveRowTest : ExplorerTestContext
         var browser = Holding("Alder", "Kjønn", "Vekt");
         var cut = ListView(browser);
         cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
-        var vekt = ReferenceOf(RemoveButtonOf(cut, "Vekt"));
+        var vekt = RemoveButtonOf(cut, "Vekt").Id;
 
         await HoldThePageReadAfterTheRemovalAsync(cut, browser, "Kjønn");
 
         // A render while the read is out still draws the old page, whose «Fjern» for Kjønn is about to leave.
         await cut.InvokeAsync(() => cut.Render());
-        Assert.Empty(JSInterop.Invocations[Focus]);
+        Assert.Empty(FocusAsks);
 
         await ReleaseAllAsync(cut, browser);
 
@@ -238,7 +239,7 @@ public class AnonymousListRemoveRowTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Equal(["Høyde", "Røyk"], RowNames(cut)));
         await SettleAsync(cut);
         Assert.Equal(4, browser.Rows.Count);
-        Assert.Empty(JSInterop.Invocations[Focus]);
+        Assert.Empty(FocusAsks);
     }
 
     [Fact]
@@ -257,7 +258,7 @@ public class AnonymousListRemoveRowTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Equal(["Kjønn"], RowNames(cut)));
         await SettleAsync(cut);
         Assert.Equal("", Status(cut));
-        Assert.Empty(JSInterop.Invocations[Focus]);
+        Assert.Empty(FocusAsks);
     }
 
     [Fact]
@@ -274,7 +275,7 @@ public class AnonymousListRemoveRowTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Equal(["Kjønn"], RowNames(cut)));
         await SettleAsync(cut);
-        Assert.Empty(JSInterop.Invocations[Focus]);
+        Assert.Empty(FocusAsks);
     }
 
     [Fact]
@@ -345,7 +346,7 @@ public class AnonymousListRemoveRowTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Equal(["Alder", "Vekt"], RowNames(cut)));
         await SettleAsync(cut);
-        Assert.Empty(JSInterop.Invocations[Focus]);
+        Assert.Empty(FocusAsks);
     }
 
     [Fact]
@@ -356,11 +357,11 @@ public class AnonymousListRemoveRowTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
 
         RemoveButtonOf(cut, "Kjønn").Click();
-        cut.WaitForAssertion(() => Assert.Single(JSInterop.Invocations[Focus]));
+        cut.WaitForAssertion(() => Assert.Single(FocusAsks));
 
         await SettleAsync(cut);
         await SettleAsync(cut);
-        Assert.Single(JSInterop.Invocations[Focus]);
+        Assert.Single(FocusAsks);
     }
 
     [Fact]
@@ -415,5 +416,36 @@ public class AnonymousListRemoveRowTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
         Assert.DoesNotContain(No.BrowserListRowNotRemoved, cut.Find("[role=alert]").TextContent);
+    }
+
+    [Fact]
+    public void VariableListView_WhenARowOfAFullPageIsRemoved_ThenFocusGoesToTheRowPulledInFromTheNextPage()
+    {
+        var cut = ListView(Holding("Alder", "Kjønn", "Vekt"), pageSize: 2);
+        cut.WaitForAssertion(() => Assert.Equal(["Alder", "Kjønn"], RowNames(cut)));
+
+        RemoveButtonOf(cut, "Kjønn").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(["Alder", "Vekt"], RowNames(cut)));
+        cut.WaitForAssertion(() => Assert.Equal(RemoveButtonOf(cut, "Vekt").Id, FocusedId(cut)));
+    }
+
+    [Fact]
+    public async Task VariableListView_WhenTheReaderAnswersYesToEmptyingWhileTheRemovalIsOut_ThenTheRemovalAsksForNoFocus()
+    {
+        // The question was open before the press, so only the yes can tell the removal the reader moved on.
+        var browser = Holding("Alder", "Kjønn", "Vekt");
+        var cut = ListView(browser);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == No.ClearBrowserList).Click();
+        browser.Hold = true;
+
+        await cut.InvokeAsync(() => RemoveButtonOf(cut, "Kjønn").Click());
+        await cut.InvokeAsync(() => cut.FindAll("button").Single(b => b.TextContent.Trim() == No.ConfirmEmptyYes).Click());
+        await ReleaseAllAsync(cut, browser);
+
+        cut.WaitForAssertion(() => Assert.Contains(No.EmptyList, cut.Markup));
+        await SettleAsync(cut);
+        Assert.Empty(FocusAsks);
     }
 }

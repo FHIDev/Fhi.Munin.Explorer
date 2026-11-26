@@ -591,7 +591,7 @@ else if (ShowsBrowserCopy)
             <Header>
                 <div class="munin-explorer-page__header">
                     @DetailBlocks.Heading(TitleLevel, SharedListName, "headline headline-s margin--bottom",
-                                          ListHeadingId, focusTarget: ShowsBrowserCopy ? CaptureBrowserHeading : null)
+                                          ListHeadingId, focusable: ShowsBrowserCopy)
 
                     @if (ShownCount is { } shownCount)
                     {
@@ -720,7 +720,6 @@ else if (ShowsBrowserCopy)
                                                 <button class="hd-button-square button-square--ghost-blue"
                                                         type="button"
                                                         id="@RemoveButtonId(item)"
-                                                        @ref="_browserRemoveButtons[VariableDatasamlingKey.Of(item)]"
                                                         aria-labelledby="@RemoveLabelledBy(item)"
                                                         @onclick="() => RemoveFromBrowserListAsync(item)">@T.RemoveFromThisList</button>
                                             </td>

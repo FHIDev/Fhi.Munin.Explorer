@@ -54,8 +54,6 @@ public sealed partial class VariableListView
 
     // A row's «Fjern» leaves with it: focus goes to the row now in its place, else the one before it, else the heading;
     // set only once the page is read again for the change, so the buttons it names are drawn (Fhi.Metadata-emsc0.3.13).
-    private readonly Dictionary<VariableDatasamlingKey, ElementReference> _browserRemoveButtons = [];
-    private ElementReference _browserHeading;
     private (int Index, int Page, int Moves)? _browserRemoveFocus;
     private bool _browserPageReading;
     private bool _browserRowNotRemoved;
@@ -205,13 +203,6 @@ public sealed partial class VariableListView
                 _browserPageFailedFor = rows is null ? wanted : null;
                 _browserPage = rows is null ? [] : [.. rows.Select(r => r.Item)];
 
-                // Only rows that left: a row kept on screen keeps its element, and Blazor captures a reference only once.
-                var shown = _browserPage.Select(VariableDatasamlingKey.Of).ToHashSet();
-                foreach (var gone in _browserRemoveButtons.Keys.Where(k => !shown.Contains(k)).ToList())
-                {
-                    _browserRemoveButtons.Remove(gone);
-                }
-
                 foreach (var done in _browserRowsRemoving.Where(r => r.Value <= wanted.BrowserVersion).Select(r => r.Key).ToList())
                 {
                     _browserRowsRemoving.Remove(done);
@@ -257,8 +248,6 @@ public sealed partial class VariableListView
             }
         }
     }
-
-    private void CaptureBrowserHeading(ElementReference heading) => _browserHeading = heading;
 
     private async Task RemoveFromBrowserListAsync(VariableListItem item)
     {
@@ -331,13 +320,16 @@ public sealed partial class VariableListView
 
         // Back a page when the last row of the last page went: the row before it is that page's last.
         var index = wanted.Page == _sharedPageNumber ? Math.Min(wanted.Index, _browserPage.Count - 1) : _browserPage.Count - 1;
-        var target = index >= 0 && _browserRemoveButtons.TryGetValue(VariableDatasamlingKey.Of(_browserPage[index]), out var button)
-            ? button
-            : _browserHeading;
+        var target = index >= 0 ? RemoveButtonId(_browserPage[index]) : ListHeadingId;
 
+        // The browser says where focus is: a reader who Tabbed or clicked away meanwhile keeps their place.
         try
         {
-            await target.FocusAsync();
+            await ExplorerInterop.FocusIfLostAsync(Js, target);
+        }
+        catch (JSException ex)
+        {
+            Log?.LogError(ex, "the module could not move focus after removing a row from the browser list");
         }
         catch (Exception ex)
         {
@@ -385,6 +377,7 @@ public sealed partial class VariableListView
         }
 
         ForgetFailures();
+        _readerMoves++;
         await State.ClearBrowserListAsync();
         _confirmingClear = false;
         _sharedPageNumber = 1;
