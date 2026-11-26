@@ -452,8 +452,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
             // The variable alone names its primary row, as ResolveAsync pins it for the code spelling; left to the
             // search, it would open whichever row the list puts first.
-            if (Declined("datasamlingId") && arrived.SelectedVariableId is { } id && arrived.SelectedDatasamlingId is null
-                && _known.TryGetValue(id, out var known))
+            if (Declined("datasamlingId") && arrived.SelectedVariableId is { } id && _known.TryGetValue(id, out var known))
             {
                 arrived.SelectedDatasamlingId = known.Primary;
             }
@@ -500,7 +499,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     }
 
     // Declining datasamlingId leaves every row's old spelling, by code or by id, as the variable alone, which names
-    // only the primary row.
+    // only the primary row once the code is known.
     private bool OldSpellingNamesTheRow(ExplorerUrlState current) =>
         !Declined("datasamlingId") || current.SelectedDatasamlingId is not { } row
         || current.SelectedVariableId is { } id && _known.TryGetValue(id, out var known) && known.Primary == row;
