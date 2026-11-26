@@ -323,7 +323,7 @@ public sealed partial class VariableListView
 
         _browserRemoveFocus = null;
 
-        // Not once the reader has moved on (a fold or another page during the call); every fold here counts as a move.
+        // Not once the reader has moved on during the call: a page, or a fold or question opened or shut, each a move.
         if (_readerMoves != wanted.Moves)
         {
             return;
@@ -374,6 +374,7 @@ public sealed partial class VariableListView
         }
 
         _confirmingClear = !_confirmingClear;
+        _readerMoves++;
     }
 
     private async Task ClearBrowserListAsync()
@@ -403,6 +404,7 @@ public sealed partial class VariableListView
         _browserShareTooLong = false;
         _browserShareUnreadable = false;
         _sharingBrowserList = !_sharingBrowserList;
+        _readerMoves++;
 
         if (!_sharingBrowserList || _browserShare is not null)
         {

@@ -264,7 +264,10 @@ if [ -z "${SCAN_SHARD:-}" ] || [ "${SCAN_SHARD%%/*}" = 1 ]; then
   echo "==> a signed-out reader's list in the browser"
   kill "$host_pid" 2>/dev/null || true
   wait "$host_pid" 2>/dev/null || true
-  MuninExplorer__ApiBaseUrl="$STUB_BASE" MuninExplorer__Features__CodePicker=true Sample__SignedOut=true     ASPNETCORE_ENVIRONMENT=Development     dotnet "$HOST_DLL" --urls "$BASE" --contentRoot "$ROOT/samples/ModernHost"     >/tmp/state-host-browser-list.log 2>&1 &
+  MuninExplorer__ApiBaseUrl="$STUB_BASE" MuninExplorer__Features__CodePicker=true Sample__SignedOut=true \
+    ASPNETCORE_ENVIRONMENT=Development \
+    dotnet "$HOST_DLL" --urls "$BASE" --contentRoot "$ROOT/samples/ModernHost" \
+    >/tmp/state-host-browser-list.log 2>&1 &
   host_pid=$!
   for _ in $(seq 1 60); do
     curl -fsS -o /dev/null --max-time 2 "$BASE/" 2>/dev/null && break
@@ -277,7 +280,8 @@ if [ -z "${SCAN_SHARD:-}" ] || [ "${SCAN_SHARD%%/*}" = 1 ]; then
     exit 2
   fi
   set +e
-  SCAN_SHARD= ACCESSIBILITY_SETTLE_MS="$SETTLE_MS" STATE_STUB_BASE="$STUB_BASE"     node "$ROOT/scripts/state-scan.mjs" "${BASE}/utforsker::list-browser-list"
+  SCAN_SHARD= ACCESSIBILITY_SETTLE_MS="$SETTLE_MS" STATE_STUB_BASE="$STUB_BASE" \
+    node "$ROOT/scripts/state-scan.mjs" "${BASE}/utforsker::list-browser-list"
   browser_status=$?
   set -e
   if [ "$browser_status" -eq 2 ]; then

@@ -136,7 +136,7 @@ public class AnonymousListRemoveRowTest : ExplorerTestContext
     }
 
     [Fact]
-    public void VariableListView_WhenTheBrowserCannotRemoveTheRow_ThenItStaysAndTheReaderIsToldAndFocusStays()
+    public async Task VariableListView_WhenTheBrowserCannotRemoveTheRow_ThenItStaysAndTheReaderIsToldAndFocusStays()
     {
         var browser = Holding("Alder", "Kjønn");
         browser.Failing.Add("remove");
@@ -146,6 +146,7 @@ public class AnonymousListRemoveRowTest : ExplorerTestContext
         RemoveButtonOf(cut, "Alder").Click();
 
         cut.WaitForAssertion(() => Assert.Contains(No.BrowserListRowNotRemoved, cut.Find("[role=alert]").TextContent));
+        await SettleAsync(cut);
         Assert.Equal(2, browser.Rows.Count);
         Assert.Equal("", Status(cut));
         Assert.Empty(JSInterop.Invocations[Focus]);
@@ -324,5 +325,95 @@ public class AnonymousListRemoveRowTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Contains(No.EmptyList, cut.Markup));
         Assert.Equal("", Status(cut));
+    }
+
+    [Theory]
+    [InlineData("clear")]
+    [InlineData("share")]
+    public async Task VariableListView_WhenTheReaderOpensAQuestionOrTheShareWhileTheRemovalIsOut_ThenFocusStaysThere(string control)
+    {
+        // Neither goes through the folds' Toggle, so each has to count as the reader moving on by itself.
+        var browser = Holding("Alder", "Kjønn", "Vekt");
+        var cut = ListView(browser);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+        browser.Hold = true;
+
+        await cut.InvokeAsync(() => RemoveButtonOf(cut, "Kjønn").Click());
+        var opened = control == "clear" ? No.ClearBrowserList : No.ShareList;
+        await cut.InvokeAsync(() => cut.FindAll("button").Single(b => b.TextContent.Trim() == opened).Click());
+        await ReleaseAllAsync(cut, browser);
+
+        cut.WaitForAssertion(() => Assert.Equal(["Alder", "Vekt"], RowNames(cut)));
+        await SettleAsync(cut);
+        Assert.Empty(JSInterop.Invocations[Focus]);
+    }
+
+    [Fact]
+    public async Task VariableListView_WhenTheRemovalHasMovedFocus_ThenALaterRenderDoesNotMoveItAgain()
+    {
+        var browser = Holding("Alder", "Kjønn", "Vekt");
+        var cut = ListView(browser);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+
+        RemoveButtonOf(cut, "Kjønn").Click();
+        cut.WaitForAssertion(() => Assert.Single(JSInterop.Invocations[Focus]));
+
+        await SettleAsync(cut);
+        await SettleAsync(cut);
+        Assert.Single(JSInterop.Invocations[Focus]);
+    }
+
+    [Fact]
+    public async Task VariableListView_WhenARemovedRowIsSavedAgainAndRemovedAgain_ThenTheSecondPressRemovesIt()
+    {
+        // The row is held only until its page is read back; a row saved again from the search is a new press.
+        var browser = Holding("Alder", "Kjønn");
+        var alder = browser.Rows[0];
+        var cut = ListView(browser);
+        cut.WaitForAssertion(() => Assert.Equal(2, RowNames(cut).Count));
+
+        RemoveButtonOf(cut, "Alder").Click();
+        cut.WaitForAssertion(() => Assert.Equal(["Kjønn"], RowNames(cut)));
+        await cut.InvokeAsync(() => Services.GetRequiredService<VariableListState>().ToggleInBrowserListAsync(alder, drawnAsSaved: false));
+        cut.WaitForAssertion(() => Assert.Equal(["Kjønn", "Alder"], RowNames(cut)));
+
+        RemoveButtonOf(cut, "Alder").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(["Kjønn"], RowNames(cut)));
+        Assert.Equal(2, browser.Calls.Count(c => c.Call == "remove"));
+    }
+
+    [Fact]
+    public void VariableListView_WhenARemovalFailedAndIsPressedAgain_ThenTheRetryRemovesTheRow()
+    {
+        var browser = Holding("Alder", "Kjønn");
+        browser.Failing.Add("remove");
+        var cut = ListView(browser);
+        cut.WaitForAssertion(() => Assert.Equal(2, RowNames(cut).Count));
+        RemoveButtonOf(cut, "Alder").Click();
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListRowNotRemoved, cut.Find("[role=alert]").TextContent));
+
+        browser.Failing.Remove("remove");
+        RemoveButtonOf(cut, "Alder").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(["Kjønn"], RowNames(cut)));
+        Assert.Equal(No.RemovedFromList("Alder"), Status(cut));
+    }
+
+    [Fact]
+    public async Task VariableListView_WhenTheListChangesInAnotherTabAfterAFailedRemoval_ThenTheFailureIsNoLongerSaid()
+    {
+        var browser = Holding("Alder", "Kjønn");
+        browser.Failing.Add("remove");
+        var cut = ListView(browser);
+        cut.WaitForAssertion(() => Assert.Equal(2, RowNames(cut).Count));
+        RemoveButtonOf(cut, "Alder").Click();
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListRowNotRemoved, cut.Find("[role=alert]").TextContent));
+
+        browser.Rows.Add(FakeBrowserList.Row("Vekt"));
+        await cut.InvokeAsync(browser.ChangedElsewhereAsync);
+
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+        Assert.DoesNotContain(No.BrowserListRowNotRemoved, cut.Find("[role=alert]").TextContent);
     }
 }
