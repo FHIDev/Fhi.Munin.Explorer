@@ -103,8 +103,22 @@ public class DeclinedDatasamlingIdVariableIdSpellingTest : ExplorerTestContext
         Assert.Equal(searches, client.Searches);
     }
 
+    // With variabel declined too the explorer never learns the code, so the id link is its own address for the open
+    // row and must keep it, as the changelog says.
+    [Fact]
+    public void Navigate_WhenVariabelIsAlsoDeclinedAndANonPrimaryRowIsOpen_ThenTheIdLinkKeepsThatRow()
+    {
+        var (cut, navigation, client) = RenderWithRowOpen("Hjerneslag", $"variabelId={VariableId}", ["datasamlingId", "variabel"]);
+        var searches = client.Searches;
+
+        navigation.NavigateTo($"http://localhost/variabler?search=kjonn&variabelId={VariableId}");
+
+        cut.WaitForAssertion(() => Assert.Equal(["Hjerneslag"], OpenRows(cut)));
+        Assert.Equal(searches, client.Searches);
+    }
+
     private (IRenderedComponent<VariableExplorer> Cut, NavigationManager Navigation, TwoRowClient Client) RenderWithRowOpen(
-        string row, string written)
+        string row, string written, string[]? declined = null)
     {
         var client = new TwoRowClient();
         var history = new HistoryRecorder(JSInterop.JSRuntime);
@@ -114,7 +128,7 @@ public class DeclinedDatasamlingIdVariableIdSpellingTest : ExplorerTestContext
         SetRendererInfo(new RendererInfo("Server", true));
         var navigation = Services.GetRequiredService<NavigationManager>();
         navigation.NavigateTo("http://localhost/variabler?search=kjonn");
-        var cut = Render<VariableExplorer>(b => b.Add(c => c.DeclinedKeys, ["datasamlingId"]));
+        var cut = Render<VariableExplorer>(b => b.Add(c => c.DeclinedKeys, declined ?? ["datasamlingId"]));
         cut.WaitForAssertion(() => Assert.Equal(2, Names(cut).Count));
         Names(cut).Single(b => b.ParentElement!.ParentElement!.TextContent.Contains(row)).Click();
         cut.WaitForAssertion(() => Assert.Equal([row], OpenRows(cut)));
