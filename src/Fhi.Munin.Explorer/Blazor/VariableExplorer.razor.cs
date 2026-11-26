@@ -449,6 +449,15 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             // A remount: the browser already shows this address, and a late write could overwrite a Forward entry.
             // A lookup still pending belongs to the view being left.
             mirror.Arrived();
+
+            // The variable alone names its primary row, as ResolveAsync pins it for the code spelling; left to the
+            // search, it would open whichever row the list puts first.
+            if (Declined("datasamlingId") && arrived.SelectedVariableId is { } id && arrived.SelectedDatasamlingId is null
+                && _known.TryGetValue(id, out var known))
+            {
+                arrived.SelectedDatasamlingId = known.Primary;
+            }
+
             _state = arrived;
             var generation = ++_resolution;
             _resolving = NeedsResolving(arrived);
