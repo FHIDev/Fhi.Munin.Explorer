@@ -691,17 +691,18 @@ These are not style preferences — each one is a host that breaks otherwise.
     cards and in a search row's name cell, where a long code would otherwise be cut off or run
     over the next column.
     `munin-explorer-list-status` is the «Historisk» mark in a list row's header, after the name and its code if it has
-    one, when the variable is historical (`Fhi.Metadata-l9l2n.190`). Stiler draws it from 0.1.219
-    (`Fhi.Metadata-l9l2n.191`) as the version history's small grey badge. Under an older Stiler it
-    is plain text at the row header's size and weight, on its own line under a code Stiler draws as
-    a block, or after the name, a space between, in a row with no code, and a host on one styles it.
+    one, when the variable is historical (`Fhi.Metadata-l9l2n.190`). Stiler 0.1.219, the version
+    helsedata pins, draws it as the version history's small grey badge (`Fhi.Metadata-l9l2n.191`).
+    Under a Stiler without that rule it is plain text at the row header's size and weight, on its
+    own line under a code Stiler draws as a block, or after the name, a space between, in a row with
+    no code, and a host on one styles it.
     `munin-explorer-list-import` is the notice above an imported list's table, saying what the
     import from the old helsedata did not bring over until the reader hides it, and
     `munin-explorer-list-import__entry` one row in it: a code, its reason and the reader's words,
-    with «Fjern» beside them for a row not found (`Fhi.Metadata-9huq2.37`). Stiler styles both
-    from 0.1.219 (`Fhi.Metadata-9huq2.41`). Under an older Stiler the notice is unboxed text between the alert and the table and each
-    entry a bullet, a row not found with its button under the words, which reads; a host on one owes the
-    notice a box and `overflow-wrap: anywhere`, so a long code or a pasted URL in a note wraps
+    with «Fjern» beside them for a row not found (`Fhi.Metadata-9huq2.37`). Stiler 0.1.219 styles
+    both (`Fhi.Metadata-9huq2.41`). Under a Stiler without those rules the notice is unboxed text
+    between the alert and the table and each entry a bullet, a row not found with its button under
+    the words, which reads; a host on one owes the notice a box and `overflow-wrap: anywhere`, so a long code or a pasted URL in a note wraps
     inside 320px; its lists `list-style: none`; and an entry a wrapping flex row.
     `munin-explorer-list-head` is the saved-list view's top row: the name block and the action row,
     side by side (`Fhi.Metadata-fc7ie`). Undrawn, the actions stand under the name, which reads

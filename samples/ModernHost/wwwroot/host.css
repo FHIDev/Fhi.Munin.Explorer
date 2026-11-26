@@ -1783,7 +1783,7 @@ table.munin-explorer-data-list > tbody > :where(tr) > th[scope=row] > button > .
   padding: 1px 9px;
 }
 
-/* An imported list's notice of what did not come over, above its table (Fhi.Metadata-9huq2.37); Stiler's from 0.1.219. */
+/* An imported list's notice of what did not come over, above its table (Fhi.Metadata-9huq2.37); Stiler 0.1.219 has it. */
 .munin-explorer-list-import {
   background: var(--grey20);
   border-radius: 0.5rem;
