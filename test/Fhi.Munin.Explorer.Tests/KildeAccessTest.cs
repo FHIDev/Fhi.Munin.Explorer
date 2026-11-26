@@ -142,16 +142,98 @@ public class KildeAccessTest : ExplorerTestContext
     [Theory]
     [InlineData("""["apne-data"]""")]
     [InlineData("""["statistikkbank"]""")]
-    public void OpenData_ThenItsOwnLink_ElseTheHostsPage(string levels)
+    public void OpenData_WhenThereIsAnAddress_ThenItsOwnLink_ElseAHostsPage(string levels)
     {
-        Assert.Equal("https://norgeshelsa.no/", Offers(Kilde(levels, ("AapneDataUrl", "https://norgeshelsa.no/"))).Single().Links.Single().Href);
-
-        var fallback = Offers(Kilde(levels)).Single();
-        Assert.Equal((KildeAccess.OpenData, "/no/apne-data/"), (fallback.Level, fallback.Links.Single().Href));
-        Assert.Equal("Publisert statistikk fra Testregisteret er åpent tilgjengelig, uten søknad.", Sentence(fallback));
+        var own = Offers(Kilde(levels, ("AapneDataUrl", "https://norgeshelsa.no/"))).Single();
+        Assert.Equal("https://norgeshelsa.no/", own.Links.Single().Href);
+        Assert.Equal("Publisert statistikk fra Testregisteret er åpent tilgjengelig, uten søknad.", Sentence(own));
         Assert.Equal("Published statistics from Testregisteret are openly available, without an application.",
-            Sentence(KildeAccess.Offers(Kilde(levels), HostLinks.For("en"), Texts.For("en")).Single()));
-        Assert.Empty(Offers(Kilde(levels), new KildeAccessLinks()));
+            Sentence(KildeAccess.Offers(Kilde(levels, ("AapneDataUrl", "https://norgeshelsa.no/")), HostLinks.For("en"), Texts.For("en")).Single()));
+
+        var hosts = Offers(Kilde(levels), HostLinks with { OpenDataHref = "/{language}/apne-data/" }).Single();
+        Assert.Equal((KildeAccess.OpenData, "/no/apne-data/"), (hosts.Level, hosts.Links.Single().Href));
+    }
+
+    // Fhi.Metadata-9huq2.54: helsedata's open-data page lists no kilde, so a kilde without its own address gets a
+    // sentence that says so, and its website when the catalogue has one, instead of a link that goes nowhere useful.
+    [Theory]
+    [InlineData("""["apne-data"]""")]
+    [InlineData("""["statistikkbank"]""")]
+    public void OpenData_WhenThereIsNoAddress_ThenTheSentenceSaysSo_AndNamesTheWebsite(string levels)
+    {
+        var offer = Offers(Kilde(levels, ("Hjemmeside", "https://www.stolav.no/nhr/"))).Single();
+
+        Assert.Empty(offer.Links);
+        Assert.Equal("Publisert statistikk fra Testregisteret er åpent tilgjengelig, uten søknad. Vi har ikke en direkte lenke til "
+            + "statistikken, men hjemmesiden er stolav.no.", Sentence(offer));
+        Assert.Equal("https://www.stolav.no/nhr/", KildeAccess.Pieces(offer).Select(p => p.Fill?.Href).Single(h => h is not null));
+        Assert.Empty(KildeAccess.Buttons([offer], Texts.For("no")));
+
+        var english = KildeAccess.Offers(Kilde(levels, ("Hjemmeside", "https://www.stolav.no/nhr/")), HostLinks.For("en"), Texts.For("en")).Single();
+        Assert.Equal("Published statistics from Testregisteret are openly available, without an application. We don't have a direct "
+            + "link to the statistics, but the website is stolav.no.", Sentence(english));
+    }
+
+    [Theory]
+    [InlineData("Hjemmeside", "www.example.org", "https://www.example.org", "example.org")]
+    [InlineData("Hjemmeside", "[Registeret](https://register.example.org/om)", "https://register.example.org/om", "register.example.org")]
+    [InlineData("landingPage", "https://example.org/register", "https://example.org/register", "example.org")]
+    [InlineData("Hjemmeside", "https://WWW.Example.ORG/om", "https://WWW.Example.ORG/om", "example.org")]
+    [InlineData("Hjemmeside", "https://one.example.org/a;https://two.example.org/b", "https://one.example.org/a", "one.example.org")]
+    public void OpenData_WhenThereIsNoAddress_ThenTheWebsiteComesFromEitherKeyInAnyForm(string key, string value, string href, string domain)
+    {
+        var offer = Offers(Kilde("""["apne-data"]""", (key, value))).Single();
+
+        var link = KildeAccess.Pieces(offer).Select(p => p.Fill).Single(f => f?.Href is not null)!;
+        Assert.Equal((domain, href), (link.Text, link.Href));
+    }
+
+    [Fact]
+    public void OpenData_WhenTheHjemmesideIsNoWebPage_ThenTheLandingPageIsTheWebsite()
+    {
+        var offer = Offers(Kilde("""["apne-data"]""", ("Hjemmeside", "mailto:post@example.org"), ("landingPage", "https://example.org/register"))).Single();
+
+        Assert.Equal("https://example.org/register", KildeAccess.Pieces(offer).Select(p => p.Fill?.Href).Single(h => h is not null));
+    }
+
+    [Fact]
+    public void OpenData_WhenItHasNoAddressBesideAnApplication_ThenTheApplicationIsTheOnlyButton()
+    {
+        var offers = Offers(Kilde("""["apne-data","tilgang-krever-soknad"]""", ("SoknadOmTilgangUrl", "https://example.org/sok")));
+
+        Assert.Equal([("Søk om tilgang", "https://example.org/sok", true)],
+            KildeAccess.Buttons(offers, Texts.For("no")).Select(b => (b.Text, b.Href, b.Primary)));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("mailto:post@example.org")]
+    [InlineData("ikke en adresse")]
+    public void OpenData_WhenThereIsNoAddressAndNoWebsite_ThenTheSentenceEnds(string? website)
+    {
+        var kilde = website is null ? Kilde("""["apne-data"]""") : Kilde("""["apne-data"]""", ("Hjemmeside", website));
+        var offer = Offers(kilde).Single();
+
+        Assert.Empty(offer.Links);
+        Assert.Equal("Publisert statistikk fra Testregisteret er åpent tilgjengelig, uten søknad. Vi har ikke en direkte lenke til statistikken.",
+            Sentence(offer));
+        Assert.DoesNotContain(KildeAccess.Pieces(offer), p => p.Fill?.Href is not null);
+    }
+
+    [Theory]
+    [InlineData("Statistikken fra {0} er åpen.", "Statistikken fra Testregisteret er åpen, men hjemmesiden er example.org.")]
+    [InlineData("Statistikken fra {0} er åpen! ", "Statistikken fra Testregisteret er åpen, men hjemmesiden er example.org.")]
+    [InlineData("Åpen statistikk", "Åpen statistikk, men hjemmesiden er example.org.")]
+    [InlineData("  ", "Publisert statistikk fra Testregisteret er åpent tilgjengelig, uten søknad. Vi har ikke en direkte lenke til statistikken, men hjemmesiden er example.org.")]
+    [InlineData("Åpen statistikk . ", "Åpen statistikk, men hjemmesiden er example.org.")]
+    [InlineData("Se {{1}1} for {0}", "Se  for Testregisteret, men hjemmesiden er example.org.")]
+    [InlineData(".", "Publisert statistikk fra Testregisteret er åpent tilgjengelig, uten søknad. Vi har ikke en direkte lenke til statistikken, men hjemmesiden er example.org.")]
+    [InlineData("Se {1} for {0} {٣}", "Se  for Testregisteret {٣}, men hjemmesiden er example.org.")]
+    public void OpenData_WhenTheHostWordsIt_ThenTheHostsWordingLeadsTheSentence(string hostText, string expected)
+    {
+        var offer = KildeAccess.Offers(Kilde("""["apne-data"]""", ("Hjemmeside", "https://example.org")), HostLinks.For("no"), Texts.For("no"), hostText).Single();
+
+        Assert.Equal(expected, Sentence(offer));
     }
 
     [Fact]
@@ -251,9 +333,51 @@ public class KildeAccessTest : ExplorerTestContext
     [Fact]
     public void KildeView_WithOnlyOpenData_TheButtonIsSeApneData()
     {
-        var button = RenderKilde(Kilde("""["apne-data"]""")).Find(".munin-explorer-page__actions a");
+        var button = RenderKilde(Kilde("""["apne-data"]""", ("AapneDataUrl", "https://norgeshelsa.no/"))).Find(".munin-explorer-page__actions a");
 
-        Assert.Equal(("Se åpne data", "/no/apne-data/"), (button.TextContent, button.GetAttribute("href")));
+        Assert.Equal(("Se åpne data", "https://norgeshelsa.no/"), (button.TextContent, button.GetAttribute("href")));
+    }
+
+    [Fact]
+    public void KildeView_WhenOpenDataHasNoAddress_ThenNoButton_AndTheWebsiteIsALinkInTheSentence()
+    {
+        var cut = RenderKilde(Kilde("""["apne-data"]""", ("Hjemmeside", "https://www.stolav.no/nhr/")));
+
+        Assert.Empty(cut.FindAll(".munin-explorer-page__actions"));
+        var block = AccessSection(cut).QuerySelector(".munin-explorer-kilde__access")!;
+        var link = block.QuerySelector("p a")!;
+        // A domain is in no language, so the link carries none.
+        Assert.Equal(("https://www.stolav.no/nhr/", null, "_blank"), (link.GetAttribute("href"), link.GetAttribute("lang"), link.GetAttribute("target")));
+        // The same link the fact list draws for this address: another site, a new window, and said so.
+        Assert.StartsWith("stolav.no ", link.TextContent, StringComparison.Ordinal);
+        Assert.Empty(block.QuerySelectorAll("p.margin--none"));
+    }
+
+    [Fact]
+    public void KildeView_WhenTheHostWordsTheSentence_ThenItsParameterWinsOverTheExplorersCascade()
+    {
+        var kilde = Kilde("""["apne-data"]""");
+
+        var given = Render<KildeView>(b => b.Add(c => c.Kilde, kilde).Add(c => c.AccessLinks, HostLinks)
+            .Add(c => c.OpenDataWithoutPage, "Statistikken fra {0} er åpen")
+            .AddCascadingValue(KildeView.OpenDataWithoutPageName, "Utforskerens tekst om {0}"));
+        Assert.Equal("Statistikken fra Testregisteret er åpen.", AccessSection(given).QuerySelector(".editor-content p")!.TextContent);
+
+        var cascaded = Render<KildeView>(b => b.Add(c => c.Kilde, kilde).Add(c => c.AccessLinks, HostLinks)
+            .AddCascadingValue(KildeView.OpenDataWithoutPageName, "Utforskerens tekst om {0}"));
+        Assert.Equal("Utforskerens tekst om Testregisteret.", AccessSection(cascaded).QuerySelector(".editor-content p")!.TextContent);
+    }
+
+    // helsedata's CMS passes a key only to a mounted type that declares it, so an undeclared one never arrives.
+    [Theory]
+    [InlineData(typeof(KildeExplorer))]
+    [InlineData(typeof(VariableExplorer))]
+    [InlineData(typeof(KildeView))]
+    public void HostMounts_WhenACmsPassesOpenDataWithoutPage_ThenTheTypeDeclaresIt(Type component)
+    {
+        var property = component.GetProperty("OpenDataWithoutPage");
+        Assert.NotNull(property);
+        Assert.NotNull(property.GetCustomAttributes(typeof(Microsoft.AspNetCore.Components.ParameterAttribute), false).SingleOrDefault());
     }
 
     [Fact]
@@ -310,9 +434,8 @@ public class KildeAccessTest : ExplorerTestContext
         Assert.Equal(new KildeAccessLinks(
             ApplicationHref: "/en/soknader/?opprettSoknad=min-oversikt",
             PersonalDataGuideHref: "/en/soknadsveiledning-oversikt/personidentifiserbare-opplysninger/",
-            AnonymousDataGuideHref: "/en/soknadsveiledning-oversikt/sok-om-anonyme-data/",
-            OpenDataHref: "/en/apne-data/"), links.For("en"));
-        Assert.Equal("/no/apne-data/", links.For("no").OpenDataHref);
+            AnonymousDataGuideHref: "/en/soknadsveiledning-oversikt/sok-om-anonyme-data/"), links.For("en"));
+        Assert.Null(links.For("no").OpenDataHref);
     }
 
     [Fact]

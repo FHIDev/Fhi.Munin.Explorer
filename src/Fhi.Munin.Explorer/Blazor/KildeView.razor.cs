@@ -110,8 +110,33 @@ public sealed partial class KildeView : ComponentBase, IDisposable
     [Parameter]
     public KildeAccessLinks? AccessLinks { get; set; }
 
+    /// <summary>
+    /// The host's wording of the open-data sentence for a kilde with open data but no address of its own, with
+    /// <c>{0}</c> for the kilde's name. It should read on into «, men hjemmesiden er …» / «, but the website is …»,
+    /// which follows when the kilde has a website; a closing full stop or exclamation mark is dropped first. Null or
+    /// blank takes the package's text. <see cref="KildeExplorer"/> and <see cref="VariableExplorer"/> pass theirs down.
+    /// </summary>
+    [Parameter]
+    public string? OpenDataWithoutPage { get; set; }
+
+    internal const string OpenDataWithoutPageName = "MuninExplorerOpenDataWithoutPage";
+
+    // The same link the fact list draws for a catalogue address, so the kilde's website opens alike in both places.
+    private static RenderFragment WebsiteLink(string href, string text) => builder =>
+    {
+        builder.OpenComponent<CatalogueLink>(0);
+        builder.AddComponentParameter(1, nameof(CatalogueLink.Href), href);
+        builder.AddComponentParameter(2, nameof(CatalogueLink.ChildContent), (RenderFragment)(child => child.AddContent(0, text)));
+        builder.CloseComponent();
+    };
+
+    [CascadingParameter(Name = OpenDataWithoutPageName)] private string? CascadedOpenDataWithoutPage { get; set; }
+
     private IReadOnlyList<KildeAccess.Offer> AccessOffers =>
-        Kilde is { } kilde ? KildeAccess.Offers(kilde, (AccessLinks ?? Services.GetService<KildeAccessLinks>())?.For(Reader), T) : [];
+        Kilde is { } kilde
+            ? KildeAccess.Offers(kilde, (AccessLinks ?? Services.GetService<KildeAccessLinks>())?.For(Reader), T,
+                OpenDataWithoutPage ?? CascadedOpenDataWithoutPage)
+            : [];
 
     /// <summary>
     /// An id for the name heading, so a surrounding region can label itself by it.

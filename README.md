@@ -1652,7 +1652,7 @@ on purpose: the shape and the spoken words already tell categories apart, and a 
 structure rather than content. Undefined, they draw at text size in the text colour, which is the
 delivered design without the folder's grey.
 
-Four things are worth knowing before mounting one.
+Nine things are worth knowing before mounting one.
 
 - **The render mode has to be interactive** — `render-mode="Server"`, never `ServerPrerendered`;
   in a modern host, `@rendermode` with `prerender: false`. Both components throw on initialisation
@@ -1724,6 +1724,16 @@ Four things are worth knowing before mounting one.
   template without `{0}`, or an item with no name, gives the page's own title rather than a half one
   (WCAG 2.4.2). A string rather than a callback: an `EventCallback` from a statically rendered host
   page arrives empty (see `KildeExplorer`).
+- **The open-data sentence for a kilde with no open-data address of its own is yours to reword.**
+  `OpenDataWithoutPage` — declared on `KildeExplorer`, `VariableExplorer` and `KildeView` — replaces
+  «Publisert statistikk fra {0} er åpent tilgjengelig, uten søknad. Vi har ikke en direkte lenke til
+  statistikken», with `{0}` for the kilde's name, in «Tilgang og ansvar». The package then adds «, men
+  hjemmesiden er {domain}.» (English «, but the website is {domain}.») with the domain as a link when
+  the kilde has a website, else «.», so write the text to read on into that; a closing full stop or
+  exclamation mark is dropped first, and only `{0}` is read as a hole. Null or blank gives the
+  package's text in the reader's language, as does a `KildeSearch` or `VariableSearch` mounted alone.
+  Such a kilde gets no «Se åpne data» button unless you set `MuninExplorer:AccessLinks:OpenDataHref`
+  to an open-data page of your own.
 
 Owning the address bar — or the page furniture — yourself is still supported: `VariableSearch`,
 `VariableListView`, `VariableListFilters` and `KildeSearch` stay public underneath, so a host that
