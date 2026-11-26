@@ -116,7 +116,10 @@ public class DesiredCodePickerRemoveAndUntickTest : ExplorerTestContext
 
     private static List<(string Kind, string Code)> SavedAfter(Saves saves, IRenderedComponent<DesiredCodePicker> cut)
     {
+        var before = saves.Calls.Count;
         Press(cut, "Lagre");
+        // SaveAsync first awaits an untick that may still read, so the save can reach the fake after the press returns.
+        cut.WaitForAssertion(() => Assert.Equal(before + 1, saves.Calls.Count));
         return [.. saves.Calls[^1].Select(v => (v.Kind, v.Code))];
     }
 
