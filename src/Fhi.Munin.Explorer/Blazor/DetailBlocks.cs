@@ -394,14 +394,14 @@ internal static class DetailBlocks
     /// Drawn through <see cref="CatalogueMarkdown"/> because these fields are authored with links
     /// and line breaks, and marked with the language the catalogue stores them in.
     /// </remarks>
-    internal static RenderFragment Prose(string? text, string cssClass, string? language) => builder =>
+    internal static RenderFragment Prose(string? text, string cssClass, string? language, bool paragraphMargins = false) => builder =>
     {
         if (string.IsNullOrWhiteSpace(text))
         {
             return;
         }
 
-        builder.AddContent(0, CatalogueText.Of(text, "p", cssClass, language));
+        builder.AddContent(0, CatalogueText.Of(text, "p", cssClass, language, paragraphMargins));
     };
 
     // The catch-all's own names, which no host stylesheet defines: the package invents them and the

@@ -21,8 +21,14 @@ internal sealed class CatalogueText : ComponentBase
 
     [Parameter] public string? Lang { get; set; }
 
+    /// <summary>Where a <c>p</c> becomes a <c>div</c>, the div keeps the browser's paragraph margins, for a class no host rule spaces.</summary>
+    [Parameter] public bool ParagraphMargins { get; set; }
+
+    private const string ParagraphMarginStyle = "margin-block: 1em";
+
     /// <summary>The text as a fragment, for the static builders that draw it.</summary>
-    internal static RenderFragment Of(string? text, string? element = null, string? cssClass = null, string? lang = null) =>
+    internal static RenderFragment Of(string? text, string? element = null, string? cssClass = null, string? lang = null,
+                                      bool paragraphMargins = false) =>
         builder =>
         {
             builder.OpenComponent<CatalogueText>(0);
@@ -30,6 +36,7 @@ internal sealed class CatalogueText : ComponentBase
             builder.AddComponentParameter(2, nameof(Element), element);
             builder.AddComponentParameter(3, nameof(Class), cssClass);
             builder.AddComponentParameter(4, nameof(Lang), lang);
+            builder.AddComponentParameter(5, nameof(ParagraphMargins), paragraphMargins);
             builder.CloseComponent();
         };
 
@@ -43,10 +50,18 @@ internal sealed class CatalogueText : ComponentBase
             return;
         }
 
-        builder.OpenElement(1, CatalogueMarkdown.DrawsList(Text, formatted) ? "div" : Element);
+        var asDiv = CatalogueMarkdown.DrawsList(Text, formatted);
+
+        builder.OpenElement(1, asDiv ? "div" : Element);
         builder.AddAttribute(2, "class", Class);
         builder.AddAttribute(3, "lang", Lang);
-        builder.AddContent(4, CatalogueMarkdown.Render(Text, formatted));
+
+        if (asDiv && ParagraphMargins && Element == "p")
+        {
+            builder.AddAttribute(4, "style", ParagraphMarginStyle);
+        }
+
+        builder.AddContent(5, CatalogueMarkdown.Render(Text, formatted));
         builder.CloseElement();
     }
 }

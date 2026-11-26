@@ -3272,6 +3272,7 @@ public class KildeViewTest : ExplorerTestContext
         Assert.Equal(container, description.TagName.ToLowerInvariant());
         Assert.Equal(items, description.QuerySelectorAll("ul > li").Length);
         Assert.Equal(on, description.QuerySelector("strong") is not null);
+        Assert.Null(description.GetAttribute("style"));
     }
 
     [Theory]
@@ -3288,6 +3289,7 @@ public class KildeViewTest : ExplorerTestContext
         Assert.Equal(container, description.TagName.ToLowerInvariant());
         Assert.Equal(items, description.QuerySelectorAll("ul > li").Length);
         Assert.Equal(on, description.QuerySelector("strong") is not null);
+        Assert.Null(description.GetAttribute("style"));
     }
 
     [Theory]

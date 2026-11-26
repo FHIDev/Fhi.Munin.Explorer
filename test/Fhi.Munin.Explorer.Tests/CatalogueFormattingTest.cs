@@ -343,6 +343,30 @@ public class CatalogueFormattingTest : ExplorerTestContext
         Assert.Equal("no", container.GetAttribute("lang"));
     }
 
+    // The instrument ingress has no host rule to space a div by; every other caller's class has one, which a style would beat.
+    [Theory]
+    [InlineData("Liste:\n- a", true, "margin-block: 1em")]
+    [InlineData("Liste:\n- a", false, null)]
+    [InlineData("Bare tekst.", true, null)]
+    public void Of_WhenAskedToKeepParagraphMargins_ThenOnlyADivStandingInForAParagraphCarriesThem(string text, bool keep, string? style)
+    {
+        Services.AddSingleton(new CatalogueFormattingSwitch(true));
+
+        var cut = Render(CatalogueText.Of(text, "p", "ingress", "no", paragraphMargins: keep));
+
+        Assert.Equal(style, cut.Find(".ingress").GetAttribute("style"));
+    }
+
+    [Fact]
+    public void Of_WhenASpanBecomesADivAndMarginsAreAskedFor_ThenItCarriesNone()
+    {
+        Services.AddSingleton(new CatalogueFormattingSwitch(true));
+
+        var cut = Render(CatalogueText.Of("Liste:\n- a", "span", "cell", "no", paragraphMargins: true));
+
+        Assert.Null(cut.Find(".cell").GetAttribute("style"));
+    }
+
     [Fact]
     public void Of_WhenTheFlagIsOnAndTheTextHoldsNoList_ThenTheContainerStaysItsOwnElement()
     {
