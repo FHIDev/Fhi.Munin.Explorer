@@ -18,7 +18,7 @@ public class DeclinedDatasamlingIdVariableIdSpellingTest : ExplorerTestContext
     private static readonly Guid OtherId = Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
     private const string Code = "V_HKR.KJONN";
 
-    private sealed class TwoRowClient : EmptyMuninExplorerClient, IMuninExplorerClient
+    private sealed class TwoRowClient(bool primaryFirst = true) : EmptyMuninExplorerClient, IMuninExplorerClient
     {
         private int _searches;
 
@@ -32,7 +32,9 @@ public class DeclinedDatasamlingIdVariableIdSpellingTest : ExplorerTestContext
             Interlocked.Increment(ref _searches);
             return Task.FromResult(new Page<VariableSummary>
             {
-                Items = [Row(PrimaryId, "Hjerteinfarkt"), Row(OtherId, "Hjerneslag")],
+                Items = primaryFirst
+                    ? [Row(PrimaryId, "Hjerteinfarkt"), Row(OtherId, "Hjerneslag")]
+                    : [Row(OtherId, "Hjerneslag"), Row(PrimaryId, "Hjerteinfarkt")],
                 TotalCount = 2,
                 PageNumber = 1,
                 Size = pageSize,
@@ -117,10 +119,21 @@ public class DeclinedDatasamlingIdVariableIdSpellingTest : ExplorerTestContext
         Assert.Equal(searches, client.Searches);
     }
 
-    private (IRenderedComponent<VariableExplorer> Cut, NavigationManager Navigation, TwoRowClient Client) RenderWithRowOpen(
-        string row, string written, string[]? declined = null)
+    // The primary pin is for a host that declines datasamlingId; elsewhere the variable alone still opens its first row.
+    [Fact]
+    public void Navigate_WhenDatasamlingIdIsNotDeclinedAndTheCodeIsKnown_ThenTheIdLinkOpensTheFirstListedRow()
     {
-        var client = new TwoRowClient();
+        var (cut, navigation, _) = RenderWithRowOpen("Hjerteinfarkt", "datasamling=K_HJERTEINFARKT", [], primaryFirst: false);
+
+        navigation.NavigateTo($"http://localhost/variabler?search=kjonn&variabelId={VariableId}");
+
+        cut.WaitForAssertion(() => Assert.Equal(["Hjerneslag"], OpenRows(cut)));
+    }
+
+    private (IRenderedComponent<VariableExplorer> Cut, NavigationManager Navigation, TwoRowClient Client) RenderWithRowOpen(
+        string row, string written, string[]? declined = null, bool primaryFirst = true)
+    {
+        var client = new TwoRowClient(primaryFirst);
         var history = new HistoryRecorder(JSInterop.JSRuntime);
         Services.AddSingleton<IMuninExplorerClient>(client);
         Services.AddSingleton<IJSRuntime>(history);
