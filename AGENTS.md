@@ -551,7 +551,8 @@ against real Stiler with geometry at the six widths, 320 and 1279 and axe at 144
 A signed-out reader's list in the browser gets the same treatment in `list-browser-list`, on one more host start with
 `Sample__SignedOut=true` (and `MuninExplorer__Features__CodePicker=true` set explicitly), the sign-out switch ModernHost's
 `/utforsker` and HostileHost's `/` read (LegacyHost has none), which mounts the composed explorer signed out; both stay
-signed in by default (`Fhi.Metadata-emsc0.3.12`). A pull request's CI runs only
+signed in by default (`Fhi.Metadata-emsc0.3.12`). `check-component-state.sh` starts that host too, in shard 1, for the
+browser list's «Fjern» and where it leaves focus (`Fhi.Metadata-emsc0.3.13`). A pull request's CI runs only
 the axe half: `check-hostile-host.sh` does not run on pull requests, so the state's geometry against real Stiler is
 measured when that script runs — nightly, or by hand. The signed-in carry-over's offer and its named refusal need no
 host start of their own: `list-carry-over-refused` seeds the browser list on the signed-in host (`Fhi.Metadata-emsc0.3.16`).

@@ -73,7 +73,8 @@ export function focusIfLost(toId) {
   const active = document.activeElement;
   const to = document.getElementById(toId);
   const onNothing = active === null || active === document.body;
-  const pressedGone = lastPressed === null || lastPressed.isConnected === false;
+  // A key pressed with nothing focused, once the button left, lands on the body: not a move.
+  const pressedGone = lastPressed === null || lastPressed === document.body || lastPressed.isConnected === false;
   if (!(to instanceof HTMLElement) || !onNothing || !pressedGone) {
     return false;
   }

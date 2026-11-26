@@ -163,7 +163,7 @@ public sealed partial class VariableListView
 
         await state.ReadBrowserListAsync();
 
-        // Before «Del liste» can be pressed: the share's focus move asks what was pressed last (Fhi.Metadata-emsc0.3.19).
+        // Before «Del liste» or a row's «Fjern» can be pressed: both focus moves ask what was pressed last.
         if (ShowsBrowserCopy && !_pressesWatched)
         {
             try
@@ -173,11 +173,11 @@ public sealed partial class VariableListView
             catch (JSException ex)
             {
                 _pressesWatched = true;
-                Log?.LogError(ex, "the module could not watch the reader's presses for the browser list's share");
+                Log?.LogError(ex, "the module could not watch the reader's presses for the browser list");
             }
             catch (Exception ex)
             {
-                Log?.LogWarning(ex, "could not watch the reader's presses for the browser list's share");
+                Log?.LogWarning(ex, "could not watch the reader's presses for the browser list");
             }
         }
 

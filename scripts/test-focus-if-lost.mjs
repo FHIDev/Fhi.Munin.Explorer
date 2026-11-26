@@ -6,7 +6,7 @@ import { beforeEach, test } from 'node:test';
 
 class FakeElement {
   constructor(id) { this.id = id; this.isConnected = true; }
-  focus() { document.activeElement = this; }
+  focus() { if (!this.refusesFocus) { document.activeElement = this; } }
   contains(node) { return node === this; }
 }
 globalThis.HTMLElement = FakeElement;
@@ -24,7 +24,8 @@ globalThis.document = {
 };
 const deliver = (type, target) => (listeners.get(type) ?? []).slice().forEach(fn => fn({ type, target }));
 
-const module = await import(new URL('../src/Fhi.Munin.Explorer/wwwroot/explorer-interop.js', import.meta.url));
+const MODULE = new URL('../src/Fhi.Munin.Explorer/wwwroot/explorer-interop.js', import.meta.url);
+const module = await import(MODULE);
 const { focusIfLost } = module;
 module.watchPresses();
 
@@ -71,6 +72,35 @@ test('FocusIfLost_WhenTheReaderClickedTheHostPageAndBodyHoldsFocus_ThenFocusIsNo
   deliver('pointerdown', hostText);
   assert.equal(focusIfLost('remove-vekt'), false);
   assert.equal(document.activeElement, body);
+});
+
+test('FocusIfLost_WhenAKeyLandsOnTheBodyAfterThePressedButtonLeft_ThenFocusStillMoves', () => {
+  // A Shift or an arrow with nothing focused is not the reader going somewhere.
+  pressAndRemove();
+  deliver('keydown', body);
+  assert.equal(focusIfLost('remove-vekt'), true);
+});
+
+test('FocusIfLost_WhenNothingHoldsFocusAtAll_ThenFocusMovesToTheTarget', () => {
+  pressAndRemove();
+  document.activeElement = null;
+  assert.equal(focusIfLost('remove-vekt'), true);
+  assert.equal(document.activeElement, next);
+});
+
+test('FocusIfLost_WhenTheTargetRefusesFocus_ThenItAnswersFalse', () => {
+  pressAndRemove();
+  next.refusesFocus = true;
+  assert.equal(focusIfLost('remove-vekt'), false);
+});
+
+test('FocusIfLost_WhenThePressWatchNeverRan_ThenFocusOnNothingIsEnough', async () => {
+  // A fresh copy of the module, whose watch the view could not start: nothing was ever pressed as far as it knows.
+  const unwatched = await import(`${MODULE.href}?unwatched`);
+  pressAndRemove();
+  assert.equal(unwatched.focusIfLost('remove-vekt'), true);
+  document.activeElement = new FakeElement('remove-alder');
+  assert.equal(unwatched.focusIfLost('remove-vekt'), false);
 });
 
 test('FocusIfLost_WhenTheTargetIsNotOnThePage_ThenNothingIsFocused', () => {

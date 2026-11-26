@@ -274,7 +274,10 @@ internal sealed class ExplorerInterop : IAsyncDisposable
         return await interop.TryLoadAsync().ConfigureAwait(false) && await interop.WatchFoldsAsync().ConfigureAwait(false);
     }
 
-    /// <summary>Has the page remember what the reader last pressed, for <see cref="FocusIfStillOnAsync"/>; once per page.</summary>
+    /// <summary>
+    /// Has the page remember what the reader last pressed, for <see cref="FocusIfStillOnAsync"/> and
+    /// <see cref="FocusIfLostAsync"/>; once per page.
+    /// </summary>
     /// <returns>False when the module cannot be reached, so the caller asks again on a later render.</returns>
     internal static async Task<bool> WatchPressesAsync(IJSRuntime js)
     {
