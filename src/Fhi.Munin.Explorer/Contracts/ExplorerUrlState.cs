@@ -68,8 +68,10 @@ public sealed record ExplorerUrlState
     /// <summary>
     /// The datasamling of the open row, written as <c>datasamlingId</c> beside <c>variabelId</c>, or beside
     /// <c>variabel</c> when <see cref="SelectedDatasamlingCode"/> is not set: a variable has a row per datasamling, so
-    /// the variable alone does not name the row. A link without either opens the variable's first row. Never written
-    /// without <see cref="SelectedVariableId"/> or <see cref="SelectedVariableCode"/>.
+    /// the variable alone does not name the row. A link without either opens the variable's first row, except where the
+    /// host declines <c>datasamlingId</c> and the explorer already knows the variable's code: a navigation there opens
+    /// the primary row, as <c>?variabel=</c> does. Never written without <see cref="SelectedVariableId"/> or
+    /// <see cref="SelectedVariableCode"/>.
     /// </summary>
     public Guid? SelectedDatasamlingId { get; init; }
 
