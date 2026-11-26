@@ -11,7 +11,7 @@ namespace Fhi.Munin.Explorer.Tests;
 
 public class AnonymousListRemoveRowHeldOut2Test : ExplorerTestContext
 {
-    private const string Focus = "Blazor._internal.domWrapper.focus";
+    private const string Focus = "focusIfLost";
 
     private static readonly Texts No = Texts.For("no");
 
