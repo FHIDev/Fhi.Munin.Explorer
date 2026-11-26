@@ -1344,6 +1344,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _refusal = null;
         _refusalSaid = null;
         _refusedRemoved = null;
+        _browserRowNotRemoved = false;
         _createFailure = ListActionFailure.None;
         _quotaRefusal = null;
         _actionFailure = ListActionFailure.None;

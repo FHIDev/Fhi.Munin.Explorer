@@ -52,6 +52,19 @@ public sealed partial class VariableListView
     private (int Version, int Page, int Size)? _browserPageFailedFor;
     private int _browserVersionSeen = -1;
 
+    // A row's «Fjern» leaves with it: focus goes to the row now in its place, else the one before it, else the heading;
+    // set only once the page is read again for the change, so the buttons it names are drawn (Fhi.Metadata-emsc0.3.13).
+    private readonly Dictionary<VariableDatasamlingKey, ElementReference> _browserRemoveButtons = [];
+    private ElementReference _browserHeading;
+    private (int Index, int Page, int Forms, int Moves)? _browserRemoveFocus;
+    private bool _browserPageReading;
+    private bool _browserRowNotRemoved;
+    private readonly HashSet<VariableDatasamlingKey> _browserRowsRemoving = [];
+    private string? _browserRemovedSaid;
+
+    // A new element per removal, so a second one under the same name is announced again.
+    private int _browserRemovedCount;
+
     private string ClearBrowserListId => $"munin-explorer-clear-browser-list-{_instance}";
 
     private string ConfirmClearId => $"munin-explorer-confirm-clear-{_instance}";
@@ -70,6 +83,7 @@ public sealed partial class VariableListView
         !ShowsBrowserCopy ? null
         : _browserShareTooLong ? T.BrowserListTooLongToShare
         : _browserPageFailed || _browserShareUnreadable ? T.BrowserListReadError
+        : _browserRowNotRemoved ? T.BrowserListRowNotRemoved
         : ShareMessage ?? DownloadMessage;
 
     private bool CarryOverNoticesShown => State is { } state && state.Reader == _carryOverNoticesFor;
@@ -156,17 +170,33 @@ public sealed partial class VariableListView
 
         var wanted = (state.BrowserVersion, _sharedPageNumber, PageSize);
 
+        if (!_browserPageReading && _browserPageFor == wanted)
+        {
+            await FocusAfterBrowserRemoveAsync();
+        }
+
         if (ShowsBrowserCopy && state.BrowserListRead && _browserPageFor != wanted && _browserPageFailedFor != wanted)
         {
             _browserPageFor = wanted;
+            _browserPageReading = true;
             var rows = await state.ReadBrowserRowsAsync((_sharedPageNumber - 1) * PageSize, PageSize);
 
             if (_browserPageFor == wanted)
             {
+                _browserPageReading = false;
+
                 // A failure is remembered for this page and version only, so the next change reads it again.
                 _browserPageFailed = rows is null;
                 _browserPageFailedFor = rows is null ? wanted : null;
                 _browserPage = rows is null ? [] : [.. rows.Select(r => r.Item)];
+
+                // Only rows that left: a row kept on screen keeps its element, and Blazor captures a reference only once.
+                var shown = _browserPage.Select(VariableDatasamlingKey.Of).ToHashSet();
+                foreach (var gone in _browserRemoveButtons.Keys.Where(k => !shown.Contains(k)).ToList())
+                {
+                    _browserRemoveButtons.Remove(gone);
+                }
+
                 StateHasChanged();
             }
         }
@@ -205,6 +235,80 @@ public sealed partial class VariableListView
             {
                 Log?.LogWarning(ex, "could not move focus after emptying the browser list");
             }
+        }
+    }
+
+    private void CaptureBrowserHeading(ElementReference heading) => _browserHeading = heading;
+
+    private async Task RemoveFromBrowserListAsync(VariableListItem item)
+    {
+        var key = VariableDatasamlingKey.Of(item);
+
+        // A second press while the first is out would say the row was removed twice.
+        if (State is null || !ShowsBrowserCopy || !_browserRowsRemoving.Add(key))
+        {
+            return;
+        }
+
+        var at = _browserPage.ToList().FindIndex(i => VariableDatasamlingKey.Of(i) == key);
+        var page = _sharedPageNumber;
+        var atPress = (Forms: OpenForms(), Moves: _readerMoves);
+        var name = RowName(item);
+
+        ForgetFailures();
+        _browserRemovedSaid = null;
+
+        VariableListState.BrowserListOutcome outcome;
+
+        // The search's own removal: one change, in its turn, against the stored value.
+        try
+        {
+            outcome = await State.ToggleInBrowserListAsync(item, drawnAsSaved: true);
+        }
+        finally
+        {
+            _browserRowsRemoving.Remove(key);
+        }
+
+        if (outcome != VariableListState.BrowserListOutcome.Removed)
+        {
+            _browserRowNotRemoved = true;
+            return;
+        }
+
+        _browserRemovedSaid = T.RemovedFromList(name);
+        _browserRemovedCount++;
+        _browserRemoveFocus = (Math.Max(at, 0), page, atPress.Forms, atPress.Moves);
+    }
+
+    private async Task FocusAfterBrowserRemoveAsync()
+    {
+        if (_browserRemoveFocus is not { } wanted)
+        {
+            return;
+        }
+
+        _browserRemoveFocus = null;
+
+        // Not while the reader has moved on (a form, a fold, another page during the call), as TakeRemoveFocusTarget.
+        if (!ShowsBrowserCopy || (OpenForms() & ~wanted.Forms) != 0 || _readerMoves != wanted.Moves)
+        {
+            return;
+        }
+
+        // Back a page when the last row of the last page went: the row before it is that page's last.
+        var index = wanted.Page == _sharedPageNumber ? Math.Min(wanted.Index, _browserPage.Count - 1) : _browserPage.Count - 1;
+        var target = index >= 0 && _browserRemoveButtons.TryGetValue(VariableDatasamlingKey.Of(_browserPage[index]), out var button)
+            ? button
+            : _browserHeading;
+
+        try
+        {
+            await target.FocusAsync();
+        }
+        catch (Exception ex)
+        {
+            Log?.LogWarning(ex, "could not move focus after removing a row from the browser list");
         }
     }
 

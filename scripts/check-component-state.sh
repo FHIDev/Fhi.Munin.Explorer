@@ -252,6 +252,38 @@ ACCESSIBILITY_SETTLE_MS="$SETTLE_MS" STATE_STUB_BASE="$STUB_BASE" \
 scan_status=$?
 set -e
 
+# A signed-out reader's list in the browser needs a host started with the sample's sign-out switch, as
+# check-accessibility.sh starts one; in shard 1 only, like that pass (Fhi.Metadata-emsc0.3.13).
+if [ -z "${SCAN_SHARD:-}" ] || [ "${SCAN_SHARD%%/*}" = 1 ]; then
+  echo
+  echo "==> a signed-out reader's list in the browser"
+  kill "$host_pid" 2>/dev/null || true
+  wait "$host_pid" 2>/dev/null || true
+  MuninExplorer__ApiBaseUrl="$STUB_BASE" MuninExplorer__Features__CodePicker=true Sample__SignedOut=true     ASPNETCORE_ENVIRONMENT=Development     dotnet "$HOST_DLL" --urls "$BASE" --contentRoot "$ROOT/samples/ModernHost"     >/tmp/state-host-browser-list.log 2>&1 &
+  host_pid=$!
+  for _ in $(seq 1 60); do
+    curl -fsS -o /dev/null --max-time 2 "$BASE/" 2>/dev/null && break
+    kill -0 "$host_pid" 2>/dev/null || break
+    sleep 2
+  done
+  if ! curl -fsS -o /dev/null --max-time 5 "$BASE/" 2>/dev/null; then
+    echo "the host with the browser list on never answered - TOOLING failure." >&2
+    tail -30 /tmp/state-host-browser-list.log >&2
+    exit 2
+  fi
+  set +e
+  SCAN_SHARD= ACCESSIBILITY_SETTLE_MS="$SETTLE_MS" STATE_STUB_BASE="$STUB_BASE"     node "$ROOT/scripts/state-scan.mjs" "${BASE}/utforsker::list-browser-list"
+  browser_status=$?
+  set -e
+  if [ "$browser_status" -eq 2 ]; then
+    exit 2
+  elif [ "$browser_status" -ne 0 ]; then
+    scan_status=$browser_status
+  fi
+else
+  echo "==> browser list: run in shard 1/${SCAN_SHARD#*/}, not this one (${SCAN_SHARD})"
+fi
+
 # 2 is the scanner saying it could not run, which includes an assertion that held against the very
 # defect it exists for. Passing it through unchanged keeps a harness that has stopped measuring from
 # reading as a component that is fine.
