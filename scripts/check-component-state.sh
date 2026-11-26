@@ -252,6 +252,11 @@ ACCESSIBILITY_SETTLE_MS="$SETTLE_MS" STATE_STUB_BASE="$STUB_BASE" \
 scan_status=$?
 set -e
 
+# A pass that could not run answers 2 before anything else starts (the reason is below).
+if [ "$scan_status" -eq 2 ]; then
+  exit 2
+fi
+
 # A signed-out reader's list in the browser needs a host started with the sample's sign-out switch, as
 # check-accessibility.sh starts one; in shard 1 only, like that pass (Fhi.Metadata-emsc0.3.13).
 if [ -z "${SCAN_SHARD:-}" ] || [ "${SCAN_SHARD%%/*}" = 1 ]; then

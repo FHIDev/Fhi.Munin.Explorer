@@ -581,8 +581,8 @@ else if (ShowsBrowserCopy)
 }
 
 @code {
-    // A snapshot somebody shared: its own name, the same table and pager as an own list, and
-    // nothing that writes — no remove, no desired data, no rename, delete or share.
+    // A snapshot somebody shared: its own name, the same table and pager as an own list, and nothing that writes.
+    // The browser list drawn here writes only to the browser: «Fjern» per row and its own few controls.
     private RenderFragment SharedListView => @<text>
         <DetailPage ViewRoot="" ViewMain=""
                     Eyebrow="@(_sharedList is null ? null : T.SharedListEyebrow)"
@@ -759,7 +759,7 @@ else if (ShowsBrowserCopy)
                 @if (ShowsBrowserCopy)
                 {
                     <div role="status" class="screenreader-only">
-                        @if (_browserRemovedSaid is not null)
+                        @if (_browserRemovedSaid is not null && BrowserRemoveNoticesShown)
                         {
                             <p @key="_browserRemovedCount">@_browserRemovedSaid</p>
                         }
