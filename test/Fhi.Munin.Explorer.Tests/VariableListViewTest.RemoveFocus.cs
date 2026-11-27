@@ -28,7 +28,7 @@ public partial class VariableListViewTest
         JSInterop.Invocations.Count(i => i.Identifier == "Blazor._internal.domWrapper.focus");
 
     [Fact]
-    public async Task Remove_WhenAMiddleRowGoes_ThenTheBrowserIsAskedToFocusTheNextRowsFjernAndNothingIsFocusedDirectly()
+    public async Task View_WhenAMiddleRowIsRemoved_ThenTheBrowserIsAskedToFocusTheNextRowsFjernAndNothingDirectly()
     {
         var (cut, module) = RenderWithModule(Rows(ThreeRows));
         var next = RemoveButtons(cut)[2].Id;
@@ -41,7 +41,7 @@ public partial class VariableListViewTest
     }
 
     [Fact]
-    public async Task Remove_WhenTheLastRowGoes_ThenTheBrowserIsAskedToFocusTheRowBefore()
+    public async Task View_WhenTheLastRowIsRemoved_ThenTheBrowserIsAskedToFocusTheRowBefore()
     {
         var (cut, module) = RenderWithModule(Rows(ThreeRows));
         var previous = RemoveButtons(cut)[1].Id;
@@ -52,7 +52,7 @@ public partial class VariableListViewTest
     }
 
     [Fact]
-    public async Task Remove_WhenTheOnlyRowGoes_ThenTheBrowserIsAskedToFocusTheListMenu()
+    public async Task View_WhenTheOnlyRowIsRemoved_ThenTheBrowserIsAskedToFocusTheListMenu()
     {
         var (cut, module) = RenderWithModule(Rows("Alder ved diagnose"));
         var menu = cut.Find("button[id^='munin-explorer-list-menu-toggle-']").Id;
@@ -63,7 +63,7 @@ public partial class VariableListViewTest
     }
 
     [Fact]
-    public async Task Remove_WhenTheBrowserSaysTheReaderMovedOn_ThenNothingElseTakesFocusAndTheRemovalIsStillSaid()
+    public async Task View_WhenARowIsRemovedAndTheReaderMovedOn_ThenNothingElseTakesFocusAndTheRemovalIsSaid()
     {
         // A reader who Tabbed or clicked away during the call: focusIfLost answers false, and no fallback steals focus.
         var (cut, module) = RenderWithModule(Rows(ThreeRows), focusMoves: false);
