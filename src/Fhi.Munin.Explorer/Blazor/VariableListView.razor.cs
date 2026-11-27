@@ -132,6 +132,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private int _seenKildeFilter;
     private bool _loading;
     private bool _foldsWatched;
+    private int _foldRefusals;
     private bool _watchingFolds;
     private bool _foldsAskSkipped;
     private bool _failed;
@@ -756,7 +757,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
             try
             {
-                _foldsWatched = await ExplorerInterop.WatchFoldsAsync(Js);
+                _foldsWatched = await ExplorerInterop.WatchFoldsAsync(Js)
+                    ?? ++_foldRefusals >= ExplorerInterop.RefusalsBeforeGivingUp;
             }
             finally
             {

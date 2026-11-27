@@ -266,28 +266,31 @@ internal sealed class ExplorerInterop : IAsyncDisposable
         }
     }
 
-    /// <summary>The same, for a component that holds no module of its own; also true once the host refused the module for good.</summary>
-    internal static async Task<bool> WatchFoldsAsync(IJSRuntime js)
+    /// <summary>How often a watch may be refused the module before it stops asking: one failed fetch is no answer for good.</summary>
+    internal const int RefusalsBeforeGivingUp = 3;
+
+    /// <summary>The same, for a component that holds no module of its own; null when the import was refused.</summary>
+    internal static async Task<bool?> WatchFoldsAsync(IJSRuntime js)
     {
         await using var interop = new ExplorerInterop(js);
 
         return await interop.TryLoadAsync().ConfigureAwait(false)
             ? await interop.WatchFoldsAsync().ConfigureAwait(false)
-            : interop.IsRefused;
+            : interop.IsRefused ? null : false;
     }
 
     /// <summary>
     /// Has the page remember what the reader last pressed, for <see cref="FocusIfStillOnAsync"/> and
     /// <see cref="FocusIfLostAsync"/>; once per page.
     /// </summary>
-    /// <returns>False while the module is not reachable yet; true once the watch is on or the host refused the module.</returns>
-    internal static async Task<bool> WatchPressesAsync(IJSRuntime js)
+    /// <returns>True once the watch is on; false while the module is not reachable yet; null when the import was refused.</returns>
+    internal static async Task<bool?> WatchPressesAsync(IJSRuntime js)
     {
         await using var interop = new ExplorerInterop(js);
 
         if (!await interop.TryLoadAsync().ConfigureAwait(false) || interop._module is not { } module)
         {
-            return interop.IsRefused;
+            return interop.IsRefused ? null : false;
         }
 
         return await Tolerated<object>(async () => await module.InvokeAsync<bool>("watchPresses").ConfigureAwait(false))

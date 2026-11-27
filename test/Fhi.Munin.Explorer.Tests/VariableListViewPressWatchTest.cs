@@ -7,7 +7,7 @@ using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Tests;
 
-// A host that serves no module answers for good; the signed-in press watch must not import again every render (Fhi.Metadata-emsc0.3.27).
+// A host that serves no module answers for good; the signed-in list's watches must not import again every render (Fhi.Metadata-emsc0.3.27).
 public class VariableListViewPressWatchTest : ExplorerTestContext
 {
     private static readonly Guid ListId = new("11111111-1111-1111-1111-111111111111");
@@ -20,19 +20,21 @@ public class VariableListViewPressWatchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void VariableListView_WhenTheHostRefusesTheModule_ThenTheSignedInPressWatchDoesNotAskAgain()
+    public void VariableListView_WhenTheHostKeepsRefusingTheModule_ThenEachWatchStopsAskingAfterItsLastTry()
     {
         var (cut, runtime) = RenderSignedIn(new JSException("404"));
-        var asked = runtime.Imports;
 
-        cut.Render();
-        cut.Render();
+        for (var render = 0; render < ExplorerInterop.RefusalsBeforeGivingUp + 2; render++)
+        {
+            cut.Render();
+        }
 
-        Assert.Equal(asked, runtime.Imports);
+        // The press watch and the fold watch import apart, so each may be refused this often.
+        Assert.Equal(2 * ExplorerInterop.RefusalsBeforeGivingUp, runtime.Imports);
     }
 
     [Fact]
-    public void VariableListView_WhenTheImportFailedTheWayAReconnectDoes_ThenALaterRenderAsksAgain()
+    public void VariableListView_WhenTheImportFailedTheWayAReconnectDoes_ThenALaterRenderOfTheListsWatchesAsksAgain()
     {
         var (cut, runtime) = RenderSignedIn(new JSDisconnectedException("the circuit is reconnecting"));
         var asked = runtime.Imports;

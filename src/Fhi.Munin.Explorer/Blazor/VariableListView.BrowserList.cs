@@ -20,6 +20,7 @@ public sealed partial class VariableListView
     // Into the share code once the panel shows one, as a signed-in share does (Fhi.Metadata-emsc0.3.18).
     private bool _focusBrowserShareCode;
     private bool _pressesWatched;
+    private int _pressRefusals;
     private ElementReference _clearToggle;
     private bool _carryingOver;
     private bool _removing;
@@ -304,7 +305,8 @@ public sealed partial class VariableListView
 
         try
         {
-            _pressesWatched = await ExplorerInterop.WatchPressesAsync(Js);
+            _pressesWatched = await ExplorerInterop.WatchPressesAsync(Js)
+                ?? ++_pressRefusals >= ExplorerInterop.RefusalsBeforeGivingUp;
         }
         catch (JSException ex)
         {
