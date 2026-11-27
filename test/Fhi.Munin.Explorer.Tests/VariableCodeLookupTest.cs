@@ -155,7 +155,7 @@ public class VariableCodeLookupTest : ExplorerTestContext
 
     private IReadOnlyList<LogEntry> Logged => Services.GetRequiredService<RecordingLoggerProvider>().Entries;
 
-    private IRenderedComponent<VariableExplorer> Render(IMuninExplorerClient client, string address)
+    private IRenderedComponent<VariableExplorer> Render(IMuninExplorerClient client, string address, string? language = null)
     {
         Services.AddSingleton(client);
         Services.AddSingleton<IJSRuntime>(new HistoryRecorder(JSInterop.JSRuntime));
@@ -168,7 +168,7 @@ public class VariableCodeLookupTest : ExplorerTestContext
             .AddFilter((category, _) => category?.StartsWith("Fhi.Munin.Explorer", StringComparison.Ordinal) == true));
         SetRendererInfo(new RendererInfo("Server", true));
         Services.GetRequiredService<NavigationManager>().NavigateTo(address);
-        return Render<VariableExplorer>();
+        return language is null ? Render<VariableExplorer>() : Render<VariableExplorer>(b => b.Add(c => c.Language, language));
     }
 
     private static void Open(IRenderedComponent<VariableExplorer> cut, string name)
@@ -426,6 +426,18 @@ public class VariableCodeLookupTest : ExplorerTestContext
         var status = cut.WaitForElement("p[role=status]");
 
         Assert.Equal("no", status.GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void OnInitializedAsync_WhenAnEnglishReaderWaitsForTheCodeLookup_ThenTheStatusSaysSoInEnglish()
+    {
+        // The status takes the reader's language from the explorer, not the package's default.
+        var client = new LookupClient { Gate = new(TaskCreationOptions.RunContinuationsAsynchronously) };
+        var cut = Render(client, $"http://localhost/variabler?variabel={Answered.Code}", "en");
+
+        var status = cut.WaitForElement("p[role=status]");
+
+        Assert.Equal(("Loading variables …", "en"), (status.TextContent.Trim(), status.GetAttribute("lang")));
     }
 
     [Fact]

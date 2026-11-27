@@ -492,11 +492,12 @@ feature calls, which ship unflagged.
   outside what that check can see (§6, §10).
 - **A test claim in the body is checked leg by leg.** For «each new leg mutated alone fails a test», or any claim like
   it, take every new condition, call and argument in the diff and name the test that fails without it. A call its
-  callers can only reach in a state where it does nothing, or an argument (a cancellation token, say) that every test
-  double ignores, fails no test: Important, until a test covers it, the leg goes or the claim names it.
-- **A request count in prose is checked against every call on the path.** «asked once», «one request per …»: follow
-  each call the path makes to the client, the fetch that learns a missing value first included, and compare the total.
-  A count that leaves one out is Important, in the body, a changelog fragment and an XML doc alike.
+  callers only reach where it does nothing, or an argument (a cancellation token, say) every test double ignores,
+  fails no test. The false claim is Important until the leg goes or the claim names it; rate the gap itself by §11.
+- **A request count in prose is checked on every path that reaches the call.** «asked once», «two requests per …»:
+  follow each caller, with and without the value it may already hold, and count the client calls, the fetch that
+  learns a missing value included. A count that is wrong on one path is Important, in the body, a changelog fragment
+  and an XML doc alike; a count that varies by path says «at most».
 
 ---
 
