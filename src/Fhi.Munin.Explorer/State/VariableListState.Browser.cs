@@ -399,9 +399,8 @@ public sealed partial class VariableListState : IDisposable
     }
 
     /// <summary>
-    /// What a carry-over did: the list the rows went to and whether they also left the browser; when Munin refused rows
-    /// of the variables in <see cref="Refused"/>, <see cref="RefusedRows"/> of them stay in the browser, beside the list
-    /// that holds the rest, or with no list when it refused every row or named only variables; or, with
+    /// The list the rows went to and whether they left the browser; <see cref="RefusedRows"/> rows of the variables in
+    /// <see cref="Refused"/> stay, beside the list or with none when nothing was saved; or, with
     /// <see cref="AlreadyCarrying"/>, nothing touched, since another tab or view is carrying the rows.
     /// </summary>
     internal sealed record CarryOver(

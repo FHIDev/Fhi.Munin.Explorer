@@ -1462,25 +1462,29 @@ it can be downloaded (`ExportItemsAsync`, Munin's anonymous export), shared as a
 the share endpoint's 512 KB (about 990 full rows), or emptied; each row's «Fjern» takes that row out. Signed in
 with rows still in the browser, the list tab offers one button, «Lagre i Mine variabellister», beside a sentence saying
 the rows become a new list there. The press
-creates a new list in Mine variabellister and adds every row to it in one request, so Munin saves all of them or none;
+creates a new list in Mine variabellister and adds every row to it in one request, which Munin saves whole or not at all;
 the new list is offered nowhere else until the rows are in it, and once saved, the rows leave the browser. When the
 browser cannot take them out, the alert says the new list was saved but the browser list is still in this browser, to
 be emptied once signed out. On this page the offer is then not drawn again until the browser list empties or the reader
 signs out or in; after a reload it is offered again, and a press then saves the rows a second time. When Munin
-refuses the request and names variables, such as one whose row's datasamling is no longer its own, nothing is saved:
-the new list is deleted again, every row stays in the browser, the reader is told how many rows of how many variables
-Munin refused, and a button described by that sentence, «Fjern disse radene» («Fjern denne raden» for one row), takes
+refuses the request and names the refused (variable, datasamling) pairs, as it does since `Fhi.Metadata-emsc0.3.14`,
+such as a row whose datasamling is no longer its variable's own, the press adds the other rows to the same list in one
+more request: a create and two adds, however full the browser list, inside Munin's write limit (60 a minute by default). The saved rows leave the browser,
+the refused ones stay, and the alert says the list was saved and how many rows of how many variables could not be
+(`Fhi.Metadata-emsc0.3.25`). When that second add fails too, nothing is saved, as for any other failure below. When
+Munin refuses every row, or names only variables, as a Munin before that does, nothing is saved: the new list is
+deleted again, every row stays in the browser and the reader is told how many rows of how many variables Munin
+refused. Either way, unless the saved rows could not leave the browser, a button described by that sentence, «Fjern disse radene» («Fjern denne raden» for one row), takes
 every row of those variables out of the browser; the button goes with the sentence. The offer then counts the rows
 that are left and takes focus; with no rows left there is no offer, and focus goes to the list picker, or to creating
 a list when the reader has one list or none. A refused row is not remembered: if the reader keeps it, the next press
-is refused the same way. A press that finds another tab or view already saving the browser list makes no list, says the list is already being saved and keeps every row.
+makes a new list, never the part-filled one again, and is refused the same way. A press that finds another tab or view already saving the browser list makes no list, says the list is already being saved and keeps every row.
 Any other failure (a refusal that names nothing, the write limiter, a lapsed sign-in, a list
 gone, an error) also saves nothing, deletes the new list if one was made and keeps every row; the press reads the
 reader's lists first, to name the new one, and a failure there makes nothing. A press only ever deletes the list it
 created. When that delete fails, as it can under the same write limiter, or the reader signs out during the press, the
 new list can be left in Mine variabellister: it appears among the reader's lists the next time the page is opened, or
-beside the next list they make, and they can delete it there. Saving only the rows Munin accepts, and leaving the
-refused ones behind, is not supported. Where the browser refuses storage the list lasts while the page is open and the
+beside the next list they make, and they can delete it there. Where the browser refuses storage the list lasts while the page is open and the
 view says so; a host that does not serve the module has no list, and the save button and the list tab say it cannot be
 kept in this browser. With `CodePicker` off, a signed-out reader has no save button and no list tab, as before.
 `check-accessibility.sh` scans it with axe in `list-browser-list`, on a host started with `CodePicker` on and with the samples'
