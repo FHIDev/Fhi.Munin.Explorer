@@ -169,7 +169,7 @@ internal static partial class KildeAccess
                 [new Link(t.AccessSendEmail, mailto, Primary: true)]);
         }
 
-        return WebsiteKeys.Select(key => Website(Value(kilde, key))).FirstOrDefault(href => href is not null) is { } site
+        return WebsiteKeys.Select(key => Url(Website(Value(kilde, key)))).FirstOrDefault(href => href is not null) is { } site
             ? new Offer(RequiresApplication, t.AccessDirectWebsite, [name], [new Link(t.AccessApplyToRegistry, site, Primary: true)])
             : null;
     }
