@@ -701,6 +701,12 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     {
         await FocusPickerButtonAsync();
 
+        // Before a row's «Fjern» can be pressed: where its focus goes asks what was pressed last.
+        if (IsAuthenticated)
+        {
+            await WatchPressesOnceAsync();
+        }
+
         // All taken, so a flag none acts on does not linger to move focus on a later render.
         var fromSource = TakeSourceFocusTarget();
         var fromMenu = TakeMenuFocusTarget();
@@ -710,6 +716,11 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         var fromOffer = TakeOfferFocusTarget();
         var fromImport = TakeImportFocusTarget();
         var earlier = fromCreateForm ?? fromSource ?? fromMenu ?? fromWrite;
+
+        if (earlier is not null)
+        {
+            _focusAfterRemove = false;
+        }
 
         if (earlier is null && fromRemove is { } removeTarget)
         {
@@ -1673,9 +1684,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         await ShowActiveListAsync();
     }
 
-    // «Fjern» leaves with its row: focus goes to the next row's (else the previous one's), or to the list's menu when
-    // none is left, and the removal is said (WCAG 2.4.3 and 4.1.3, Fhi.Metadata-mhqx0.15).
+    // «Fjern» leaves with its row: when focus left with it, focus goes to the next row's (else the previous one's), or to
+    // the list's menu when none is left, and the removal is said (WCAG 2.4.3 and 4.1.3, Fhi.Metadata-mhqx0.15).
     private bool _focusAfterRemove;
+    private VariableDatasamlingKey? _removedRow;
     private (int Forms, int Moves) _atRemove;
 
     // The list and page a removal was pressed on: a list or page change meanwhile makes its focus and sentence stale.
@@ -1693,10 +1705,22 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             return null;
         }
 
-        _focusAfterRemove = false;
-
         // Not while the reader has moved on (a form, a fold, another list or page during the call), as TakeFocusTarget.
         if ((OpenForms() & ~_atRemove.Forms) != 0 || _readerMoves != _atRemove.Moves || _removeContext != (_shownList, _pageNumber))
+        {
+            _focusAfterRemove = false;
+            return null;
+        }
+
+        // Kept while the page is read again: until then the pressed button is drawn and holds focus, so none is lost yet.
+        if (_loading)
+        {
+            return null;
+        }
+
+        _focusAfterRemove = false;
+
+        if (_page?.Items.Any(i => VariableDatasamlingKey.Of(i) == _removedRow) == true)
         {
             return null;
         }
@@ -1765,6 +1789,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 if (context == (_shownList, _pageNumber))
                 {
                     _removeContext = context;
+                    _removedRow = key;
                     _removeFocusRow = neighbour;
                     _focusAfterRemove = true;
                     _removedSaid = T.RemovedFromList(name);
