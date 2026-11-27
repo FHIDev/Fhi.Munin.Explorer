@@ -3043,12 +3043,12 @@ function keyboardFocusAssertions() {
       kind: 'invariant',
       states: ['explorer-list-tab'],
       async stage(page, stub) {
-        await seedTwoPages(page, stub);
+        await seedLastPageOfOne(page, stub);
         return { stub };
       },
       async measure(page) {
-        const pager = page.locator('[role=tabpanel]:not([hidden]) .munin-explorer-pagination-content > button');
-        await pager.last().click();
+        const numbers = page.locator('[role=tabpanel]:not([hidden]) .munin-explorer-pagination-pages > button');
+        await numbers.last().click();
         await page.waitForFunction(() => document.querySelectorAll('[role=tabpanel]:not([hidden]) td button').length === 1, null, { timeout: findTimeout });
         const only = removes(page).first();
         await only.focus();
@@ -3066,7 +3066,7 @@ function keyboardFocusAssertions() {
       },
       async control(page, { stub }) {
         await noFocusMoves(page);
-        await seedTwoPages(page, stub);
+        await seedLastPageOfOne(page, stub);
       },
     },
     {
@@ -3123,8 +3123,9 @@ async function seedBrowserList(page) {
   return {};
 }
 
-// The stub's list starts at two rows; 99 more is one past the signed-in page of 100, so page 2 holds one row.
-async function seedTwoPages(page, stub) {
+// The stub's list starts at two rows; 99 more makes 101, which leaves one row on the last page at the view's page of 25
+// and at the 100 the stub serves today, since it ignores the client's size.
+async function seedLastPageOfOne(page, stub) {
   await stub.resetLists();
   await stub.addToList(Array.from({ length: 99 }, () => crypto.randomUUID()));
   await page.reload({ waitUntil: 'networkidle' });

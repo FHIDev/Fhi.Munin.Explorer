@@ -1008,7 +1008,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private bool ShouldReloadFor(VariableListState.ListChange? change) =>
         change is not { } known || (known.AffectsRows && (known.ListId is null || known.ListId == _shownList));
 
-    /// <summary>Reads the page currently being looked at. Signed out this calls nothing.</summary>
+    /// <summary>Reads the page currently being looked at, or the last one with rows when it is gone. Signed out this calls nothing.</summary>
     private async Task LoadPageAsync()
     {
         // A list the holder no longer has is one somebody deleted. Asking for its variables gets
@@ -1702,8 +1702,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         await ShowActiveListAsync();
     }
 
-    // «Fjern» leaves with its row: when focus left with it, focus goes to the next row's (else the previous one's), or to
-    // the list's menu when none is left, and the removal is said (WCAG 2.4.3 and 4.1.3, Fhi.Metadata-mhqx0.15).
+    // «Fjern» leaves with its row: when focus left with it, focus goes to the next row's (else the previous one's, or the
+    // last row of the page stepped back to), or to the list's menu when none is left, and the removal is said (WCAG 2.4.3
+    // and 4.1.3, Fhi.Metadata-mhqx0.15).
     private readonly Dictionary<VariableDatasamlingKey, ElementReference> _removeButtons = [];
     private bool _focusAfterRemove;
     private VariableDatasamlingKey? _removedRow;

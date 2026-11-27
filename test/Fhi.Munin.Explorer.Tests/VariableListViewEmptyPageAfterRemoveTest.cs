@@ -20,6 +20,8 @@ public class VariableListViewEmptyPageAfterRemoveTest : ExplorerTestContext
 
         public IReadOnlyList<VariableListItem> Items => _items;
 
+        public List<int> PagesAsked { get; } = [];
+
         /// <summary>Armed by a test; every page read after that waits for it.</summary>
         public TaskCompletionSource? HoldRead { get; set; }
 
@@ -40,6 +42,8 @@ public class VariableListViewEmptyPageAfterRemoveTest : ExplorerTestContext
             Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
             CancellationToken cancellationToken = default)
         {
+            PagesAsked.Add(page);
+
             if (HoldRead is { } hold)
             {
                 ReadEntered.TrySetResult();
@@ -71,7 +75,7 @@ public class VariableListViewEmptyPageAfterRemoveTest : ExplorerTestContext
             DataType = "2"
         };
 
-    private (IRenderedComponent<VariableListView> Cut, BunitJSModuleInterop Module) RenderOnPageTwo(HoldingClient client)
+    private (IRenderedComponent<VariableListView> Cut, BunitJSModuleInterop Module) RenderOnLastPage(HoldingClient client)
     {
         var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
         module.Setup<bool>(FocusIfLost, _ => true).SetResult(true);
@@ -81,8 +85,8 @@ public class VariableListViewEmptyPageAfterRemoveTest : ExplorerTestContext
         Services.AddScoped<VariableListState>();
 
         var cut = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true).Add(c => c.PageSize, 2));
-        cut.FindAll(".munin-explorer-pagination-content button")[^1].Click();
-        cut.WaitForAssertion(() => Assert.Contains("Bosted", cut.Markup));
+        cut.FindAll(".munin-explorer-pagination-pages > button")[^1].Click();
+        cut.WaitForAssertion(() => Assert.Contains(client.Items[^1].VariableName!, cut.Markup));
 
         return (cut, module);
     }
@@ -91,11 +95,11 @@ public class VariableListViewEmptyPageAfterRemoveTest : ExplorerTestContext
         [.. cut.FindAll("tbody tr td:last-child button")];
 
     [Fact]
-    public async Task Remove_WhenTheOnlyRowOfALaterPageGoesWhileTheReReadIsHeld_ThenThePageBeforeShowsAndItsLastRowTakesFocus()
+    public async Task View_WhenTheOnlyRowOfALaterPageGoesWhileTheReReadIsHeld_ThenThePageBeforeShowsAndItsLastRowTakesFocus()
     {
         // The re-read lands after the press has returned, so a check made at the press saw rows and never stepped back.
         var client = new HoldingClient("Alder ved diagnose", "Kjønn", "Bosted");
-        var (cut, module) = RenderOnPageTwo(client);
+        var (cut, module) = RenderOnLastPage(client);
         client.HoldRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         await cut.InvokeAsync(() => Assert.Single(RemoveButtons(cut)).Click());
@@ -105,16 +109,17 @@ public class VariableListViewEmptyPageAfterRemoveTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Equal(2, RemoveButtons(cut).Count));
         Assert.DoesNotContain(EmptyText, cut.Markup);
         Assert.Contains("Kjønn", cut.Markup);
+        Assert.Contains("2 variabler", cut.Markup);
         var last = RemoveButtons(cut)[^1].Id;
         cut.WaitForAssertion(() => Assert.Equal(last, Assert.Single(module.Invocations[FocusIfLost]).Arguments[0]));
     }
 
     [Fact]
-    public async Task Reload_WhenAPageReadPastPageOneLandsEmptyWhileTheListHasRows_ThenItStepsBackAndMovesNoFocus()
+    public async Task View_WhenAPageReadPastPageOneLandsEmptyWhileTheListHasRows_ThenItStepsBackAndMovesNoFocus()
     {
         // Emptied from outside this view's «Fjern», as another tab or surface would: no removal here owns focus.
         var client = new HoldingClient("Alder ved diagnose", "Kjønn", "Bosted");
-        var (cut, module) = RenderOnPageTwo(client);
+        var (cut, module) = RenderOnLastPage(client);
         var state = Services.GetRequiredService<VariableListState>();
 
         await cut.InvokeAsync(() => state.RemoveVariablesAsync(ListId, [client.Items[2].VariableId]));
@@ -122,5 +127,35 @@ public class VariableListViewEmptyPageAfterRemoveTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Equal(2, RemoveButtons(cut).Count));
         Assert.DoesNotContain(EmptyText, cut.Markup);
         Assert.DoesNotContain(module.Invocations, i => i.Identifier == FocusIfLost);
+    }
+
+    [Fact]
+    public async Task View_WhenTheReReadLandsBeforeTheRemovalReturns_ThenFocusStillGoesToTheLastRowAndTheRemovalIsSaid()
+    {
+        // A read that answers at once steps back before the press's own code resumes, on a page the press was not made on.
+        var client = new HoldingClient("Alder ved diagnose", "Kjønn", "Bosted");
+        var (cut, module) = RenderOnLastPage(client);
+
+        await cut.InvokeAsync(() => Assert.Single(RemoveButtons(cut)).Click());
+
+        cut.WaitForAssertion(() => Assert.Equal(2, RemoveButtons(cut).Count));
+        var last = RemoveButtons(cut)[^1].Id;
+        cut.WaitForAssertion(() => Assert.Equal(last, Assert.Single(module.Invocations[FocusIfLost]).Arguments[0]));
+        Assert.Contains("fjernet fra listen", cut.Find("[role=status].screenreader-only").TextContent);
+    }
+
+    [Fact]
+    public async Task View_WhenAPageReadLandsEmptyPagesPastTheLastOne_ThenTheNextReadIsTheLastPageWithRows()
+    {
+        // Stepping one page at a time would read every emptied page between; the answer's own total names the last one.
+        var client = new HoldingClient("Alder ved diagnose", "Kjønn", "Bosted", "Diagnose", "Vekt");
+        var (cut, _) = RenderOnLastPage(client);
+        var state = Services.GetRequiredService<VariableListState>();
+        client.PagesAsked.Clear();
+
+        await cut.InvokeAsync(() => state.RemoveVariablesAsync(ListId, [.. client.Items.Skip(2).Select(i => i.VariableId)]));
+
+        cut.WaitForAssertion(() => Assert.Equal(2, RemoveButtons(cut).Count));
+        Assert.Equal([3, 1], client.PagesAsked);
     }
 }
