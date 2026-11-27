@@ -14,12 +14,9 @@ public class VariableListViewRemoveFocusHeldOutTest : ExplorerTestContext
 
     private static readonly Guid ListId = new("11111111-1111-1111-1111-111111111111");
 
-    private sealed class HoldingClient : EmptyMuninExplorerClient
+    private sealed class HoldingClient(params string[] names) : EmptyMuninExplorerClient
     {
-        private readonly List<VariableListItem> _items;
-
-        public HoldingClient(params string[] names) =>
-            _items = [.. names.Select((n, i) => Item(n, $"V_{i}"))];
+        private readonly List<VariableListItem> _items = [.. names.Select((n, i) => Item(n, $"V_{i}"))];
 
         /// <summary>Armed after the first render; every page read after that waits for it.</summary>
         public TaskCompletionSource? HoldRead { get; set; }
