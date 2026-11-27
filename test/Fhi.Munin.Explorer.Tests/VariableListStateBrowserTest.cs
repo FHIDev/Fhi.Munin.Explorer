@@ -979,6 +979,7 @@ public class VariableListStateBrowserTest
     }
 
     [Theory]
+    [InlineData("named-pairs")]
     [InlineData("named")]
     [InlineData("unnamed")]
     [InlineData("throttled")]
@@ -999,6 +1000,7 @@ public class VariableListStateBrowserTest
         hold.SetException(refusal switch
         {
             "named" => new Client.ListItemsRefusedException([browser.Rows[0].VariableId]),
+            "named-pairs" => new Client.ListItemsRefusedException([browser.Rows[0].VariableId], [VariableDatasamlingKey.Of(browser.Rows[0])]),
             "unnamed" => new HttpRequestException("stale", null, System.Net.HttpStatusCode.BadRequest),
             _ => new MuninExplorerRateLimitedException(),
         });
@@ -1205,10 +1207,10 @@ public class VariableListStateBrowserTest
     }
 
     [Fact]
-    public void CarryClaimLifetime_WhenComparedToTheClientsPerCallLimit_ThenACreateAndTwoAddsAtTheirLimitStillHoldIt()
+    public void CarryClaimLifetime_WhenComparedToTheClientsPerCallLimit_ThenACreateTwoAddsAndADeleteAtTheirLimitStillHoldIt()
     {
         // A claim that lapses mid-press lets a second tab read rows still stored and make the second list.
-        Assert.True(VariableListState.CarryClaimLifetime > Fhi.Munin.Explorer.Client.RequestTimeoutHandler.Default * 3);
+        Assert.True(VariableListState.CarryClaimLifetime > Fhi.Munin.Explorer.Client.RequestTimeoutHandler.Default * 4);
     }
 
     [Fact]

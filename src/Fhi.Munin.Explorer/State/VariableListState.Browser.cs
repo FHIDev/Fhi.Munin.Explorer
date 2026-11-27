@@ -406,8 +406,9 @@ public sealed partial class VariableListState : IDisposable
     internal sealed record CarryOver(
         VariableList? List, bool LeftTheBrowser, IReadOnlySet<Guid>? Refused = null, int RefusedRows = 0, bool AlreadyCarrying = false);
 
-    // The create and the two adds may each take the client's whole per-call limit; a fourth covers the reads and the removal.
-    internal static readonly TimeSpan CarryClaimLifetime = RequestTimeoutHandler.Default * 4;
+    // The create, two adds and a delete after a failed add may each take the client's whole per-call limit; a fifth
+    // covers the reads and the removal.
+    internal static readonly TimeSpan CarryClaimLifetime = RequestTimeoutHandler.Default * 5;
 
     // Two tabs writing a claim in the same moment: each reads back after this, and only the one whose claim stayed goes on.
     internal static readonly TimeSpan CarryClaimSettle = TimeSpan.FromMilliseconds(50);
@@ -532,7 +533,7 @@ public sealed partial class VariableListState : IDisposable
             catch (ListItemsRefusedException ex) when (Reader == reader && RefusedPairs(ex, keys) is { Count: > 0 } pairs && pairs.Count < keys.Count)
             {
                 // Munin named the pairs: one more add, of the rest, and the refused rows stay in the browser.
-                _logger?.LogWarning(ex, "the API refused {Count} of the browser list's rows; the others are added again", pairs.Count);
+                _logger?.LogWarning(ex, "the API refused {Count} of the browser list's rows; the others are added in one more request", pairs.Count);
                 refusedPairs = pairs;
                 saved = [.. keys.Except(pairs)];
                 accepted = await _client.AddItemsToMyListAsync(target.Id, saved, cancellationToken).ConfigureAwait(false);

@@ -541,12 +541,26 @@ public sealed partial class VariableListView
             return;
         }
 
+        // Held until the sentence is set: after a partial save the offer stays drawn, and a press meanwhile would race it.
         _carryingOver = true;
+
+        try
+        {
+            await CarryAndShowAsync(State);
+        }
+        finally
+        {
+            _carryingOver = false;
+        }
+    }
+
+    private async Task CarryAndShowAsync(VariableListState state)
+    {
         ForgetFailures();
 
         // Before the first await, as a create does: a form the reader opens meanwhile keeps the focus.
         var formsOpenAtStart = OpenForms();
-        var reader = State.Reader;
+        var reader = state.Reader;
         VariableListState.CarryOver? carried;
 
         try
@@ -555,12 +569,12 @@ public sealed partial class VariableListView
             var existing = await Client.GetMyListsAsync();
 
             // The rows are the pressing reader's: one who signed out, or was replaced, during the read gets nothing made.
-            if (State.Reader != reader)
+            if (state.Reader != reader)
             {
                 return;
             }
 
-            carried = await State.CarryBrowserListOverAsync(FreeListName(T.FirstListName, existing));
+            carried = await state.CarryBrowserListOverAsync(FreeListName(T.FirstListName, existing));
         }
         catch (Exception ex)
         {
@@ -577,13 +591,9 @@ public sealed partial class VariableListView
 
             carried = null;
         }
-        finally
-        {
-            _carryingOver = false;
-        }
 
         // Another reader is at the screen now: nothing of this press is theirs to see or be moved to.
-        if (State.Reader != reader)
+        if (state.Reader != reader)
         {
             return;
         }
@@ -617,7 +627,7 @@ public sealed partial class VariableListView
         await CountTheAddsAsync(created.Id);
         _holdingReloads = false;
 
-        if (State.Reader != reader)
+        if (state.Reader != reader)
         {
             return;
         }
@@ -629,26 +639,26 @@ public sealed partial class VariableListView
 
         try
         {
-            await State.SetActiveListAsync(created.Id);
+            await state.SetActiveListAsync(created.Id);
         }
         catch (Exception ex)
         {
             Log?.LogWarning(ex, "could not read the new list {ListId} after saving the browser list", created.Id);
         }
 
-        if (State.Reader != reader)
+        if (state.Reader != reader)
         {
             return;
         }
 
         await LoadPageAsync();
 
-        if (State.Reader != reader)
+        if (state.Reader != reader)
         {
             return;
         }
 
-        // The button left with its offer: focus goes where a created list sends it, and the alert says what happened.
+        // Focus goes where a created list sends it, the offer gone with its rows or not, and the alert says what happened.
         _formsOpenAtCreate = formsOpenAtStart;
         _focusAfterCreate = true;
         _carriedOverAs = created.Name;

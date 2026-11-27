@@ -1146,6 +1146,50 @@ public class AnonymousListTest : ExplorerTestContext
     }
 
     [Fact]
+    public void VariableListView_WhenTheOfferIsPressedWhileAPartialSaveShowsItsList_ThenThePressDoesNothing()
+    {
+        // The refused rows keep the offer drawn while the new list is read; a press then would race the first one's sentence.
+        var browser = new FakeBrowserList();
+        var valid = FakeBrowserList.Row("Alder", Guid.NewGuid());
+        var stale = valid with { DatasamlingId = Guid.NewGuid() };
+        browser.Rows.AddRange([valid, stale, FakeBrowserList.Row("Kjønn")]);
+        var client = new Client { Stale = VariableDatasamlingKey.Of(stale), NamesStale = true, NamesPairs = true, HoldRead = "page" };
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(3), cut.Markup));
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+        cut.WaitForAssertion(() => Assert.True(client.ReadReached));
+
+        var offer = ButtonSaying(cut, No.SavingToList);
+        Assert.Equal("true", offer.GetAttribute("aria-disabled"));
+        offer.Click();
+        client.ReadHeld.SetResult();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListPartlySaved(No.FirstListName, 1, 1), cut.Markup));
+        Assert.Single(client.Created);
+    }
+
+    [Fact]
+    public void VariableListView_WhenThePressAfterAPartialSaveIsRefusedWhole_ThenItSaysNothingWasSaved()
+    {
+        // The first press's list name must not come back beside the second press's refusal, which saved nothing.
+        var browser = new FakeBrowserList();
+        var valid = FakeBrowserList.Row("Alder", Guid.NewGuid());
+        var stale = valid with { DatasamlingId = Guid.NewGuid() };
+        browser.Rows.AddRange([valid, stale, FakeBrowserList.Row("Kjønn")]);
+        var client = new Client { Stale = VariableDatasamlingKey.Of(stale), NamesStale = true, NamesPairs = true };
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(3), cut.Markup));
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListPartlySaved(No.FirstListName, 1, 1), cut.Markup));
+
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListRefused(1, 1), cut.Markup));
+        Assert.DoesNotContain(No.BrowserListPartlySaved(No.FirstListName, 1, 1), cut.Markup);
+        Assert.Single(client.Lists);
+    }
+
+    [Fact]
     public void VariableListView_WhenTheRefusedRowsAreKept_ThenTheNextPressIsRefusedTheSameWay()
     {
         var browser = new FakeBrowserList();
