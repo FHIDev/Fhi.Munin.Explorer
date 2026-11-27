@@ -28,6 +28,7 @@ public sealed partial class VariableListView
     private bool _carryOverAlreadySaving;
     private string? _carriedOverAs;
     private bool _carriedOverButStillHere;
+    private int _carriedOverUnsaved;
 
     // The reader the carry-over's sentences and remove button were set for; another reader at the screen sees none.
     private int? _carryOverNoticesFor;
@@ -114,7 +115,7 @@ public sealed partial class VariableListView
                 ? T.BrowserListPartlySaved(partly, (RefusedRowsShown ?? said).Rows, (RefusedRowsShown ?? said).Variables)
                 : T.BrowserListRefused((RefusedRowsShown ?? said).Rows, (RefusedRowsShown ?? said).Variables))
         : _carriedOverAs is not { } name ? null
-        : _carriedOverButStillHere ? T.BrowserListSavedButStillHere(name) : T.BrowserListSavedAs(name);
+        : _carriedOverButStillHere ? T.BrowserListSavedButStillHere(name, _carriedOverUnsaved) : T.BrowserListSavedAs(name);
 
     private enum OfferControl
     {
@@ -532,7 +533,7 @@ public sealed partial class VariableListView
 
     /// <summary>
     /// Saves the browser list as a new list of the reader's and shows it. Rows Munin refuses stay in the browser and the
-    /// alert names them, beside the list that holds the rest or with no list at all; a button offers to remove them.
+    /// alert counts them, beside the list that holds the rest or with no list at all; a button offers to remove them.
     /// </summary>
     private async Task CarryBrowserListOverAsync()
     {
@@ -663,6 +664,7 @@ public sealed partial class VariableListView
         _focusAfterCreate = true;
         _carriedOverAs = created.Name;
         _carriedOverButStillHere = !carried.LeftTheBrowser;
+        _carriedOverUnsaved = carried.LeftTheBrowser ? 0 : carried.RefusedRows;
 
         // A partial save: the refused rows stay, said beside the list's name, with the button that removes them.
         if (carried is { LeftTheBrowser: true, Refused.Count: > 0 })

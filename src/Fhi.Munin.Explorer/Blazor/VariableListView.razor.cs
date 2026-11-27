@@ -1338,6 +1338,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _listCreatedSaid = false;
         _carriedOverAs = null;
         _carriedOverButStillHere = false;
+        _carriedOverUnsaved = 0;
         _carryOverFailed = false;
         _carryOverQuota = null;
         _carryOverAlreadySaving = false;

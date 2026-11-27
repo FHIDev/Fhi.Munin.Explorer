@@ -1030,6 +1030,42 @@ public class VariableListStateBrowserTest
         Assert.Equal(2, browser.Rows.Count);
     }
 
+    [Theory]
+    [InlineData("accepted")]
+    [InlineData("throttled")]
+    public async Task CarryBrowserListOverAsync_WhenTheReaderChangesDuringTheSecondAdd_ThenItTidiesNothing(string answer)
+    {
+        // The second add, of the rows Munin did not name, belongs to the reader who pressed just as the first does.
+        var browser = new FakeBrowserList();
+        var valid = FakeBrowserList.Row("Alder", Guid.NewGuid());
+        var stale = valid with { DatasamlingId = Guid.NewGuid() };
+        browser.Rows.AddRange([valid, stale, FakeBrowserList.Row("Kjønn")]);
+        var second = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new ListsClient { NamesStale = true, NamesPairs = true, HoldSecondAdd = second };
+        client.Stale.Add(VariableDatasamlingKey.Of(stale));
+        var state = await SignedInAsync(browser, client);
+
+        var carrying = state.CarryBrowserListOverAsync("Min variabelliste");
+        Assert.Equal(2, client.Adds.Count);
+
+        state.SetAuthenticated(false);
+        state.SetAuthenticated(true);
+        if (answer == "accepted")
+        {
+            second.SetResult(true);
+        }
+        else
+        {
+            second.SetException(new MuninExplorerRateLimitedException());
+        }
+
+        Assert.Null(await carrying);
+        Assert.Empty(client.Deleted);
+        Assert.Equal(3, browser.Rows.Count);
+        Assert.Null(state.ActiveListId);
+        Assert.DoesNotContain(browser.Calls, c => c.Call == "removeKeys");
+    }
+
     [Fact]
     public async Task CarryBrowserListOverAsync_WhenAnotherReaderSignsInWhileTheKeysAreRead_ThenNoListIsMadeForThem()
     {

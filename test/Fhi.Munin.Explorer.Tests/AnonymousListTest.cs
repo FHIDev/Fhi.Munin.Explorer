@@ -797,7 +797,7 @@ public class AnonymousListTest : ExplorerTestContext
         ButtonSaying(cut, No.CarryBrowserListOver).Click();
 
         cut.WaitForAssertion(() => Assert.Contains(No.BrowserListSavedAs(No.FirstListName), cut.Markup));
-        Assert.DoesNotContain(No.BrowserListSavedButStillHere(No.FirstListName), cut.Markup);
+        Assert.DoesNotContain(No.BrowserListSavedButStillHere(No.FirstListName, 0), cut.Markup);
     }
 
     [Fact]
@@ -1004,7 +1004,7 @@ public class AnonymousListTest : ExplorerTestContext
 
         ButtonSaying(cut, No.CarryBrowserListOver).Click();
 
-        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListSavedButStillHere(No.FirstListName), cut.Markup));
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListSavedButStillHere(No.FirstListName, 0), cut.Markup));
         Assert.DoesNotContain(No.BrowserListSavedAs(No.FirstListName), cut.Markup);
         Assert.DoesNotContain(No.CarryBrowserListOver, cut.Markup);
         Assert.Single(client.Created);
@@ -1128,7 +1128,27 @@ public class AnonymousListTest : ExplorerTestContext
     }
 
     [Fact]
-    public void VariableListView_WhenAPartialSaveCannotTakeTheSavedRowsOut_ThenItSaysTheyAreStillHereAndOffersNoRemoval()
+    public void VariableListView_WhenAPartialSaveShowsItsList_ThenFocusGoesToThePickerThatNamesIt()
+    {
+        // The reader is moved to the list that now holds most of their rows; the alert says what stayed and offers its removal.
+        var browser = new FakeBrowserList();
+        var valid = FakeBrowserList.Row("Alder", Guid.NewGuid());
+        var stale = valid with { DatasamlingId = Guid.NewGuid() };
+        browser.Rows.AddRange([valid, stale, FakeBrowserList.Row("Kjønn")]);
+        var client = new Client { Stale = VariableDatasamlingKey.Of(stale), NamesStale = true, NamesPairs = true };
+        client.Lists.Add(new VariableList { Id = OwnListId, Name = "Min variabelliste" });
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(3), cut.Markup));
+
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListPartlySaved("Min variabelliste (2)", 1, 1), cut.Markup));
+        Assert.Contains(No.RemoveRefusedFromBrowser(1), cut.Markup);
+        cut.WaitForAssertion(() => JSInterop.Invocations[Focus][^1].Arguments[0].ShouldBeElementReferenceTo(cut.Find("select")));
+    }
+
+    [Fact]
+    public void VariableListView_WhenAPartialSaveCannotTakeTheSavedRowsOut_ThenItSaysTheyAreStillHereCountsTheUnsavedAndOffersNoRemoval()
     {
         // Saved rows still stored would be offered again by another page; the reader is told to empty the list instead.
         var browser = new FakeBrowserList { KeepsStored = true };
@@ -1141,7 +1161,7 @@ public class AnonymousListTest : ExplorerTestContext
 
         ButtonSaying(cut, No.CarryBrowserListOver).Click();
 
-        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListSavedButStillHere(No.FirstListName), cut.Markup));
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListSavedButStillHere(No.FirstListName, 1), cut.Markup));
         Assert.DoesNotContain(No.RemoveRefusedFromBrowser(1), cut.Markup);
     }
 
