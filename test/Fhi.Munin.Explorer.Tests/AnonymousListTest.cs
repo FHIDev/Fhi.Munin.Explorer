@@ -271,6 +271,28 @@ public class AnonymousListTest : ExplorerTestContext
         }
     }
 
+    // Fhi.Metadata-9huq2.64: the explorer says whether a code came on this arrival; other hosts keep the default.
+    [Theory]
+    [InlineData(null, "Variabelliste")]
+    [InlineData(true, "Variabelliste")]
+    [InlineData(false, "Søkeresultat")]
+    public void VariableSearch_WhenAShareCodeArrives_ThenItsTabOpensOnlyIfShareCodeArrived(bool? arrived, string selected)
+    {
+        Register(new Client(), flag: null, browser: null);
+        RenderFragment list = b => b.AddContent(0, "the list");
+        var cut = Render<VariableSearch>(p =>
+        {
+            p.Add(c => c.IsAuthenticated, false).Add(c => c.VariableList, list).Add(c => c.ShareCode, "AB12CD");
+            if (arrived is { } value)
+            {
+                p.Add(c => c.ShareCodeArrived, value);
+            }
+        });
+
+        var tab = cut.FindAll("[role=tab]").Single(t => t.GetAttribute("aria-selected") == "true");
+        Assert.Equal(selected, tab.TextContent.Trim());
+    }
+
     private IRenderedComponent<VariableSearch> Search(Client client, FakeBrowserList? browser, bool? flag = true, bool signedIn = false)
     {
         Register(client, flag, browser);
