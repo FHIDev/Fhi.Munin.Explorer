@@ -386,8 +386,8 @@ public class DetailPageTest : ExplorerTestContext
     }
 
     // -----------------------------------------------------------------------
-    // The sticky fact bar. A bUnit render IS the JS-absent case — the module is never really
-    // imported here — so every assertion below is about the page a reader without it gets.
+    // The sticky fact bar. A bUnit render IS the JS-absent case — no export here answers but the
+    // press watch — so every assertion below is about the page a reader without it gets.
 
     /// <summary>Six named facts, one of them blank, as a view that has not been filled in names them.</summary>
     private static IReadOnlyList<DetailFact> SixFacts() =>

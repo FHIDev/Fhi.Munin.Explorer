@@ -156,7 +156,7 @@ public class KildeMountTest : ExplorerTestContext
     public void KildeExplorer_WhenAKildeIsOpenAndATitleTemplateIsGiven_ThenThePageTitleNamesTheKilde()
     {
         // WCAG 2.4.2 (Fhi.Metadata-mhqx0.14): each kilde's address gets its own title, not the host page's.
-        var module = JSInterop.SetupModule(Fhi.Munin.Explorer.Blazor.ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.SetupVoid("setTitle", _ => true).SetVoidResult();
 
         var cut = MountByName("KildeExplorer", "http://localhost/kilder?kilde=als", titleTemplate: "{0} – Kildeutforsker");
@@ -168,7 +168,7 @@ public class KildeMountTest : ExplorerTestContext
     public void KildeSearch_WhenMountedAloneAndAKildeIsOpenedFromTheList_ThenThePageTitleNamesIt()
     {
         // Copilot on #717: alone, the component moves its own selection; SelectedKildeId is only a seed.
-        var module = JSInterop.SetupModule(Fhi.Munin.Explorer.Blazor.ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.SetupVoid("setTitle", _ => true).SetVoidResult();
         var cut = MountByName("KildeSearch", "http://localhost/kilder", titleTemplate: "{0} – Kildeutforsker");
 
@@ -181,7 +181,7 @@ public class KildeMountTest : ExplorerTestContext
     [Fact]
     public void KildeExplorer_WhenNoTitleTemplateIsGiven_ThenThePageTitleIsLeftToTheHost()
     {
-        var module = JSInterop.SetupModule(Fhi.Munin.Explorer.Blazor.ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.SetupVoid("setTitle", _ => true).SetVoidResult();
 
         var cut = MountByName("KildeExplorer", "http://localhost/kilder?kilde=als");
