@@ -63,10 +63,10 @@ const stub = {
       throw new Error(`the stub would not reset its lists: ${response.status}`);
     }
   },
-  async addToList(variabelId) {
+  async addToList(variabelIds) {
     const [list] = await (await fetch(`${stubBase}/api/explorer/my/lists`)).json();
     const response = await fetch(`${stubBase}/api/explorer/my/lists/${list.id}/variables`, {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ variabelIds: [variabelId] }),
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ variabelIds: [].concat(variabelIds) }),
     });
     if (!response.ok) {
       throw new Error(`the stub would not add to its list: ${response.status}`);
