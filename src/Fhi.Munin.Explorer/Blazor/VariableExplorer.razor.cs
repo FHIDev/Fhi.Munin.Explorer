@@ -458,6 +458,12 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             // A lookup still pending belongs to the view being left.
             mirror.Arrived();
 
+            // An entry from before a link was used still carries its id; kept, a copied address would carry it again.
+            if (arrived.OwnListId is { } listId && _ownListsUsed.Contains(listId))
+            {
+                arrived.OwnListId = null;
+            }
+
             // The variable alone names its primary row, as ResolveAsync pins it for the code spelling; left to the
             // search, it would open whichever row the list puts first.
             if (Declined("datasamlingId") && arrived.SelectedVariableId is { } id && _known.TryGetValue(id, out var known))
@@ -669,13 +675,22 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
     private void OnShareCodeChanged(string? code) => _state.ShareCode = code;
 
-    private void OnOwnListIdChanged(Guid? id) => _state.OwnListId = id;
+    private void OnOwnListIdChanged(Guid? id)
+    {
+        if (id is null && _state.OwnListId is { } used)
+        {
+            _ownListsUsed.Add(used);
+        }
 
+        _state.OwnListId = id;
+    }
+
+    private readonly HashSet<Guid> _ownListsUsed = [];
     private readonly HashSet<Guid> _ownListsSeen = [];
     private int _ownListArrival = -1;
 
-    // Each id is followed once, on the arrival that brought it: a Back or Forward remount to an entry that still
-    // carries an id this explorer has seen, after it was used and left the address, opens nothing.
+    // Each id is followed once, on the arrival that first brought it: a Back or Forward remount to an entry that
+    // still carries an id this explorer has already seen opens nothing.
     private Guid? SearchOwnListId()
     {
         if (_state.OwnListId is { } id && _ownListsSeen.Add(id))

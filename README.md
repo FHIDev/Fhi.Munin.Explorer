@@ -1456,8 +1456,9 @@ A new flag adds its row here, with the bead, in the PR that adds it, and its rem
   when it is not one of the reader's lists, or no longer exists, the tab says the list was not found. Either way the
   key then leaves the address, so an address the reader copies afterwards carries no list id; while the reader's lists
   cannot be read, or the switch to the list fails, it stays until a read or the list tab's retry succeeds. Each list
-  id is followed once per visit, on the arrival that brought it: Back or Forward to an address that still has it
-  neither reopens the tab nor replaces the list the reader chose. Signed out, the reader is
+  id is followed once until the page is reloaded, on the arrival that first brought it: Back or Forward to an address
+  that still has it neither reopens the tab nor replaces the list the reader chose, and a used id leaves the address
+  again. Signed out, the reader is
   asked to sign in, in a sentence where the tab would be (above the browser list when `CodePicker` is on), and the key
   stays, so the address the host's sign-in returns to opens the list. The package draws no sign-in control; the
   host's own does that. A `?delekode=` in the same address wins: the shared list is shown, and for a signed-in reader

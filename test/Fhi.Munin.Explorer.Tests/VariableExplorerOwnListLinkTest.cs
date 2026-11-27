@@ -163,4 +163,23 @@ public class VariableExplorerOwnListLinkTest : ExplorerTestContext
         cut.WaitForAssertion(() =>
             Assert.Contains("Mine hjertevariabler", cut.Find("[id^='munin-explorer-list-heading-']").TextContent, StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void Render_WhenBackReachesAnEntryWithAUsedListeId_ThenTheIdLeavesTheAddressAgain()
+    {
+        // Left in, the address the reader copies after Back would carry their private list's id once more.
+        var cut = RenderAt($"?listeId={SecondList}", flag: true);
+        cut.WaitForAssertion(() => Assert.DoesNotContain("listeId", LastWritten() ?? "listeId", StringComparison.OrdinalIgnoreCase));
+        var writes = JSInterop.Invocations.Count(i => i.Identifier is "history.replaceState" or "history.pushState");
+
+        Services.GetRequiredService<NavigationManager>().NavigateTo($"http://localhost/?search=alder&listeId={SecondList}");
+        cut.WaitForAssertion(() => Assert.Contains("alder", cut.Find("input[type=search], input[type=text]").GetAttribute("value") ?? "", StringComparison.Ordinal));
+        cut.Find("input[type=search], input[type=text]").Change("alder ved");
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.True(JSInterop.Invocations.Count(i => i.Identifier is "history.replaceState" or "history.pushState") > writes);
+            Assert.DoesNotContain("listeId", LastWritten() ?? "listeId", StringComparison.OrdinalIgnoreCase);
+        });
+    }
 }
