@@ -40,6 +40,9 @@ public class VariableCodeLookupTest : ExplorerTestContext
 
         public bool Throttled { get; init; }
 
+        /// <summary>Throws as HttpClient's own timeout does: an OperationCanceledException on a token nobody cancelled.</summary>
+        public bool TimesOut { get; init; }
+
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default, SortDirection direction = SortDirection.Ascending,
@@ -81,6 +84,11 @@ public class VariableCodeLookupTest : ExplorerTestContext
             if (Throttled)
             {
                 throw new MuninExplorerRateLimitedException();
+            }
+
+            if (TimesOut)
+            {
+                throw new TaskCanceledException("timeout");
             }
 
             return Unanswered.Contains(code) ? null
@@ -154,7 +162,7 @@ public class VariableCodeLookupTest : ExplorerTestContext
     }
 
     [Fact]
-    public void OnInitializedAsync_WhenTheAddressesCodeIsStillLookedUp_ThenAStatusSaysSoUntilTheVariableOpens()
+    public void OnInitializedAsync_WhenTheAddressCodeIsStillLookedUp_ThenAStatusSaysSoUntilTheVariableOpens()
     {
         // Without it the reader sees an empty area while the code is asked.
         var client = new LookupClient { Gate = new(TaskCreationOptions.RunContinuationsAsynchronously) };
@@ -218,7 +226,7 @@ public class VariableCodeLookupTest : ExplorerTestContext
     }
 
     [Fact]
-    public async Task Dispose_WhileTheAddressesCodeIsLookedUp_ThenTheRequestIsCancelledAndNothingIsLogged()
+    public async Task DisposeAsync_WhenTheAddressCodeIsStillLookedUp_ThenTheRequestIsCancelledAndNothingIsLogged()
     {
         // A closed explorer has no reader for the answer.
         var client = new LookupClient { Gate = new(TaskCreationOptions.RunContinuationsAsynchronously) };
@@ -233,7 +241,7 @@ public class VariableCodeLookupTest : ExplorerTestContext
     }
 
     [Fact]
-    public async Task Dispose_WhileAnOpenVariablesCodeIsLearned_ThenTheRequestIsCancelledAndNothingIsLogged()
+    public async Task DisposeAsync_WhenAnOpenVariablesCodeIsStillBeingLearned_ThenTheRequestIsCancelledAndNothingIsLogged()
     {
         // Learning a code for the address outlives no explorer, and its cancellation is no failure to retry or log.
         var client = new LookupClient { Gate = new(TaskCreationOptions.RunContinuationsAsynchronously) };
@@ -290,5 +298,30 @@ public class VariableCodeLookupTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Equal(Folded.Id.ToString(), SharedLink(cut)["variabelId"].ToString()));
         Assert.False(SharedLink(cut).ContainsKey("variabel"));
+    }
+
+    [Fact]
+    public async Task Learn_WhenTheClientTimesOut_ThenItIsLoggedAndAskedOnceMore()
+    {
+        // A timeout is an OperationCanceledException too, and only our own cancellation may go unlogged.
+        var client = new LookupClient { TimesOut = true };
+        var cut = Render(client, "http://localhost/variabler?search=hkr");
+        Open(cut, Answered.Name);
+
+        await Rerender(cut, 5);
+
+        Assert.Equal([Answered.Code, Answered.Code], client.CodesAsked.Where(c => c == Answered.Code));
+        Assert.Equal(2, Logged.Count(e => e.Level == LogLevel.Error && e.Exception is TaskCanceledException));
+    }
+
+    [Fact]
+    public void OnInitializedAsync_WhenTheAddressCodeTimesOut_ThenItIsLogged()
+    {
+        var client = new LookupClient { TimesOut = true };
+        var cut = Render(client, $"http://localhost/variabler?variabel={Answered.Code}");
+
+        cut.WaitForElement("ul.munin-explorer-data-list");
+
+        Assert.Contains(Logged, e => e.Level == LogLevel.Error && e.Exception is TaskCanceledException);
     }
 }

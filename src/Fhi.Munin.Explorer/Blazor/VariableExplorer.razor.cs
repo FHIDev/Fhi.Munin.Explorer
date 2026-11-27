@@ -191,7 +191,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     private readonly HashSet<Guid> _asked = [];
     private readonly HashSet<Guid> _askedAgain = [];
 
-    // Variables whose own code Munin answers with nothing or with another variable: a link by that code opens neither.
+    // Variables whose own code Munin answers with nothing or with another variable: a link by that code does not open them.
     private readonly HashSet<Guid> _unresolved = [];
 
     // Cancelled on dispose, so a code still being learned does not outlive the explorer.
@@ -667,8 +667,8 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         ? null
         : _searchVariableAddress ??= v => VariableAddress(v.Code, v.KildeId, v.VersionStatus, v.Id, v.DatasamlingId);
 
-    // By code once Munin has answered one, the datasamling as WithDatasamling names it. Until then the id link that
-    // worked before: the search keeps a selection only on a row its first page shows, so it searches the code.
+    // By code once Munin has answered a code, and not for a variable whose own code answered nothing; otherwise the id
+    // link that worked before: the search keeps a selection only on a row its first page shows, so it searches the code.
     private string? VariableAddress(string? code, Guid? kildeId, string? versionStatus, Guid variableId, Guid? datasamlingId)
     {
         if (string.IsNullOrWhiteSpace(code))
