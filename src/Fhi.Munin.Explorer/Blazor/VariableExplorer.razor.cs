@@ -29,7 +29,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </para>
 /// <para>
 /// <b>It will not take a query key away from you.</b> It reads and rewrites the keys in
-/// <see cref="ExplorerUrlState.QueryKeys"/> and touches nothing else, so a host's own
+/// <see cref="ExplorerUrlState.QueryKeys"/>, <c>listeId</c> only with <c>MuninExplorer:Features:ListLink</c> on, and
+/// touches nothing else, so a host's own
 /// <c>?utm_source=</c> survives every filter change. <see cref="DeclinedKeys"/> is how you keep one
 /// of ours as well.
 /// </para>
@@ -43,7 +44,9 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <para>
 /// Which tab is open is circuit state and not a query key: a link carries the search, not the
 /// reader's own lists, and a shared link that opened on somebody else's Variabelliste would be a
-/// link to an empty page for everyone but its author.
+/// link to an empty page for everyone but its author. Two keys open the list tab on arrival:
+/// <c>?delekode=</c>, a shared list, and, with <c>MuninExplorer:Features:ListLink</c> on,
+/// <c>?listeId=</c>, one of the reader's own lists.
 /// </para>
 /// </remarks>
 public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
@@ -667,6 +670,21 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     private void OnShareCodeChanged(string? code) => _state.ShareCode = code;
 
     private void OnOwnListIdChanged(Guid? id) => _state.OwnListId = id;
+
+    private Guid? _ownListSeen;
+    private int _ownListArrival = -1;
+
+    // The tab opens on the arrival that brought the id; a Back or Forward remount that still carries it does not.
+    private Guid? SearchOwnListId()
+    {
+        if (_state.OwnListId != _ownListSeen)
+        {
+            _ownListSeen = _state.OwnListId;
+            _ownListArrival = _arrival;
+        }
+
+        return _ownListArrival == _arrival ? _ownListSeen : null;
+    }
 
     // Off, listeId is not ours: not read, not written, and left in the address as it arrived.
     private bool ListLinkOn => Services.GetService<ListLinkSwitch>()?.On == true;

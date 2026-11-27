@@ -1998,6 +1998,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     public void Dispose()
     {
+        _disposed = true;
+
         if (_state is not null)
         {
             _state.Changed -= OnStateChanged;

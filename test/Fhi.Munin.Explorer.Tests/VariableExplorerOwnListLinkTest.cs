@@ -127,4 +127,19 @@ public class VariableExplorerOwnListLinkTest : ExplorerTestContext
 
         Assert.False(ListTabSelected(cut));
     }
+
+    [Fact]
+    public void Render_WhenBackReturnsASignedOutReaderToAnAddressWithTheId_ThenTheTabStaysOnTheResults()
+    {
+        // Signed out the id stays in every entry the explorer writes, so a remount that followed it again would put the
+        // reader on the list each time they went Back to their results.
+        var cut = RenderAt($"?listeId={SecondList}", flag: true, signedIn: false, browserList: true);
+        cut.WaitForAssertion(() => Assert.True(ListTabSelected(cut)));
+        cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Søkeresultat").Click();
+
+        Services.GetRequiredService<NavigationManager>().NavigateTo($"http://localhost/?search=alder&listeId={SecondList}");
+
+        cut.WaitForAssertion(() => Assert.Contains("alder", cut.Find("input[type=search], input[type=text]").GetAttribute("value") ?? "", StringComparison.Ordinal));
+        Assert.False(ListTabSelected(cut));
+    }
 }

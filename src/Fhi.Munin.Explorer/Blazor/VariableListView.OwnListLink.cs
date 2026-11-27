@@ -14,8 +14,8 @@ public sealed partial class VariableListView
     /// Read only with <c>MuninExplorer:Features:ListLink</c> on. Signed in, the list is shown when it is one of the reader's,
     /// and the view says it was not found when it is not; while a <see cref="ShareCode"/> is open, the shared list stays.
     /// In each case <see cref="OwnListIdChanged"/> then reports null, so a host writing the id into its address can drop it.
-    /// While the reader's lists cannot be read the id waits, and is followed once a read, or the retry, succeeds. An id set
-    /// again after null is followed again.
+    /// While the reader's lists cannot be read, or the switch to the list fails, the id waits, and is followed once a read,
+    /// or the retry, succeeds. An id set again after null is followed again.
     /// </para>
     /// <para>
     /// Signed out nothing is reported, so the id stays where the host keeps it until the reader signs in. With the
@@ -24,10 +24,13 @@ public sealed partial class VariableListView
     /// </remarks>
     [Parameter] public Guid? OwnListId { get; set; }
 
-    /// <summary>Raised with null once <see cref="OwnListId"/> has been opened or found missing.</summary>
+    /// <summary>Raised with null once <see cref="OwnListId"/> has been opened, found missing, or set aside for an open shared list.</summary>
     [Parameter] public EventCallback<Guid?> OwnListIdChanged { get; set; }
 
     private Guid? _followedOwnListId;
+
+    // A view the explorer remounted meanwhile must not report for the id its successor now holds.
+    private bool _disposed;
 
     // Said in the alert region until the reader's next action clears it, as every failure there is.
     private bool _ownListMissing;
@@ -72,6 +75,13 @@ public sealed partial class VariableListView
             {
                 await ShowListAsync(id);
             }
+
+            // A switch that failed has not opened the list: the id waits for the retry, which follows it again.
+            if (_failed)
+            {
+                _followedOwnListId = null;
+                return;
+            }
         }
         else
         {
@@ -79,6 +89,9 @@ public sealed partial class VariableListView
             _ownListMissing = true;
         }
 
-        await OwnListIdChanged.InvokeAsync(null);
+        if (!_disposed && OwnListLink == id)
+        {
+            await OwnListIdChanged.InvokeAsync(null);
+        }
     }
 }

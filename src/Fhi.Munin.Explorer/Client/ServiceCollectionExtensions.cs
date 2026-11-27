@@ -77,7 +77,7 @@ public sealed class MuninExplorerFeatures
     /// <summary>A link that opens one of the signed-in reader's own variable lists, <c>?listeId=&lt;list id&gt;</c> on the
     /// page <c>VariableExplorer</c> is mounted on; key <c>MuninExplorer:Features:ListLink</c>. The id is the one
     /// <c>GET api/explorer/my/lists</c> gives the list. Signed in, the list tab opens on that list, or says the list was not
-    /// found when it is not one of the reader's; signed out, the reader is told to sign in, and the key stays in the address
+    /// found when it is not one of the reader's; signed out, the reader is told to sign in unless a shared list is open, and the key stays in the address
     /// so the same address opens the list once they have. Off, the key is not read or written and stays as it arrived.</summary>
     public bool? ListLink { get; set; }
 }

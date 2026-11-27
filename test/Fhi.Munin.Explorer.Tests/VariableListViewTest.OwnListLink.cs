@@ -112,4 +112,74 @@ public partial class VariableListViewTest
 
         cut.WaitForAssertion(() => Assert.Equal("Kreft og svulster", ShownHeading(cut)));
     }
+
+    private sealed class HeldSwitchClient : ListClient
+    {
+        public TaskCompletionSource Release { get; } = new();
+
+        public override async Task<Page<VariableListItem>?> GetMyListVariablesAsync(
+            Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (id == SecondListId)
+            {
+                await Release.Task;
+            }
+
+            return await base.GetMyListVariablesAsync(id, page, pageSize, kildeIds, cancellationToken);
+        }
+    }
+
+    [Fact]
+    public void OwnListId_WhenTheHostDropsItWhileTheListIsStillLoading_ThenTheLateAnswerReportsNothing()
+    {
+        // A late report would clear the id the host holds by then, which in the explorer is a newer link's.
+        var client = new HeldSwitchClient { ListCount = 2 };
+        var cut = RenderOwnListLink(client, ListClient.SecondListId);
+        cut.WaitForAssertion(() => Assert.Contains(ListClient.SecondListId, client.VariablesAskedFor));
+
+        cut.Render(p => p.Add(c => c.OwnListId, (Guid?)null));
+        client.Release.SetResult();
+
+        cut.WaitForAssertion(() => Assert.Equal("Hjerte og kar", ShownHeading(cut)));
+        Assert.Empty(_ownListReported);
+    }
+
+    [Fact]
+    public void OwnListId_WhenASignedOutReaderOpensASharedListBesideIt_ThenTheIdIsKeptForTheSignIn()
+    {
+        // Dropped here, the address the host's sign-in returns to would no longer name the reader's list.
+        var client = new SharedAndOwnClient { ListCount = 2 };
+        Services.AddSingleton(new ListLinkSwitch(true));
+        Services.AddSingleton(new CodePickerSwitch(false));
+        Services.AddSingleton<IMuninExplorerClient>(client);
+        Services.AddScoped<VariableListState>();
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var cut = Render<VariableListView>(p => p
+            .Add(c => c.IsAuthenticated, false)
+            .Add(c => c.ShareCode, "AB12CD")
+            .Add(c => c.OwnListId, ListClient.SecondListId)
+            .Add(c => c.OwnListIdChanged, EventCallback.Factory.Create<Guid?>(this, id => _ownListReported.Add(id))));
+
+        cut.WaitForAssertion(() => Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal));
+        Assert.Empty(_ownListReported);
+    }
+
+    [Fact]
+    public void OwnListId_WhenTheReaderActsAfterTheNotFoundSentence_ThenTheSentenceGoes()
+    {
+        // Ranked above most sentences in the alert region, a sentence that stayed would hide every later one.
+        var client = new ListClient { ListCount = 2 };
+        var cut = RenderOwnListLink(client, Guid.NewGuid());
+        cut.WaitForAssertion(() => Assert.Contains("Fant ikke variabellisten", cut.Find("[role=alert]").TextContent, StringComparison.Ordinal));
+
+        cut.Find("select").Change(ListClient.SecondListId.ToString());
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal("Hjerte og kar", ShownHeading(cut));
+            Assert.DoesNotContain("Fant ikke variabellisten", cut.Find("[role=alert]").TextContent, StringComparison.Ordinal);
+        });
+    }
 }

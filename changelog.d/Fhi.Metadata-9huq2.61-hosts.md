@@ -5,5 +5,5 @@ category: Notes for hosts
   so make sure the host's sign-in returns the reader to the address they came from. With the flag off the key is
   not read and is left in the address untouched. A host whose page already means something by `listeId` can decline
   it through `DeclinedKeys`. `ExplorerUrlState.QueryKeys` and `ScalarQueryKeys` now include `listeId` whatever the
-  flag says, so a host that uses `ExplorerUrlState` itself and keeps a `listeId` of its own should stop treating the
-  key as its own.
+  flag says, and `ExplorerUrlState.Parse` reads it, so a host that uses `ExplorerUrlState` itself and has a parameter
+  of its own by that name needs to rename it.
