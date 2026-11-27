@@ -189,11 +189,52 @@ public class KildeAccessTest : ExplorerTestContext
     }
 
     [Fact]
-    public void OpenData_WhenTheHjemmesideIsNoWebPage_ThenTheLandingPageIsTheWebsite()
+    public void OpenData_WhenTheLandingPageIsNoWebPage_ThenTheHjemmesideIsTheWebsite()
     {
-        var offer = Offers(Kilde("""["apne-data"]""", ("Hjemmeside", "mailto:post@example.org"), ("landingPage", "https://example.org/register"))).Single();
+        var offer = Offers(Kilde("""["apne-data"]""", ("landingPage", "mailto:post@example.org"), ("Hjemmeside", "https://example.org/register"))).Single();
 
         Assert.Equal("https://example.org/register", KildeAccess.Pieces(offer).Select(p => p.Fill?.Href).Single(h => h is not null));
+    }
+
+    [Fact]
+    public void KildeView_WhenAResearchProjectHasBothWebsites_ThenItsLandingPageIsTheOneShown()
+    {
+        // HealthDCAT reads landingPage first, and the address shown must be the one the export gives (Fhi.Metadata-l9l2n.197).
+        var project = Kilde("""["tilgang-krever-soknad"]""",
+            ("Hjemmeside", "https://institusjon.example.org"), ("landingPage", "https://prosjekt.example.org/om")) with
+        { Kildetype = "forskningsprosjekt" };
+
+        var block = AccessSection(RenderKilde(project)).QuerySelector(".munin-explorer-kilde__access")!;
+
+        Assert.Equal(["https://prosjekt.example.org/om"], block.QuerySelectorAll("a").Select(a => a.GetAttribute("href")));
+    }
+
+    [Fact]
+    public void OpenData_WhenBothWebsitesAreWebPages_ThenTheLandingPageIsTheWebsite()
+    {
+        var offer = Offers(Kilde("""["apne-data"]""", ("Hjemmeside", "https://institusjon.example.org"), ("landingPage", "https://prosjekt.example.org/om"))).Single();
+
+        Assert.Equal("https://prosjekt.example.org/om", KildeAccess.Pieces(offer).Select(p => p.Fill?.Href).Single(h => h is not null));
+    }
+
+    [Fact]
+    public void Direct_WhenTheLandingPageIsNoWebPage_ThenTheHjemmesideIsTheWebsite()
+    {
+        // As the export does: an address that is not a web page is passed over, not opened as «Søk om tilgang».
+        var offer = Assert.Single(Offers(Kilde("""["tilgang-krever-soknad"]""",
+            ("landingPage", "mailto:prosjekt@example.org"), ("Hjemmeside", "https://institusjon.example.org"))));
+
+        Assert.Equal("https://institusjon.example.org", offer.Links.Single().Href);
+    }
+
+    [Fact]
+    public void KildeView_WhenARegisterHasOnlyAHjemmeside_ThenThatIsStillTheWebsite()
+    {
+        var register = Kilde("""["tilgang-krever-soknad"]""", ("Hjemmeside", "https://www.stolav.no/nhr/")) with { Kildetype = "nasjonaltMedisinskKvalitetsregister" };
+
+        var block = AccessSection(RenderKilde(register)).QuerySelector(".munin-explorer-kilde__access")!;
+
+        Assert.Equal(["https://www.stolav.no/nhr/"], block.QuerySelectorAll("a").Select(a => a.GetAttribute("href")));
     }
 
     [Fact]
