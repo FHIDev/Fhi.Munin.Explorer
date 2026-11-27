@@ -280,7 +280,10 @@ public interface IMuninExplorerClient
     /// <remarks>
     /// Carries a default body, answering null, so a host implementing this contract itself keeps building. While this
     /// answers null, <see cref="Blazor.VariableExplorer"/> writes no code into its own links and keeps naming variables
-    /// by id; a code link that arrives anyway opens as a search for the code.
+    /// by id; a code link that arrives anyway opens as a search for the code. A null is taken as that variable's alone,
+    /// and is not asked again: for each variable a reader opens the explorer sends at most two requests, a
+    /// <see cref="GetVariableAsync(Guid, bool, CancellationToken)"/> to learn the code and then this, besides the detail
+    /// the view itself reads and the lookup of a code link the reader arrives by.
     /// </remarks>
     Task<VariableDetail?> GetVariableByCodeAsync(string code, CancellationToken cancellationToken = default) =>
         Task.FromResult<VariableDetail?>(null);

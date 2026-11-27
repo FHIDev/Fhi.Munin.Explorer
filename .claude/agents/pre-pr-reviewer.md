@@ -254,6 +254,12 @@ The component must render inside helsedata's **legacy** Blazor Server (`AddServe
   module. Samples carry styling because they have no Stiler; the package must not.
   `scripts/assert-package-contents.sh` enforces it by naming every packed entry, so a new file
   under `wwwroot` and its entry in that script have to arrive in the same commit.
+- **A behaviour moved onto `explorer-interop.js` keeps a module-less path.** The README promises that a host which
+  does not serve the module draws the same page. When a diff replaces a .NET call (`ElementReference.FocusAsync`, a
+  render-time decision) with an `ExplorerInterop` export, check what the code does when the import fails: a caller
+  that then does nothing has lost the behaviour on that host. **Important** when the lost behaviour is one a reader
+  relies on (focus after a removal, WCAG 2.4.3); a missing test that stages a refused import is a separate Nit. Not
+  for a feature the README documents as module-only (the signed-out browser list, the compact action).
 - **Docs and samples mount with `render-mode="Server"`, never `ServerPrerendered`** — prerendering
   runs `OnInitializedAsync` twice and doubles the API calls, and an `EventCallback` serialises to
   an empty delegate across a static-SSR boundary. If the change adds a callback parameter or a new
@@ -490,6 +496,15 @@ feature calls, which ship unflagged.
   `accessibility` and `ci summary`. Say which ones the diff will exercise — a change touching a
   class name will meet three of them — and never report a green check as evidence for something
   outside what that check can see (§6, §10).
+- **A test claim in the body is checked leg by leg.** For «each new leg mutated alone fails a test», or any claim like
+  it, take every new condition, call and argument in the diff and name the test that fails without it. A call its
+  callers only reach where it does nothing, or an argument (a cancellation token, say) every test double ignores,
+  fails no test. The false claim is Important until the leg goes or the claim names it; rate the gap itself by §11.
+- **A request count in prose is checked on every path that reaches the call.** «asked once», «two requests per …»:
+  follow each caller, with and without the value it may already hold, and count the client calls, the fetch that
+  learns a missing value, retries and the caller's own lookups included; where a guard (a set of ids already asked)
+  lets only the first caller send, count by the caller that runs first. A count wrong on one path is Important, in
+  the body, a changelog fragment and an XML doc alike; a count that varies by path says «at most».
 
 ---
 

@@ -156,6 +156,15 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     private int _resolution;
     private bool _resolvePushed;
 
+    // The pending lookup of the address's code, cancelled when the reader moves on or the explorer goes.
+    private CancellationTokenSource? _lookup;
+
+    private void CancelLookup()
+    {
+        _lookup?.Cancel();
+        _lookup = null;
+    }
+
     // «The datasamling in the link was not found»: cascaded to VariableSearch, which says it beside «Vis alle treff».
     private bool _linkNote;
 
@@ -163,9 +172,9 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     // carries the arrival's spelling is the same view rather than a remount.
     private (string Arrived, string Resolved)? _alias;
 
-    // Whether Munin answers a variable by its code: null until a lookup has said. A code goes into a link only once
-    // one has, so a host without the route keeps writing links that open (Fhi.Metadata-l9l2n.182).
-    private bool? _codesResolve;
+    // Whether Munin has answered a variable by its code. A code goes into a link only once it has, so a host without
+    // the route keeps writing links that open (Fhi.Metadata-l9l2n.182).
+    private bool _codesResolve;
 
     // What the address needs to name an open variable by its code, learned once per variable and only from Munin's
     // answer to that code: the code, its primary datasamling, whether it is historical, and its datasamlinger's codes.
@@ -184,6 +193,22 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
                 .ToDictionary(g => g.Key, g => g.First().Code!.Trim()));
     }
     private readonly HashSet<Guid> _asked = [];
+    private readonly HashSet<Guid> _askedAgain = [];
+
+    // Variables whose own code Munin answers with nothing or with another variable: a link by that code does not open them.
+    private readonly HashSet<Guid> _unresolved = [];
+
+    // Cancelled on dispose, so a code still being learned does not outlive the explorer.
+    private readonly CancellationTokenSource _disposal = new();
+
+    // A failing Munin would otherwise be asked again at every render for as long as the reader stays.
+    private void AskAgainOnce(Guid id)
+    {
+        if (_askedAgain.Add(id))
+        {
+            _asked.Remove(id);
+        }
+    }
 
     private static bool NeedsResolving(Binding state) =>
         state.SelectedVariableCode is not null && state.SelectedVariableId is null;
@@ -208,10 +233,17 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         var bare = IsBare(arrived);
         _resolving = true;
 
+        var lookup = _lookup = new CancellationTokenSource();
+
         VariableDetail? detail;
         try
         {
-            detail = await Client.GetVariableByCodeAsync(code);
+            detail = await Client.GetVariableByCodeAsync(code, lookup.Token);
+        }
+        catch (OperationCanceledException) when (lookup.IsCancellationRequested)
+        {
+            // Left for another view or disposed: nothing failed, and the generation check below would drop the answer.
+            return;
         }
         catch (MuninExplorerRateLimitedException ex)
         {
@@ -223,6 +255,15 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             // Read as not found: the reader gets the search for the code.
             Log?.LogError(ex, "could not resolve the variable code in the address");
             detail = null;
+        }
+        finally
+        {
+            if (ReferenceEquals(_lookup, lookup))
+            {
+                _lookup = null;
+            }
+
+            lookup.Dispose();
         }
 
         if (generation != _resolution || _disposed)
@@ -244,6 +285,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         else
         {
             _codesResolve = true;
+            _unresolved.Remove(detail.Id);
             var known = Known.Of(detail);
             var historical = known.Historical;
             _known[detail.Id] = known;
@@ -317,29 +359,37 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     }
 
     // Asked once per variable, off the render: the address keeps the id form until Munin has answered the code with
-    // this very variable. A failure is asked again at the next render that needs it.
+    // this very variable. A failure is asked once more, at the next render that needs it (Fhi.Metadata-l9l2n.188).
     private void Learn(Guid id, string? code = null)
     {
-        if (_codesResolve is false || !_asked.Add(id))
+        if (_disposed || !_asked.Add(id))
         {
             return;
         }
 
+        var token = _disposal.Token;
         _ = InvokeAsync(async () =>
         {
             try
             {
-                code ??= (await Client.GetVariableAsync(id, includeHistorical: true))?.Code;
+                code ??= (await Client.GetVariableAsync(id, includeHistorical: true, token))?.Code;
                 if (_disposed || !VariableCodes.IsLinkCode(code))
                 {
                     return;
                 }
 
-                var detail = await Client.GetVariableByCodeAsync(code!);
-                if (_disposed || detail?.Id != id)
+                // A null here is this variable's alone: a 409 fold or a hidden variable says nothing of the others.
+                var detail = await Client.GetVariableByCodeAsync(code!, token);
+                if (_disposed)
                 {
-                    // Nothing for a code that names a variable: this Munin, or this host's client, has no code route.
-                    _codesResolve ??= detail is null ? false : null;
+                    return;
+                }
+
+                if (detail?.Id != id)
+                {
+                    // Redrawn, since the open row may already carry a link by this code.
+                    _unresolved.Add(id);
+                    StateHasChanged();
                     return;
                 }
 
@@ -350,14 +400,18 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
                 _mirror.Reown(before, Linkable(Coded(_state.ToState())).ToQueryString());
                 StateHasChanged();
             }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                // Disposed while asking: nothing failed.
+            }
             catch (MuninExplorerRateLimitedException ex)
             {
-                _asked.Remove(id);
+                AskAgainOnce(id);
                 Log?.LogWarning(ex, "could not learn variable {VariableId}'s code for the address", id);
             }
             catch (Exception ex)
             {
-                _asked.Remove(id);
+                AskAgainOnce(id);
                 Log?.LogError(ex, "could not learn variable {VariableId}'s code for the address", id);
             }
         });
@@ -457,6 +511,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             // A remount: the browser already shows this address, and a late write could overwrite a Forward entry.
             // A lookup still pending belongs to the view being left.
             mirror.Arrived();
+            CancelLookup();
 
             // An entry from before a link was used still carries its id; kept, a copied address would carry it again.
             if (arrived.OwnListId is { } listId && _ownListsUsed.Contains(listId))
@@ -521,8 +576,18 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     /// <inheritdoc />
     public ValueTask DisposeAsync()
     {
+        if (_disposed)
+        {
+            return ValueTask.CompletedTask;
+        }
+
         _disposed = true;
         Navigation.LocationChanged -= Moved;
+        _lookup?.Cancel();
+        _lookup?.Dispose();
+        _lookup = null;
+        _disposal.Cancel();
+        _disposal.Dispose();
 
         return _interop?.DisposeAsync() ?? ValueTask.CompletedTask;
     }
@@ -612,8 +677,9 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         ? null
         : _searchVariableAddress ??= v => VariableAddress(v.Code, v.KildeId, v.VersionStatus, v.Id, v.DatasamlingId);
 
-    // By code once Munin has answered one, the datasamling as WithDatasamling names it. Until then the id link that
-    // worked before: the search keeps a selection only on a row its first page shows, so it searches the code.
+    // By code once Munin has answered a code, unless it answered this variable's own code with nothing or another
+    // variable; otherwise the id link that worked before: the search keeps a selection only on a row its first page
+    // shows, so it searches the code.
     private string? VariableAddress(string? code, Guid? kildeId, string? versionStatus, Guid variableId, Guid? datasamlingId)
     {
         if (string.IsNullOrWhiteSpace(code))
@@ -621,7 +687,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             return null;
         }
 
-        if (!NoCodes && _codesResolve is true && VariableCodes.IsLinkCode(code))
+        if (!NoCodes && _codesResolve && !_unresolved.Contains(variableId) && VariableCodes.IsLinkCode(code))
         {
             // Only an open row's link is drawn, so asking its primary here is one lookup per row opened.
             if (!_known.ContainsKey(variableId))

@@ -164,21 +164,9 @@ public sealed partial class VariableListView
         await state.ReadBrowserListAsync();
 
         // Before «Del liste» or a row's «Fjern» can be pressed: both focus moves ask what was pressed last.
-        if (ShowsBrowserCopy && !_pressesWatched)
+        if (ShowsBrowserCopy)
         {
-            try
-            {
-                _pressesWatched = await ExplorerInterop.WatchPressesAsync(Js);
-            }
-            catch (JSException ex)
-            {
-                _pressesWatched = true;
-                Log?.LogError(ex, "the module could not watch the reader's presses for the browser list");
-            }
-            catch (Exception ex)
-            {
-                Log?.LogWarning(ex, "could not watch the reader's presses for the browser list");
-            }
+            await WatchPressesOnceAsync();
         }
 
         var wanted = (state.BrowserVersion, _sharedPageNumber, PageSize);
@@ -300,6 +288,28 @@ public sealed partial class VariableListView
         if (State.Reader == reader)
         {
             _browserRemoveFocus = (Math.Max(at, 0), page, moves);
+        }
+    }
+
+    private async Task WatchPressesOnceAsync()
+    {
+        if (_pressesWatched)
+        {
+            return;
+        }
+
+        try
+        {
+            _pressesWatched = await ExplorerInterop.WatchPressesAsync(Js);
+        }
+        catch (JSException ex)
+        {
+            _pressesWatched = true;
+            Log?.LogError(ex, "the module could not watch the reader's presses");
+        }
+        catch (Exception ex)
+        {
+            Log?.LogWarning(ex, "could not watch the reader's presses");
         }
     }
 
