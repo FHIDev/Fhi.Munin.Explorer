@@ -277,4 +277,27 @@ public class VariableListViewEmptyPageAfterRemoveTest : ExplorerTestContext
         Assert.DoesNotContain("fjernet fra listen", Said(cut));
         Assert.DoesNotContain(module.Invocations, i => i.Identifier == FocusIfLost);
     }
+
+    [Fact]
+    public async Task View_WhenAPageIsSteppedBackFromAfterARemovalOnItHasTakenItsFocus_ThenNothingMovesFocusAndTheNextRemovalFocusesItsOwnNeighbour()
+    {
+        // No removal is waiting, yet the finished one left its page behind: the step back must not revive it or its last-row pick.
+        var client = new HoldingClient("A", "B", "C", "D", "Enhet", "Fødeland", "Gruppe", "Høyde");
+        var (cut, module) = RenderOnLastPage(client);
+        var state = Services.GetRequiredService<VariableListState>();
+        var stayed = RemoveButtons(cut)[1].Id;
+
+        await cut.InvokeAsync(() => RemoveButtons(cut)[0].ClickAsync(new MouseEventArgs()));
+        cut.WaitForAssertion(() => Assert.Equal(stayed, Assert.Single(module.Invocations[FocusIfLost]).Arguments[0]));
+
+        await cut.InvokeAsync(() => state.RemoveVariablesAsync(ListId, [client.Items[^1].VariableId]));
+        cut.WaitForAssertion(() => Assert.Contains("Fødeland", cut.Markup));
+        Assert.Single(module.Invocations[FocusIfLost]);
+
+        var neighbour = RemoveButtons(cut)[1].Id;
+        await cut.InvokeAsync(() => RemoveButtons(cut)[0].ClickAsync(new MouseEventArgs()));
+
+        cut.WaitForAssertion(() => Assert.Equal(2, module.Invocations[FocusIfLost].Count));
+        Assert.Equal(neighbour, module.Invocations[FocusIfLost][^1].Arguments[0]);
+    }
 }
