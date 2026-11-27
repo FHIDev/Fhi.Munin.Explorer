@@ -3038,6 +3038,38 @@ function keyboardFocusAssertions() {
       },
     },
     {
+      // Fhi.Metadata-emsc0.3.26: the one row of a later page goes while its page is read again, and the view steps back.
+      name: "«Fjern» on a later page's only row shows the page before, never the empty list, with focus on its last row",
+      kind: 'invariant',
+      states: ['explorer-list-tab'],
+      async stage(page, stub) {
+        await seedLastPageOfOne(page, stub);
+        return { stub };
+      },
+      async measure(page) {
+        const numbers = page.locator('[role=tabpanel]:not([hidden]) .munin-explorer-pagination-pages > button');
+        await numbers.last().click();
+        await page.waitForFunction(() => document.querySelectorAll('[role=tabpanel]:not([hidden]) td button').length === 1, null, { timeout: findTimeout });
+        const only = removes(page).first();
+        await only.focus();
+        await page.keyboard.press('Enter');
+        await page.waitForFunction(() => document.querySelectorAll('[role=tabpanel]:not([hidden]) td button').length > 1
+          || document.querySelector('[role=tabpanel]:not([hidden])')?.textContent.includes('Denne listen er tom'), null, { timeout: findTimeout });
+        await page.waitForTimeout(PRESS_SETTLE_MS);
+        if ((await page.locator('[role=tabpanel]:not([hidden])').first().textContent()).includes('Denne listen er tom')) {
+          return 'the view shows «Denne listen er tom.» while the list still has variables';
+        }
+        const lastRow = await focusedRowOf(page, removes(page).last());
+        const now = await focused(page);
+        if (now.text !== 'Fjern' || now.row !== lastRow) return `focus is on «${now.text || now.id || 'body'}» (${now.row}), not «Fjern» on the page's last row`;
+        return null;
+      },
+      async control(page, { stub }) {
+        await noFocusMoves(page);
+        await seedLastPageOfOne(page, stub);
+      },
+    },
+    {
       // Fhi.Metadata-emsc0.3.13: the signed-out reader's list in the browser, whose «Fjern» reads the page back from
       // storage before focus can land, and gives it to the heading when the list empties.
       name: "a browser list's «Fjern» leaves focus on the next row, the previous one, then the heading, and empties storage",
@@ -3089,6 +3121,16 @@ async function seedBrowserList(page) {
   await page.waitForFunction(n => [...document.querySelectorAll('[role=tabpanel]:not([hidden]) td button')]
     .filter(b => b.textContent.trim() === 'Fjern').length === n, 3, { timeout: findTimeout });
   return {};
+}
+
+// The stub's list starts at two rows; 99 more makes 101, which leaves one row on the last page at the view's page of 25
+// and at the 100 the stub serves today, since it ignores the client's size.
+async function seedLastPageOfOne(page, stub) {
+  await stub.resetLists();
+  await stub.addToList(Array.from({ length: 99 }, () => crypto.randomUUID()));
+  await page.reload({ waitUntil: 'networkidle' });
+  await states['explorer-list-tab'](page);
+  await page.locator('[role=tabpanel]:not([hidden]) .munin-explorer-pagination-content').first().waitFor({ state: 'visible', timeout: findTimeout });
 }
 
 async function focusedRowOf(page, button) {

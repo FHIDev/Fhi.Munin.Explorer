@@ -1011,7 +1011,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private bool ShouldReloadFor(VariableListState.ListChange? change) =>
         change is not { } known || (known.AffectsRows && (known.ListId is null || known.ListId == _shownList));
 
-    /// <summary>Reads the page currently being looked at. Signed out this calls nothing.</summary>
+    /// <summary>Reads the page currently being looked at, or the last one with rows when it is gone. Signed out this calls nothing.</summary>
     private async Task LoadPageAsync()
     {
         // A list the holder no longer has is one somebody deleted. Asking for its variables gets
@@ -1085,6 +1085,24 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _failed = failed;
         _page = failed ? null : read;
         _pageOf = _page is null ? null : readList;
+
+        // A page that no longer exists, often a removal's re-read landing after the press: the empty state would
+        // replace the pager, so step back to the last page with rows (Fhi.Metadata-emsc0.3.26).
+        if (_page is { Items.Count: 0 } emptied && readPage > 1)
+        {
+            _pageNumber = Math.Clamp(emptied.TotalPages, 1, readPage - 1);
+            _steppedBack = ((readList, readPage), _pageNumber);
+
+            // Read only while a removal waits for its focus, and rewritten by the next one, so no pending check is needed.
+            if (_removeContext == (readList, readPage))
+            {
+                _removeContext = (readList, _pageNumber);
+                _removeFocusLastRow = true;
+            }
+
+            await LoadPageAsync();
+            return;
+        }
 
         // Removed elsewhere, or paged away from: an open panel must not come back with stale detail.
         if (_openId is { } open && _page?.Items.Any(item => VariableDatasamlingKey.Of(item) == open) != true)
@@ -1697,16 +1715,20 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         await ShowActiveListAsync();
     }
 
-    // «Fjern» leaves with its row: when focus left with it, focus goes to the next row's (else the previous one's), or to
-    // the list's menu when none is left, and the removal is said (WCAG 2.4.3 and 4.1.3, Fhi.Metadata-mhqx0.15).
+    // «Fjern» leaves with its row: when focus left with it, focus goes to the next row's (else the previous one's, or the
+    // last row of the page stepped back to), or to the list's menu when none is left, and the removal is said (WCAG 2.4.3
+    // and 4.1.3, Fhi.Metadata-mhqx0.15).
     private readonly Dictionary<VariableDatasamlingKey, ElementReference> _removeButtons = [];
     private bool _focusAfterRemove;
     private VariableDatasamlingKey? _removedRow;
     private (int Forms, int Moves) _atRemove;
 
-    // The list and page a removal was pressed on: a list or page change meanwhile makes its focus and sentence stale.
+    // The list and page a removal's focus belongs to, where it was pressed or where the view stepped back to for it:
+    // a list or page change meanwhile makes that focus stale.
     private (Guid? List, int Page) _removeContext;
     private VariableDatasamlingKey? _removeFocusRow;
+    private bool _removeFocusLastRow;
+    private ((Guid? List, int Page) From, int To)? _steppedBack;
     private string? _removedSaid;
 
     // A new element per removal, so a second one under the same name is announced again.
@@ -1735,7 +1757,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         _focusAfterRemove = false;
 
-        var shown = _page?.Items.FirstOrDefault(i => _removeFocusRow is { } row && VariableDatasamlingKey.Of(i) == row);
+        var shown = _page?.Items.FirstOrDefault(i => _removeFocusRow is { } row && VariableDatasamlingKey.Of(i) == row)
+            ?? (_removeFocusLastRow ? _page?.Items.LastOrDefault() : null);
         return shown is not null && _removeButtons.TryGetValue(VariableDatasamlingKey.Of(shown), out var button)
             ? (RemoveButtonId(shown), button)
             : (MenuToggleId, _menuToggle);
@@ -1797,6 +1820,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         ForgetFailures();
 
         var list = _shownList.Value;
+        _steppedBack = null;
 
         try
         {
@@ -1816,22 +1840,18 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
                 ForgetNotesFor(list, key);
                 _removeButtons.Remove(key);
-                if (context == (_shownList, _pageNumber))
+
+                // The re-read may already have landed and stepped back a page: that is the removal's, not the reader moving on.
+                var steppedBack = _steppedBack is { } step && step.From == context && step.From.List == _shownList && step.To == _pageNumber;
+                if (steppedBack || context == (_shownList, _pageNumber))
                 {
-                    _removeContext = context;
+                    _removeContext = (_shownList, _pageNumber);
                     _removedRow = key;
                     _removeFocusRow = neighbour;
+                    _removeFocusLastRow = steppedBack;
                     _focusAfterRemove = true;
                     _removedSaid = T.RemovedFromList(name);
                     _removedCount++;
-                }
-
-                await RetreatFromEmptyPageAsync();
-
-                // The removal's own step back a page is not the reader moving on.
-                if (_focusAfterRemove && _removeContext == context)
-                {
-                    _removeContext = (_shownList, _pageNumber);
                 }
             }
             else
@@ -1876,20 +1896,6 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 _shownList);
 
             _actionFailure = ListActionFailure.Failed;
-        }
-    }
-
-    /// <summary>
-    /// Steps back when the page being looked at no longer exists. Emptying the last page (page three,
-    /// say) puts the empty state in place of the pager, so the reader is told the list is empty and has
-    /// no control left to reach the pages that still have rows.
-    /// </summary>
-    private async Task RetreatFromEmptyPageAsync()
-    {
-        while (_pageNumber > 1 && _page is not null && _page.Items.Count == 0)
-        {
-            _pageNumber--;
-            await LoadPageAsync();
         }
     }
 
