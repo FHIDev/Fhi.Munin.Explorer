@@ -707,7 +707,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             await WatchPressesOnceAsync();
         }
 
-        // All taken, so a flag none acts on does not linger to move focus on a later render; a removal's waits for its row to go.
+        // All taken, so a flag none acts on does not linger to move focus on a later render.
+        // The one exception is a removal's, which waits until its row has gone.
         var fromSource = TakeSourceFocusTarget();
         var fromMenu = TakeMenuFocusTarget();
         var fromWrite = TakeFocusTarget();
