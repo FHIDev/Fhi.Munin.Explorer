@@ -8,7 +8,7 @@ public class FilterFoldPreferenceTest : ExplorerTestContext
     [Fact]
     public async Task ToggleAsync_WhenPressedBeforeTheModuleIsUp_ThenTheChoiceIsKeptOnceItIsAndNotReadOver()
     {
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.Setup<string?>("readPreference", FilterFoldPreference.Key).SetResult(null);
         module.SetupVoid("writePreference", _ => true).SetVoidResult();
         var interop = new ExplorerInterop(JSInterop.JSRuntime);

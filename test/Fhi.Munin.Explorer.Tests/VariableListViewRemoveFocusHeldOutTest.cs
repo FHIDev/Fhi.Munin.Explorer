@@ -73,7 +73,7 @@ public class VariableListViewRemoveFocusHeldOutTest : ExplorerTestContext
 
     private (IRenderedComponent<VariableListView> Cut, BunitJSModuleInterop Module) RenderSignedIn(HoldingClient client)
     {
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.Setup<bool>(FocusIfLost, _ => true).SetResult(true);
         module.Setup<bool>(WatchPresses).SetResult(true);
         Services.AddSingleton(new CodePickerSwitch(true));

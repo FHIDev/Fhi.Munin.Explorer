@@ -22,7 +22,7 @@ public class PageTitleTest : ExplorerTestContext
     [Fact]
     public async Task ApplyAsync_WritesATitleOnceAndGivesTheHostItsOwnBackOnTheList()
     {
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.SetupVoid("setTitle", _ => true).SetVoidResult();
         var interop = new ExplorerInterop(JSInterop.JSRuntime);
         Assert.True(await interop.TryLoadAsync());
@@ -39,7 +39,7 @@ public class PageTitleTest : ExplorerTestContext
     public async Task ApplyAsync_InAFreshKeeperOnTheList_GivesTheHostItsTitleBackOnce()
     {
         // Back remounts the search on the list with a fresh keeper, after the old one set an item's title.
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.SetupVoid("setTitle", _ => true).SetVoidResult();
         var interop = new ExplorerInterop(JSInterop.JSRuntime);
         Assert.True(await interop.TryLoadAsync());
@@ -55,7 +55,7 @@ public class PageTitleTest : ExplorerTestContext
     [Fact]
     public async Task ApplyAsync_WhileTheNextItemLoads_LeavesTheTitleAsItIs()
     {
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.SetupVoid("setTitle", _ => true).SetVoidResult();
         var interop = new ExplorerInterop(JSInterop.JSRuntime);
         Assert.True(await interop.TryLoadAsync());
@@ -71,7 +71,7 @@ public class PageTitleTest : ExplorerTestContext
     [Fact]
     public async Task ApplyAsync_WithoutATemplate_NeverTouchesTheTitle()
     {
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.SetupVoid("setTitle", _ => true).SetVoidResult();
         var interop = new ExplorerInterop(JSInterop.JSRuntime);
         Assert.True(await interop.TryLoadAsync());

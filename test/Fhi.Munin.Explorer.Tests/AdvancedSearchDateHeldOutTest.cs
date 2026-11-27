@@ -40,7 +40,7 @@ public class AdvancedSearchDateHeldOutTest : ExplorerTestContext
 
     private IRenderedComponent<VariableSearch> OpenWithDateRow(ConditionClient client, DateInputState browser)
     {
-        JSInterop.SetupModule(ExplorerInterop.ModulePath)
+        PlanExplorerModule()
             .Setup<DateInputState>("readDateInput", _ => true)
             .SetResult(browser);
         Services.AddSingleton<IMuninExplorerClient>(client);

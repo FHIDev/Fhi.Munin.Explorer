@@ -32,7 +32,7 @@ public class AnonymousListRemoveRowTest : ExplorerTestContext
             return state;
         });
         Services.AddSingleton(new CodePickerSwitch(true));
-        _module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        _module = PlanExplorerModule();
 
         return Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, false).Add(c => c.PageSize, pageSize));
     }

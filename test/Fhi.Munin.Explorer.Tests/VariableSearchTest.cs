@@ -6771,7 +6771,7 @@ public class VariableSearchTest : ExplorerTestContext
 
     private JSRuntimeInvocationHandler<DateInputState> StubDateInput(DateInputState state)
     {
-        var read = JSInterop.SetupModule(ExplorerInterop.ModulePath)
+        var read = PlanExplorerModule()
             .Setup<DateInputState>("readDateInput", _ => true);
         read.SetResult(state);
         return read;
@@ -9609,7 +9609,7 @@ public class VariableSearchTest : ExplorerTestContext
     public void FilterFold_WhenThisBrowserKeptTheFold_ThenTheFieldsetOpensFoldedAndAPressUnfoldsIt()
     {
         // The wide screen's own fold, read from this browser and written back (Fhi.Metadata-amp8c).
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.Setup<string?>("readPreference", FilterFoldPreference.Key).SetResult("1");
         module.SetupVoid("writePreference", _ => true).SetVoidResult();
 

@@ -205,7 +205,7 @@ public class AdvancedSearchRaceTest : ExplorerTestContext
     [Fact]
     public async Task ShowHits_WhenNullstillIsPressedWhileTheBrowserIsAskedAboutADate_ThenNothingIsApplied()
     {
-        var browser = JSInterop.SetupModule(ExplorerInterop.ModulePath).Setup<DateInputState>("readDateInput", _ => true);
+        var browser = PlanExplorerModule().Setup<DateInputState>("readDateInput", _ => true);
         var client = new HeldClient();
         var cut = RenderWith(client, "navn:inneholder:a");
         Toggle(cut)!.Click();
@@ -232,7 +232,7 @@ public class AdvancedSearchRaceTest : ExplorerTestContext
     [InlineData(true)]
     public async Task ShowHits_WhenTheFormIsClosedWhileTheBrowserIsAskedAboutADate_ThenNothingIsApplied(bool reopen)
     {
-        var browser = JSInterop.SetupModule(ExplorerInterop.ModulePath).Setup<DateInputState>("readDateInput", _ => true);
+        var browser = PlanExplorerModule().Setup<DateInputState>("readDateInput", _ => true);
         var client = new HeldClient();
         var cut = RenderWith(client, "navn:inneholder:a");
         Toggle(cut)!.Click();
@@ -261,7 +261,7 @@ public class AdvancedSearchRaceTest : ExplorerTestContext
     [Fact]
     public void ShowHits_WhenOnlyTheRangesLaterEndHoldsABadNativeEntry_ThenTheRowIsRefusedAsABadDate()
     {
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.Setup<DateInputState>("readDateInput", call => call.Arguments[0] is string id && id.EndsWith("-from", StringComparison.Ordinal))
             .SetResult(new DateInputState("", false));
         module.Setup<DateInputState>("readDateInput", call => call.Arguments[0] is string id && id.EndsWith("-to", StringComparison.Ordinal))

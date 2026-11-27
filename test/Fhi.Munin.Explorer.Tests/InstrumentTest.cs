@@ -470,7 +470,7 @@ public class InstrumentTest : ExplorerTestContext
     public void InstrumentPage_WithATitleTemplate_ThenThePageTitleNamesTheInstrumentAndLeavingGivesTheHostsBack()
     {
         // WCAG 2.4.2 (Fhi.Metadata-mhqx0.17): the instrument's address gets its own title, as a kilde's and a variable's do.
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.SetupVoid("setTitle", _ => true).SetVoidResult();
         Services.AddSingleton<IMuninExplorerClient>(new InstrumentClient(instrument: Instrument()));
 
@@ -488,7 +488,7 @@ public class InstrumentTest : ExplorerTestContext
     [Fact]
     public void InstrumentPage_WithATitleTemplateInEnglish_ThenThePageTitleUsesTheEnglishName()
     {
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.SetupVoid("setTitle", _ => true).SetVoidResult();
         Services.AddSingleton<IMuninExplorerClient>(new InstrumentClient(instrument: Instrument(englishName: "Short Form 36")));
 
@@ -503,7 +503,7 @@ public class InstrumentTest : ExplorerTestContext
     [Fact]
     public void InstrumentPage_WithATitleTemplateWhenTheInstrumentCannotBeFetched_ThenThePageKeepsTheHostsTitle()
     {
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.SetupVoid("setTitle", _ => true).SetVoidResult();
         Services.AddSingleton<IMuninExplorerClient>(new InstrumentClient(instrument: Instrument()) { Refusal = new HttpRequestException("down") });
 

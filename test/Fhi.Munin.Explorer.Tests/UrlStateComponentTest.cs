@@ -2771,7 +2771,7 @@ public class UrlStateComponentTest : ExplorerTestContext
         var client = new ManyDrawersClient(30);
         Services.AddSingleton<IMuninExplorerClient>(client);
         Prepare();
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
 
         var marks = client.Ids.Take(12).Select(id => $"selectedDatasamling={id}%3A{Guid.NewGuid()}");
         var open = client.Ids.Skip(10).Select(id => $"expanded={id}");
@@ -2857,7 +2857,7 @@ public class UrlStateComponentTest : ExplorerTestContext
     {
         // Back lands here with the rows reopened from the address; without the restore call the
         // page sits wherever the browser left it, thousands of pixels above the row followed.
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         var cut = RenderDrawers($"http://localhost/kilder?expanded={MarkKildeTwo}&expanded={MarkKildeOne}");
 
         var first = cut.FindAll(".munin-explorer-kilder__expanded")
@@ -2880,7 +2880,7 @@ public class UrlStateComponentTest : ExplorerTestContext
     {
         // A list opened fresh is the browser's to scroll; keeping a position starts with the first
         // open row, since that is the only state Back has to come back to.
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         var cut = RenderDrawers("http://localhost/kilder");
 
         Assert.Empty(module.Invocations["rememberScroll"]);

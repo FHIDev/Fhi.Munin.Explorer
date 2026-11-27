@@ -1,4 +1,5 @@
 using Bunit;
+using Fhi.Munin.Explorer.Blazor;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -28,5 +29,20 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </remarks>
 public class ExplorerTestContext : BunitContext
 {
-    public ExplorerTestContext() => JSInterop.Mode = JSRuntimeMode.Loose;
+    public ExplorerTestContext()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        PlanExplorerModule();
+    }
+
+    /// <summary>Plans the package's module with the press watch answered, so it stops asking on every render.</summary>
+    /// <remarks>A loose false re-imports each render and grows the call list while a test reads it (Fhi.Metadata-emsc0.3.27).
+    /// A second <c>SetupModule</c> replaces this plan, so tests plan the module here; their own <c>Setup</c> still wins.</remarks>
+    protected BunitJSModuleInterop PlanExplorerModule()
+    {
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        module.Setup<bool>("watchPresses").SetResult(true);
+
+        return module;
+    }
 }
