@@ -105,4 +105,20 @@ public partial class VariableListViewTest
 
         Assert.Equal("", ActionStatus(cut).TextContent.Trim());
     }
+
+    [Fact]
+    public async Task Rename_WhenTheCreateFormIsOpenedAfterIt_ThenTheRenameSentenceIsGone()
+    {
+        // The create form is a new action: the rename's sentence under it would read as its outcome.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var cut = RenderView(client);
+
+        RenameField(cut).Change("Hjertet mitt");
+        await PressAsync(cut, "Lagre navnet");
+        Assert.Equal("Listen heter nå «Hjertet mitt».", ActionStatus(cut).TextContent.Trim());
+
+        await PressAsync(cut, "Legg til ny liste");
+
+        Assert.Equal("", ActionStatus(cut).TextContent.Trim());
+    }
 }
