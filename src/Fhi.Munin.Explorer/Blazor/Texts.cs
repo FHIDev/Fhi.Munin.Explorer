@@ -949,6 +949,7 @@ internal sealed record Texts(
     Func<string, string> BrowserListSavedAs,
     Func<string, string> BrowserListSavedButStillHere,
     Func<int, int, string> BrowserListRefused,
+    Func<string, int, int, string> BrowserListPartlySaved,
     Func<int, string> RemoveRefusedFromBrowser,
     Func<int, int, string> BrowserListRefusedRemoved,
     string BrowserListRefusedNotRemoved,
@@ -1976,6 +1977,8 @@ internal sealed record Texts(
         BrowserListSavedButStillHere: name => $"Listen ble lagret i Mine variabellister («{name}»), men den kunne ikke fjernes fra denne nettleseren. Tøm den når du er logget ut.",
         BrowserListRefused: (rows, variables) =>
             $"{(rows == 1 ? "1 rad" : $"{rows} rader")} for {(variables == 1 ? "1 variabel" : $"{variables} variabler")} kunne ikke lagres i Mine variabellister, så ingenting ble lagret. Listen ligger fortsatt i denne nettleseren.",
+        BrowserListPartlySaved: (name, rows, variables) =>
+            $"Lagret som «{name}» i Mine variabellister. {(rows == 1 ? "1 rad" : $"{rows} rader")} for {(variables == 1 ? "1 variabel" : $"{variables} variabler")} kunne ikke lagres og ligger fortsatt i denne nettleseren.",
         RemoveRefusedFromBrowser: rows => rows == 1 ? "Fjern denne raden" : "Fjern disse radene",
         BrowserListRefusedRemoved: (rows, rest) =>
             (rows == 1 ? "Raden er fjernet fra denne nettleseren." : "Radene er fjernet fra denne nettleseren.")
@@ -2696,6 +2699,8 @@ internal sealed record Texts(
         BrowserListSavedButStillHere: name => $"The list was saved in My variable lists («{name}»), but it could not be removed from this browser. Empty it when you are signed out.",
         BrowserListRefused: (rows, variables) =>
             $"{(rows == 1 ? "1 row" : $"{rows} rows")} for {(variables == 1 ? "1 variable" : $"{variables} variables")} could not be saved in My variable lists, so nothing was saved. The list is still in this browser.",
+        BrowserListPartlySaved: (name, rows, variables) =>
+            $"Saved as «{name}» in My variable lists. {(rows == 1 ? "1 row" : $"{rows} rows")} for {(variables == 1 ? "1 variable" : $"{variables} variables")} could not be saved and {(rows == 1 ? "is" : "are")} still in this browser.",
         RemoveRefusedFromBrowser: rows => rows == 1 ? "Remove this row" : "Remove these rows",
         BrowserListRefusedRemoved: (rows, rest) =>
             (rows == 1 ? "The row is removed from this browser." : "The rows are removed from this browser.")

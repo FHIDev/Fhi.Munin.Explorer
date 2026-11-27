@@ -109,7 +109,10 @@ public sealed partial class VariableListView
         !CarryOverNoticesShown ? null
         : _refusedRemoved is { } removal
             ? (removal.Removed ? T.BrowserListRefusedRemoved(removal.Rows, removal.Left) : T.BrowserListRefusedNotRemoved)
-        : _refusalSaid is { } said ? T.BrowserListRefused((RefusedRowsShown ?? said).Rows, (RefusedRowsShown ?? said).Variables)
+        : _refusalSaid is { } said
+            ? (_carriedOverAs is { } partly
+                ? T.BrowserListPartlySaved(partly, (RefusedRowsShown ?? said).Rows, (RefusedRowsShown ?? said).Variables)
+                : T.BrowserListRefused((RefusedRowsShown ?? said).Rows, (RefusedRowsShown ?? said).Variables))
         : _carriedOverAs is not { } name ? null
         : _carriedOverButStillHere ? T.BrowserListSavedButStillHere(name) : T.BrowserListSavedAs(name);
 
@@ -528,8 +531,8 @@ public sealed partial class VariableListView
     }
 
     /// <summary>
-    /// Saves the browser list as a new list of the reader's and shows it, all rows or none. When none, the rows stay in
-    /// the browser and the alert says why; when Munin named variables, a button offers to remove their rows.
+    /// Saves the browser list as a new list of the reader's and shows it. Rows Munin refuses stay in the browser and the
+    /// alert names them, beside the list that holds the rest or with no list at all; a button offers to remove them.
     /// </summary>
     private async Task CarryBrowserListOverAsync()
     {
@@ -650,6 +653,13 @@ public sealed partial class VariableListView
         _focusAfterCreate = true;
         _carriedOverAs = created.Name;
         _carriedOverButStillHere = !carried.LeftTheBrowser;
+
+        // A partial save: the refused rows stay, said beside the list's name, with the button that removes them.
+        if (carried is { LeftTheBrowser: true, Refused.Count: > 0 })
+        {
+            _refusal = carried.Refused;
+            _refusalSaid = (carried.RefusedRows, carried.Refused.Count);
+        }
     }
 
     /// <summary>Takes the refused variables' rows out of the browser, which signed in has no «Tøm listen» to do it.</summary>
