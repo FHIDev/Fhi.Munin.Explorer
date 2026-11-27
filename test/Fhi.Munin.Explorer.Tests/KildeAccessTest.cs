@@ -201,7 +201,8 @@ public class KildeAccessTest : ExplorerTestContext
     {
         // HealthDCAT reads landingPage first; preferring the Hjemmeside showed a project another address than the export.
         var project = Kilde("""["tilgang-krever-soknad"]""",
-            ("Hjemmeside", "https://institusjon.example.org"), ("landingPage", "https://prosjekt.example.org/om")) with { Kildetype = "forskningsprosjekt" };
+            ("Hjemmeside", "https://institusjon.example.org"), ("landingPage", "https://prosjekt.example.org/om")) with
+        { Kildetype = "forskningsprosjekt" };
 
         var block = AccessSection(RenderKilde(project)).QuerySelector(".munin-explorer-kilde__access")!;
 
