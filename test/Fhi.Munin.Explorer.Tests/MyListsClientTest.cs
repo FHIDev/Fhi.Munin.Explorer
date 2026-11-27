@@ -811,6 +811,25 @@ public class MyListsClientTest
         Assert.Equal(named ? [variable] : null, thrown.VariableIds);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AddItemsToMyListAsync_WhenTheApiNamesTheRefusedPairs_ThenItCarriesThemWhereItsAnswerDoes(bool named)
+    {
+        // Munin's 400 now names pairs: they let a carry-over keep the variable's other rows.
+        var variable = new Guid("b7c1f4a2-5d38-4e6b-9c02-8a1e3f7d5b90");
+        var stale = new Guid("c3d2e1f0-a9b8-4c7d-8e6f-5a4b3c2d1e0f");
+        var pairs = named ? $$""","refusedItems":[{"variabelId":"{{variable}}","datasamlingId":"{{stale}}"}]""" : "";
+        var handler = StubHttpHandler.Answering(
+            HttpStatusCode.BadRequest, $$"""{"error":"Hver variabel må lagres med en av sine egne datasamlinger.","variabelIds":["{{variable}}"]{{pairs}}}""");
+
+        var thrown = await Assert.ThrowsAsync<ListItemsRefusedException>(
+            () => Client(handler).AddItemsToMyListAsync(ListId, [new VariableDatasamlingKey(variable, stale)]));
+
+        Assert.Equal([variable], thrown.VariableIds);
+        Assert.Equal(named ? [new VariableDatasamlingKey(variable, stale)] : null, thrown.Items);
+    }
+
     [Fact]
     public async Task RemoveItemsFromMyListAsync_WhenAnItemWithNoDatasamlingIsRemoved_ThenItsNullIsSent()
     {

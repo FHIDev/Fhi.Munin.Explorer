@@ -28,6 +28,7 @@ public sealed partial class VariableListView
     private bool _carryOverAlreadySaving;
     private string? _carriedOverAs;
     private bool _carriedOverButStillHere;
+    private int _carriedOverUnsaved;
 
     // The reader the carry-over's sentences and remove button were set for; another reader at the screen sees none.
     private int? _carryOverNoticesFor;
@@ -109,9 +110,12 @@ public sealed partial class VariableListView
         !CarryOverNoticesShown ? null
         : _refusedRemoved is { } removal
             ? (removal.Removed ? T.BrowserListRefusedRemoved(removal.Rows, removal.Left) : T.BrowserListRefusedNotRemoved)
-        : _refusalSaid is { } said ? T.BrowserListRefused((RefusedRowsShown ?? said).Rows, (RefusedRowsShown ?? said).Variables)
+        : _refusalSaid is { } said
+            ? (_carriedOverAs is { } partly
+                ? T.BrowserListPartlySaved(partly, (RefusedRowsShown ?? said).Rows, (RefusedRowsShown ?? said).Variables)
+                : T.BrowserListRefused((RefusedRowsShown ?? said).Rows, (RefusedRowsShown ?? said).Variables))
         : _carriedOverAs is not { } name ? null
-        : _carriedOverButStillHere ? T.BrowserListSavedButStillHere(name) : T.BrowserListSavedAs(name);
+        : _carriedOverButStillHere ? T.BrowserListSavedButStillHere(name, _carriedOverUnsaved) : T.BrowserListSavedAs(name);
 
     private enum OfferControl
     {
@@ -538,8 +542,8 @@ public sealed partial class VariableListView
     }
 
     /// <summary>
-    /// Saves the browser list as a new list of the reader's and shows it, all rows or none. When none, the rows stay in
-    /// the browser and the alert says why; when Munin named variables, a button offers to remove their rows.
+    /// Saves the browser list as a new list of the reader's and shows it. Rows Munin refuses stay in the browser and the
+    /// alert counts them, beside the list that holds the rest or with no list at all; a button offers to remove them.
     /// </summary>
     private async Task CarryBrowserListOverAsync()
     {
@@ -548,12 +552,26 @@ public sealed partial class VariableListView
             return;
         }
 
+        // Held until the sentence is set: after a partial save the offer stays drawn, and a press meanwhile would race it.
         _carryingOver = true;
+
+        try
+        {
+            await CarryAndShowAsync(State);
+        }
+        finally
+        {
+            _carryingOver = false;
+        }
+    }
+
+    private async Task CarryAndShowAsync(VariableListState state)
+    {
         ForgetFailures();
 
         // Before the first await, as a create does: a form the reader opens meanwhile keeps the focus.
         var formsOpenAtStart = OpenForms();
-        var reader = State.Reader;
+        var reader = state.Reader;
         VariableListState.CarryOver? carried;
 
         try
@@ -562,12 +580,12 @@ public sealed partial class VariableListView
             var existing = await Client.GetMyListsAsync();
 
             // The rows are the pressing reader's: one who signed out, or was replaced, during the read gets nothing made.
-            if (State.Reader != reader)
+            if (state.Reader != reader)
             {
                 return;
             }
 
-            carried = await State.CarryBrowserListOverAsync(FreeListName(T.FirstListName, existing));
+            carried = await state.CarryBrowserListOverAsync(FreeListName(T.FirstListName, existing));
         }
         catch (Exception ex)
         {
@@ -584,13 +602,9 @@ public sealed partial class VariableListView
 
             carried = null;
         }
-        finally
-        {
-            _carryingOver = false;
-        }
 
         // Another reader is at the screen now: nothing of this press is theirs to see or be moved to.
-        if (State.Reader != reader)
+        if (state.Reader != reader)
         {
             return;
         }
@@ -624,7 +638,7 @@ public sealed partial class VariableListView
         await CountTheAddsAsync(created.Id);
         _holdingReloads = false;
 
-        if (State.Reader != reader)
+        if (state.Reader != reader)
         {
             return;
         }
@@ -636,30 +650,38 @@ public sealed partial class VariableListView
 
         try
         {
-            await State.SetActiveListAsync(created.Id);
+            await state.SetActiveListAsync(created.Id);
         }
         catch (Exception ex)
         {
             Log?.LogWarning(ex, "could not read the new list {ListId} after saving the browser list", created.Id);
         }
 
-        if (State.Reader != reader)
+        if (state.Reader != reader)
         {
             return;
         }
 
         await LoadPageAsync();
 
-        if (State.Reader != reader)
+        if (state.Reader != reader)
         {
             return;
         }
 
-        // The button left with its offer: focus goes where a created list sends it, and the alert says what happened.
+        // Focus goes where a created list sends it, the offer gone with its rows or not, and the alert says what happened.
         _formsOpenAtCreate = formsOpenAtStart;
         _focusAfterCreate = true;
         _carriedOverAs = created.Name;
         _carriedOverButStillHere = !carried.LeftTheBrowser;
+        _carriedOverUnsaved = carried.LeftTheBrowser ? 0 : carried.RefusedRows;
+
+        // A partial save: the refused rows stay, said beside the list's name, with the button that removes them.
+        if (carried is { LeftTheBrowser: true, Refused.Count: > 0 })
+        {
+            _refusal = carried.Refused;
+            _refusalSaid = (carried.RefusedRows, carried.Refused.Count);
+        }
     }
 
     /// <summary>Takes the refused variables' rows out of the browser, which signed in has no «Tøm listen» to do it.</summary>

@@ -216,6 +216,12 @@ public class VariableListStateBrowserTest
         /// <summary>The 400 names the refused variables, as Munin's body does; otherwise the body says nothing usable.</summary>
         public bool NamesStale { get; init; }
 
+        /// <summary>The 400 also names the refused (variable, datasamling) pairs, as current Munin does.</summary>
+        public bool NamesPairs { get; init; }
+
+        /// <summary>Pairs the 400 names besides the stale ones, which this press never sent.</summary>
+        public List<VariableDatasamlingKey> NamesAlso { get; } = [];
+
         /// <summary>When set, the create waits for it, so a test can change the reader mid-call.</summary>
         public TaskCompletionSource? HoldCreate { get; init; }
 
@@ -291,7 +297,9 @@ public class VariableListStateBrowserTest
             }
 
             throw NamesStale
-                ? new Client.ListItemsRefusedException([.. items.Where(Stale.Contains).Select(i => i.VariableId)])
+                ? new Client.ListItemsRefusedException(
+                    [.. items.Where(Stale.Contains).Select(i => i.VariableId).Distinct()],
+                    NamesPairs ? [.. items.Where(Stale.Contains), .. NamesAlso] : null)
                 : new HttpRequestException("Each variable must be saved with one of its own datasamlinger.", null, System.Net.HttpStatusCode.BadRequest);
         }
 
@@ -424,6 +432,138 @@ public class VariableListStateBrowserTest
         Assert.Equal([3, 3], client.Adds.Select(a => a.Rows));
         Assert.Equal(2, client.Deleted.Count);
         Assert.Equal(3, browser.Rows.Count);
+    }
+
+    private static (FakeBrowserList Browser, ListsClient Client, VariableListItem Stale) PairRefusal(ListsClient? client = null)
+    {
+        var (browser, named, _) = NamedRefusal();
+        client ??= new ListsClient { NamesStale = true, NamesPairs = true };
+        client.Stale.UnionWith(named.Stale);
+        return (browser, client, browser.Rows[1]);
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenMuninNamesTheRefusedPairs_ThenTheRestIsSavedAndOnlyTheRefusedRowStays()
+    {
+        // The accepted row of the refused variable is saved too: Munin refused a pair, not the variable.
+        var (browser, client, stale) = PairRefusal();
+        var state = await SignedInAsync(browser, client);
+
+        var carried = await state.CarryBrowserListOverAsync("Min variabelliste");
+
+        Assert.NotNull(carried!.List);
+        Assert.True(carried.LeftTheBrowser);
+        Assert.Equal([3, 2], client.Adds.Select(a => a.Rows));
+        Assert.All(client.Adds, a => Assert.Equal(carried.List!.Id, a.List));
+        Assert.Empty(client.Deleted);
+        Assert.Equal([stale.VariableId], carried.Refused!);
+        Assert.Equal(1, carried.RefusedRows);
+        Assert.Equal([VariableDatasamlingKey.Of(stale)], browser.Rows.Select(VariableDatasamlingKey.Of));
+        Assert.False(state.BrowserCarryOverStuck);
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenMuninNamesAPairThisPressNeverSent_ThenOnlyTheCarriedRefusedRowsAreCounted()
+    {
+        // The sentence counts rows still in this browser; a pair from elsewhere would claim a row the reader does not have.
+        var (browser, client, stale) = PairRefusal();
+        client.NamesAlso.Add(new VariableDatasamlingKey(Guid.NewGuid(), Guid.NewGuid()));
+        var state = await SignedInAsync(browser, client);
+
+        var carried = await state.CarryBrowserListOverAsync("Min variabelliste");
+
+        Assert.NotNull(carried!.List);
+        Assert.Equal([stale.VariableId], carried.Refused!);
+        Assert.Equal(1, carried.RefusedRows);
+        Assert.Equal([3, 2], client.Adds.Select(a => a.Rows));
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenPressedAgainAfterAPartialSave_ThenANewListIsTriedAndTheFirstIsLeftAlone()
+    {
+        // AC 3: the next press starts a new list; the refused row alone is refused again and only that list is deleted.
+        var (browser, client, stale) = PairRefusal();
+        var state = await SignedInAsync(browser, client);
+        var first = await state.CarryBrowserListOverAsync("Min variabelliste");
+
+        var again = await state.CarryBrowserListOverAsync("Min variabelliste 2");
+
+        Assert.Null(again!.List);
+        Assert.Equal(2, client.Created.Count);
+        Assert.Equal([3, 2, 1], client.Adds.Select(a => a.Rows));
+        Assert.DoesNotContain(first!.List!.Id, client.Deleted);
+        Assert.Single(client.Deleted);
+        Assert.Equal([VariableDatasamlingKey.Of(stale)], browser.Rows.Select(VariableDatasamlingKey.Of));
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenTheAddOfTheRestFails_ThenTheListIsDeletedEveryRowStaysAndItThrows()
+    {
+        // Nothing saved is the same outcome as before the pairs were named: no list, and every row still in the browser.
+        var (browser, client, _) = PairRefusal(new ListsClient
+        {
+            NamesStale = true,
+            NamesPairs = true,
+            AddThrows = new HttpRequestException("nede", null, System.Net.HttpStatusCode.InternalServerError),
+        });
+        var state = await SignedInAsync(browser, client);
+
+        await Assert.ThrowsAnyAsync<Exception>(() => state.CarryBrowserListOverAsync("Min variabelliste"));
+
+        Assert.Equal([3, 2], client.Adds.Select(a => a.Rows));
+        Assert.Single(client.Deleted);
+        Assert.Equal(3, browser.Rows.Count);
+        Assert.DoesNotContain(browser.Calls, c => c.Call == "removeKeys");
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenTheAddOfTheRestIsRefusedToo_ThenTheListIsDeletedAndItThrows()
+    {
+        // Munin is asked again once; a second refusal is a failure, not a named refusal the reader could act on.
+        var (browser, client, _) = PairRefusal(new ListsClient { NamesStale = true, NamesPairs = true });
+        client.AddThrows = new Client.ListItemsRefusedException([browser.Rows[2].VariableId], [VariableDatasamlingKey.Of(browser.Rows[2])]);
+        var state = await SignedInAsync(browser, client);
+
+        await Assert.ThrowsAsync<Client.ListItemsRefusedException>(() => state.CarryBrowserListOverAsync("Min variabelliste"));
+
+        Assert.Equal([3, 2], client.Adds.Select(a => a.Rows));
+        Assert.Single(client.Deleted);
+        Assert.Equal(3, browser.Rows.Count);
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenMuninNamesEveryRowsPair_ThenNothingIsSavedAndNoSecondAddIsSent()
+    {
+        // With nothing left to add, a second add would only spend a write: the refusal stands as before.
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange(Rows(2));
+        var client = new ListsClient { NamesStale = true, NamesPairs = true };
+        client.Stale.UnionWith(browser.Rows.Select(VariableDatasamlingKey.Of));
+        var state = await SignedInAsync(browser, client);
+
+        var carried = await state.CarryBrowserListOverAsync("Min variabelliste");
+
+        Assert.Null(carried!.List);
+        Assert.Equal([2], client.Adds.Select(a => a.Rows));
+        Assert.Single(client.Deleted);
+        Assert.Equal(2, carried.RefusedRows);
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenAFullListHasRefusedPairs_ThenItTakesThreeWrites()
+    {
+        // AC 2: Munin allows 60 writes a minute, and a full browser list must stay well inside it.
+        var browser = new FakeBrowserList();
+        browser.Rows.AddRange(Rows(VariableListState.MaxBrowserListRows));
+        var client = new ListsClient { NamesStale = true, NamesPairs = true };
+        client.Stale.UnionWith(browser.Rows.Take(5).Select(VariableDatasamlingKey.Of));
+        var state = await SignedInAsync(browser, client);
+
+        var carried = await state.CarryBrowserListOverAsync("Min variabelliste");
+
+        Assert.NotNull(carried!.List);
+        Assert.Equal(3, client.Created.Count + client.Adds.Count + client.Deleted.Count);
+        Assert.Equal(5, browser.Rows.Count);
     }
 
     [Theory]
@@ -858,6 +998,7 @@ public class VariableListStateBrowserTest
     }
 
     [Theory]
+    [InlineData("named-pairs")]
     [InlineData("named")]
     [InlineData("unnamed")]
     [InlineData("throttled")]
@@ -878,6 +1019,7 @@ public class VariableListStateBrowserTest
         hold.SetException(refusal switch
         {
             "named" => new Client.ListItemsRefusedException([browser.Rows[0].VariableId]),
+            "named-pairs" => new Client.ListItemsRefusedException([browser.Rows[0].VariableId], [VariableDatasamlingKey.Of(browser.Rows[0])]),
             "unnamed" => new HttpRequestException("stale", null, System.Net.HttpStatusCode.BadRequest),
             _ => new MuninExplorerRateLimitedException(),
         });
@@ -886,6 +1028,42 @@ public class VariableListStateBrowserTest
         Assert.Single(client.Adds);
         Assert.Empty(client.Deleted);
         Assert.Equal(2, browser.Rows.Count);
+    }
+
+    [Theory]
+    [InlineData("accepted")]
+    [InlineData("throttled")]
+    public async Task CarryBrowserListOverAsync_WhenTheReaderChangesDuringTheSecondAdd_ThenItTidiesNothing(string answer)
+    {
+        // The second add, of the rows Munin did not name, belongs to the reader who pressed just as the first does.
+        var browser = new FakeBrowserList();
+        var valid = FakeBrowserList.Row("Alder", Guid.NewGuid());
+        var stale = valid with { DatasamlingId = Guid.NewGuid() };
+        browser.Rows.AddRange([valid, stale, FakeBrowserList.Row("Kjønn")]);
+        var second = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new ListsClient { NamesStale = true, NamesPairs = true, HoldSecondAdd = second };
+        client.Stale.Add(VariableDatasamlingKey.Of(stale));
+        var state = await SignedInAsync(browser, client);
+
+        var carrying = state.CarryBrowserListOverAsync("Min variabelliste");
+        Assert.Equal(2, client.Adds.Count);
+
+        state.SetAuthenticated(false);
+        state.SetAuthenticated(true);
+        if (answer == "accepted")
+        {
+            second.SetResult(true);
+        }
+        else
+        {
+            second.SetException(new MuninExplorerRateLimitedException());
+        }
+
+        Assert.Null(await carrying);
+        Assert.Empty(client.Deleted);
+        Assert.Equal(3, browser.Rows.Count);
+        Assert.Null(state.ActiveListId);
+        Assert.DoesNotContain(browser.Calls, c => c.Call == "removeKeys");
     }
 
     [Fact]
@@ -1084,10 +1262,10 @@ public class VariableListStateBrowserTest
     }
 
     [Fact]
-    public void CarryClaimLifetime_WhenComparedToTheClientsPerCallLimit_ThenACreateAndAnAddAtTheirLimitStillHoldIt()
+    public void CarryClaimLifetime_WhenComparedToTheClientsPerCallLimit_ThenACreateTwoAddsAndADeleteAtTheirLimitStillHoldIt()
     {
         // A claim that lapses mid-press lets a second tab read rows still stored and make the second list.
-        Assert.True(VariableListState.CarryClaimLifetime > Fhi.Munin.Explorer.Client.RequestTimeoutHandler.Default * 2);
+        Assert.True(VariableListState.CarryClaimLifetime > Fhi.Munin.Explorer.Client.RequestTimeoutHandler.Default * 4);
     }
 
     [Fact]

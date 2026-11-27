@@ -416,10 +416,12 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
 
         using var response = await SendAsync(HttpMethod.Post, MyListVariables(id), new ItemsBody(items), cancellationToken);
 
-        // Munin names the variables whose datasamling is not their own, so a caller can say which rows it refused.
+        // Munin names the refused (variable, datasamling) pairs, or only the variables when it is older, so a caller can say which rows it refused.
         if (response.StatusCode == HttpStatusCode.BadRequest)
         {
-            throw new ListItemsRefusedException(await RefusedVariablesAsync(response, cancellationToken).ConfigureAwait(false));
+            var refused = await RefusedItemsAsync(response, cancellationToken).ConfigureAwait(false);
+            throw new ListItemsRefusedException(
+                refused?.VariableIds is { Count: > 0 } ids ? ids : null, refused?.Items is { Count: > 0 } pairs ? pairs : null);
         }
 
         await ThrowIfListQuotaAsync(response, cancellationToken).ConfigureAwait(false);
@@ -467,12 +469,11 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         [property: JsonPropertyName("code")] string? Code,
         [property: JsonPropertyName("limit")] int? Limit);
 
-    private static async Task<IReadOnlyList<Guid>?> RefusedVariablesAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    private static async Task<RefusedItemsBody?> RefusedItemsAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         try
         {
-            var body = await response.Content.ReadFromJsonAsync<RefusedItemsBody>(Json, cancellationToken).ConfigureAwait(false);
-            return body?.VariableIds is { Count: > 0 } ids ? ids : null;
+            return await response.Content.ReadFromJsonAsync<RefusedItemsBody>(Json, cancellationToken).ConfigureAwait(false);
         }
         catch (JsonException)
         {
@@ -485,7 +486,9 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     }
 
     /// <summary>Munin's 400 for items whose datasamling is not the variable's own.</summary>
-    private sealed record RefusedItemsBody([property: JsonPropertyName("variabelIds")] IReadOnlyList<Guid>? VariableIds);
+    private sealed record RefusedItemsBody(
+        [property: JsonPropertyName("variabelIds")] IReadOnlyList<Guid>? VariableIds,
+        [property: JsonPropertyName("refusedItems")] IReadOnlyList<VariableDatasamlingKey>? Items);
 
     public Task<bool> RemoveItemsFromMyListAsync(
         Guid id,
@@ -1512,9 +1515,14 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
 internal sealed class SharedSnapshotTooLargeException()
     : HttpRequestException("The shared list's snapshot exceeds the API's maximum size.", null, HttpStatusCode.BadRequest);
 
-/// <summary>Munin refused a batch of list items; <see cref="VariableIds"/> names the variables it refused, or is null when its answer did not.</summary>
-internal sealed class ListItemsRefusedException(IReadOnlyList<Guid>? variableIds)
+/// <summary>
+/// Munin refused a batch of list items: <see cref="VariableIds"/> names the variables and <see cref="Items"/> the refused
+/// (variable, datasamling) pairs, each null when its answer did not. An older Munin names no pairs.
+/// </summary>
+internal sealed class ListItemsRefusedException(IReadOnlyList<Guid>? variableIds, IReadOnlyList<VariableDatasamlingKey>? items = null)
     : HttpRequestException("The API refused a batch of list items.", null, HttpStatusCode.BadRequest)
 {
     public IReadOnlyList<Guid>? VariableIds { get; } = variableIds;
+
+    public IReadOnlyList<VariableDatasamlingKey>? Items { get; } = items;
 }

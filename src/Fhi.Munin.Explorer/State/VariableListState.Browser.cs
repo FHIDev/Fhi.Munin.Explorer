@@ -399,15 +399,16 @@ public sealed partial class VariableListState : IDisposable
     }
 
     /// <summary>
-    /// What a carry-over did: the list the rows went to and whether they also left the browser; when Munin refused the
-    /// variables in <see cref="Refused"/>, no list and <see cref="RefusedRows"/> browser rows of them; or, with
+    /// The list the rows went to and whether they left the browser; <see cref="RefusedRows"/> rows of the variables in
+    /// <see cref="Refused"/> stay, beside the list or with none when nothing was saved; or, with
     /// <see cref="AlreadyCarrying"/>, nothing touched, since another tab or view is carrying the rows.
     /// </summary>
     internal sealed record CarryOver(
         VariableList? List, bool LeftTheBrowser, IReadOnlySet<Guid>? Refused = null, int RefusedRows = 0, bool AlreadyCarrying = false);
 
-    // The create and the add may each take the client's whole per-call limit; a third covers the reads and the removal.
-    internal static readonly TimeSpan CarryClaimLifetime = RequestTimeoutHandler.Default * 3;
+    // The create, two adds and a delete after a failed add may each take the client's whole per-call limit; a fifth
+    // covers the reads and the removal.
+    internal static readonly TimeSpan CarryClaimLifetime = RequestTimeoutHandler.Default * 5;
 
     // Two tabs writing a claim in the same moment: each reads back after this, and only the one whose claim stayed goes on.
     internal static readonly TimeSpan CarryClaimSettle = TimeSpan.FromMilliseconds(50);
@@ -518,14 +519,27 @@ public sealed partial class VariableListState : IDisposable
     private async Task<CarryOver?> FillCarriedListAsync(
         VariableList target, List<VariableDatasamlingKey> keys, int reader, CancellationToken cancellationToken)
     {
+        IReadOnlyList<VariableDatasamlingKey> saved = keys;
+        List<VariableDatasamlingKey> refusedPairs = [];
         bool accepted;
 
         try
         {
-            // One request, which the browser list's ceiling keeps within a batch: Munin saves every row or none.
-            accepted = await _client.AddItemsToMyListAsync(target.Id, keys, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                // One request, which the browser list's ceiling keeps within a batch: Munin saves every row or none.
+                accepted = await _client.AddItemsToMyListAsync(target.Id, keys, cancellationToken).ConfigureAwait(false);
+            }
+            catch (ListItemsRefusedException ex) when (Reader == reader && RefusedPairs(ex, keys) is { Count: > 0 } pairs && pairs.Count < keys.Count)
+            {
+                // Munin named the pairs: one more add, of the rest, and the refused rows stay in the browser.
+                _logger?.LogWarning(ex, "the API refused {Count} of the browser list's rows; the others are added in one more request", pairs.Count);
+                refusedPairs = pairs;
+                saved = [.. keys.Except(pairs)];
+                accepted = await _client.AddItemsToMyListAsync(target.Id, saved, cancellationToken).ConfigureAwait(false);
+            }
         }
-        catch (ListItemsRefusedException ex) when (Reader == reader && ex.VariableIds is { Count: > 0 } named)
+        catch (ListItemsRefusedException ex) when (Reader == reader && refusedPairs.Count == 0 && ex.VariableIds is { Count: > 0 } named)
         {
             _logger?.LogWarning(ex, "the API refused the browser list's rows of {Count} variables", named.Count);
             await DiscardAsync(target, reader).ConfigureAwait(false);
@@ -569,7 +583,7 @@ public sealed partial class VariableListState : IDisposable
         _madeHere = [.. _madeHere, target];
         RaiseChanged(target.Id, affectsRows: true);
 
-        var left = await RemoveBrowserKeysAsync(keys).ConfigureAwait(false);
+        var left = await RemoveBrowserKeysAsync(saved).ConfigureAwait(false);
 
         // Rows left only where no other page reads them, or none left at all, cannot be saved twice.
         if (Reader == reader)
@@ -577,8 +591,14 @@ public sealed partial class VariableListState : IDisposable
             BrowserCarryOverStuck = !left && BrowserCount > 0;
         }
 
-        return new CarryOver(target, left);
+        return refusedPairs.Count == 0
+            ? new CarryOver(target, left)
+            : new CarryOver(target, left, refusedPairs.Select(k => k.VariableId).ToHashSet(), refusedPairs.Count);
     }
+
+    // The carried rows Munin's answer names by pair; none when it names only variables, as an older Munin does.
+    private static List<VariableDatasamlingKey> RefusedPairs(ListItemsRefusedException refusal, List<VariableDatasamlingKey> keys) =>
+        refusal.Items is { } named ? [.. keys.Where(named.ToHashSet().Contains)] : [];
 
     /// <summary>
     /// Takes every browser row of these variables out of the browser list, the rows Munin refused. False when any is
