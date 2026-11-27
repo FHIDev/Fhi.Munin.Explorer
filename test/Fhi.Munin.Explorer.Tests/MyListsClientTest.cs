@@ -816,7 +816,7 @@ public class MyListsClientTest
     [InlineData(false)]
     public async Task AddItemsToMyListAsync_WhenTheApiNamesTheRefusedPairs_ThenItCarriesThemWhereItsAnswerDoes(bool named)
     {
-        // Munin's 400 since emsc0.3.14: the pairs let a carry-over keep the variable's other rows.
+        // Munin's 400 now names pairs: they let a carry-over keep the variable's other rows.
         var variable = new Guid("b7c1f4a2-5d38-4e6b-9c02-8a1e3f7d5b90");
         var stale = new Guid("c3d2e1f0-a9b8-4c7d-8e6f-5a4b3c2d1e0f");
         var pairs = named ? $$""","refusedItems":[{"variabelId":"{{variable}}","datasamlingId":"{{stale}}"}]""" : "";

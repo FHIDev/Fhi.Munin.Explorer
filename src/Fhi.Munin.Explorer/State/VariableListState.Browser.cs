@@ -596,7 +596,7 @@ public sealed partial class VariableListState : IDisposable
             : new CarryOver(target, left, refusedPairs.Select(k => k.VariableId).ToHashSet(), refusedPairs.Count);
     }
 
-    // The carried rows Munin's answer names by pair; none when it names only variables, as a Munin before emsc0.3.14 does.
+    // The carried rows Munin's answer names by pair; none when it names only variables, as an older Munin does.
     private static List<VariableDatasamlingKey> RefusedPairs(ListItemsRefusedException refusal, List<VariableDatasamlingKey> keys) =>
         refusal.Items is { } named ? [.. keys.Where(named.ToHashSet().Contains)] : [];
 

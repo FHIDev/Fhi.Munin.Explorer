@@ -140,7 +140,7 @@ public class AnonymousListTest : ExplorerTestContext
         /// <summary>The 400 names the stale row's variable, as Munin's body does.</summary>
         public bool NamesStale { get; init; }
 
-        /// <summary>The 400 also names the stale (variable, datasamling) pair, as Munin does since emsc0.3.14.</summary>
+        /// <summary>The 400 also names the stale (variable, datasamling) pair, as current Munin does.</summary>
         public bool NamesPairs { get; init; }
 
         /// <summary>Munin's write limiter: every add after this many answers 429.</summary>
@@ -1101,7 +1101,7 @@ public class AnonymousListTest : ExplorerTestContext
     [Fact]
     public void VariableListView_WhenMuninNamesTheRefusedPair_ThenTheRestIsSavedAndTheButtonRemovesTheRefusedRow()
     {
-        // Emsc0.3.25: Munin names the pair, so the variable's valid row is saved with the other, and one row stays here.
+        // Munin names the pair, so the variable's valid row is saved with the other, and one row stays here.
         var browser = new FakeBrowserList();
         var valid = FakeBrowserList.Row("Alder", Guid.NewGuid());
         var stale = valid with { DatasamlingId = Guid.NewGuid() };

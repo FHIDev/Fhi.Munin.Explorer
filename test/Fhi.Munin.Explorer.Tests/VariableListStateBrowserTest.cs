@@ -216,8 +216,11 @@ public class VariableListStateBrowserTest
         /// <summary>The 400 names the refused variables, as Munin's body does; otherwise the body says nothing usable.</summary>
         public bool NamesStale { get; init; }
 
-        /// <summary>The 400 also names the refused (variable, datasamling) pairs, as Munin does since emsc0.3.14.</summary>
+        /// <summary>The 400 also names the refused (variable, datasamling) pairs, as current Munin does.</summary>
         public bool NamesPairs { get; init; }
+
+        /// <summary>Pairs the 400 names besides the stale ones, which this press never sent.</summary>
+        public List<VariableDatasamlingKey> NamesAlso { get; } = [];
 
         /// <summary>When set, the create waits for it, so a test can change the reader mid-call.</summary>
         public TaskCompletionSource? HoldCreate { get; init; }
@@ -296,7 +299,7 @@ public class VariableListStateBrowserTest
             throw NamesStale
                 ? new Client.ListItemsRefusedException(
                     [.. items.Where(Stale.Contains).Select(i => i.VariableId).Distinct()],
-                    NamesPairs ? [.. items.Where(Stale.Contains)] : null)
+                    NamesPairs ? [.. items.Where(Stale.Contains), .. NamesAlso] : null)
                 : new HttpRequestException("Each variable must be saved with one of its own datasamlinger.", null, System.Net.HttpStatusCode.BadRequest);
         }
 
@@ -457,6 +460,22 @@ public class VariableListStateBrowserTest
         Assert.Equal(1, carried.RefusedRows);
         Assert.Equal([VariableDatasamlingKey.Of(stale)], browser.Rows.Select(VariableDatasamlingKey.Of));
         Assert.False(state.BrowserCarryOverStuck);
+    }
+
+    [Fact]
+    public async Task CarryBrowserListOverAsync_WhenMuninNamesAPairThisPressNeverSent_ThenOnlyTheCarriedRefusedRowsAreCounted()
+    {
+        // The sentence counts rows still in this browser; a pair from elsewhere would claim a row the reader does not have.
+        var (browser, client, stale) = PairRefusal();
+        client.NamesAlso.Add(new VariableDatasamlingKey(Guid.NewGuid(), Guid.NewGuid()));
+        var state = await SignedInAsync(browser, client);
+
+        var carried = await state.CarryBrowserListOverAsync("Min variabelliste");
+
+        Assert.NotNull(carried!.List);
+        Assert.Equal([stale.VariableId], carried.Refused!);
+        Assert.Equal(1, carried.RefusedRows);
+        Assert.Equal([3, 2], client.Adds.Select(a => a.Rows));
     }
 
     [Fact]

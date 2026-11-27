@@ -1467,12 +1467,12 @@ the new list is offered nowhere else until the rows are in it, and once saved, t
 browser cannot take them out, the alert says the new list was saved but the browser list is still in this browser, to
 be emptied once signed out. On this page the offer is then not drawn again until the browser list empties or the reader
 signs out or in; after a reload it is offered again, and a press then saves the rows a second time. When Munin
-refuses the request and names the refused (variable, datasamling) pairs, as it does since `Fhi.Metadata-emsc0.3.14`,
+refuses the request and names the refused (variable, datasamling) pairs, as current Munin does,
 such as a row whose datasamling is no longer its variable's own, the press adds the other rows to the same list in one
 more request: a create and two adds, however full the browser list, inside Munin's write limit (60 a minute by default). The saved rows leave the browser,
 the refused ones stay, and the alert says the list was saved and how many rows of how many variables could not be
 (`Fhi.Metadata-emsc0.3.25`). When that second add fails too, nothing is saved, as for any other failure below. When
-Munin refuses every row, or names only variables, as a Munin before that does, nothing is saved: the new list is
+Munin refuses every row, or names only variables, as an older Munin does, nothing is saved: the new list is
 deleted again, every row stays in the browser and the reader is told how many rows of how many variables Munin
 refused. Either way, unless the saved rows could not leave the browser, a button described by that sentence, «Fjern disse radene» («Fjern denne raden» for one row), takes
 every row of those variables out of the browser; the button goes with the sentence. The offer then counts the rows

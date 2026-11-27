@@ -1517,7 +1517,7 @@ internal sealed class SharedSnapshotTooLargeException()
 
 /// <summary>
 /// Munin refused a batch of list items: <see cref="VariableIds"/> names the variables and <see cref="Items"/> the refused
-/// (variable, datasamling) pairs, each null when its answer did not. A Munin before emsc0.3.14 names no pairs.
+/// (variable, datasamling) pairs, each null when its answer did not. An older Munin names no pairs.
 /// </summary>
 internal sealed class ListItemsRefusedException(IReadOnlyList<Guid>? variableIds, IReadOnlyList<VariableDatasamlingKey>? items = null)
     : HttpRequestException("The API refused a batch of list items.", null, HttpStatusCode.BadRequest)
