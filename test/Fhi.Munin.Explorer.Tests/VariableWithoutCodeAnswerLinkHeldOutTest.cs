@@ -89,7 +89,7 @@ public class VariableWithoutCodeAnswerLinkHeldOutTest : ExplorerTestContext
         OpenRow(cut, 0, "Alfa");
 
         var query = QueryHelpers.ParseQuery(new Uri(MailLink(cut)).Query);
-        Assert.False(query.ContainsKey("variabel"), $"link names A by its code: {query["variabel"]}");
+        Assert.False(query.ContainsKey("variabel"));
         Assert.Equal(AId.ToString(), query["variabelId"].ToString());
     }
 }
