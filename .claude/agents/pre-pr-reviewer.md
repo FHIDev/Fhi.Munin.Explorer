@@ -254,6 +254,12 @@ The component must render inside helsedata's **legacy** Blazor Server (`AddServe
   module. Samples carry styling because they have no Stiler; the package must not.
   `scripts/assert-package-contents.sh` enforces it by naming every packed entry, so a new file
   under `wwwroot` and its entry in that script have to arrive in the same commit.
+- **A behaviour moved onto `explorer-interop.js` keeps a module-less path.** The README promises that a host which
+  does not serve the module, or whose CSP refuses it, draws the same page. When a diff replaces a .NET call
+  (`ElementReference.FocusAsync`, a render-time decision) with an `ExplorerInterop` export, check what the code does
+  when the import fails: an export that answers false or null there and a caller that then does nothing has lost the
+  behaviour on that host. **Important** when the lost behaviour is one a reader relies on (focus after a removal,
+  WCAG 2.4.3), with no test staging a refused import.
 - **Docs and samples mount with `render-mode="Server"`, never `ServerPrerendered`** — prerendering
   runs `OnInitializedAsync` twice and doubles the API calls, and an `EventCallback` serialises to
   an empty delegate across a static-SSR boundary. If the change adds a callback parameter or a new

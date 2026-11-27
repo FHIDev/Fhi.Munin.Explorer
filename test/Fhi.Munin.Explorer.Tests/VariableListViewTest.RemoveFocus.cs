@@ -3,6 +3,7 @@ using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -40,6 +41,26 @@ public partial class VariableListViewTest
         await cut.InvokeAsync(() => RemoveButtons(cut)[1].Click());
 
         cut.WaitForAssertion(() => Assert.Equal(next, Assert.Single(module.Invocations[FocusIfLost]).Arguments[0]));
+        Assert.Equal(before, ElementFocuses());
+    }
+
+    [Fact]
+    public async Task View_WhenFocusIfLostFaultsInTheModule_ThenItIsLoggedAsAnErrorAndNothingElseTakesFocus()
+    {
+        // A fault inside the module is a defect to see, not a host without the module: no .NET focus stands in for it.
+        var recorder = new RecordingLoggerProvider();
+        Services.AddLogging(b => b.AddProvider(recorder).SetMinimumLevel(LogLevel.Trace));
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var fault = new Microsoft.JSInterop.JSException("focusIfLost is not a function");
+        module.Setup<bool>(FocusIfLost, _ => true).SetException(fault);
+        var cut = RenderView(Rows(ThreeRows));
+        var before = ElementFocuses();
+
+        await cut.InvokeAsync(() => RemoveButtons(cut)[1].Click());
+
+        cut.WaitForAssertion(() => Assert.Single(module.Invocations[FocusIfLost]));
+        var entry = Assert.Single(recorder.Entries, e => e.Category == typeof(VariableListView).FullName && e.Exception == fault);
+        Assert.Equal(LogLevel.Error, entry.Level);
         Assert.Equal(before, ElementFocuses());
     }
 
