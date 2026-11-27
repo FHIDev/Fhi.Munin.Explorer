@@ -1237,7 +1237,11 @@ public partial class VariableListViewTest : ExplorerTestContext
 
         // One move, the reader's own: the form they opened took focus into its field. The retry adds none.
         cut.WaitForAssertion(() => Assert.Null(RetryButton(cut)));
-        Assert.Single(JSInterop.Invocations, i => i.Identifier == "Blazor._internal.domWrapper.focus");
+
+        // Counted on the renderer: a later render's own JS calls land in the list from there (Fhi.Metadata-l9l2n.221).
+        var focusCalls = await cut.InvokeAsync(
+            () => JSInterop.Invocations.Count(i => i.Identifier == "Blazor._internal.domWrapper.focus"));
+        Assert.Equal(1, focusCalls);
     }
 
     [Fact]
