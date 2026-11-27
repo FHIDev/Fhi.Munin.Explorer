@@ -1975,9 +1975,10 @@ internal sealed record Texts(
         BrowserListTooLongToShare: "Listen er for lang til å deles som kode. Last den ned i stedet.",
         BrowserListSavedAs: name => $"Lagret som «{name}» i Mine variabellister.",
         BrowserListSavedButStillHere: (name, unsaved) =>
-            $"Listen ble lagret i Mine variabellister («{name}»), men den kunne ikke fjernes fra denne nettleseren."
-            + (unsaved == 0 ? "" : unsaved == 1 ? " 1 rad kunne ikke lagres og finnes bare her." : $" {unsaved} rader kunne ikke lagres og finnes bare her.")
-            + " Tøm den når du er logget ut.",
+            $"Listen ble lagret i Mine variabellister («{name}»), men den kunne ikke fjernes fra denne nettleseren. Tøm listen når du er logget ut."
+            + (unsaved == 0 ? "" : unsaved == 1
+                ? " 1 rad kunne ikke lagres. Den finnes bare her og forsvinner når du tømmer listen."
+                : $" {unsaved} rader kunne ikke lagres. De finnes bare her og forsvinner når du tømmer listen."),
         BrowserListRefused: (rows, variables) =>
             $"{(rows == 1 ? "1 rad" : $"{rows} rader")} for {(variables == 1 ? "1 variabel" : $"{variables} variabler")} kunne ikke lagres i Mine variabellister, så ingenting ble lagret. Listen ligger fortsatt i denne nettleseren.",
         BrowserListPartlySaved: (name, rows, variables) =>
@@ -2700,9 +2701,10 @@ internal sealed record Texts(
         BrowserListTooLongToShare: "The list is too long to share as a code. Download it instead.",
         BrowserListSavedAs: name => $"Saved as «{name}» in My variable lists.",
         BrowserListSavedButStillHere: (name, unsaved) =>
-            $"The list was saved in My variable lists («{name}»), but it could not be removed from this browser."
-            + (unsaved == 0 ? "" : unsaved == 1 ? " 1 row could not be saved and is only here." : $" {unsaved} rows could not be saved and are only here.")
-            + " Empty it when you are signed out.",
+            $"The list was saved in My variable lists («{name}»), but it could not be removed from this browser. Empty the list when you are signed out."
+            + (unsaved == 0 ? "" : unsaved == 1
+                ? " 1 row could not be saved. It is only here and goes when you empty the list."
+                : $" {unsaved} rows could not be saved. They are only here and go when you empty the list."),
         BrowserListRefused: (rows, variables) =>
             $"{(rows == 1 ? "1 row" : $"{rows} rows")} for {(variables == 1 ? "1 variable" : $"{variables} variables")} could not be saved in My variable lists, so nothing was saved. The list is still in this browser.",
         BrowserListPartlySaved: (name, rows, variables) =>
