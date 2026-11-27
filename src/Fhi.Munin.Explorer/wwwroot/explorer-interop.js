@@ -40,7 +40,7 @@ let lastPressed = null;
 let pressesWatched = false;
 const remember = event => { lastPressed = event.target; };
 
-// Called by the browser list's view, not on import. A click too, since a screen reader may activate with only that.
+// Called by the list view, not on import. A click too, since a screen reader may activate with only that.
 export function watchPresses() {
   if (!pressesWatched) {
     pressesWatched = true;

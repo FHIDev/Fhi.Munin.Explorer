@@ -309,15 +309,16 @@ internal sealed class ExplorerInterop : IAsyncDisposable
     }
 
     /// <summary>Moves focus to <paramref name="toId"/> while focus is on nothing and the last press left the page with it.</summary>
-    /// <returns>False when the reader moved on, the element is gone or the browser is out of reach.</returns>
+    /// <returns>False when the reader moved on, the element is gone or the browser is out of reach; null when there is no
+    /// module to ask, so the caller can move focus without it.</returns>
     /// <exception cref="JSException">A fault in the export itself, for the caller to log as one.</exception>
-    internal static async Task<bool> FocusIfLostAsync(IJSRuntime js, string toId)
+    internal static async Task<bool?> FocusIfLostAsync(IJSRuntime js, string toId)
     {
         await using var interop = new ExplorerInterop(js);
 
         if (!await interop.TryLoadAsync().ConfigureAwait(false) || interop._module is not { } module)
         {
-            return false;
+            return null;
         }
 
         return await Tolerated<object>(async () => await module.InvokeAsync<bool>("focusIfLost", toId).ConfigureAwait(false))
