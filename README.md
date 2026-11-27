@@ -1454,10 +1454,12 @@ A new flag adds its row here, with the bead, in the PR that adds it, and its rem
   `https://<host>/<the explorer's page>?listeId=3f2b8c1e-5d4a-4e6f-9b7c-1a2d3e4f5a6b`. Unlike `?delekode=`, which
   opens a snapshot copy without notes, it opens the live list. Signed in, the «Variabelliste» tab opens on that list;
   when it is not one of the reader's lists, or no longer exists, the tab says the list was not found. Either way the
-  key then leaves the address, so an address the reader copies afterwards carries no list id. Signed out, the reader is
+  key then leaves the address, so an address the reader copies afterwards carries no list id; while the reader's lists
+  cannot be read, it stays until a read or the list tab's retry succeeds. Signed out, the reader is
   asked to sign in, in a sentence where the tab would be (above the browser list when `CodePicker` is on), and the key
   stays, so the address the host's sign-in returns to opens the list. The package draws no sign-in control; the
-  host's own does that. A `?delekode=` in the same address wins. With the flag off, `listeId` is not read or written
+  host's own does that. A `?delekode=` in the same address wins: the shared list is shown, and for a signed-in reader
+  `listeId` leaves the address. With the flag off, `listeId` is not read or written
   and stays in the address as it arrived. `listeId` can be declined like the other scalar keys.
 
 The browser list behind `CodePicker` is a variable list for a reader who is not signed in, kept only in their

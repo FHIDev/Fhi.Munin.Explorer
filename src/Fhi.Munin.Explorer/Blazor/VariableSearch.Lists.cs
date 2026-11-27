@@ -156,14 +156,18 @@ public partial class VariableSearch : IDisposable, IAsyncDisposable
     // With the flag on, a list id that arrives opens the list tab; one that leaves (the view consumed it) changes nothing.
     private Guid? OwnListLink => ServiceProvider.GetService<ListLinkSwitch>()?.On == true ? OwnListId : null;
 
+    // Marked only once the tab opened: until a sign-in or the browser list draws the tabs, a later parameter set opens it.
     private void FollowOwnListId()
     {
-        if (OwnListLink is { } id && id != _followedOwnListId && ShowTabs)
+        if (OwnListLink is not { } id)
+        {
+            _followedOwnListId = null;
+        }
+        else if (id != _followedOwnListId && ShowTabs)
         {
             _resultsTab = ExplorerTab.VariableList;
+            _followedOwnListId = id;
         }
-
-        _followedOwnListId = OwnListLink;
     }
 
     protected override async Task OnParametersSetAsync()
@@ -180,6 +184,7 @@ public partial class VariableSearch : IDisposable, IAsyncDisposable
 
         ListState.SetAuthenticated(IsAuthenticated);
         OfferBrowserList();
+        FollowOwnListId();
 
         // Read what is already in the reader's list before the rows draw their buttons. Without it
         // the set is empty on the first render, so a variable saved earlier offers "save" and the

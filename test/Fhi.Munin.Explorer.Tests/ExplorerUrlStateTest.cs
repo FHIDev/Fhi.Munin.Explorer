@@ -363,7 +363,7 @@ public class ExplorerUrlStateTest
     // listeId: one of the reader's own lists (Fhi.Metadata-9huq2.61)
 
     [Fact]
-    public void OwnListId_WhenRoundTripped_ThenItComesBackUnderListeId()
+    public void ToQueryString_WhenAnOwnListIsSet_ThenParseReadsItBackUnderListeId()
     {
         var id = Guid.NewGuid();
         var query = new ExplorerUrlState { OwnListId = id }.ToQueryString();
@@ -377,13 +377,13 @@ public class ExplorerUrlStateTest
     [InlineData("?listeId=")]
     [InlineData("?listeId=not-a-guid")]
     [InlineData("?listeId=12345")]
-    public void OwnListId_WhenTheValueIsNoGuid_ThenItIsDropped(string query)
+    public void Parse_WhenListeIdIsNoGuid_ThenTheOwnListIsDropped(string query)
     {
         Assert.Null(ExplorerUrlState.Parse(query).OwnListId);
     }
 
     [Fact]
-    public void OwnListId_ThenItIsAKeyAHostCanDecline()
+    public void ScalarQueryKeys_WhenAHostLooksForListeId_ThenItIsThereToDecline()
     {
         // A host whose page already means something by listeId must be able to keep it.
         Assert.Contains("listeId", ExplorerUrlState.ScalarQueryKeys);

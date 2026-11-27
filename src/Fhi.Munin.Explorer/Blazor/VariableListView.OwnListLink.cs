@@ -11,9 +11,11 @@ public sealed partial class VariableListView
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Read only with <c>MuninExplorer:Features:ListLink</c> on, and only while no <see cref="ShareCode"/> is open. Signed
-    /// in, the list is shown when it is one of the reader's, and the view says it was not found when it is not; either
-    /// way <see cref="OwnListIdChanged"/> then reports null, so a host writing the id into its address can drop it.
+    /// Read only with <c>MuninExplorer:Features:ListLink</c> on. Signed in, the list is shown when it is one of the reader's,
+    /// and the view says it was not found when it is not; while a <see cref="ShareCode"/> is open, the shared list stays.
+    /// In each case <see cref="OwnListIdChanged"/> then reports null, so a host writing the id into its address can drop it.
+    /// While the reader's lists cannot be read the id waits, and is followed once a read, or the retry, succeeds. An id set
+    /// again after null is followed again.
     /// </para>
     /// <para>
     /// Signed out nothing is reported, so the id stays where the host keeps it until the reader signs in. With the
@@ -37,8 +39,22 @@ public sealed partial class VariableListView
 
     private async Task FollowOwnListIdAsync()
     {
-        if (OwnListLink is not { } id || id == _followedOwnListId || ShowsSharedList || State is not { IsAuthenticated: true })
+        if (OwnListLink is not { } id)
         {
+            _followedOwnListId = null;
+            return;
+        }
+
+        if (id == _followedOwnListId || State is not { IsAuthenticated: true })
+        {
+            return;
+        }
+
+        // A shared list wins, and the id still goes, so the address beside the code carries no private list.
+        if (ShowsSharedList)
+        {
+            _followedOwnListId = id;
+            await OwnListIdChanged.InvokeAsync(null);
             return;
         }
 

@@ -38,16 +38,21 @@ public class VariableExplorerOwnListLinkTest : ExplorerTestContext
             });
     }
 
-    private IRenderedComponent<VariableExplorer> RenderAt(string query, bool flag, bool signedIn = true)
+    private IRenderedComponent<VariableExplorer> RenderAt(
+        string query, bool flag, bool signedIn = true, bool browserList = false, string[]? declined = null)
     {
         Services.AddSingleton<IMuninExplorerClient>(new TwoListsClient());
         Services.AddSingleton(new ListLinkSwitch(flag));
+        Services.AddSingleton(new CodePickerSwitch(browserList));
         Services.AddScoped<VariableListState>();
         SetRendererInfo(new RendererInfo("Server", true));
         JSInterop.Mode = JSRuntimeMode.Loose;
         Services.GetRequiredService<NavigationManager>().NavigateTo("http://localhost/" + query);
 
-        return Render<VariableExplorer>(p => p.Add(c => c.IsAuthenticated, signedIn).Add(c => c.Language, "no"));
+        return Render<VariableExplorer>(p => p
+            .Add(c => c.IsAuthenticated, signedIn)
+            .Add(c => c.Language, "no")
+            .Add(c => c.DeclinedKeys, declined));
     }
 
     /// <summary>The address the explorer last wrote, or null when it wrote none.</summary>
@@ -61,7 +66,7 @@ public class VariableExplorerOwnListLinkTest : ExplorerTestContext
         cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Variabelliste").GetAttribute("aria-selected") == "true";
 
     [Fact]
-    public void ListeId_WhenTheFlagIsOnAndTheListIsTheReaders_ThenItOpensAndTheIdLeavesTheAddress()
+    public void Render_WhenTheFlagIsOnAndTheLinkedListIsTheReaders_ThenItOpensAndTheIdLeavesTheAddress()
     {
         // Left in the address, a link the reader copies later would carry a private list's id to whoever gets it.
         var cut = RenderAt($"?listeId={SecondList}", flag: true);
@@ -75,7 +80,7 @@ public class VariableExplorerOwnListLinkTest : ExplorerTestContext
     }
 
     [Fact]
-    public void ListeId_WhenTheReaderIsSignedOut_ThenTheyAreAskedToSignInAndTheIdStays()
+    public void Render_WhenTheReaderIsSignedOut_ThenTheyAreAskedToSignInAndTheIdStays()
     {
         // The host's sign-in returns to this address, so the id has to be in it for the list to open afterwards.
         var cut = RenderAt($"?listeId={SecondList}", flag: true, signedIn: false);
@@ -87,10 +92,11 @@ public class VariableExplorerOwnListLinkTest : ExplorerTestContext
     }
 
     [Fact]
-    public void ListeId_WhenTheFlagIsOff_ThenItIsNeitherReadNorTakenOutOfTheAddress()
+    public void Render_WhenTheFlagIsOff_ThenTheIdIsNeitherReadNorTakenOutOfTheAddress()
     {
         var cut = RenderAt($"?listeId={SecondList}", flag: false);
 
+        cut.WaitForAssertion(() => Assert.Contains("history.replaceState", JSInterop.Invocations.Select(i => i.Identifier)));
         Assert.False(ListTabSelected(cut));
         Assert.Contains($"listeId={SecondList}", LastWritten() ?? $"listeId={SecondList}", StringComparison.Ordinal);
 
@@ -98,5 +104,27 @@ public class VariableExplorerOwnListLinkTest : ExplorerTestContext
 
         cut.WaitForAssertion(() =>
             Assert.Contains("Mine hjertevariabler", cut.Find("[id^='munin-explorer-list-heading-']").TextContent, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Render_WhenTheHostDeclinesListeId_ThenTheLinkOpensNothing()
+    {
+        var cut = RenderAt($"?listeId={SecondList}", flag: true, declined: ["listeId"]);
+
+        cut.WaitForAssertion(() => Assert.Contains("history.replaceState", JSInterop.Invocations.Select(i => i.Identifier)));
+        Assert.False(ListTabSelected(cut));
+    }
+
+    [Fact]
+    public void Render_WhenASignedOutReaderGoesBackToTheSearch_ThenTheLinkDoesNotPullThemBack()
+    {
+        // Signed out the id stands for the whole visit, so a follow on every render would keep snapping the tab back.
+        var cut = RenderAt($"?listeId={SecondList}", flag: true, signedIn: false, browserList: true);
+        cut.WaitForAssertion(() => Assert.True(ListTabSelected(cut)));
+
+        cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Søkeresultat").Click();
+        cut.Render();
+
+        Assert.False(ListTabSelected(cut));
     }
 }

@@ -675,6 +675,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
             await State.EnsureActiveListAsync(readerAsked: true);
             await ShowActiveListAsync();
+            await FollowOwnListIdAsync();
         }
         catch (Exception ex)
         {
