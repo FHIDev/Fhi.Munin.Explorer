@@ -709,8 +709,13 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         var fromRemove = TakeRemoveFocusTarget();
         var fromOffer = TakeOfferFocusTarget();
         var fromImport = TakeImportFocusTarget();
+        var earlier = fromCreateForm ?? fromSource ?? fromMenu ?? fromWrite;
 
-        if ((fromCreateForm ?? fromSource ?? fromMenu ?? fromWrite ?? fromRemove ?? fromOffer ?? fromImport) is { } target)
+        if (earlier is null && fromRemove is { } removeTarget)
+        {
+            await FocusAfterRemoveAsync(removeTarget);
+        }
+        else if ((earlier ?? fromOffer ?? fromImport) is { } target)
         {
             try
             {
@@ -1670,7 +1675,6 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     // «Fjern» leaves with its row: focus goes to the next row's (else the previous one's), or to the list's menu when
     // none is left, and the removal is said (WCAG 2.4.3 and 4.1.3, Fhi.Metadata-mhqx0.15).
-    private readonly Dictionary<VariableDatasamlingKey, ElementReference> _removeButtons = [];
     private bool _focusAfterRemove;
     private (int Forms, int Moves) _atRemove;
 
@@ -1682,7 +1686,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     // A new element per removal, so a second one under the same name is announced again.
     private int _removedCount;
 
-    private ElementReference? TakeRemoveFocusTarget()
+    private string? TakeRemoveFocusTarget()
     {
         if (!_focusAfterRemove)
         {
@@ -1697,8 +1701,25 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             return null;
         }
 
-        var shown = _page?.Items.Any(i => VariableDatasamlingKey.Of(i) == _removeFocusRow) == true;
-        return shown && _removeFocusRow is { } row && _removeButtons.TryGetValue(row, out var button) ? button : _menuToggle;
+        var shown = _page?.Items.FirstOrDefault(i => _removeFocusRow is { } row && VariableDatasamlingKey.Of(i) == row);
+        return shown is not null ? RemoveButtonId(shown) : MenuToggleId;
+    }
+
+    // The browser says where focus is: a reader who Tabbed or clicked away during the call keeps their place.
+    private async Task FocusAfterRemoveAsync(string target)
+    {
+        try
+        {
+            await ExplorerInterop.FocusIfLostAsync(Js, target);
+        }
+        catch (JSException ex)
+        {
+            Log?.LogError(ex, "the module could not move focus after removing a row from the list");
+        }
+        catch (Exception ex)
+        {
+            Log?.LogWarning(ex, "could not move focus after removing a row from the list");
+        }
     }
 
     private async Task RemoveAsync(VariableListItem item)
@@ -1741,7 +1762,6 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 }
 
                 ForgetNotesFor(list, key);
-                _removeButtons.Remove(key);
                 if (context == (_shownList, _pageNumber))
                 {
                     _removeContext = context;

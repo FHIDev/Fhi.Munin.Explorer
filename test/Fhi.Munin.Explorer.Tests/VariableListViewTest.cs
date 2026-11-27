@@ -3761,8 +3761,8 @@ public partial class VariableListViewTest : ExplorerTestContext
     {
         // The pressed button leaves with its row, so without a move focus falls to <body> (Fhi.Metadata-mhqx0.15).
         // Where it lands is the browser's to show (state-assertions.mjs); here: once per removal, and said.
-        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"), Item("Kjønn", "V_BDR.KJONN"), Item("Bosted", "V_BDR.BOSTED")));
-        int Focused() => JSInterop.Invocations.Count(i => i.Identifier.EndsWith(".focus", StringComparison.Ordinal));
+        var (cut, module) = RenderWithModule(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"), Item("Kjønn", "V_BDR.KJONN"), Item("Bosted", "V_BDR.BOSTED")));
+        int Focused() => ElementFocuses() + module.Invocations[FocusIfLost].Count;
         var before = Focused();
 
         await cut.InvokeAsync(() => cut.FindAll("tbody tr td:last-child button")[1].Click());
@@ -3777,8 +3777,8 @@ public partial class VariableListViewTest : ExplorerTestContext
         // Copilot on #716: a page or list change does not move _readerMoves, so the late removal must check its own context.
         var many = Enumerable.Range(1, 30).Select(i => Item($"Variabel {i}", $"V_{i}")).ToArray();
         var client = new ListClient(many) { PageSize = 25, HoldRemove = new TaskCompletionSource() };
-        var cut = RenderView(client);
-        int Focused() => JSInterop.Invocations.Count(i => i.Identifier.EndsWith(".focus", StringComparison.Ordinal));
+        var (cut, module) = RenderWithModule(client);
+        int Focused() => ElementFocuses() + module.Invocations[FocusIfLost].Count;
 
         var removing = cut.InvokeAsync(() => cut.FindAll("tbody tr td:last-child button")[1].Click());
         await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-pagination-content button")[^1].Click());
