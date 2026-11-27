@@ -142,4 +142,25 @@ public class VariableExplorerOwnListLinkTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Contains("alder", cut.Find("input[type=search], input[type=text]").GetAttribute("value") ?? "", StringComparison.Ordinal));
         Assert.False(ListTabSelected(cut));
     }
+
+    [Fact]
+    public void Render_WhenBackReturnsToAnEarlierLinkAfterASecondOne_ThenNeitherIsFollowedAgain()
+    {
+        // A marker holding only the last id would follow the first link again on the way Back past the second.
+        var cut = RenderAt($"?listeId={SecondList}", flag: true);
+        cut.WaitForAssertion(() => Assert.DoesNotContain("listeId", LastWritten() ?? "listeId", StringComparison.OrdinalIgnoreCase));
+        var navigation = Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo($"http://localhost/?listeId={FirstList}");
+        cut.WaitForAssertion(() =>
+            Assert.Contains("Mine hjertevariabler", cut.Find("[id^='munin-explorer-list-heading-']").TextContent, StringComparison.Ordinal));
+        cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Søkeresultat").Click();
+
+        navigation.NavigateTo($"http://localhost/?search=alder&listeId={SecondList}");
+
+        cut.WaitForAssertion(() => Assert.Contains("alder", cut.Find("input[type=search], input[type=text]").GetAttribute("value") ?? "", StringComparison.Ordinal));
+        Assert.False(ListTabSelected(cut));
+        cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Variabelliste").Click();
+        cut.WaitForAssertion(() =>
+            Assert.Contains("Mine hjertevariabler", cut.Find("[id^='munin-explorer-list-heading-']").TextContent, StringComparison.Ordinal));
+    }
 }

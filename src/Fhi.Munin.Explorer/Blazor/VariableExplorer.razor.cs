@@ -671,16 +671,15 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
     private void OnOwnListIdChanged(Guid? id) => _state.OwnListId = id;
 
-    private Guid? _ownListSeen;
+    private readonly HashSet<Guid> _ownListsSeen = [];
     private int _ownListArrival = -1;
 
-    // The id is followed on the arrival that brought it; a Back or Forward remount that still carries it, after it
-    // was used and left the address, is not. Only a new id moves the marker, so its consumption cannot reset it.
+    // Each id is followed once, on the arrival that brought it: a Back or Forward remount to an entry that still
+    // carries an id this explorer has seen, after it was used and left the address, opens nothing.
     private Guid? SearchOwnListId()
     {
-        if (_state.OwnListId is { } id && id != _ownListSeen)
+        if (_state.OwnListId is { } id && _ownListsSeen.Add(id))
         {
-            _ownListSeen = id;
             _ownListArrival = _arrival;
         }
 
