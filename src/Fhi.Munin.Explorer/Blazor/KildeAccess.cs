@@ -19,8 +19,9 @@ internal static partial class KildeAccess
     internal const string ApplicationEmailKey = "SoknadOmTilgangEpost";
     internal const string OpenDataUrlKey = "AapneDataUrl";
 
-    // The kilde's own site, which is where a registry without an application page says how to apply.
-    private static readonly string[] WebsiteKeys = ["Hjemmeside", "landingPage"];
+    // The kilde's own site, which is where a registry without an application page says how to apply. landingPage first,
+    // as Munin's HealthDCAT export reads it: a research project's own field beats its Hjemmeside (Fhi.Metadata-l9l2n.197).
+    private static readonly string[] WebsiteKeys = ["landingPage", "Hjemmeside"];
 
     internal sealed record Link(string Text, string Href, bool Primary);
 

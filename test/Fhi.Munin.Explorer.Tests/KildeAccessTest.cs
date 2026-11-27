@@ -189,11 +189,33 @@ public class KildeAccessTest : ExplorerTestContext
     }
 
     [Fact]
-    public void OpenData_WhenTheHjemmesideIsNoWebPage_ThenTheLandingPageIsTheWebsite()
+    public void OpenData_WhenTheLandingPageIsNoWebPage_ThenTheHjemmesideIsTheWebsite()
     {
-        var offer = Offers(Kilde("""["apne-data"]""", ("Hjemmeside", "mailto:post@example.org"), ("landingPage", "https://example.org/register"))).Single();
+        var offer = Offers(Kilde("""["apne-data"]""", ("landingPage", "mailto:post@example.org"), ("Hjemmeside", "https://example.org/register"))).Single();
 
         Assert.Equal("https://example.org/register", KildeAccess.Pieces(offer).Select(p => p.Fill?.Href).Single(h => h is not null));
+    }
+
+    [Fact]
+    public void KildeView_WhenAResearchProjectHasBothWebsites_ThenItsLandingPageIsTheOneShown()
+    {
+        // HealthDCAT reads landingPage first; preferring the Hjemmeside showed a project another address than the export.
+        var project = Kilde("""["tilgang-krever-soknad"]""",
+            ("Hjemmeside", "https://institusjon.example.org"), ("landingPage", "https://prosjekt.example.org/om")) with { Kildetype = "forskningsprosjekt" };
+
+        var block = AccessSection(RenderKilde(project)).QuerySelector(".munin-explorer-kilde__access")!;
+
+        Assert.Equal(["https://prosjekt.example.org/om"], block.QuerySelectorAll("a").Select(a => a.GetAttribute("href")));
+    }
+
+    [Fact]
+    public void KildeView_WhenARegisterHasOnlyAHjemmeside_ThenThatIsStillTheWebsite()
+    {
+        var register = Kilde("""["tilgang-krever-soknad"]""", ("Hjemmeside", "https://www.stolav.no/nhr/")) with { Kildetype = "nasjonaltMedisinskKvalitetsregister" };
+
+        var block = AccessSection(RenderKilde(register)).QuerySelector(".munin-explorer-kilde__access")!;
+
+        Assert.Equal(["https://www.stolav.no/nhr/"], block.QuerySelectorAll("a").Select(a => a.GetAttribute("href")));
     }
 
     [Fact]
