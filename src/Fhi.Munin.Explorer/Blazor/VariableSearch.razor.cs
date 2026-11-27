@@ -276,6 +276,16 @@ public sealed partial class VariableSearch : ComponentBase
     [Parameter] public string? ShareCode { get; set; }
 
     /// <summary>
+    /// One of the reader's own lists being opened from a link, or null. When one arrives the <see cref="VariableList"/>
+    /// tab opens, where <see cref="VariableListView.OwnListId"/> opens the list itself.
+    /// </summary>
+    /// <remarks>
+    /// Read only with <c>MuninExplorer:Features:ListLink</c> on. Signed out with no list tab to open, the sentence that
+    /// stands in for the tab asks the reader to sign in to open the list.
+    /// </remarks>
+    [Parameter] public Guid? OwnListId { get; set; }
+
+    /// <summary>
     /// Whether the host says this reader is signed in. Defaults to <see langword="false"/>.
     /// </summary>
     /// <remarks>

@@ -34,6 +34,7 @@ else
                     @bind-SelectedDatasamlingId="state.SelectedDatasamlingId"
                     @bind-SelectedInstrumentId="state.SelectedInstrumentId"
                     ShareCode="@state.ShareCode"
+                    OwnListId="@SearchOwnListId()"
                     IsAuthenticated="@IsAuthenticated"
                     HeadingLevel="@HeadingLevel"
                     Lede="@Lede"
@@ -59,6 +60,8 @@ else
                                                             HeadingLevel="@ListLevel"
                                                             ShareCode="@_state.ShareCode"
                                                             ShareCodeChanged="@OnShareCodeChanged"
+                                                            OwnListId="@SearchOwnListId()"
+                                                            OwnListIdChanged="@OnOwnListIdChanged"
                                                             SharedListHref="@SharedListHref"
                                                             ExplorerPageUrl="@ExportPageUrl"
                                                             VariableHref="@VariableHref" />;

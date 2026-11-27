@@ -842,6 +842,10 @@ else if (ShowsBrowserCopy)
     // A signed-out reader's list in the browser: what is kept where, what needs sign-in, and the three things it can
     // do. One sentence each rather than a hidden control: «Ønskede data» and notes are not offered here at all.
     private RenderFragment BrowserListControls => @<text>
+        @if (OwnListAwaitsSignIn)
+        {
+            <p class="caption">@T.SignInToOpenOwnList</p>
+        }
         <p class="caption">@BrowserListStorageSentence</p>
         <p class="caption">@T.BrowserListApplication</p>
         <p class="caption">@T.BrowserListSignInFor</p>

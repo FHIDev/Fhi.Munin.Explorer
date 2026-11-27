@@ -360,6 +360,37 @@ public class ExplorerUrlStateTest
     }
 
     // -----------------------------------------------------------------------
+    // listeId: one of the reader's own lists (Fhi.Metadata-9huq2.61)
+
+    [Fact]
+    public void ToQueryString_WhenAnOwnListIsSet_ThenParseReadsItBackUnderListeId()
+    {
+        var id = Guid.NewGuid();
+        var query = new ExplorerUrlState { OwnListId = id }.ToQueryString();
+
+        Assert.Equal($"listeId={id}", query);
+        Assert.Equal(id, ExplorerUrlState.Parse("?" + query).OwnListId);
+        Assert.Equal(id, ExplorerUrlState.Parse($"?ListeID={id}").OwnListId);
+    }
+
+    [Theory]
+    [InlineData("?listeId=")]
+    [InlineData("?listeId=not-a-guid")]
+    [InlineData("?listeId=12345")]
+    public void Parse_WhenListeIdIsNoGuid_ThenTheOwnListIsDropped(string query)
+    {
+        Assert.Null(ExplorerUrlState.Parse(query).OwnListId);
+    }
+
+    [Fact]
+    public void ScalarQueryKeys_WhenAHostLooksForListeId_ThenItIsThereToDecline()
+    {
+        // A host whose page already means something by listeId must be able to keep it.
+        Assert.Contains("listeId", ExplorerUrlState.ScalarQueryKeys);
+        Assert.Contains("LISTEID", ExplorerUrlState.QueryKeys);
+    }
+
+    // -----------------------------------------------------------------------
     // delekode: a shared variable list's code (Fhi.Metadata-ntpbd.1)
 
     [Fact]

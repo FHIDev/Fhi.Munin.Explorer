@@ -110,6 +110,23 @@ public sealed record ExplorerUrlState
     public string? ShareCode { get; init; }
 
     /// <summary>
+    /// One of the signed-in reader's own variable lists to open, by the id <c>GET api/explorer/my/lists</c> gives it, or
+    /// null. Written as <c>listeId</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// For a host page that lists a reader's lists and links back to each, such as an application form. Unlike
+    /// <see cref="ShareCode"/> it opens the live list, notes included, and only for the reader who owns it.
+    /// </para>
+    /// <para>
+    /// Parsed and written whatever the host's settings, since this type is a contract. <see cref="Blazor.VariableExplorer"/>
+    /// reads it only with <c>MuninExplorer:Features:ListLink</c> on, and drops it from the address once it has opened the
+    /// list or found it missing, so an address copied afterwards does not carry a private list's id.
+    /// </para>
+    /// </remarks>
+    public Guid? OwnListId { get; init; }
+
+    /// <summary>
     /// The page size a reader who has chosen nothing gets, and so the one value omitted from a URL.
     /// </summary>
     /// <remarks>
@@ -220,6 +237,11 @@ public sealed record ExplorerUrlState
         }
 
         Append(query, "delekode", SharedList.NormalizeCode(ShareCode));
+
+        if (OwnListId is { } list)
+        {
+            Append(query, "listeId", list.ToString());
+        }
 
         return query.ToString();
     }
@@ -335,6 +357,12 @@ public sealed record ExplorerUrlState
             return SharedList.NormalizeCode(value) is { } code ? state with { ShareCode = code } : state;
         }
 
+        // Format only: whether the reader owns the list is the list view's question, asked of Munin.
+        if (Is(name, "listeId"))
+        {
+            return Guid.TryParse(value, out var list) ? state with { OwnListId = list } : state;
+        }
+
         return state;
     }
 
@@ -349,14 +377,14 @@ public sealed record ExplorerUrlState
     /// component to leave alone. <c>variabelId</c> and <c>instrumentId</c> are in here for that
     /// reason too: a host with a variable or instrument page of its own plausibly already means
     /// something by either, and so is <c>delekode</c>, which a host may already use for sharing
-    /// of its own. <c>variabel</c> is the variable's code: declining it keeps codes out of the address, which then names the
+    /// of its own, and <c>listeId</c>, for the same reason. <c>variabel</c> is the variable's code: declining it keeps codes out of the address, which then names the
     /// open variable by <c>variabelId</c> as before. Declining <c>variabelId</c> leaves the open variable out altogether,
     /// its code and datasamling with it. Declining <c>datasamling</c> names the open row's datasamling by
     /// <c>datasamlingId</c> as before, and declining <c>datasamlingId</c> leaves out only that key.
     /// </remarks>
     public static IReadOnlySet<string> ScalarQueryKeys { get; } =
         new HashSet<string>(
-            ["search", "sort", "sortDir", "page", "pageSize", "variabelId", "variabel", "datasamling", "datasamlingId", "instrumentId", "delekode"],
+            ["search", "sort", "sortDir", "page", "pageSize", "variabelId", "variabel", "datasamling", "datasamlingId", "instrumentId", "delekode", "listeId"],
             StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The keys this type reads and writes, so a host can tell them from its own.</summary>

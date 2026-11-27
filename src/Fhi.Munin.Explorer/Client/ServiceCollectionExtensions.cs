@@ -73,6 +73,13 @@ public sealed class MuninExplorerFeatures
     /// needs a Stiler that styles it: without it, a numbered list in a row panel is drawn as a kilde trail. Off, the text
     /// shows those markers as written, and links and line breaks render as before.</summary>
     public bool? CatalogueFormatting { get; set; }
+
+    /// <summary>A link that opens one of the signed-in reader's own variable lists, <c>?listeId=&lt;list id&gt;</c> on the
+    /// page <c>VariableExplorer</c> is mounted on; key <c>MuninExplorer:Features:ListLink</c>. The id is the one
+    /// <c>GET api/explorer/my/lists</c> gives the list. Signed in, the list tab opens on that list, or says the list was not
+    /// found when it is not one of the reader's; signed out, the reader is told to sign in unless a shared list is open, and the key stays in the address
+    /// so the same address opens the list once they have. Off, the key is not read or written and stays as it arrived.</summary>
+    public bool? ListLink { get; set; }
 }
 
 /// <summary>The one call a host makes to use the explorer components.</summary>
@@ -183,6 +190,10 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton(provider => new Blazor.CatalogueFormattingSwitch(
             catalogueFormatting ?? FeatureOn(provider.GetService<IConfiguration>(), nameof(MuninExplorerFeatures.CatalogueFormatting))));
 
+        var listLink = options.Features.ListLink;
+        services.TryAddSingleton(provider => new Blazor.ListLinkSwitch(
+            listLink ?? FeatureOn(provider.GetService<IConfiguration>(), nameof(MuninExplorerFeatures.ListLink))));
+
         services.AddHttpClient<IMuninExplorerClient, MuninExplorerClient>(client =>
         {
             // Trailing slash so relative routes ("api/explorer/...") resolve against the
@@ -246,6 +257,7 @@ public static class ServiceCollectionExtensions
             o.Features.CodePicker = FeatureOn(configuration, nameof(MuninExplorerFeatures.CodePicker));
             o.Features.AdvancedSearch = FeatureOn(configuration, nameof(MuninExplorerFeatures.AdvancedSearch));
             o.Features.CatalogueFormatting = FeatureOn(configuration, nameof(MuninExplorerFeatures.CatalogueFormatting));
+            o.Features.ListLink = FeatureOn(configuration, nameof(MuninExplorerFeatures.ListLink));
         });
     }
 

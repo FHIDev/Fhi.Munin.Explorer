@@ -3,6 +3,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.Logging;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
@@ -28,7 +29,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </para>
 /// <para>
 /// <b>It will not take a query key away from you.</b> It reads and rewrites the keys in
-/// <see cref="ExplorerUrlState.QueryKeys"/> and touches nothing else, so a host's own
+/// <see cref="ExplorerUrlState.QueryKeys"/>, <c>listeId</c> only with <c>MuninExplorer:Features:ListLink</c> on, and
+/// touches nothing else, so a host's own
 /// <c>?utm_source=</c> survives every filter change. <see cref="DeclinedKeys"/> is how you keep one
 /// of ours as well.
 /// </para>
@@ -42,7 +44,9 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <para>
 /// Which tab is open is circuit state and not a query key: a link carries the search, not the
 /// reader's own lists, and a shared link that opened on somebody else's Variabelliste would be a
-/// link to an empty page for everyone but its author.
+/// link to an empty page for everyone but its author. Two keys open the list tab on arrival:
+/// <c>?delekode=</c>, a shared list, and, with <c>MuninExplorer:Features:ListLink</c> on,
+/// <c>?listeId=</c>, one of the reader's own lists.
 /// </para>
 /// </remarks>
 public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
@@ -509,6 +513,12 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             mirror.Arrived();
             CancelLookup();
 
+            // An entry from before a link was used still carries its id; kept, a copied address would carry it again.
+            if (arrived.OwnListId is { } listId && _ownListsUsed.Contains(listId))
+            {
+                arrived.OwnListId = null;
+            }
+
             // The variable alone names its primary row, as ResolveAsync pins it for the code spelling; left to the
             // search, it would open whichever row the list puts first.
             if (Declined("datasamlingId") && arrived.SelectedVariableId is { } id && _known.TryGetValue(id, out var known))
@@ -731,9 +741,39 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
     private void OnShareCodeChanged(string? code) => _state.ShareCode = code;
 
+    private void OnOwnListIdChanged(Guid? id)
+    {
+        if (id is null && _state.OwnListId is { } used)
+        {
+            _ownListsUsed.Add(used);
+        }
+
+        _state.OwnListId = id;
+    }
+
+    private readonly HashSet<Guid> _ownListsUsed = [];
+    private readonly HashSet<Guid> _ownListsSeen = [];
+    private int _ownListArrival = -1;
+
+    // Each id is followed once, on the arrival that first brought it: a Back or Forward remount to an entry that
+    // still carries an id this explorer has already seen opens nothing.
+    private Guid? SearchOwnListId()
+    {
+        if (_state.OwnListId is { } id && _ownListsSeen.Add(id))
+        {
+            _ownListArrival = _arrival;
+        }
+
+        return _ownListArrival == _arrival ? _state.OwnListId : null;
+    }
+
+    // Off, listeId is not ours: not read, not written, and left in the address as it arrived.
+    private bool ListLinkOn => Services.GetService<ListLinkSwitch>()?.On == true;
+
     // A code is not read where it would never be written back out.
     private bool Owns(string key) =>
         ExplorerUrlState.QueryKeys.Contains(key) && !Declined(key)
+        && (ListLinkOn || !string.Equals(key, "listeId", StringComparison.OrdinalIgnoreCase))
         && !(NoCodes && (string.Equals(key, "variabel", StringComparison.OrdinalIgnoreCase)
             || string.Equals(key, "datasamling", StringComparison.OrdinalIgnoreCase)));
 
@@ -749,6 +789,11 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     /// <summary>The state with the declined keys back at their defaults, so nothing writes them.</summary>
     private ExplorerUrlState Linkable(ExplorerUrlState state)
     {
+        if (!ListLinkOn)
+        {
+            state = state with { OwnListId = null };
+        }
+
         if (DeclinedKeys is not { Count: > 0 })
         {
             return state;
@@ -763,6 +808,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             SelectedDatasamlingCode = DeclinedVariable || Declined("datasamling") ? null : state.SelectedDatasamlingCode,
             SelectedInstrumentId = Declined("instrumentId") ? null : state.SelectedInstrumentId,
             ShareCode = Declined("delekode") ? null : state.ShareCode,
+            OwnListId = Declined("listeId") ? null : state.OwnListId,
             Sort = Declined("sort") ? SortField.Default : state.Sort,
             Direction = Declined("sortDir") ? SortDirection.Ascending : state.Direction,
             Page = Declined("page") ? 1 : state.Page,
@@ -813,6 +859,8 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
         public string? ShareCode { get; set; }
 
+        public Guid? OwnListId { get; set; }
+
         public static Binding From(ExplorerUrlState state) => new()
         {
             Search = state.Search,
@@ -827,6 +875,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             SelectedDatasamlingCode = state.SelectedDatasamlingCode,
             SelectedInstrumentId = state.SelectedInstrumentId,
             ShareCode = state.ShareCode,
+            OwnListId = state.OwnListId,
         };
 
         public ExplorerUrlState ToState() => new()
@@ -843,6 +892,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             SelectedDatasamlingCode = SelectedDatasamlingCode,
             SelectedInstrumentId = SelectedInstrumentId,
             ShareCode = ShareCode,
+            OwnListId = OwnListId,
         };
     }
 }

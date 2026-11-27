@@ -796,7 +796,7 @@ else
         @* Text, not a login control — helsedata's header already has a working Log in, so a
            second here would be a regression dressed as a fix. `.caption` is already pinned
            (VariableListView's list-meta line uses it too). (Fhi.Metadata-4ifsa) *@
-        <p class="caption">@T.SignInForVariableLists</p>
+        <p class="caption">@(OwnListLink is null ? T.SignInForVariableLists : T.SignInToOpenOwnList)</p>
     }
 
     @* Role-less without tabs. Only the open tab's contents are rendered: helsedata's bare
