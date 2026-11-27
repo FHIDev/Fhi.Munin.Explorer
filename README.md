@@ -1565,8 +1565,7 @@ datasamling's code, the primary one included (Fhi.Metadata-l9l2n.204). A datasam
 variable's datasamlinger as Munin's list import matches one, so unlike the kilde page's `datasamling` it needs its
 «K_»: a link and an imported row with the same code open the same datasamling. Where Munin sends no code, the row is named by
 `datasamlingId` as before, and the primary row by the variable's code alone. It writes a code only once Munin has answered
-one, and never for a variable whose own code Munin answers with nothing,
-so against a Munin without the route, or a client on the contract's default body, its links keep naming the
+one, and none for a variable whose code Munin answers with nothing or with another variable. So against a Munin without the route, or a client on the contract's default body, its links keep naming the
 variable by id as before. A `datasamling` or `datasamlingId` the variable does not have, such as an id from another environment,
 opens the primary row instead and says so, when the variable has more than one datasamling (for a `datasamling` code,
 when Munin also sends the datasamlinger's codes, since without them it cannot tell). A `variabelId` link keeps
