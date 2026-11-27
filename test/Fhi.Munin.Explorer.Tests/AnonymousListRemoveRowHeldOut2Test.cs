@@ -1,10 +1,8 @@
 using AngleSharp.Dom;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
-using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
-using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
