@@ -1715,7 +1715,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         // Kept while a read is out or the page still shows the row (an older read landing first): until the row goes,
-        // its pressed button is drawn and holds focus, so none is lost yet.
+        // its pressed button is drawn and may hold focus, so none is lost yet.
         if (_loading || _page?.Items.Any(i => VariableDatasamlingKey.Of(i) == _removedRow) == true)
         {
             return null;
