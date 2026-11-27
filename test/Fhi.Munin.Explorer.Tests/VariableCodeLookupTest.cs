@@ -35,6 +35,8 @@ public class VariableCodeLookupTest : ExplorerTestContext
 
         public bool Fails { get; init; }
 
+        public bool Throttled { get; init; }
+
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default, SortDirection direction = SortDirection.Ascending,
@@ -71,6 +73,11 @@ public class VariableCodeLookupTest : ExplorerTestContext
             if (Fails)
             {
                 throw new HttpRequestException("503");
+            }
+
+            if (Throttled)
+            {
+                throw new MuninExplorerRateLimitedException();
             }
 
             return Unanswered.Contains(code) ? null
@@ -144,7 +151,7 @@ public class VariableCodeLookupTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Load_WhenTheCodeIsStillLookedUp_ThenAStatusSaysSoUntilTheVariableOpens()
+    public void OnInitializedAsync_WhenTheAddressesCodeIsStillLookedUp_ThenAStatusSaysSoUntilTheVariableOpens()
     {
         // Without it the reader sees an empty area while the code is asked.
         var client = new LookupClient { Gate = new(TaskCreationOptions.RunContinuationsAsynchronously) };
@@ -156,7 +163,7 @@ public class VariableCodeLookupTest : ExplorerTestContext
 
         client.Gate.SetResult();
         cut.WaitForElement(".munin-explorer-detail");
-        Assert.DoesNotContain(cut.FindAll("p[role=status]"), p => p.TextContent.Trim() == "Henter variabler …");
+        Assert.DoesNotContain(cut.FindAll("p[role=status]"), p => p.Closest("section.munin-explorer") is null);
     }
 
     [Fact]
@@ -173,6 +180,10 @@ public class VariableCodeLookupTest : ExplorerTestContext
 
         Open(cut, Answered.Name);
         cut.WaitForAssertion(() => Assert.Equal(Answered.Code, SharedLink(cut)["variabel"].ToString()));
+
+        Open(cut, Folded.Name);
+        cut.WaitForAssertion(() => Assert.Equal(Folded.Id.ToString(), SharedLink(cut)["variabelId"].ToString()));
+        Assert.False(SharedLink(cut).ContainsKey("variabel"));
     }
 
     [Fact]
@@ -232,5 +243,29 @@ public class VariableCodeLookupTest : ExplorerTestContext
         Assert.All(client.Tokens, t => Assert.True(t.IsCancellationRequested));
         await Settle(client);
         Assert.Empty(Logged);
+    }
+
+    [Fact]
+    public async Task Learn_WhenMuninKeepsThrottling_ThenAVariablesCodeIsAskedTwiceAtMost()
+    {
+        // A 429 has a catch of its own, and an unbounded retry there would keep a throttled Munin throttled.
+        var client = new LookupClient { Throttled = true };
+        var cut = Render(client, "http://localhost/variabler?search=hkr");
+        Open(cut, Answered.Name);
+
+        await Rerender(cut, 5);
+
+        Assert.Equal([Answered.Code, Answered.Code], client.CodesAsked.Where(c => c == Answered.Code));
+    }
+
+    [Fact]
+    public async Task DisposeAsync_WhenCalledTwice_ThenTheSecondCallDoesNothing()
+    {
+        // A host may dispose twice, and the cancellation sources are gone after the first.
+        var cut = Render(new LookupClient(), "http://localhost/variabler?search=hkr");
+        cut.WaitForElement("ul.munin-explorer-data-list");
+
+        await cut.Instance.DisposeAsync();
+        await cut.Instance.DisposeAsync();
     }
 }

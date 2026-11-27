@@ -191,6 +191,9 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     private readonly HashSet<Guid> _asked = [];
     private readonly HashSet<Guid> _askedAgain = [];
 
+    // Variables whose own code Munin answers with nothing or with another variable: a link by that code opens neither.
+    private readonly HashSet<Guid> _unresolved = [];
+
     // Cancelled on dispose, so a code still being learned does not outlive the explorer.
     private readonly CancellationTokenSource _disposal = new();
 
@@ -373,8 +376,16 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
                 // A null here is this variable's alone: a 409 fold or a hidden variable says nothing of the others.
                 var detail = await Client.GetVariableByCodeAsync(code!, token);
-                if (_disposed || detail?.Id != id)
+                if (_disposed)
                 {
+                    return;
+                }
+
+                if (detail?.Id != id)
+                {
+                    // Redrawn, since the open row may already carry a link by this code.
+                    _unresolved.Add(id);
+                    StateHasChanged();
                     return;
                 }
 
@@ -665,7 +676,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             return null;
         }
 
-        if (!NoCodes && _codesResolve && VariableCodes.IsLinkCode(code))
+        if (!NoCodes && _codesResolve && !_unresolved.Contains(variableId) && VariableCodes.IsLinkCode(code))
         {
             // Only an open row's link is drawn, so asking its primary here is one lookup per row opened.
             if (!_known.ContainsKey(variableId))
