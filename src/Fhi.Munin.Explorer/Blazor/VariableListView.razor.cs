@@ -1704,6 +1704,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     // «Fjern» leaves with its row: when focus left with it, focus goes to the next row's (else the previous one's), or to
     // the list's menu when none is left, and the removal is said (WCAG 2.4.3 and 4.1.3, Fhi.Metadata-mhqx0.15).
+    private readonly Dictionary<VariableDatasamlingKey, ElementReference> _removeButtons = [];
     private bool _focusAfterRemove;
     private VariableDatasamlingKey? _removedRow;
     private (int Forms, int Moves) _atRemove;
@@ -1718,7 +1719,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     // A new element per removal, so a second one under the same name is announced again.
     private int _removedCount;
 
-    private string? TakeRemoveFocusTarget()
+    private (string Id, ElementReference Element)? TakeRemoveFocusTarget()
     {
         if (!_focusAfterRemove)
         {
@@ -1733,7 +1734,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         // Kept while a read is out or the page still shows the row (an older read landing first): until the row goes,
-        // its pressed button is drawn and holds focus, so none is lost yet.
+        // its pressed button is drawn and may hold focus, so none is lost yet.
         if (_loading || _page?.Items.Any(i => VariableDatasamlingKey.Of(i) == _removedRow) == true)
         {
             return null;
@@ -1743,23 +1744,42 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         var shown = _page?.Items.FirstOrDefault(i => _removeFocusRow is { } row && VariableDatasamlingKey.Of(i) == row)
             ?? (_removeFocusLastRow ? _page?.Items.LastOrDefault() : null);
-        return shown is not null ? RemoveButtonId(shown) : MenuToggleId;
+        return shown is not null && _removeButtons.TryGetValue(VariableDatasamlingKey.Of(shown), out var button)
+            ? (RemoveButtonId(shown), button)
+            : (MenuToggleId, _menuToggle);
     }
 
     // The browser says where focus is: a reader who Tabbed or clicked away during the call keeps their place.
-    private async Task FocusAfterRemoveAsync(string target)
+    // With no module to ask (not served, or refused by a CSP), focus moves as it did before the module was asked.
+    private async Task FocusAfterRemoveAsync((string Id, ElementReference Element) target)
     {
+        bool? moved;
+
         try
         {
-            await ExplorerInterop.FocusIfLostAsync(Js, target);
+            moved = await ExplorerInterop.FocusIfLostAsync(Js, target.Id);
         }
         catch (JSException ex)
         {
             Log?.LogError(ex, "the module could not move focus after removing a row from the list");
+            return;
         }
         catch (Exception ex)
         {
             Log?.LogWarning(ex, "could not move focus after removing a row from the list");
+            return;
+        }
+
+        if (moved is null)
+        {
+            try
+            {
+                await target.Element.FocusAsync();
+            }
+            catch (Exception ex)
+            {
+                Log?.LogWarning(ex, "could not move focus after removing a row from the list");
+            }
         }
     }
 
@@ -1804,6 +1824,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 }
 
                 ForgetNotesFor(list, key);
+                _removeButtons.Remove(key);
 
                 // The re-read may already have landed and stepped back a page: that is the removal's, not the reader moving on.
                 var steppedBack = _steppedBack is { } step && step.From == context && step.From.List == _shownList && step.To == _pageNumber;

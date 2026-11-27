@@ -310,11 +310,12 @@ public partial class ExplorerInteropTest
     }
 
     [Fact]
-    public async Task FocusIfLostAsync_WhenTheModuleCannotBeImported_ThenItAnswersFalse()
+    public async Task FocusIfLostAsync_WhenTheModuleCannotBeImported_ThenItAnswersNull()
     {
+        // Null, not false: the view moves focus without the module only when there was no module to ask.
         var runtime = new RefusingJsRuntime(new JSException("404"));
 
-        Assert.False(await ExplorerInterop.FocusIfLostAsync(runtime, "remove"));
+        Assert.Null(await ExplorerInterop.FocusIfLostAsync(runtime, "remove"));
     }
 
     [Fact]
