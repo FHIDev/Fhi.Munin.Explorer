@@ -490,6 +490,13 @@ feature calls, which ship unflagged.
   `accessibility` and `ci summary`. Say which ones the diff will exercise — a change touching a
   class name will meet three of them — and never report a green check as evidence for something
   outside what that check can see (§6, §10).
+- **A test claim in the body is checked leg by leg.** For «each new leg mutated alone fails a test», or any claim like
+  it, take every new condition, call and argument in the diff and name the test that fails without it. A call its
+  callers can only reach in a state where it does nothing, or an argument (a cancellation token, say) that every test
+  double ignores, fails no test: Important, until a test covers it, the leg goes or the claim names it.
+- **A request count in prose is checked against every call on the path.** «asked once», «one request per …»: follow
+  each call the path makes to the client, the fetch that learns a missing value first included, and compare the total.
+  A count that leaves one out is Important, in the body, a changelog fragment and an XML doc alike.
 
 ---
 
