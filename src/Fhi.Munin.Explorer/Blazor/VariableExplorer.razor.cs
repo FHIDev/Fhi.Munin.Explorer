@@ -3,6 +3,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.Logging;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
@@ -665,9 +666,15 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
     private void OnShareCodeChanged(string? code) => _state.ShareCode = code;
 
+    private void OnOwnListIdChanged(Guid? id) => _state.OwnListId = id;
+
+    // Off, listeId is not ours: not read, not written, and left in the address as it arrived.
+    private bool ListLinkOn => Services.GetService<ListLinkSwitch>()?.On == true;
+
     // A code is not read where it would never be written back out.
     private bool Owns(string key) =>
         ExplorerUrlState.QueryKeys.Contains(key) && !Declined(key)
+        && (ListLinkOn || !string.Equals(key, "listeId", StringComparison.OrdinalIgnoreCase))
         && !(NoCodes && (string.Equals(key, "variabel", StringComparison.OrdinalIgnoreCase)
             || string.Equals(key, "datasamling", StringComparison.OrdinalIgnoreCase)));
 
@@ -683,6 +690,11 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     /// <summary>The state with the declined keys back at their defaults, so nothing writes them.</summary>
     private ExplorerUrlState Linkable(ExplorerUrlState state)
     {
+        if (!ListLinkOn)
+        {
+            state = state with { OwnListId = null };
+        }
+
         if (DeclinedKeys is not { Count: > 0 })
         {
             return state;
@@ -697,6 +709,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             SelectedDatasamlingCode = DeclinedVariable || Declined("datasamling") ? null : state.SelectedDatasamlingCode,
             SelectedInstrumentId = Declined("instrumentId") ? null : state.SelectedInstrumentId,
             ShareCode = Declined("delekode") ? null : state.ShareCode,
+            OwnListId = Declined("listeId") ? null : state.OwnListId,
             Sort = Declined("sort") ? SortField.Default : state.Sort,
             Direction = Declined("sortDir") ? SortDirection.Ascending : state.Direction,
             Page = Declined("page") ? 1 : state.Page,
@@ -747,6 +760,8 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
         public string? ShareCode { get; set; }
 
+        public Guid? OwnListId { get; set; }
+
         public static Binding From(ExplorerUrlState state) => new()
         {
             Search = state.Search,
@@ -761,6 +776,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             SelectedDatasamlingCode = state.SelectedDatasamlingCode,
             SelectedInstrumentId = state.SelectedInstrumentId,
             ShareCode = state.ShareCode,
+            OwnListId = state.OwnListId,
         };
 
         public ExplorerUrlState ToState() => new()
@@ -777,6 +793,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             SelectedDatasamlingCode = SelectedDatasamlingCode,
             SelectedInstrumentId = SelectedInstrumentId,
             ShareCode = ShareCode,
+            OwnListId = OwnListId,
         };
     }
 }

@@ -1407,7 +1407,7 @@ Features a host may want on in one environment before another are switched under
 each one off by default, so an environment's appsettings decides and production needs nothing:
 
 ```json
-"MuninExplorer": { "Features": { "CodePicker": true, "AdvancedSearch": true, "CatalogueFormatting": true } }
+"MuninExplorer": { "Features": { "CodePicker": true, "AdvancedSearch": true, "CatalogueFormatting": true, "ListLink": true } }
 ```
 
 Both `AddMuninExplorer` overloads read these keys from the host's configuration (the delegate overload from the
@@ -1431,6 +1431,7 @@ browser list for a signed-out reader stays on `CodePicker`.
 | `CodePicker` | the code picker under «Ønskede data»; and, from 2.24.0, the browser list for a signed-out reader | 2.19.0 | Fhi.Metadata-l9l2n.199 |
 | `AdvancedSearch` | avansert søk in `VariableSearch` | 2.21.0 | Fhi.Metadata-l9l2n.200 |
 | `CatalogueFormatting` | bold, italic and lists in the catalogue's authored text | unreleased | Fhi.Metadata-7vquc.5 |
+| `ListLink` | `?listeId=`, a link that opens one of the signed-in reader's own variable lists | unreleased | Fhi.Metadata-9huq2.63 |
 
 A new flag adds its row here, with the bead, in the PR that adds it, and its removal deletes the row.
 
@@ -1447,6 +1448,17 @@ A new flag adds its row here, with the bead, in the PR that adds it, and its rem
   `1.` as `ul` and `ol` with the class `munin-explorer-text__list`. `_` emphasis, `*` and `+` bullets and `1)` lists
   stay text. Turn it on only with Stiler 0.1.218 or later, the first that styles that class (Fhi.Metadata-7vquc.4):
   an earlier Stiler draws an `ol` in a row panel's `dd` as a kilde trail. With it off, the markers show as written.
+- `ListLink`, a link that opens one of the signed-in reader's own variable lists, for a host page that lists a
+  reader's lists and links back to each, such as an application form. The link is the page `VariableExplorer` is
+  mounted on with `?listeId=<list id>`, the id `GET api/explorer/my/lists` gives the list, for example
+  `https://<host>/<the explorer's page>?listeId=3f2b8c1e-5d4a-4e6f-9b7c-1a2d3e4f5a6b`. Unlike `?delekode=`, which
+  opens a snapshot copy without notes, it opens the live list. Signed in, the «Variabelliste» tab opens on that list;
+  when it is not one of the reader's lists, or no longer exists, the tab says the list was not found. Either way the
+  key then leaves the address, so an address the reader copies afterwards carries no list id. Signed out, the reader is
+  asked to sign in, in a sentence where the tab would be (above the browser list when `CodePicker` is on), and the key
+  stays, so the address the host's sign-in returns to opens the list. The package draws no sign-in control; the
+  host's own does that. A `?delekode=` in the same address wins. With the flag off, `listeId` is not read or written
+  and stays in the address as it arrived. `listeId` can be declined like the other scalar keys.
 
 The browser list behind `CodePicker` is a variable list for a reader who is not signed in, kept only in their
 browser's local storage under `Fhi.Munin.Explorer:anonymous-list`: each row's catalogue fields, exactly those named
@@ -1553,7 +1565,7 @@ the reader searches, filters, sorts, changes the page size or presses «Vis alle
 mirrors the open row therefore reopens a reloaded page on that one row. A link with the variable alone
 opens its first row over the whole list; where the host declines `datasamlingId` and the explorer already knows the
 variable's code, a navigation to it opens the primary row instead, narrowed as above, as `?variabel=` does. The full set is `ExplorerUrlState.ScalarQueryKeys` — `search`, `sort`, `sortDir`,
-`page`, `pageSize`, `variabelId`, `variabel`, `datasamling`, `datasamlingId`, `instrumentId` and `delekode` — plus
+`page`, `pageSize`, `variabelId`, `variabel`, `datasamling`, `datasamlingId`, `instrumentId`, `delekode` and `listeId` — plus
 `VariableFilter.QueryKeys`, and any of the scalars can be declined.
 
 `?variabel=` names a variable by its code (`?variabel=V_MFR.KJONN`), which is the same in every environment, where an

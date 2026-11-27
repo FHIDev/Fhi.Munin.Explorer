@@ -880,6 +880,10 @@ internal sealed record Texts(
     // duplicating it. (Fhi.Metadata-4ifsa)
     string SignInForVariableLists,
 
+    // A link to one of the reader's own lists (MuninExplorer:Features:ListLink): signed out, and a list that is not theirs.
+    string SignInToOpenOwnList,
+    string OwnListNotFound,
+
     // A saved item from before lists named a datasamling, whose variable is in several: its
     // datasamling cell, and the picker in its panel that resolves it (Fhi.Metadata-d07al.1).
     string DatasamlingNotChosen,
@@ -1915,6 +1919,8 @@ internal sealed record Texts(
             return filters == 0 ? $"{forSearch}." : $"{forSearch} og filtrene som er valgt.";
         },
         SignInForVariableLists: "Logg inn for å lage og bruke egne variabellister.",
+        SignInToOpenOwnList: "Logg inn for å åpne variabellisten lenken viser til.",
+        OwnListNotFound: "Fant ikke variabellisten lenken viser til. Den kan være slettet, eller høre til en annen bruker.",
         DatasamlingNotChosen: "Datasamling ikke valgt",
         ChooseDatasamlingLegend: "Velg datasamling",
         ChooseDatasamlingHint: "Variabelen ble lagret før lista skilte mellom datasamlinger, og den finnes i flere. Velg én eller flere. Ønskede data og notatene dine blir med.",
@@ -2635,6 +2641,8 @@ internal sealed record Texts(
             return filters == 0 ? $"{forSearch}." : $"{forSearch} and the filters you have chosen.";
         },
         SignInForVariableLists: "Sign in to create and use your own variable lists.",
+        SignInToOpenOwnList: "Sign in to open the variable list this link points to.",
+        OwnListNotFound: "The variable list this link points to was not found. It may have been deleted, or belong to another user.",
         DatasamlingNotChosen: "Datasamling not chosen",
         ChooseDatasamlingLegend: "Choose datasamling",
         ChooseDatasamlingHint: "This variable was saved before lists told datasamlinger apart, and it is in several. Choose one or more. Your desired data and notes come along.",

@@ -151,9 +151,25 @@ public partial class VariableSearch : IDisposable, IAsyncDisposable
         }
     }
 
+    private Guid? _followedOwnListId;
+
+    // With the flag on, a list id that arrives opens the list tab; one that leaves (the view consumed it) changes nothing.
+    private Guid? OwnListLink => ServiceProvider.GetService<ListLinkSwitch>()?.On == true ? OwnListId : null;
+
+    private void FollowOwnListId()
+    {
+        if (OwnListLink is { } id && id != _followedOwnListId && ShowTabs)
+        {
+            _resultsTab = ExplorerTab.VariableList;
+        }
+
+        _followedOwnListId = OwnListLink;
+    }
+
     protected override async Task OnParametersSetAsync()
     {
         FollowShareCode();
+        FollowOwnListId();
 
         await FollowSortParameterAsync();
 

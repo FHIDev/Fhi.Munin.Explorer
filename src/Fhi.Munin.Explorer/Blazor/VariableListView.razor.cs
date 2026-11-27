@@ -638,6 +638,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// <summary>The one sentence the view's alert region says, the most recent failure first.</summary>
     private string? AlertText =>
         _failed ? T.ListLoadError
+        : _ownListMissing ? T.OwnListNotFound
         : (_quotaRefusal is { } quota ? T.ListQuota(quota) : null) ?? CarriedOverMessage ?? SharedListMessage ?? ShareMessage ?? CopyMessage ?? EmptyingMessage ?? DownloadMessage ?? ActionMessage ?? ImportReportMessage
           ?? CreateMessage ?? DesiredDataMessage ?? NotesMessage ?? (State is { ListsReadFailed: true, Lists.Count: 0 } ? T.ListLoadError : null);
 
@@ -863,6 +864,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         await FollowShareCodeAsync();
+        await FollowOwnListIdAsync();
         await LoadDataTypeNamesAsync();
     }
 
@@ -1354,11 +1356,20 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _importFailure = ListActionFailure.None;
         ForgetSharingFailures();
         ForgetCopyAndEmptyFailures();
+        _ownListMissing = false;
     }
 
     private async Task ChooseListAsync(ChangeEventArgs e)
     {
-        if (State is null || !Guid.TryParse(e.Value?.ToString(), out var id))
+        if (Guid.TryParse(e.Value?.ToString(), out var id))
+        {
+            await ShowListAsync(id);
+        }
+    }
+
+    private async Task ShowListAsync(Guid id)
+    {
+        if (State is null)
         {
             return;
         }

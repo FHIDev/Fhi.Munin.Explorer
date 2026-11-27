@@ -29,6 +29,7 @@
                     @bind-SelectedDatasamlingId="state.SelectedDatasamlingId"
                     @bind-SelectedInstrumentId="state.SelectedInstrumentId"
                     ShareCode="@state.ShareCode"
+                    OwnListId="@state.OwnListId"
                     IsAuthenticated="@IsAuthenticated"
                     HeadingLevel="@HeadingLevel"
                     Lede="@Lede"
@@ -54,6 +55,8 @@
                                                             HeadingLevel="@ListLevel"
                                                             ShareCode="@_state.ShareCode"
                                                             ShareCodeChanged="@OnShareCodeChanged"
+                                                            OwnListId="@_state.OwnListId"
+                                                            OwnListIdChanged="@OnOwnListIdChanged"
                                                             SharedListHref="@SharedListHref"
                                                             ExplorerPageUrl="@ExportPageUrl"
                                                             VariableHref="@VariableHref" />;
