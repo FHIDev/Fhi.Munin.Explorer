@@ -266,7 +266,8 @@ public sealed partial class VariableSearch : ComponentBase
 
     /// <summary>
     /// The code of a shared variable list being opened, or null. While one is present the
-    /// <see cref="VariableList"/> tab is drawn, signed out too, and a new code opens on it.
+    /// <see cref="VariableList"/> tab is drawn, signed out too, and a new code opens on it while
+    /// <see cref="ShareCodeArrived"/> is true.
     /// </summary>
     /// <remarks>
     /// Only what draws the tab: <see cref="VariableListView"/> opens the list itself.
@@ -274,6 +275,13 @@ public sealed partial class VariableSearch : ComponentBase
     /// reader's own list and a shared one is not theirs.
     /// </remarks>
     [Parameter] public string? ShareCode { get; set; }
+
+    /// <summary>
+    /// Whether <see cref="ShareCode"/> came on the arrival that shows this search, so its list tab opens. Defaults to
+    /// <see langword="true"/>; <see cref="VariableExplorer"/> passes false on any later arrival with a code it has
+    /// already seen (Back, Forward or a link), until the page is reloaded.
+    /// </summary>
+    [Parameter] public bool ShareCodeArrived { get; set; } = true;
 
     /// <summary>
     /// One of the reader's own lists being opened from a link, or null. When one arrives the <see cref="VariableList"/>

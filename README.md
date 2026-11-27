@@ -1552,7 +1552,9 @@ instrument, and every change the reader makes updates the address bar. There is 
 no wrapper component, no query parsing, no `history.replaceState`. Which tab is open is
 deliberately *not* in the link: a shared URL that opened on the sender's Variabelliste would be an
 empty page for everybody else. Two keys open the list tab on arrival instead, each naming the list:
-`?delekode=`, a shared list, and, with `ListLink` on, `?listeId=`, one of the reader's own.
+`?delekode=`, a shared list, and, with `ListLink` on, `?listeId=`, one of the reader's own. Each code opens the tab
+once until the page is reloaded, on the arrival that first brought it, as a list id does: Back or Forward to an address
+that still carries it leaves the tab the reader is on.
 
 The data-period filters use native date inputs, as Helsedata's new application forms do. Readers can
 type a date or choose one in the browser's calendar; the filter updates when they leave the field.

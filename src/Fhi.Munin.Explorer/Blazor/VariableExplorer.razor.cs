@@ -767,6 +767,20 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         return _ownListArrival == _arrival ? _state.OwnListId : null;
     }
 
+    private readonly HashSet<string> _shareCodesSeen = new(StringComparer.OrdinalIgnoreCase);
+    private int _shareCodeArrival = -1;
+
+    // A shared list's code opens its tab once, on the arrival that first brought it, as SearchOwnListId does for an id.
+    private bool SearchShareCodeArrived()
+    {
+        if (_state.ShareCode is { } code && _shareCodesSeen.Add(code))
+        {
+            _shareCodeArrival = _arrival;
+        }
+
+        return _shareCodeArrival == _arrival;
+    }
+
     // Off, listeId is not ours: not read, not written, and left in the address as it arrived.
     private bool ListLinkOn => Services.GetService<ListLinkSwitch>()?.On == true;
 
