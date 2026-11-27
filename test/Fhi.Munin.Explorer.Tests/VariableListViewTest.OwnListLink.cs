@@ -117,12 +117,15 @@ public partial class VariableListViewTest
     {
         public TaskCompletionSource Release { get; } = new();
 
+        public bool SwitchAsked { get; private set; }
+
         public override async Task<Page<VariableListItem>?> GetMyListVariablesAsync(
             Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
             CancellationToken cancellationToken = default)
         {
             if (id == SecondListId)
             {
+                SwitchAsked = true;
                 await Release.Task;
             }
 
@@ -136,7 +139,7 @@ public partial class VariableListViewTest
         // A late report would clear the id the host holds by then, which in the explorer is a newer link's.
         var client = new HeldSwitchClient { ListCount = 2 };
         var cut = RenderOwnListLink(client, ListClient.SecondListId);
-        cut.WaitForAssertion(() => Assert.Contains(ListClient.SecondListId, client.VariablesAskedFor));
+        cut.WaitForAssertion(() => Assert.True(client.SwitchAsked));
 
         cut.Render(p => p.Add(c => c.OwnListId, (Guid?)null));
         client.Release.SetResult();
