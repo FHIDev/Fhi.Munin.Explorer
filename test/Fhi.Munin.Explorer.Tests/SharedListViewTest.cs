@@ -1053,4 +1053,45 @@ public class SharedListViewTest : ExplorerTestContext
 
         Assert.DoesNotContain(cut.FindAll("thead th"), th => th.TextContent.Trim() == "Ønskede verdier");
     }
+
+    // -----------------------------------------------------------------------
+    // Fhi.Metadata-9huq2.64: a delekode is followed once, on the arrival that brought it
+
+    [Fact]
+    public void Navigation_WhenAReaderReturnsToAnAddressStillCarryingTheDelekode_ThenTheResultsTabStaysSelected()
+    {
+        var store = new ShareStore();
+        store.ByCode["AB12CD"] = new SharedList("Kollegas liste", Three);
+        var cut = RenderExplorer(this, new ShareClient(store), "/variabler?delekode=AB12CD", signedIn: false);
+        bool Selected(string label) => cut.FindAll("[role=tab]")
+            .Single(t => t.TextContent.Trim() == label).GetAttribute("aria-selected") == "true";
+        cut.WaitForAssertion(() => Assert.True(Selected("Variabelliste")));
+        cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Søkeresultat").Click();
+        Assert.True(Selected("Søkeresultat"));
+
+        // Back or Forward to an entry the explorer wrote, which still carries the code, remounts the search.
+        var nav = Services.GetRequiredService<NavigationManager>();
+        cut.InvokeAsync(() => nav.NavigateTo("http://localhost/variabler?search=alder&delekode=AB12CD"));
+        cut.WaitForAssertion(() => Assert.Contains("value=\"alder\"", cut.Markup, StringComparison.Ordinal));
+
+        Assert.True(Selected("Søkeresultat"), "the results tab should stay selected after the return");
+    }
+
+    [Fact]
+    public void Navigation_WhenANewDelekodeArrivesAfterAnother_ThenItsListTabOpens()
+    {
+        var store = new ShareStore();
+        store.ByCode["AB12CD"] = new SharedList("Kollegas liste", Three);
+        store.ByCode["EF34GH"] = new SharedList("Annen liste", Three);
+        var cut = RenderExplorer(this, new ShareClient(store), "/variabler?delekode=AB12CD", signedIn: false);
+        bool Selected(string label) => cut.FindAll("[role=tab]")
+            .Single(t => t.TextContent.Trim() == label).GetAttribute("aria-selected") == "true";
+        cut.WaitForAssertion(() => Assert.True(Selected("Variabelliste")));
+        cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Søkeresultat").Click();
+
+        var nav = Services.GetRequiredService<NavigationManager>();
+        cut.InvokeAsync(() => nav.NavigateTo("http://localhost/variabler?delekode=EF34GH"));
+
+        cut.WaitForAssertion(() => Assert.True(Selected("Variabelliste"), "a code not seen before opens its list"));
+    }
 }

@@ -276,6 +276,13 @@ public sealed partial class VariableSearch : ComponentBase
     [Parameter] public string? ShareCode { get; set; }
 
     /// <summary>
+    /// Whether <see cref="ShareCode"/> came on the arrival that shows this search, so its list tab opens. Defaults to
+    /// <see langword="true"/>; <see cref="VariableExplorer"/> passes false when Back or Forward returns to an address
+    /// that still carries a code it has already followed.
+    /// </summary>
+    [Parameter] public bool ShareCodeArrived { get; set; } = true;
+
+    /// <summary>
     /// One of the reader's own lists being opened from a link, or null. When one arrives the <see cref="VariableList"/>
     /// tab opens, where <see cref="VariableListView.OwnListId"/> opens the list itself.
     /// </summary>

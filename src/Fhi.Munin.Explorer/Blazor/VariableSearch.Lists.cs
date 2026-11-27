@@ -143,7 +143,10 @@ public partial class VariableSearch : IDisposable, IAsyncDisposable
 
         if (ShareCode is not null && VariableList is not null)
         {
-            _resultsTab = ExplorerTab.VariableList;
+            if (ShareCodeArrived)
+            {
+                _resultsTab = ExplorerTab.VariableList;
+            }
         }
         else if (ShareCode is null && !IsAuthenticated && ListState?.UsesBrowserList != true)
         {
