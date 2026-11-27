@@ -299,24 +299,24 @@ public partial class ExplorerInteropTest
         Assert.False(await ExplorerInterop.FocusIfStillOnAsync(runtime, "share", "code"));
     }
 
+    // Each call is a fresh interop, so its refusal latch would otherwise go with it (Fhi.Metadata-emsc0.3.27).
     [Fact]
-    public async Task WatchPressesAndWatchFolds_WhenTheHostRefusesTheModule_ThenTheyAnswerThatAskingAgainIsFutile()
-    {
-        // Each call is a fresh interop, so its refusal latch would otherwise go with it (Fhi.Metadata-emsc0.3.27).
-        var runtime = new RefusingJsRuntime(new JSException("404"));
-
-        Assert.True(await ExplorerInterop.WatchPressesAsync(runtime));
-        Assert.True(await ExplorerInterop.WatchFoldsAsync(runtime));
-    }
+    public async Task WatchPressesAsync_WhenTheHostRefusesTheModule_ThenItAnswersThatAskingAgainIsFutile() =>
+        Assert.True(await ExplorerInterop.WatchPressesAsync(new RefusingJsRuntime(new JSException("404"))));
 
     [Fact]
-    public async Task WatchPressesAndWatchFolds_WhenTheImportFailedTheWayAReconnectDoes_ThenTheyAnswerFalse()
-    {
-        var runtime = new RefusingJsRuntime(new JSDisconnectedException("the circuit is reconnecting"));
+    public async Task WatchFoldsAsync_WhenTheHostRefusesTheModule_ThenItAnswersThatAskingAgainIsFutile() =>
+        Assert.True(await ExplorerInterop.WatchFoldsAsync(new RefusingJsRuntime(new JSException("404"))));
 
-        Assert.False(await ExplorerInterop.WatchPressesAsync(runtime));
-        Assert.False(await ExplorerInterop.WatchFoldsAsync(runtime));
-    }
+    [Fact]
+    public async Task WatchPressesAsync_WhenTheImportFailedTheWayAReconnectDoes_ThenItAnswersFalse() =>
+        Assert.False(await ExplorerInterop.WatchPressesAsync(
+            new RefusingJsRuntime(new JSDisconnectedException("the circuit is reconnecting"))));
+
+    [Fact]
+    public async Task WatchFoldsAsync_WhenTheImportFailedTheWayAReconnectDoes_ThenItAnswersFalse() =>
+        Assert.False(await ExplorerInterop.WatchFoldsAsync(
+            new RefusingJsRuntime(new JSDisconnectedException("the circuit is reconnecting"))));
 
     [Fact]
     public async Task FocusIfLostAsync_WhenTheExportFaults_ThenTheJSExceptionTravelsToTheCaller()

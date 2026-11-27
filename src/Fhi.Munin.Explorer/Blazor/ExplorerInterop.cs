@@ -280,7 +280,7 @@ internal sealed class ExplorerInterop : IAsyncDisposable
     /// Has the page remember what the reader last pressed, for <see cref="FocusIfStillOnAsync"/> and
     /// <see cref="FocusIfLostAsync"/>; once per page.
     /// </summary>
-    /// <returns>False while the module cannot be reached yet, so a later render asks again; true once on or refused for good.</returns>
+    /// <returns>False while the module is not reachable yet; true once the watch is on or the host refused the module.</returns>
     internal static async Task<bool> WatchPressesAsync(IJSRuntime js)
     {
         await using var interop = new ExplorerInterop(js);

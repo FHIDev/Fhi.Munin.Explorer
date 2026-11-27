@@ -1225,7 +1225,7 @@ public partial class VariableListViewTest : ExplorerTestContext
     [Fact]
     public async Task RetryLists_WhenTheReaderOpensAFormWhileItReads_ThenFocusIsLeftWhereTheyAre()
     {
-        // A press watch left unanswered asks again every render, adding JS calls while this test reads them.
+        // A press watch the module answers false asks again every render, adding JS calls while this test reads them.
         JSInterop.SetupModule(ExplorerInterop.ModulePath).Setup<bool>("watchPresses").SetResult(true);
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListsThrow = true };
         var cut = RenderView(client);
