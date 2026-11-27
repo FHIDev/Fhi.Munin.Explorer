@@ -970,7 +970,7 @@ public partial class VariableListViewTest : ExplorerTestContext
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListsHang = true });
 
         Assert.DoesNotContain("Du har ingen variabellister ennå", cut.Markup, StringComparison.Ordinal);
-        Assert.Equal("Henter variabellistene dine …", cut.Find("[role=status]").TextContent.Trim());
+        Assert.Equal("Henter variabellistene dine …", cut.Find("p[role=status]").TextContent.Trim());
         Assert.Null(cut.Find(".munin-explorer-page").GetAttribute("aria-busy"));
     }
 
@@ -1237,7 +1237,11 @@ public partial class VariableListViewTest : ExplorerTestContext
 
         // One move, the reader's own: the form they opened took focus into its field. The retry adds none.
         cut.WaitForAssertion(() => Assert.Null(RetryButton(cut)));
-        Assert.Single(JSInterop.Invocations, i => i.Identifier == "Blazor._internal.domWrapper.focus");
+
+        // Counted on the renderer: a later render's own JS calls land in the list from there (Fhi.Metadata-l9l2n.221).
+        var focusCalls = await cut.InvokeAsync(
+            () => JSInterop.Invocations.Count(i => i.Identifier == "Blazor._internal.domWrapper.focus"));
+        Assert.Equal(1, focusCalls);
     }
 
     [Fact]
@@ -3489,7 +3493,11 @@ public partial class VariableListViewTest : ExplorerTestContext
         Assert.DoesNotContain(ListId, client.VariablesAskedFor.Skip(askedBefore));
 
         Assert.Contains("Hjerte og kar", cut.Markup);
-        Assert.DoesNotContain("Mine hjertevariabler", cut.Markup);
+
+        // Named once more, in the sentence that says it is gone (Fhi.Metadata-mhqx0.23), and nowhere else.
+        const string deleted = "Listen «Mine hjertevariabler» er slettet.";
+        Assert.Contains(deleted, cut.Markup);
+        Assert.DoesNotContain("Mine hjertevariabler", cut.Markup.Replace(deleted, "", StringComparison.Ordinal));
     }
 
     [Fact]

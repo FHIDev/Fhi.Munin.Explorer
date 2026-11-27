@@ -125,16 +125,17 @@ else if (State?.IsAuthenticated == true)
                 </form>
             }
 
-            @* In the DOM from the moment the form opens, so the sentence is announced when it arrives. *@
-            @if (_creating || _listCreatedSaid)
-            {
-                <div role="status">
-                    @if (_listCreatedSaid)
-                    {
-                        <p class="caption">@T.ListCreated</p>
-                    }
-                </div>
-            }
+            @* Always in the DOM, so a create, rename, copy or delete is announced when its sentence arrives. *@
+            <div role="status">
+                @if (_listCreatedSaid)
+                {
+                    <p class="caption">@T.ListCreated</p>
+                }
+                else if (_listActionSaid is { } said)
+                {
+                    <p class="caption" @key="_listActionCount">@said</p>
+                }
+            </div>
 
             @if (_renaming && _shownList is not null)
             {

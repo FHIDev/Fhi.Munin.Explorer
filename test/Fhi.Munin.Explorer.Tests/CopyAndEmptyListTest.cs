@@ -406,6 +406,44 @@ public class CopyAndEmptyListTest : ExplorerTestContext
         Assert.Equal(["Kopi til prosjektet"], client.Created);
     }
 
+    // Fhi.Metadata-mhqx0.23: a copy made and shown is named in the view's status region.
+
+    private static string CopyStatus(IRenderedComponent<VariableListView> cut) =>
+        cut.FindAll("div[role=status]").Single(e => !e.ClassList.Contains("screenreader-only")).TextContent.Trim();
+
+    [Theory]
+    [InlineData("no", "Kopier liste", "Navn på kopien", "Kopien «Kopi til prosjektet» er laget og vises nå.")]
+    [InlineData("en", "Copy list", "Name of the copy", "The copy “Kopi til prosjektet” has been created and is shown now.")]
+    public void Copy_WhenItIsMadeAndShown_ThenTheCopyIsNamedInTheStatus(string language, string open, string field, string said)
+    {
+        var client = new ListsClient(Items(3));
+        var cut = RenderView(client, language);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+        Assert.Equal("", CopyStatus(cut));
+
+        Button(cut, open).Click();
+        Labelled(cut, field).Change("Kopi til prosjektet");
+        Labelled(cut, field).Closest("form")!.Submit();
+
+        cut.WaitForAssertion(() => Assert.Equal("Kopi til prosjektet", Heading(cut)));
+        cut.WaitForAssertion(() => Assert.Equal(said, CopyStatus(cut)));
+    }
+
+    [Fact]
+    public void Copy_WhenTheSwitchToItFails_ThenNoSuccessIsSaid()
+    {
+        var client = new ListsClient(Items(3)) { CopyMembershipThrows = new HttpRequestException("500") };
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+
+        Button(cut, "Kopier liste").Click();
+        Labelled(cut, "Navn på kopien").Change("Kopi til prosjektet");
+        Labelled(cut, "Navn på kopien").Closest("form")!.Submit();
+
+        cut.WaitForAssertion(() => Assert.NotEqual("", Alert(cut)));
+        Assert.Equal("", CopyStatus(cut));
+    }
+
     // -----------------------------------------------------------------------
     // Fhi.Metadata-d07al.2: an item whose datasamling is not chosen is copied as one, not resolved by guessing
 

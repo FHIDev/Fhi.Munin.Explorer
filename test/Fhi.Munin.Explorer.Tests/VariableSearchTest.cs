@@ -2603,6 +2603,30 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public async Task Search_WhenTheLanguageIsEnAndTheAnswerIsSlow_ThenTheEnglishCountIsSpokenFromItsOwnRegion()
+    {
+        // Pins that the English count has the same region and timing as the Norwegian one (Fhi.Metadata-mhqx0.23);
+        // it cannot say whether NVDA reads it, which only a screen-reader run can.
+        var clock = new ManualClock();
+        Services.AddSingleton<TimeProvider>(clock);
+        var client = new SlowClient();
+        var cut = RenderWith(client, b => b.Add(c => c.Language, "en"));
+        string Count() => cut.FindAll(".munin-explorer-results__toolbar > p.screenreader-only[role=status]")[0].TextContent.Trim();
+        string Loading() => cut.FindAll(".munin-explorer-results__toolbar > p.screenreader-only[role=status]")[1].TextContent.Trim();
+
+        clock.Advance(TimeSpan.FromMilliseconds(500));
+        cut.WaitForAssertion(() => Assert.Equal("Loading variables …", Loading()));
+        clock.Advance(TimeSpan.FromMilliseconds(190));
+        await cut.InvokeAsync(() => client.Answer(OnePage(Variable("1. Tale", "KODE"))));
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("ul.munin-explorer-data-list > li")));
+        Assert.Equal("", Count());
+
+        clock.Advance(TimeSpan.FromMilliseconds(810));
+        cut.WaitForAssertion(() => Assert.StartsWith("1 variable found", Count(), StringComparison.Ordinal));
+        Assert.Equal("polite", cut.FindAll(".munin-explorer-results__toolbar > p.screenreader-only[role=status]")[0].GetAttribute("aria-live"));
+    }
+
+    [Fact]
     public async Task Search_WhenTheAnswerIsSlow_ThenTheCountIsSpokenFromARegionThatWasEmptyAndHenterIsNotClearedWithIt()
     {
         // NVDA dropped the count whenever it followed «Henter …» in a region that had just said it, aria-hidden or not
