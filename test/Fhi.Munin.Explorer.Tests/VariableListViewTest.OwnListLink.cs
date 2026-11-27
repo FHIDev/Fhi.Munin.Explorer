@@ -115,7 +115,7 @@ public partial class VariableListViewTest
 
     private sealed class HeldSwitchClient : ListClient
     {
-        public TaskCompletionSource Release { get; } = new();
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public bool SwitchAsked { get; private set; }
 

@@ -1545,7 +1545,8 @@ Opening a link restores the search, the facets, the sort, the page, the open var
 instrument, and every change the reader makes updates the address bar. There is no glue to write —
 no wrapper component, no query parsing, no `history.replaceState`. Which tab is open is
 deliberately *not* in the link: a shared URL that opened on the sender's Variabelliste would be an
-empty page for everybody else.
+empty page for everybody else. Two keys open the list tab on arrival instead, each naming the list:
+`?delekode=`, a shared list, and, with `ListLink` on, `?listeId=`, one of the reader's own.
 
 The data-period filters use native date inputs, as Helsedata's new application forms do. Readers can
 type a date or choose one in the browser's calendar; the filter updates when they leave the field.
@@ -1557,7 +1558,7 @@ Incomplete or invalid manual input shows a validation error and preserves the ap
 Clearing a field removes its bound only after the browser confirms the control is empty; if the
 interop module is unavailable, the bound can still be removed using its filter chip.
 
-`?instrumentId=` is the newest of the keys it owns, and the only one that opens a page rather than
+`?instrumentId=` is the only key it owns that opens a page rather than
 restoring part of a search. It names the instrument — the questionnaire or scale a variable was
 collected with — whose own page `InstrumentView` draws in place of the result list, reached from
 the Instrument entry on a variable. A link can carry it beside `?variabelId=`, because the variable
