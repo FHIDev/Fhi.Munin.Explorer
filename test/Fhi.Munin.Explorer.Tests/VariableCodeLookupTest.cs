@@ -1,0 +1,185 @@
+using Bunit;
+using Fhi.Munin.Explorer.Blazor;
+using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.State;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.JSInterop;
+
+namespace Fhi.Munin.Explorer.Tests;
+
+/// <summary>How the explorer looks a variable's code up: the wait, a code that fails, and leaving (Fhi.Metadata-l9l2n.188).</summary>
+public class VariableCodeLookupTest : ExplorerTestContext
+{
+    private static readonly Guid KildeId = Guid.Parse("11111111-2222-3333-4444-555555555555");
+    private static readonly Guid DatasamlingId = Guid.Parse("66666666-7777-8888-9999-000000000000");
+
+    private static readonly (Guid Id, string Code, string Name) Folded = (Guid.Parse("0a1f0c4e-2b8d-4e5a-9c3f-1d2e3f4a5b6c"), "V_HKR.ALDER", "Alder");
+    private static readonly (Guid Id, string Code, string Name) Answered = (Guid.Parse("7a1f0c4e-2b8d-4e5a-9c3f-1d2e3f4a5b6c"), "V_HKR.KJONN", "Kjønn");
+
+    private sealed class LookupClient : EmptyMuninExplorerClient, IMuninExplorerClient
+    {
+        public List<string> CodesAsked { get; } = [];
+
+        public List<CancellationToken> Tokens { get; } = [];
+
+        public TaskCompletionSource? Gate { get; init; }
+
+        /// <summary>Codes this Munin answers with null, as a 409 fold or a hidden variable does.</summary>
+        public HashSet<string> Unanswered { get; init; } = [];
+
+        public bool Fails { get; init; }
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default, SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new Page<VariableSummary>
+            {
+                Items = [Summary(Folded), Summary(Answered)],
+                TotalCount = 2,
+                PageNumber = 1,
+                Size = pageSize,
+                TotalPages = 1,
+            });
+
+        public override Task<VariableDetail?> GetVariableAsync(
+            Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default) =>
+            Task.FromResult<VariableDetail?>(Detail(id == Folded.Id ? Folded : Answered));
+
+        public Task<VariableDetail?> GetVariableByCodeAsync(string code, CancellationToken cancellationToken = default)
+        {
+            CodesAsked.Add(code);
+            Tokens.Add(cancellationToken);
+            return AnswerAsync(code);
+        }
+
+        private async Task<VariableDetail?> AnswerAsync(string code)
+        {
+            if (Gate is { } gate)
+            {
+                await gate.Task;
+            }
+
+            if (Fails)
+            {
+                throw new HttpRequestException("503");
+            }
+
+            return Unanswered.Contains(code) ? null
+                : code == Folded.Code ? Detail(Folded)
+                : code == Answered.Code ? Detail(Answered)
+                : null;
+        }
+
+        private static VariableSummary Summary((Guid Id, string Code, string Name) v) => new()
+        {
+            Id = v.Id, Code = v.Code, PreferredTerm = v.Name, KildeId = KildeId,
+            KildeName = "Hjerte- og karregisteret", DatasamlingId = DatasamlingId,
+            DatasamlingName = "Hjerteinfarkt", VersionStatus = "Active",
+        };
+
+        private static VariableDetail Detail((Guid Id, string Code, string Name) v) => new()
+        {
+            Id = v.Id, Code = v.Code, PreferredTerm = v.Name, KildeId = KildeId,
+            KildeName = "Hjerte- og karregisteret", KildeShortName = "HKR", DatasamlingId = DatasamlingId,
+            DatasamlingName = "Hjerteinfarkt", VersionStatus = "Active",
+            AllDatasamlinger = [new DatasamlingReference { Id = DatasamlingId }],
+        };
+    }
+
+    private IRenderedComponent<VariableExplorer> Render(IMuninExplorerClient client, string address)
+    {
+        Services.AddSingleton(client);
+        Services.AddSingleton<IJSRuntime>(new HistoryRecorder(JSInterop.JSRuntime));
+        Services.AddScoped<VariableListState>();
+        SetRendererInfo(new RendererInfo("Server", true));
+        Services.GetRequiredService<NavigationManager>().NavigateTo(address);
+        return Render<VariableExplorer>();
+    }
+
+    private static void Open(IRenderedComponent<VariableExplorer> cut, string name)
+    {
+        cut.WaitForAssertion(() => cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name")
+            .Single(b => b.TextContent.Trim() == name).Click());
+        cut.WaitForElement(".munin-explorer-detail");
+    }
+
+    private static IReadOnlyDictionary<string, Microsoft.Extensions.Primitives.StringValues> SharedLink(IRenderedComponent<VariableExplorer> cut)
+    {
+        var detail = cut.Find(".munin-explorer-detail");
+        var mail = Uri.UnescapeDataString(detail.QuerySelectorAll("a").Single(a => a.TextContent.Trim() == "Send via e-post").GetAttribute("href")!);
+        return QueryHelpers.ParseQuery(new Uri(mail[mail.IndexOf("http", StringComparison.Ordinal)..]).Query);
+    }
+
+    [Fact]
+    public void Arrive_WhenTheCodeIsStillLookedUp_ThenAStatusSaysSoUntilTheVariableOpens()
+    {
+        // Without it the reader sees an empty area and a screen reader hears nothing while the code is asked.
+        var client = new LookupClient { Gate = new(TaskCreationOptions.RunContinuationsAsynchronously) };
+        var cut = Render(client, $"http://localhost/variabler?variabel={Answered.Code}");
+
+        cut.WaitForAssertion(() => Assert.Equal("Henter variabler …", cut.Find("p[role=status]").TextContent.Trim()));
+
+        client.Gate.SetResult();
+        cut.WaitForElement(".munin-explorer-detail");
+        Assert.DoesNotContain(cut.FindAll("p[role=status]"), p => p.TextContent.Trim() == "Henter variabler …");
+    }
+
+    [Fact]
+    public void Learn_WhenOneVariablesCodeAnswersNothing_ThenAnotherVariableIsStillLinkedByItsCode()
+    {
+        // One 409 fold used to turn code links off for the whole circuit.
+        var client = new LookupClient { Unanswered = [Folded.Code] };
+        var cut = Render(client, "http://localhost/variabler?search=hkr");
+
+        Open(cut, Folded.Name);
+        cut.WaitForAssertion(() => Assert.Contains(Folded.Code, client.CodesAsked));
+        Open(cut, Answered.Name);
+
+        cut.WaitForAssertion(() => Assert.Equal(Answered.Code, SharedLink(cut)["variabel"].ToString()));
+    }
+
+    [Fact]
+    public async Task Learn_WhenMuninKeepsFailing_ThenAVariablesCodeIsAskedTwiceAtMost()
+    {
+        // Each render asked again before, two requests and an Error line apiece for as long as Munin answered 5xx.
+        var client = new LookupClient { Fails = true };
+        var cut = Render(client, "http://localhost/variabler?search=hkr");
+        Open(cut, Answered.Name);
+
+        for (var i = 0; i < 5; i++)
+        {
+            cut.Render();
+            await cut.InvokeAsync(() => { });
+        }
+
+        Assert.Equal([Answered.Code, Answered.Code], client.CodesAsked.Where(c => c == Answered.Code));
+    }
+
+    [Fact]
+    public void Arrive_WhenTheReaderMovesOnWhileTheCodeIsLookedUp_ThenTheRequestIsCancelled()
+    {
+        // The late answer was already ignored; the request itself ran on to the end.
+        var client = new LookupClient { Gate = new(TaskCreationOptions.RunContinuationsAsynchronously) };
+        var cut = Render(client, $"http://localhost/variabler?variabel={Answered.Code}");
+        cut.WaitForAssertion(() => Assert.Single(client.Tokens));
+
+        Services.GetRequiredService<NavigationManager>().NavigateTo("http://localhost/variabler");
+
+        cut.WaitForAssertion(() => Assert.True(client.Tokens[0].IsCancellationRequested));
+    }
+
+    [Fact]
+    public async Task Dispose_WhileTheCodeIsLookedUp_ThenTheRequestIsCancelled()
+    {
+        var client = new LookupClient { Gate = new(TaskCreationOptions.RunContinuationsAsynchronously) };
+        var cut = Render(client, $"http://localhost/variabler?variabel={Answered.Code}");
+        cut.WaitForAssertion(() => Assert.Single(client.Tokens));
+
+        await Renderer.DisposeComponents();
+
+        Assert.True(client.Tokens[0].IsCancellationRequested);
+    }
+}
