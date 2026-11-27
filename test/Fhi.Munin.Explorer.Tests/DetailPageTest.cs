@@ -386,8 +386,8 @@ public class DetailPageTest : ExplorerTestContext
     }
 
     // -----------------------------------------------------------------------
-    // The sticky fact bar. A bUnit render IS the JS-absent case — the module is never really
-    // imported here — so every assertion below is about the page a reader without it gets.
+    // The sticky fact bar. A bUnit render IS the JS-absent case — no export here answers but the
+    // press watch — so every assertion below is about the page a reader without it gets.
 
     /// <summary>Six named facts, one of them blank, as a view that has not been filled in names them.</summary>
     private static IReadOnlyList<DetailFact> SixFacts() =>
@@ -555,7 +555,7 @@ public class DetailPageTest : ExplorerTestContext
         // Two explorers on one host page must not fight over one bar. The ids are what keeps them
         // apart, so the assertion is that each observe call pairs a bar with ITS OWN hero row —
         // two calls naming one bar would pass any count of them.
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
 
         // Both mounts written out rather than looped: ASP0006 refuses a computed sequence number,
         // and two components sharing one would be a render-tree diff the renderer cannot separate.
@@ -596,7 +596,7 @@ public class DetailPageTest : ExplorerTestContext
     {
         // An observer outliving its component holds the elements it watches, and a host swapping a
         // view out of the render tree leaves the circuit — and the observer — alive.
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         var cut = RenderSticky();
 
         var bar = cut.Find(".munin-explorer-page__stuckbar").Id ?? "";
@@ -1152,7 +1152,7 @@ public class DetailPageTest : ExplorerTestContext
     [Fact]
     public async Task Contents_WhenThePageGoesAway_ThenItsSpyIsDisconnected()
     {
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         var cut = RenderPage(withContents: true);
         var column = ColumnId(cut);
 
@@ -1168,7 +1168,7 @@ public class DetailPageTest : ExplorerTestContext
     [Fact]
     public void Contents_WhenTwoPagesAreMountedTogether_ThenEachSpiesItsOwnColumn()
     {
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
 
         RenderFragment nav = builder => builder.AddMarkupContent(0, "<nav>the contents nav</nav>");
 

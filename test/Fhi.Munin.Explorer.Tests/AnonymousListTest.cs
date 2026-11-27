@@ -314,7 +314,7 @@ public class AnonymousListTest : ExplorerTestContext
     public void VariableSearch_WhenTheFlagIsOff_ThenASignedOutReaderHasNoSaveButtonNoTabsAndNoStorageCall(bool? flag)
     {
         // Off is the default, and a host that has not opted in must see the signed-out page it always had.
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         var cut = Search(new Client(Alder), browser: null, flag);
 
         cut.Find("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name").Click(new MouseEventArgs { Detail = 1 });
@@ -341,7 +341,7 @@ public class AnonymousListTest : ExplorerTestContext
     public void VariableListView_WhenTheFlagIsOn_ThenASignedOutReaderGetsTheBrowserList()
     {
         // The view mounted alone offers the list itself; every other view test here hands the state a store.
-        JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        PlanExplorerModule();
         Register(new Client(), flag: true);
 
         var cut = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, false));
@@ -651,7 +651,7 @@ public class AnonymousListTest : ExplorerTestContext
     [Fact]
     public void VariableListView_WhenTheBrowserListShows_ThenTheBrowserIsAskedOnceToWatchPresses()
     {
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.Setup<bool>(WatchPresses).SetResult(true);
         var browser = new FakeBrowserList();
         browser.Rows.Add(FakeBrowserList.Row("Alder"));
@@ -667,7 +667,7 @@ public class AnonymousListTest : ExplorerTestContext
     [Fact]
     public void VariableListView_WhenTheWatchCannotBeSetUp_ThenALaterRenderAsksAgain()
     {
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.Setup<bool>(WatchPresses).SetResult(false);
         var browser = new FakeBrowserList();
         browser.Rows.Add(FakeBrowserList.Row("Alder"));
@@ -685,7 +685,7 @@ public class AnonymousListTest : ExplorerTestContext
     {
         var recorder = new RecordingLoggerProvider();
         Services.AddLogging(b => b.AddProvider(recorder).SetMinimumLevel(LogLevel.Trace));
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         var fault = new Microsoft.JSInterop.JSException("watchPresses is not a function");
         module.Setup<bool>(WatchPresses).SetException(fault);
         var browser = new FakeBrowserList();
@@ -707,7 +707,7 @@ public class AnonymousListTest : ExplorerTestContext
 
     private BunitJSModuleInterop SharesFocusModule()
     {
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.Setup<bool>(FocusIfStillOn, _ => true).SetResult(true);
         return module;
     }

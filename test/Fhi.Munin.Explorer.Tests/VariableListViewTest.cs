@@ -1237,7 +1237,7 @@ public partial class VariableListViewTest : ExplorerTestContext
 
         // One move, the reader's own: the form they opened took focus into its field. The retry adds none.
         cut.WaitForAssertion(() => Assert.Null(RetryButton(cut)));
-        Assert.Single(JSInterop.Invocations, i => i.Identifier == "Blazor._internal.domWrapper.focus");
+        await cut.InvokeAsync(() => Assert.Single(JSInterop.Invocations, i => i.Identifier == "Blazor._internal.domWrapper.focus"));
     }
 
     [Fact]

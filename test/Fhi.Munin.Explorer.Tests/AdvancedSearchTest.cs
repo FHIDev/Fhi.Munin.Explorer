@@ -927,7 +927,7 @@ public class AdvancedSearchTest : ExplorerTestContext
     [Fact]
     public void Open_WhenTheReaderIsTypingElsewhereAsTheRowsArrive_ThenFocusStaysWhereItIs()
     {
-        JSInterop.SetupModule(ExplorerInterop.ModulePath).Setup<bool>("isTypingInField").SetResult(true);
+        PlanExplorerModule().Setup<bool>("isTypingInField").SetResult(true);
         var cut = RenderWith(new ConditionClient());
         cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
         var focusesBefore = FocusCalls();
@@ -941,7 +941,7 @@ public class AdvancedSearchTest : ExplorerTestContext
     [Fact]
     public void AddCondition_WhenTheReaderWasTypingAsTheRowsArrived_ThenThePressStillMovesFocus()
     {
-        JSInterop.SetupModule(ExplorerInterop.ModulePath).Setup<bool>("isTypingInField").SetResult(true);
+        PlanExplorerModule().Setup<bool>("isTypingInField").SetResult(true);
         var cut = RenderWith(new ConditionClient());
         cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
         Toggle(cut)!.Click();

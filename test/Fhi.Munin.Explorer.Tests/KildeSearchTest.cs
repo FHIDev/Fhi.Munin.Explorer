@@ -4303,7 +4303,7 @@ public class KildeSearchTest : ExplorerTestContext
     public void FilterFold_WhenTheWideScreenFoldIsPressed_ThenThePanelIsMarkedFoldedAndTheChoiceIsKept()
     {
         // The wide screen's own fold, which starts open where the phone's starts shut (Fhi.Metadata-amp8c).
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.Setup<string?>("readPreference", FilterFoldPreference.Key).SetResult(null);
         module.SetupVoid("writePreference", _ => true).SetVoidResult();
 
@@ -4328,7 +4328,7 @@ public class KildeSearchTest : ExplorerTestContext
     [Fact]
     public async Task FilterFold_WhenTheReaderPressesWhileTheKeptChoiceIsStillBeingRead_ThenThePressWins()
     {
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         var read = module.Setup<string?>("readPreference", FilterFoldPreference.Key);
         module.SetupVoid("writePreference", _ => true).SetVoidResult();
 
@@ -4348,7 +4348,7 @@ public class KildeSearchTest : ExplorerTestContext
     [Fact]
     public void FilterFold_WhenThisBrowserKeptTheFold_ThenThePageOpensWithThePanelFolded()
     {
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.Setup<string?>("readPreference", FilterFoldPreference.Key).SetResult("1");
 
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));

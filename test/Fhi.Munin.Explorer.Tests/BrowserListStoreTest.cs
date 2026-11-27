@@ -48,7 +48,7 @@ public class BrowserListStoreTest : ExplorerTestContext
     [Fact]
     public async Task BrowserListStore_WhenItAdds_ThenTheRowCrossesInTheSnapshotsShapeWithNothingPrivate()
     {
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.Setup<BrowserListStatus>("anonymousListAdd", _ => true).SetResult(new BrowserListStatus(true, 1, true, false, false));
         var store = new BrowserListStore(JSInterop.JSRuntime);
 
@@ -69,7 +69,7 @@ public class BrowserListStoreTest : ExplorerTestContext
     [Fact]
     public async Task BrowserListStore_WhenKeysAndAPageArrive_ThenTheyReadAsTheModuleSpellsThem()
     {
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.Setup<string[]>("anonymousListKeys", _ => true).SetResult([$"{Variable}|{Datasamling}", $"{Variable}|"]);
         module.Setup<JsonDocument>("anonymousListPage", _ => true).SetResult(JsonDocument.Parse(
             $$"""{"items":[{"variabelId":"{{Variable}}","datasamlingId":"{{Datasamling}}","variabelName":"Alder"},{"variabelId":"{{Variable}}","datasamlingId":null,"variabelCode":"V","truncated":true}]}"""));
@@ -89,7 +89,7 @@ public class BrowserListStoreTest : ExplorerTestContext
     public async Task BrowserListStore_WhenACarryOverRemovesItsRows_ThenTheKeysCrossInTheModulesSpelling()
     {
         // The same two literals test-anonymous-list.mjs hands anonymousListRemoveKeys.
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.Setup<BrowserListStatus>("anonymousListRemoveKeys", _ => true).SetResult(new BrowserListStatus(true, 0, true, false, false));
         var store = new BrowserListStore(JSInterop.JSRuntime);
 
@@ -103,7 +103,7 @@ public class BrowserListStoreTest : ExplorerTestContext
     public async Task BrowserListStore_WhenACarryOverClaims_ThenTheModuleIsAskedInMillisecondsAndReleasedByItsToken()
     {
         // test-anonymous-list.mjs passes the module milliseconds; seconds would make a claim lapse a thousand times early.
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.Setup<BrowserCarryClaim>("anonymousCarryClaim", _ => true).SetResult(new BrowserCarryClaim(true, "t-1"));
         module.SetupVoid("anonymousCarryRelease", _ => true).SetVoidResult();
         var store = new BrowserListStore(JSInterop.JSRuntime);

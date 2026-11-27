@@ -17,7 +17,7 @@ public partial class VariableListViewTest
 
     private (IRenderedComponent<VariableListView> Cut, BunitJSModuleInterop Module) RenderWithModule(ListClient client, bool focusMoves = true)
     {
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.Setup<bool>(FocusIfLost, _ => true).SetResult(focusMoves);
         return (RenderView(client), module);
     }
@@ -50,7 +50,7 @@ public partial class VariableListViewTest
         // A fault inside the module is a defect to see, not a host without the module: no .NET focus stands in for it.
         var recorder = new RecordingLoggerProvider();
         Services.AddLogging(b => b.AddProvider(recorder).SetMinimumLevel(LogLevel.Trace));
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         var fault = new Microsoft.JSInterop.JSException("focusIfLost is not a function");
         module.Setup<bool>(FocusIfLost, _ => true).SetException(fault);
         var cut = RenderView(Rows(ThreeRows));
@@ -145,7 +145,7 @@ public partial class VariableListViewTest
     [Fact]
     public async Task View_WhenAReadStillShowingTheRemovedRowLandsFirst_ThenFocusIsAskedOnlyOnceTheRowHasGone()
     {
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.Setup<bool>(FocusIfLost, _ => true).SetResult(true);
         Services.AddSingleton(new CodePickerSwitch(true));
         Services.AddSingleton<IMuninExplorerClient>(new StaleReadClient(ThreeRows));

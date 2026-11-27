@@ -84,7 +84,7 @@ public partial class VariableListViewTest
     public void Folds_WhenTheListIsMountedAlone_ThenItInstallsThePressOutsideWatcherItself()
     {
         // A host may mount the list without VariableSearch; its menus must still close on a press outside.
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         module.SetupVoid("watchFolds").SetVoidResult();
 
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
@@ -96,7 +96,7 @@ public partial class VariableListViewTest
     [Fact]
     public void Folds_WhenTheWatcherCallIsInterrupted_ThenALaterRenderAsksAgain()
     {
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         var first = module.SetupVoid("watchFolds");
 
         // Picker off: with it on, the browser list's reads render again, and each render asks again.
@@ -124,7 +124,7 @@ public partial class VariableListViewTest
     {
         // The skipped render is owed an ask: without one, nothing renders again and the menus never
         // close on a press outside (Fhi.Metadata-qpyrx).
-        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var module = PlanExplorerModule();
         var first = module.SetupVoid("watchFolds");
 
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")), picker: false);
