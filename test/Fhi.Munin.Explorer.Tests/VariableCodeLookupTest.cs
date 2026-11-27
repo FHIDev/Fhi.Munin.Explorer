@@ -30,6 +30,9 @@ public class VariableCodeLookupTest : ExplorerTestContext
         /// <summary>Holds every by-code answer; a cancelled token throws, as HttpClient does.</summary>
         public TaskCompletionSource? Gate { get; init; }
 
+        /// <summary>The codes the gate holds; empty, it holds every code.</summary>
+        public HashSet<string> Gated { get; init; } = [];
+
         /// <summary>Codes this Munin answers with null, as a 409 fold or a hidden variable does.</summary>
         public HashSet<string> Unanswered { get; init; } = [];
 
@@ -65,7 +68,7 @@ public class VariableCodeLookupTest : ExplorerTestContext
 
         private async Task<VariableDetail?> AnswerAsync(string code, CancellationToken cancellationToken)
         {
-            if (Gate is { } gate)
+            if (Gate is { } gate && (Gated.Count == 0 || Gated.Contains(code)))
             {
                 await gate.Task.WaitAsync(cancellationToken);
             }
@@ -267,5 +270,25 @@ public class VariableCodeLookupTest : ExplorerTestContext
 
         await cut.Instance.DisposeAsync();
         await cut.Instance.DisposeAsync();
+    }
+
+    [Fact]
+    public void Learn_WhenAVariableFirstOpenedAfterAnotherResolvedAnswersNothing_ThenItsLinkTurnsToItsId()
+    {
+        // Its row is drawn with a link by code before the null arrives, and nothing else redraws it.
+        var client = new LookupClient
+        {
+            Unanswered = [Folded.Code], Gated = [Folded.Code], Gate = new(TaskCreationOptions.RunContinuationsAsynchronously),
+        };
+        var cut = Render(client, "http://localhost/variabler?search=hkr");
+        Open(cut, Answered.Name);
+        cut.WaitForAssertion(() => Assert.Equal(Answered.Code, SharedLink(cut)["variabel"].ToString()));
+
+        Open(cut, Folded.Name);
+        cut.WaitForAssertion(() => Assert.Equal(Folded.Code, SharedLink(cut)["variabel"].ToString()));
+        client.Gate.SetResult();
+
+        cut.WaitForAssertion(() => Assert.Equal(Folded.Id.ToString(), SharedLink(cut)["variabelId"].ToString()));
+        Assert.False(SharedLink(cut).ContainsKey("variabel"));
     }
 }
