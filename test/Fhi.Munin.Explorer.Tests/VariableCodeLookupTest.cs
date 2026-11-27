@@ -99,16 +99,27 @@ public class VariableCodeLookupTest : ExplorerTestContext
 
         private static VariableSummary Summary((Guid Id, string Code, string Name) v) => new()
         {
-            Id = v.Id, Code = v.Code, PreferredTerm = v.Name, KildeId = KildeId,
-            KildeName = "Hjerte- og karregisteret", DatasamlingId = DatasamlingId,
-            DatasamlingName = "Hjerteinfarkt", VersionStatus = "Active",
+            Id = v.Id,
+            Code = v.Code,
+            PreferredTerm = v.Name,
+            KildeId = KildeId,
+            KildeName = "Hjerte- og karregisteret",
+            DatasamlingId = DatasamlingId,
+            DatasamlingName = "Hjerteinfarkt",
+            VersionStatus = "Active",
         };
 
         private static VariableDetail Detail((Guid Id, string Code, string Name) v) => new()
         {
-            Id = v.Id, Code = v.Code, PreferredTerm = v.Name, KildeId = KildeId,
-            KildeName = "Hjerte- og karregisteret", KildeShortName = "HKR", DatasamlingId = DatasamlingId,
-            DatasamlingName = "Hjerteinfarkt", VersionStatus = "Active",
+            Id = v.Id,
+            Code = v.Code,
+            PreferredTerm = v.Name,
+            KildeId = KildeId,
+            KildeName = "Hjerte- og karregisteret",
+            KildeShortName = "HKR",
+            DatasamlingId = DatasamlingId,
+            DatasamlingName = "Hjerteinfarkt",
+            VersionStatus = "Active",
             AllDatasamlinger = [new DatasamlingReference { Id = DatasamlingId }],
         };
     }
@@ -286,7 +297,9 @@ public class VariableCodeLookupTest : ExplorerTestContext
         // Its row is drawn with a link by code before the null arrives, and nothing else redraws it.
         var client = new LookupClient
         {
-            Unanswered = [Folded.Code], Gated = [Folded.Code], Gate = new(TaskCreationOptions.RunContinuationsAsynchronously),
+            Unanswered = [Folded.Code],
+            Gated = [Folded.Code],
+            Gate = new(TaskCreationOptions.RunContinuationsAsynchronously),
         };
         var cut = Render(client, "http://localhost/variabler?search=hkr");
         Open(cut, Answered.Name);

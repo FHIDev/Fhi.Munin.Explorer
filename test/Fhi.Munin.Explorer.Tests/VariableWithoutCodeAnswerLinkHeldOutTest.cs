@@ -43,16 +43,29 @@ public class VariableWithoutCodeAnswerLinkHeldOutTest : ExplorerTestContext
         private static VariableSummary Summary(Guid id, string code, string term) =>
             new()
             {
-                Id = id, Code = code, PreferredTerm = term, KildeId = KildeId, KildeName = "Hjerte- og karregisteret",
-                DatasamlingId = DatasamlingId, DatasamlingName = "Hjerteinfarkt", VersionStatus = "Active",
+                Id = id,
+                Code = code,
+                PreferredTerm = term,
+                KildeId = KildeId,
+                KildeName = "Hjerte- og karregisteret",
+                DatasamlingId = DatasamlingId,
+                DatasamlingName = "Hjerteinfarkt",
+                VersionStatus = "Active",
             };
 
         private static VariableDetail Detail(Guid id, string code, string term) =>
             new()
             {
-                Id = id, Code = code, PreferredTerm = term, KildeId = KildeId, KildeName = "Hjerte- og karregisteret",
-                KildeShortName = "HKR", DatasamlingId = DatasamlingId, DatasamlingName = "Hjerteinfarkt",
-                VersionStatus = "Active", AllDatasamlinger = [new DatasamlingReference { Id = DatasamlingId }],
+                Id = id,
+                Code = code,
+                PreferredTerm = term,
+                KildeId = KildeId,
+                KildeName = "Hjerte- og karregisteret",
+                KildeShortName = "HKR",
+                DatasamlingId = DatasamlingId,
+                DatasamlingName = "Hjerteinfarkt",
+                VersionStatus = "Active",
+                AllDatasamlinger = [new DatasamlingReference { Id = DatasamlingId }],
             };
     }
 
