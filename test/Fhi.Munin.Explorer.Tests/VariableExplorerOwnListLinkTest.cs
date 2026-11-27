@@ -30,7 +30,11 @@ public class VariableExplorerOwnListLinkTest : ExplorerTestContext
             CancellationToken cancellationToken = default) =>
             Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
             {
-                Items = [], TotalCount = 0, PageNumber = 1, Size = pageSize, TotalPages = 1,
+                Items = [],
+                TotalCount = 0,
+                PageNumber = 1,
+                Size = pageSize,
+                TotalPages = 1,
             });
     }
 
