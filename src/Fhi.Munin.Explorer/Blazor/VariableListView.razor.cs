@@ -510,6 +510,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             _focusNewNameField = true;
             _listCreatedSaid = false;
+            _listActionSaid = null;
         }
     }
 
@@ -1682,9 +1683,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 return;
             }
 
-            SayListAction(T.ListDeleted(deletedName));
-
             await State.EnsureActiveListAsync();
+            SayListAction(T.ListDeleted(deletedName));
         }
         catch (MuninExplorerRateLimitedException ex)
         {

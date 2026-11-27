@@ -406,7 +406,7 @@ public class CopyAndEmptyListTest : ExplorerTestContext
         Assert.Equal(["Kopi til prosjektet"], client.Created);
     }
 
-    // Fhi.Metadata-mhqx0.23: NVDA said nothing once a copy was made, so the copy is named in the view's status region.
+    // Fhi.Metadata-mhqx0.23: a copy made and shown is named in the view's status region.
 
     private static string CopyStatus(IRenderedComponent<VariableListView> cut) =>
         cut.FindAll("div[role=status]").Single(e => !e.ClassList.Contains("screenreader-only")).TextContent.Trim();

@@ -2605,8 +2605,8 @@ public class VariableSearchTest : ExplorerTestContext
     [Fact]
     public async Task Search_WhenTheLanguageIsEnAndTheAnswerIsSlow_ThenTheEnglishCountIsSpokenFromItsOwnRegion()
     {
-        // NVDA heard no English count on helsedata test while the Norwegian one was read (Fhi.Metadata-mhqx0.23):
-        // the region and its timing are the same in both languages, and this pins the English half of that.
+        // Pins that the English count has the same region and timing as the Norwegian one (Fhi.Metadata-mhqx0.23);
+        // it cannot say whether NVDA reads it, which only a screen-reader run can.
         var clock = new ManualClock();
         Services.AddSingleton<TimeProvider>(clock);
         var client = new SlowClient();

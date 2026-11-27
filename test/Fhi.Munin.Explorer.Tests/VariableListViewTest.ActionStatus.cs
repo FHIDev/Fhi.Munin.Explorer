@@ -5,8 +5,8 @@ using Fhi.Munin.Explorer.Contracts;
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
-/// A rename and a delete end with a sentence in a status region that was in the DOM before it, since NVDA said nothing
-/// after either on helsedata test (WCAG 4.1.3, Fhi.Metadata-mhqx0.23).
+/// A rename and a delete end with a sentence in a status region that was in the DOM before it (WCAG 4.1.3,
+/// Fhi.Metadata-mhqx0.23).
 /// </summary>
 public partial class VariableListViewTest
 {
@@ -78,6 +78,27 @@ public partial class VariableListViewTest
             DeleteThrows = new InvalidOperationException("the API is unreachable")
         };
         var cut = RenderView(client);
+
+        await PressAsync(cut, "Slett listen");
+        await PressAsync(cut, "Ja, slett listen");
+
+        Assert.Equal("", ActionStatus(cut).TextContent.Trim());
+    }
+
+    [Fact]
+    public async Task Delete_WhenItFailsAfterASuccessfulRename_ThenTheRenameSentenceIsGone()
+    {
+        // The sentence answers for the last action only: left standing, it would read as the delete's own outcome.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            ListCount = 2,
+            DeleteThrows = new InvalidOperationException("the API is unreachable")
+        };
+        var cut = RenderView(client);
+
+        RenameField(cut).Change("Hjertet mitt");
+        await PressAsync(cut, "Lagre navnet");
+        Assert.Equal("Listen heter nå «Hjertet mitt».", ActionStatus(cut).TextContent.Trim());
 
         await PressAsync(cut, "Slett listen");
         await PressAsync(cut, "Ja, slett listen");
