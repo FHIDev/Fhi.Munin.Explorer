@@ -229,7 +229,6 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         var bare = IsBare(arrived);
         _resolving = true;
 
-        CancelLookup();
         var lookup = _lookup = new CancellationTokenSource();
 
         VariableDetail? detail;
@@ -282,6 +281,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         else
         {
             _codesResolve = true;
+            _unresolved.Remove(detail.Id);
             var known = Known.Of(detail);
             var historical = known.Historical;
             _known[detail.Id] = known;

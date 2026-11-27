@@ -5,11 +5,13 @@ category: Fixed
   its code, opens.
 - **One variable whose code finds nothing no longer turns code links off for the others.** When Munin answers a
   variable's code with nothing (a one-letter fold naming two variables, or a hidden variable), only that variable
-  is linked by id, in the address and in «Del variabel». A Munin without the code route is asked once for each
-  variable a reader opens.
+  is linked by id, in the address and in «Del variabel». A Munin without the code route gets two lookup requests
+  for each variable a reader opens, besides the detail the view itself reads: the variable, for its code, and the
+  code.
 - **Learning a variable's code for the address asks Munin at most twice while it keeps failing.** Before, every
-  render asked again and logged another error. A code link the reader arrives by is still looked up at each
-  arrival.
+  render asked again and logged another error. The second try follows the first at once, and after it the
+  explorer stops asking for that variable until it is opened again in a new explorer. A code link the reader
+  arrives by is still looked up at each arrival.
 - **Leaving a code link's view, or closing the explorer, cancels the pending code lookup.** Leaving cancels the
   lookup of the link's code, and closing cancels every lookup still pending. Before, a lookup the reader had left
   ran on to the end and its answer was thrown away. A cancelled lookup is not logged.

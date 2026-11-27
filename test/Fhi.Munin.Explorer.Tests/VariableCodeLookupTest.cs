@@ -56,9 +56,23 @@ public class VariableCodeLookupTest : ExplorerTestContext
                 TotalPages = 1,
             });
 
+        public List<(Guid Id, CancellationToken Token)> DetailsAsked { get; } = [];
+
+        /// <summary>Codes this Munin answers with another variable's detail.</summary>
+        public Dictionary<string, (Guid Id, string Code, string Name)> AnswersWith { get; init; } = [];
+
+        /// <summary>Codes answered with null the first time only.</summary>
+        public HashSet<string> UnansweredOnce { get; init; } = [];
+
+        /// <summary>Per code, an answer held until set, whatever the token says, as a request already sent may finish.</summary>
+        public Dictionary<string, TaskCompletionSource> Holds { get; init; } = [];
+
         public override Task<VariableDetail?> GetVariableAsync(
-            Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default) =>
-            Task.FromResult<VariableDetail?>(Detail(id == Folded.Id ? Folded : Answered));
+            Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default)
+        {
+            DetailsAsked.Add((id, cancellationToken));
+            return Task.FromResult<VariableDetail?>(Detail(id == Folded.Id ? Folded : Answered));
+        }
 
         public Task<VariableDetail?> GetVariableByCodeAsync(string code, CancellationToken cancellationToken = default)
         {
@@ -71,9 +85,24 @@ public class VariableCodeLookupTest : ExplorerTestContext
 
         private async Task<VariableDetail?> AnswerAsync(string code, CancellationToken cancellationToken)
         {
+            if (Holds.TryGetValue(code, out var hold))
+            {
+                await hold.Task;
+            }
+
             if (Gate is { } gate && (Gated.Count == 0 || Gated.Contains(code)))
             {
                 await gate.Task.WaitAsync(cancellationToken);
+            }
+
+            if (UnansweredOnce.Remove(code))
+            {
+                return null;
+            }
+
+            if (AnswersWith.TryGetValue(code, out var other))
+            {
+                return Detail(other);
             }
 
             if (Fails)
@@ -336,5 +365,105 @@ public class VariableCodeLookupTest : ExplorerTestContext
         cut.WaitForElement("ul.munin-explorer-data-list");
 
         Assert.Contains(Logged, e => e.Level == LogLevel.Error && e.Exception is TaskCanceledException);
+    }
+
+    [Theory]
+    [InlineData("search=hkr")]
+    [InlineData("variabelId=7a1f0c4e-2b8d-4e5a-9c3f-1d2e3f4a5b6c")]
+    public async Task Learn_WhenMuninHasNoCodeRoute_ThenAnOpenedVariableCostsOneDetailAndOneCodeRequest(string arrival)
+    {
+        // The contract's remarks and the changelog promise a host this count: the detail for its code, then the code, once.
+        var client = new LookupClient { Unanswered = [Folded.Code, Answered.Code] };
+        var cut = Render(client, $"http://localhost/variabler?{arrival}");
+        if (arrival.StartsWith("search", StringComparison.Ordinal))
+        {
+            Open(cut, Answered.Name);
+        }
+
+        cut.WaitForAssertion(() => Assert.Contains(Answered.Code, client.CodesAsked));
+        await Rerender(cut, 5);
+
+        Assert.Single(client.CodesAsked, c => c == Answered.Code);
+        Assert.Single(client.DetailsAsked, d => d.Id == Answered.Id && d.Token.CanBeCanceled);
+    }
+
+    [Fact]
+    public async Task DisposeAsync_WhenAnOpenVariablesDetailIsFetchedForItsCode_ThenThatRequestIsCancelled()
+    {
+        // The detail fetch is the first of Learn's two requests, and it outlives no explorer either.
+        var client = new LookupClient();
+        var cut = Render(client, $"http://localhost/variabler?variabelId={Answered.Id}");
+        cut.WaitForAssertion(() => Assert.Contains(client.DetailsAsked, d => d.Id == Answered.Id && d.Token.CanBeCanceled));
+        var token = client.DetailsAsked.First(d => d.Id == Answered.Id && d.Token.CanBeCanceled).Token;
+
+        await Renderer.DisposeComponents();
+
+        Assert.True(token.IsCancellationRequested);
+    }
+
+    [Fact]
+    public void Learn_WhenAVariablesCodeAnswersAnotherVariable_ThenItIsLinkedByItsId()
+    {
+        // A code Munin reads as another variable would open that one from the shared link.
+        var client = new LookupClient { AnswersWith = { [Folded.Code] = Answered } };
+        var cut = Render(client, "http://localhost/variabler?search=hkr");
+        Open(cut, Answered.Name);
+        cut.WaitForAssertion(() => Assert.Equal(Answered.Code, SharedLink(cut)["variabel"].ToString()));
+
+        Open(cut, Folded.Name);
+
+        cut.WaitForAssertion(() => Assert.Equal(Folded.Id.ToString(), SharedLink(cut)["variabelId"].ToString()));
+        Assert.False(SharedLink(cut).ContainsKey("variabel"));
+    }
+
+    [Fact]
+    public void OnInitializedAsync_WhenANorwegianReaderWaitsForTheCodeLookup_ThenTheStatusIsMarkedNorwegian()
+    {
+        // WCAG 3.1.2 both ways: the status sits outside VariableSearch's lang, so it carries its own.
+        var client = new LookupClient { Gate = new(TaskCreationOptions.RunContinuationsAsynchronously) };
+        var cut = Render(client, $"http://localhost/variabler?variabel={Answered.Code}");
+
+        var status = cut.WaitForElement("p[role=status]");
+
+        Assert.Equal("no", status.GetAttribute("lang"));
+    }
+
+    [Fact]
+    public async Task Arrive_WhenALeftLookupAnswersAfterTheNextOneStarted_ThenLeavingStillCancelsTheNextOne()
+    {
+        // A request already sent can finish after its cancellation; its cleanup must not drop the lookup that replaced it.
+        var held = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new LookupClient
+        {
+            Holds = { [Folded.Code] = held, [Answered.Code] = new(TaskCreationOptions.RunContinuationsAsynchronously) },
+        };
+        var cut = Render(client, $"http://localhost/variabler?variabel={Folded.Code}");
+        cut.WaitForAssertion(() => Assert.Single(client.Tokens));
+        var navigation = Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo($"http://localhost/variabler?variabel={Answered.Code}");
+        cut.WaitForAssertion(() => Assert.Equal(2, client.Tokens.Count));
+
+        held.SetResult();
+        await client.Answers[0];
+        await Renderer.Dispatcher.InvokeAsync(() => { });
+        navigation.NavigateTo("http://localhost/variabler");
+
+        cut.WaitForAssertion(() => Assert.True(client.Tokens[1].IsCancellationRequested));
+    }
+
+    [Fact]
+    public void ResolveAsync_WhenAVariableLinkedByIdLaterArrivesByItsCode_ThenItIsLinkedByItsCode()
+    {
+        // The code that once answered nothing has now answered this very variable, so its link may name it.
+        var client = new LookupClient { UnansweredOnce = [Folded.Code] };
+        var cut = Render(client, "http://localhost/variabler?search=hkr");
+        Open(cut, Answered.Name);
+        cut.WaitForAssertion(() => Assert.Equal(Answered.Code, SharedLink(cut)["variabel"].ToString()));
+        Open(cut, Folded.Name);
+        cut.WaitForAssertion(() => Assert.Equal(Folded.Id.ToString(), SharedLink(cut)["variabelId"].ToString()));
+
+        Services.GetRequiredService<NavigationManager>().NavigateTo($"http://localhost/variabler?variabel={Folded.Code}");
+
+        cut.WaitForAssertion(() => Assert.Equal(Folded.Code, SharedLink(cut)["variabel"].ToString()));
     }
 }
