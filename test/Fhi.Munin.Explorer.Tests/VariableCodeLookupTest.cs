@@ -5,6 +5,7 @@ using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Tests;
@@ -24,6 +25,9 @@ public class VariableCodeLookupTest : ExplorerTestContext
 
         public List<CancellationToken> Tokens { get; } = [];
 
+        public List<Task<VariableDetail?>> Answers { get; } = [];
+
+        /// <summary>Holds every by-code answer; a cancelled token throws, as HttpClient does.</summary>
         public TaskCompletionSource? Gate { get; init; }
 
         /// <summary>Codes this Munin answers with null, as a 409 fold or a hidden variable does.</summary>
@@ -52,14 +56,16 @@ public class VariableCodeLookupTest : ExplorerTestContext
         {
             CodesAsked.Add(code);
             Tokens.Add(cancellationToken);
-            return AnswerAsync(code);
+            var answer = AnswerAsync(code, cancellationToken);
+            Answers.Add(answer);
+            return answer;
         }
 
-        private async Task<VariableDetail?> AnswerAsync(string code)
+        private async Task<VariableDetail?> AnswerAsync(string code, CancellationToken cancellationToken)
         {
             if (Gate is { } gate)
             {
-                await gate.Task;
+                await gate.Task.WaitAsync(cancellationToken);
             }
 
             if (Fails)
@@ -89,11 +95,19 @@ public class VariableCodeLookupTest : ExplorerTestContext
         };
     }
 
+    private IReadOnlyList<LogEntry> Logged => Services.GetRequiredService<RecordingLoggerProvider>().Entries;
+
     private IRenderedComponent<VariableExplorer> Render(IMuninExplorerClient client, string address)
     {
         Services.AddSingleton(client);
         Services.AddSingleton<IJSRuntime>(new HistoryRecorder(JSInterop.JSRuntime));
         Services.AddScoped<VariableListState>();
+        var recorder = new RecordingLoggerProvider();
+        Services.AddSingleton(recorder);
+        Services.AddLogging(b => b
+            .AddProvider(recorder)
+            .SetMinimumLevel(LogLevel.Trace)
+            .AddFilter((category, _) => category?.StartsWith("Fhi.Munin.Explorer", StringComparison.Ordinal) == true));
         SetRendererInfo(new RendererInfo("Server", true));
         Services.GetRequiredService<NavigationManager>().NavigateTo(address);
         return Render<VariableExplorer>();
@@ -113,14 +127,32 @@ public class VariableCodeLookupTest : ExplorerTestContext
         return QueryHelpers.ParseQuery(new Uri(mail[mail.IndexOf("http", StringComparison.Ordinal)..]).Query);
     }
 
-    [Fact]
-    public void Arrive_WhenTheCodeIsStillLookedUp_ThenAStatusSaysSoUntilTheVariableOpens()
+    private async Task Rerender(IRenderedComponent<VariableExplorer> cut, int times)
     {
-        // Without it the reader sees an empty area and a screen reader hears nothing while the code is asked.
+        for (var i = 0; i < times; i++)
+        {
+            cut.Render();
+            await cut.InvokeAsync(() => { });
+        }
+    }
+
+    // Lets the explorer's continuation run after every answer has settled, cancelled ones included.
+    private async Task Settle(LookupClient client)
+    {
+        await Task.WhenAll(client.Answers.Select(a => a.ContinueWith(_ => { }, TaskScheduler.Default)));
+        await Renderer.Dispatcher.InvokeAsync(() => { });
+    }
+
+    [Fact]
+    public void Load_WhenTheCodeIsStillLookedUp_ThenAStatusSaysSoUntilTheVariableOpens()
+    {
+        // Without it the reader sees an empty area while the code is asked.
         var client = new LookupClient { Gate = new(TaskCreationOptions.RunContinuationsAsynchronously) };
         var cut = Render(client, $"http://localhost/variabler?variabel={Answered.Code}");
 
         cut.WaitForAssertion(() => Assert.Equal("Henter variabler …", cut.Find("p[role=status]").TextContent.Trim()));
+        var status = cut.Find("p[role=status]");
+        Assert.Equal(("polite", "true"), (status.GetAttribute("aria-live"), status.GetAttribute("aria-atomic")));
 
         client.Gate.SetResult();
         cut.WaitForElement(".munin-explorer-detail");
@@ -128,40 +160,38 @@ public class VariableCodeLookupTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Learn_WhenOneVariablesCodeAnswersNothing_ThenAnotherVariableIsStillLinkedByItsCode()
+    public async Task Learn_WhenOneVariablesCodeAnswersNothing_ThenAnotherIsLinkedByItsCodeAndTheNullIsNotAskedAgain()
     {
-        // One 409 fold used to turn code links off for the whole circuit.
+        // A 409 fold or a hidden variable says nothing of the others, and a null is an answer, not a failure to retry.
         var client = new LookupClient { Unanswered = [Folded.Code] };
         var cut = Render(client, "http://localhost/variabler?search=hkr");
 
         Open(cut, Folded.Name);
         cut.WaitForAssertion(() => Assert.Contains(Folded.Code, client.CodesAsked));
-        Open(cut, Answered.Name);
+        await Rerender(cut, 5);
+        Assert.Single(client.CodesAsked, c => c == Folded.Code);
 
+        Open(cut, Answered.Name);
         cut.WaitForAssertion(() => Assert.Equal(Answered.Code, SharedLink(cut)["variabel"].ToString()));
     }
 
     [Fact]
     public async Task Learn_WhenMuninKeepsFailing_ThenAVariablesCodeIsAskedTwiceAtMost()
     {
-        // Each render asked again before, two requests and an Error line apiece for as long as Munin answered 5xx.
+        // Every render asks for a code not yet known, so an unbounded retry is two requests and an Error per render.
         var client = new LookupClient { Fails = true };
         var cut = Render(client, "http://localhost/variabler?search=hkr");
         Open(cut, Answered.Name);
 
-        for (var i = 0; i < 5; i++)
-        {
-            cut.Render();
-            await cut.InvokeAsync(() => { });
-        }
+        await Rerender(cut, 5);
 
         Assert.Equal([Answered.Code, Answered.Code], client.CodesAsked.Where(c => c == Answered.Code));
     }
 
     [Fact]
-    public void Arrive_WhenTheReaderMovesOnWhileTheCodeIsLookedUp_ThenTheRequestIsCancelled()
+    public async Task Arrive_WhenTheReaderMovesOnWhileTheCodeIsLookedUp_ThenTheRequestIsCancelledAndNothingIsLogged()
     {
-        // The late answer was already ignored; the request itself ran on to the end.
+        // The view the code belonged to is gone, so its request has no reader; a cancellation is no failure.
         var client = new LookupClient { Gate = new(TaskCreationOptions.RunContinuationsAsynchronously) };
         var cut = Render(client, $"http://localhost/variabler?variabel={Answered.Code}");
         cut.WaitForAssertion(() => Assert.Single(client.Tokens));
@@ -169,11 +199,14 @@ public class VariableCodeLookupTest : ExplorerTestContext
         Services.GetRequiredService<NavigationManager>().NavigateTo("http://localhost/variabler");
 
         cut.WaitForAssertion(() => Assert.True(client.Tokens[0].IsCancellationRequested));
+        await Settle(client);
+        Assert.Empty(Logged);
     }
 
     [Fact]
-    public async Task Dispose_WhileTheCodeIsLookedUp_ThenTheRequestIsCancelled()
+    public async Task Dispose_WhileTheAddressesCodeIsLookedUp_ThenTheRequestIsCancelledAndNothingIsLogged()
     {
+        // A closed explorer has no reader for the answer.
         var client = new LookupClient { Gate = new(TaskCreationOptions.RunContinuationsAsynchronously) };
         var cut = Render(client, $"http://localhost/variabler?variabel={Answered.Code}");
         cut.WaitForAssertion(() => Assert.Single(client.Tokens));
@@ -181,5 +214,23 @@ public class VariableCodeLookupTest : ExplorerTestContext
         await Renderer.DisposeComponents();
 
         Assert.True(client.Tokens[0].IsCancellationRequested);
+        await Settle(client);
+        Assert.Empty(Logged);
+    }
+
+    [Fact]
+    public async Task Dispose_WhileAnOpenVariablesCodeIsLearned_ThenTheRequestIsCancelledAndNothingIsLogged()
+    {
+        // Learning a code for the address outlives no explorer, and its cancellation is no failure to retry or log.
+        var client = new LookupClient { Gate = new(TaskCreationOptions.RunContinuationsAsynchronously) };
+        var cut = Render(client, "http://localhost/variabler?search=hkr");
+        Open(cut, Answered.Name);
+        cut.WaitForAssertion(() => Assert.Contains(Answered.Code, client.CodesAsked));
+
+        await Renderer.DisposeComponents();
+
+        Assert.All(client.Tokens, t => Assert.True(t.IsCancellationRequested));
+        await Settle(client);
+        Assert.Empty(Logged);
     }
 }

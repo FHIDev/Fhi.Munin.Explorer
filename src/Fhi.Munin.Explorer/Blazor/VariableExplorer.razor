@@ -13,10 +13,10 @@
    a slow request after Back, writes into the old object rather than over the restored list. *@
 @{ var state = _state; }
 @* A code in the address is resolved first: VariableSearch reads the open variable once (Fhi.Metadata-l9l2n.182).
-   Meanwhile a status says so, rather than an empty area (Fhi.Metadata-l9l2n.188). *@
+   Meanwhile a status says so, in the reader's language: it sits outside VariableSearch's lang (Fhi.Metadata-l9l2n.188). *@
 @if (_resolving)
 {
-    <p class="caption" role="status">@Texts.For(Language).Loading</p>
+    <p class="caption" role="status" aria-live="polite" aria-atomic="true" lang="@ReaderLanguage.Of(Language)">@Texts.For(Language).Loading</p>
 }
 else
 {

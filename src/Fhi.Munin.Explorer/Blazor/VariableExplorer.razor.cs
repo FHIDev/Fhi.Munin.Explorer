@@ -194,7 +194,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     // Cancelled on dispose, so a code still being learned does not outlive the explorer.
     private readonly CancellationTokenSource _disposal = new();
 
-    // A Munin answering 5xx would otherwise be asked twice per render for as long as the reader stays.
+    // A failing Munin would otherwise be asked again at every render for as long as the reader stays.
     private void AskAgainOnce(Guid id)
     {
         if (_askedAgain.Add(id))
