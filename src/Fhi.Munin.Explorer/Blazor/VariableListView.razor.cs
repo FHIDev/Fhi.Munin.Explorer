@@ -166,6 +166,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     private bool _listCreatedSaid;
 
+    // What a rename, copy or delete said; a new element per sentence, so the same one twice is announced again.
+    private string? _listActionSaid;
+    private int _listActionCount;
+
     // The mount is asking which list is the reader's active one; its rows are asked for next.
     private bool _findingList;
     private ElementReference _newNameField;
@@ -1356,6 +1360,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     {
         _failed = false;
         _listCreatedSaid = false;
+        _listActionSaid = null;
         _carriedOverAs = null;
         _carriedOverButStillHere = false;
         _carriedOverUnsaved = 0;
@@ -1613,6 +1618,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 _renameName = "";
                 _renaming = false;
                 _focusAfterRename = true;
+                SayListAction(T.ListRenamed(name));
             }
             else
             {
@@ -1647,6 +1653,12 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
     }
 
+    private void SayListAction(string sentence)
+    {
+        _listActionSaid = sentence;
+        _listActionCount++;
+    }
+
     /// <summary>
     /// Deletes the list on screen, once confirmed. The next list is taken from the holder rather
     /// than picked here, so this view and the explorer's save button stay on the same one.
@@ -1660,6 +1672,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         _confirmingDelete = false;
         ForgetFailures();
+        var deletedName = ShownListName;
 
         try
         {
@@ -1668,6 +1681,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 _actionFailure = ListActionFailure.Failed;
                 return;
             }
+
+            SayListAction(T.ListDeleted(deletedName));
 
             await State.EnsureActiveListAsync();
         }

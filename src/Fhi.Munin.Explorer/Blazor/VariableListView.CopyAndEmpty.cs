@@ -249,6 +249,12 @@ public sealed partial class VariableListView
             SayTheSwitchFailed(CopyFailure.SwitchFailed);
         }
 
+        // Only a whole copy that is now on screen is said; an incomplete one or a failed switch has its alert.
+        if (_copyFailure == CopyFailure.None)
+        {
+            SayListAction(T.ListCopied(created.Name));
+        }
+
         await CountTheAddsAsync(created.Id);
         _holdingReloads = false;
         await LoadPageAsync();
