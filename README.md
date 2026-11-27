@@ -1459,8 +1459,9 @@ tab to show the list: `VariableExplorer`, or `VariableSearch` given a `VariableL
 `VariableListView`; mounted alone, `VariableSearch` offers a signed-out reader no save button. A signed-out reader's
 save button (the one a signed-in reader has) adds a row to it, the list tab shows it through the shared-list view, and
 it can be downloaded (`ExportItemsAsync`, Munin's anonymous export), shared as a code while its snapshot stays under
-the share endpoint's 512 KB (about 990 full rows), or emptied. Signed in with rows still in the browser, the list tab
-offers one button, «Lagre i Mine variabellister», beside a sentence saying the rows become a new list there. The press
+the share endpoint's 512 KB (about 990 full rows), or emptied; each row's «Fjern» takes that row out. Signed in
+with rows still in the browser, the list tab offers one button, «Lagre i Mine variabellister», beside a sentence saying
+the rows become a new list there. The press
 creates a new list in Mine variabellister and adds every row to it in one request, so Munin saves all of them or none;
 the new list is offered nowhere else until the rows are in it, and once saved, the rows leave the browser. When the
 browser cannot take them out, the alert says the new list was saved but the browser list is still in this browser, to

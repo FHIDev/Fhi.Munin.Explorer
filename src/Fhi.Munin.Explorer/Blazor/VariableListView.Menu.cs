@@ -9,8 +9,8 @@ public sealed partial class VariableListView
     private bool _menuOpen;
     private bool _downloadOpen;
 
-    // Moved by every Toggle() press and cancel, the folds' Escape and their checkboxes and buttons, CloseFolds and a shared
-    // list's page turn, so a late answer can tell the reader acted since. The browser list's share asks the browser instead.
+    // Moved by every Toggle() press and cancel, the folds' Escape, checkboxes and buttons, CloseFolds, a shared list's page
+    // turn, and the browser list's «Tøm listen», its yes and «Del liste»: a late answer can tell the reader acted since.
     private int _readerMoves;
     private MenuFocus _menuFocus;
     private ElementReference _menuToggle;

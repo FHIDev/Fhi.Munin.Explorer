@@ -952,6 +952,7 @@ internal sealed record Texts(
     Func<int, string> RemoveRefusedFromBrowser,
     Func<int, int, string> BrowserListRefusedRemoved,
     string BrowserListRefusedNotRemoved,
+    string BrowserListRowNotRemoved,
     Func<int, string> BrowserListFull,
     // Munin's per-person quotas (Fhi.Metadata-oiips.61), worded as Munin's own 409 words them.
     Func<int, string> ListLimitReached,
@@ -1980,6 +1981,7 @@ internal sealed record Texts(
             (rows == 1 ? "Raden er fjernet fra denne nettleseren." : "Radene er fjernet fra denne nettleseren.")
             + (rest == 0 ? "" : rest == 1 ? " Raden som er igjen, kan lagres som ny liste i Mine variabellister." : $" De {rest} radene som er igjen, kan lagres som ny liste i Mine variabellister."),
         BrowserListRefusedNotRemoved: "Kunne ikke fjerne radene fra denne nettleseren nå.",
+        BrowserListRowNotRemoved: "Kunne ikke fjerne raden fra denne nettleseren nå.",
         BrowserListFull: max => $"Listen kan ha høyst {max} rader. Fjern noen før du legger til flere.",
         ListLimitReached: max => $"Du kan ha høyst {max.ToString("#,0", NorwegianGrouping)} lister. Slett en liste før du lager en ny.",
         RowLimitReached: max => $"Listene dine kan til sammen ha høyst {max.ToString("#,0", NorwegianGrouping)} rader. Fjern noen før du legger til flere.",
@@ -2699,6 +2701,7 @@ internal sealed record Texts(
             (rows == 1 ? "The row is removed from this browser." : "The rows are removed from this browser.")
             + (rest == 0 ? "" : rest == 1 ? " The row that is left can be saved as a new list in My variable lists." : $" The {rest} rows that are left can be saved as a new list in My variable lists."),
         BrowserListRefusedNotRemoved: "Could not remove the rows from this browser just now.",
+        BrowserListRowNotRemoved: "Could not remove the row from this browser just now.",
         BrowserListFull: max => $"The list can hold at most {max} rows. Remove some before adding more.",
         ListLimitReached: max => $"You can have at most {max.ToString("#,0", CultureInfo.InvariantCulture)} lists. Delete a list before you make a new one.",
         RowLimitReached: max => $"Your lists can hold at most {max.ToString("#,0", CultureInfo.InvariantCulture)} rows together. Remove some before you add more.",

@@ -52,6 +52,23 @@ public sealed partial class VariableListView
     private (int Version, int Page, int Size)? _browserPageFailedFor;
     private int _browserVersionSeen = -1;
 
+    // A row's «Fjern» leaves with it: focus goes to the row now in its place, else the one before it, else the heading;
+    // set at the press but used only once the page is read again for it, so the buttons it names are drawn (Fhi.Metadata-emsc0.3.13).
+    private (int Index, int Page, int Moves)? _browserRemoveFocus;
+    private bool _browserPageReading;
+    private bool _browserRowNotRemoved;
+    private string? _browserRemovedSaid;
+
+    // Rows pressed and still drawn: null while the browser is asked, then the list version the removal made, until a
+    // page read of that version lands. A second press meanwhile would say the row was removed twice.
+    private readonly Dictionary<VariableDatasamlingKey, int?> _browserRowsRemoving = [];
+
+    // The reader and list version a removal's sentences speak for; a sign-in, «Tøm listen» or another tab's change ends them.
+    private (int Reader, int Version)? _browserRemoveNoticesFor;
+
+    // A new element per removal, so a second one under the same name is announced again.
+    private int _browserRemovedCount;
+
     private string ClearBrowserListId => $"munin-explorer-clear-browser-list-{_instance}";
 
     private string ConfirmClearId => $"munin-explorer-confirm-clear-{_instance}";
@@ -70,7 +87,11 @@ public sealed partial class VariableListView
         !ShowsBrowserCopy ? null
         : _browserShareTooLong ? T.BrowserListTooLongToShare
         : _browserPageFailed || _browserShareUnreadable ? T.BrowserListReadError
+        : _browserRowNotRemoved && BrowserRemoveNoticesShown ? T.BrowserListRowNotRemoved
         : ShareMessage ?? DownloadMessage;
+
+    private bool BrowserRemoveNoticesShown =>
+        State is { } state && _browserRemoveNoticesFor == (state.Reader, state.BrowserVersion);
 
     private bool CarryOverNoticesShown => State is { } state && state.Reader == _carryOverNoticesFor;
 
@@ -125,7 +146,7 @@ public sealed partial class VariableListView
 
     /// <summary>
     /// From <c>OnAfterRenderAsync</c>: reads the stored list once, the page on screen when it is stale, and gives
-    /// focus back after «Tøm listen».
+    /// focus back after «Tøm listen» or a row's «Fjern».
     /// </summary>
     private async Task AfterBrowserListRenderAsync()
     {
@@ -134,9 +155,15 @@ public sealed partial class VariableListView
             return;
         }
 
+        // A sign-in or a shared list took the view: the removal's focus would land on whatever comes back later.
+        if (!ShowsBrowserCopy)
+        {
+            _browserRemoveFocus = null;
+        }
+
         await state.ReadBrowserListAsync();
 
-        // Before «Del liste» can be pressed: the share's focus move asks what was pressed last (Fhi.Metadata-emsc0.3.19).
+        // Before «Del liste» or a row's «Fjern» can be pressed: both focus moves ask what was pressed last.
         if (ShowsBrowserCopy && !_pressesWatched)
         {
             try
@@ -146,27 +173,41 @@ public sealed partial class VariableListView
             catch (JSException ex)
             {
                 _pressesWatched = true;
-                Log?.LogError(ex, "the module could not watch the reader's presses for the browser list's share");
+                Log?.LogError(ex, "the module could not watch the reader's presses for the browser list");
             }
             catch (Exception ex)
             {
-                Log?.LogWarning(ex, "could not watch the reader's presses for the browser list's share");
+                Log?.LogWarning(ex, "could not watch the reader's presses for the browser list");
             }
         }
 
         var wanted = (state.BrowserVersion, _sharedPageNumber, PageSize);
 
+        if (!_browserPageReading && _browserPageFor == wanted)
+        {
+            await FocusAfterBrowserRemoveAsync();
+        }
+
         if (ShowsBrowserCopy && state.BrowserListRead && _browserPageFor != wanted && _browserPageFailedFor != wanted)
         {
             _browserPageFor = wanted;
+            _browserPageReading = true;
             var rows = await state.ReadBrowserRowsAsync((_sharedPageNumber - 1) * PageSize, PageSize);
 
             if (_browserPageFor == wanted)
             {
+                _browserPageReading = false;
+
                 // A failure is remembered for this page and version only, so the next change reads it again.
                 _browserPageFailed = rows is null;
                 _browserPageFailedFor = rows is null ? wanted : null;
                 _browserPage = rows is null ? [] : [.. rows.Select(r => r.Item)];
+
+                foreach (var done in _browserRowsRemoving.Where(r => r.Value <= wanted.BrowserVersion).Select(r => r.Key).ToList())
+                {
+                    _browserRowsRemoving.Remove(done);
+                }
+
                 StateHasChanged();
             }
         }
@@ -208,6 +249,94 @@ public sealed partial class VariableListView
         }
     }
 
+    private async Task RemoveFromBrowserListAsync(VariableListItem item)
+    {
+        var key = VariableDatasamlingKey.Of(item);
+
+        if (State is null || !ShowsBrowserCopy || !_browserRowsRemoving.TryAdd(key, null))
+        {
+            return;
+        }
+
+        var at = _browserPage.ToList().FindIndex(i => VariableDatasamlingKey.Of(i) == key);
+        var page = _sharedPageNumber;
+        var moves = _readerMoves;
+        var name = RowName(item);
+
+        ForgetFailures();
+        _browserRemovedSaid = null;
+
+        var reader = State.Reader;
+        var outcome = VariableListState.BrowserListOutcome.Unavailable;
+
+        // The search's own removal: one change, in its turn, against the stored value.
+        try
+        {
+            outcome = await State.ToggleInBrowserListAsync(item, drawnAsSaved: true);
+        }
+        finally
+        {
+            if (outcome == VariableListState.BrowserListOutcome.Removed)
+            {
+                _browserRowsRemoving[key] = State.BrowserVersion;
+            }
+            else
+            {
+                _browserRowsRemoving.Remove(key);
+            }
+        }
+
+        _browserRemoveNoticesFor = (reader, State.BrowserVersion);
+
+        if (outcome != VariableListState.BrowserListOutcome.Removed)
+        {
+            _browserRowNotRemoved = true;
+            return;
+        }
+
+        _browserRemovedSaid = T.RemovedFromList(name);
+        _browserRemovedCount++;
+
+        if (State.Reader == reader)
+        {
+            _browserRemoveFocus = (Math.Max(at, 0), page, moves);
+        }
+    }
+
+    private async Task FocusAfterBrowserRemoveAsync()
+    {
+        if (_browserRemoveFocus is not { } wanted)
+        {
+            return;
+        }
+
+        _browserRemoveFocus = null;
+
+        // Not once the reader has moved on during the call: a page, or a fold or question opened or shut, each a move.
+        if (_readerMoves != wanted.Moves)
+        {
+            return;
+        }
+
+        // Back a page when the last row of the last page went: the row before it is that page's last.
+        var index = wanted.Page == _sharedPageNumber ? Math.Min(wanted.Index, _browserPage.Count - 1) : _browserPage.Count - 1;
+        var target = index >= 0 ? RemoveButtonId(_browserPage[index]) : ListHeadingId;
+
+        // The browser says where focus is: a reader who Tabbed or clicked away meanwhile keeps their place.
+        try
+        {
+            await ExplorerInterop.FocusIfLostAsync(Js, target);
+        }
+        catch (JSException ex)
+        {
+            Log?.LogError(ex, "the module could not move focus after removing a row from the browser list");
+        }
+        catch (Exception ex)
+        {
+            Log?.LogWarning(ex, "could not move focus after removing a row from the browser list");
+        }
+    }
+
     /// <summary>A change to the browser list ends a share of the rows it had, and a page past its end.</summary>
     private void FollowBrowserListChange()
     {
@@ -237,6 +366,7 @@ public sealed partial class VariableListView
         }
 
         _confirmingClear = !_confirmingClear;
+        _readerMoves++;
     }
 
     private async Task ClearBrowserListAsync()
@@ -247,6 +377,7 @@ public sealed partial class VariableListView
         }
 
         ForgetFailures();
+        _readerMoves++;
         await State.ClearBrowserListAsync();
         _confirmingClear = false;
         _sharedPageNumber = 1;
@@ -266,6 +397,7 @@ public sealed partial class VariableListView
         _browserShareTooLong = false;
         _browserShareUnreadable = false;
         _sharingBrowserList = !_sharingBrowserList;
+        _readerMoves++;
 
         if (!_sharingBrowserList || _browserShare is not null)
         {

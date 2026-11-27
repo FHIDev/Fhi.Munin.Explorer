@@ -301,6 +301,23 @@ public partial class ExplorerInteropTest
     }
 
     [Fact]
+    public async Task FocusIfLostAsync_WhenTheExportFaults_ThenTheJSExceptionTravelsToTheCaller()
+    {
+        // The browser list's «Fjern» logs it at Error: a fault in our export, not a browser out of reach.
+        var runtime = new LendingJsRuntime(new RefusingModule(new JSException("focusIfLost is not a function")));
+
+        await Assert.ThrowsAsync<JSException>(() => ExplorerInterop.FocusIfLostAsync(runtime, "remove"));
+    }
+
+    [Fact]
+    public async Task FocusIfLostAsync_WhenTheModuleCannotBeImported_ThenItAnswersFalse()
+    {
+        var runtime = new RefusingJsRuntime(new JSException("404"));
+
+        Assert.False(await ExplorerInterop.FocusIfLostAsync(runtime, "remove"));
+    }
+
+    [Fact]
     public async Task DisposeAsync_WhenItIsCalledTwice_ThenNothingIsReleasedASecondTime()
     {
         var module = new CountingModule();

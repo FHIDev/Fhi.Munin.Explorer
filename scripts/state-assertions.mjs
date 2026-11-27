@@ -69,6 +69,7 @@
 import { treeAssertions } from './tree-assertions.mjs';
 import { jumpPast, jumpToTop, scrollPast, scrollToTop } from './reader-scroll.mjs';
 import { states } from './axe-states.mjs';
+import { BROWSER_LIST_KEY, browserList } from './carry-over-fixture.mjs';
 
 /** The contents nav of a detail view, in the column beside it. */
 const TOC = '.munin-explorer-page__toc';
@@ -3036,7 +3037,58 @@ function keyboardFocusAssertions() {
         await page.waitForFunction(n => document.querySelectorAll('[role=tabpanel]:not([hidden]) td button').length >= n, 3, { timeout: findTimeout });
       },
     },
+    {
+      // Fhi.Metadata-emsc0.3.13: the signed-out reader's list in the browser, whose «Fjern» reads the page back from
+      // storage before focus can land, and gives it to the heading when the list empties.
+      name: "a browser list's «Fjern» leaves focus on the next row, the previous one, then the heading, and empties storage",
+      kind: 'invariant',
+      states: ['list-browser-list'],
+      stage: page => seedBrowserList(page),
+      async measure(page) {
+        const press = async index => {
+          const before = await removes(page).count();
+          const button = removes(page).nth(index);
+          await button.focus();
+          await page.keyboard.press('Enter');
+          await page.waitForFunction(n => [...document.querySelectorAll('[role=tabpanel]:not([hidden]) td button')]
+            .filter(b => b.textContent.trim() === 'Fjern').length === n - 1, before, { timeout: findTimeout });
+          await page.waitForTimeout(PRESS_SETTLE_MS);
+          const said = await page.locator('[role=tabpanel]:not([hidden]) [role=status].screenreader-only').first().textContent();
+          return { now: await focused(page), said: (said || '').trim() };
+        };
+        const count = await removes(page).count();
+        if (count !== 3) return `the browser list has ${count} rows, not the 3 seeded`;
+        const names = [];
+        for (let i = 0; i < count; i++) names.push(await focusedRowOf(page, removes(page).nth(i)));
+        const middle = await press(1);
+        if (middle.now.text !== 'Fjern' || middle.now.row !== names[2]) return `after the middle row, focus is on «${middle.now.text || 'body'}» (${middle.now.row}), not «Fjern» on ${names[2]}`;
+        if (!middle.said.includes('fjernet fra listen')) return `the removal was not said (status: «${middle.said}»)`;
+        const last = await press(1);
+        if (last.now.text !== 'Fjern' || last.now.row !== names[0]) return `after the last row, focus is on «${last.now.text || 'body'}» (${last.now.row}), not «Fjern» on ${names[0]}`;
+        const only = await press(0);
+        if (!only.now.id.startsWith('munin-explorer-list-heading-')) return `after the last one left, focus is on «${only.now.text || only.now.id || 'body'}», not the list's heading`;
+        const left = await page.evaluate(key => JSON.parse(localStorage.getItem(key) ?? '{"items":[]}').items?.length ?? -1, BROWSER_LIST_KEY);
+        if (left !== 0) return `storage still holds ${left} rows after every row was removed`;
+        return null;
+      },
+      async control(page) {
+        await noFocusMoves(page);
+        await seedBrowserList(page);
+      },
+    },
   ];
+}
+
+// The three rows of carry-over-fixture.mjs, written to storage, and the list tab opened on them after a reload.
+async function seedBrowserList(page) {
+  await page.evaluate(([key, value]) => localStorage.setItem(key, value), [BROWSER_LIST_KEY, browserList]);
+  await page.reload({ waitUntil: 'networkidle' });
+  const tab = page.getByRole('tab', { name: 'Variabelliste', exact: true }).first();
+  await tab.waitFor({ state: 'visible', timeout: findTimeout });
+  await tab.click();
+  await page.waitForFunction(n => [...document.querySelectorAll('[role=tabpanel]:not([hidden]) td button')]
+    .filter(b => b.textContent.trim() === 'Fjern').length === n, 3, { timeout: findTimeout });
+  return {};
 }
 
 async function focusedRowOf(page, button) {

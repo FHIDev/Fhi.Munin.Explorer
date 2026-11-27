@@ -67,6 +67,21 @@ export function focusIfStillOn(fromId, toId) {
   return document.activeElement === to;
 }
 
+// Focus goes to `toId` only when the reader's place left with what they pressed: focus on nothing, and nothing pressed
+// since but a control that has left the page. A reader who Tabbed or clicked anywhere meanwhile keeps their place.
+export function focusIfLost(toId) {
+  const active = document.activeElement;
+  const to = document.getElementById(toId);
+  const onNothing = active === null || active === document.body;
+  // A key pressed with nothing focused, once the button left, lands on the body: not a move.
+  const pressedGone = lastPressed === null || lastPressed === document.body || lastPressed.isConnected === false;
+  if (!(to instanceof HTMLElement) || !onNothing || !pressedGone) {
+    return false;
+  }
+  to.focus();
+  return document.activeElement === to;
+}
+
 // One observer per mounted detail page, keyed by its own bar's id. Two explorers on one host page
 // each have an entry of their own, so neither can drive or disconnect the other's bar.
 const observers = new Map();

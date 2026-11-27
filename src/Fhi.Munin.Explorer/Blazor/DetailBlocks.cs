@@ -27,15 +27,25 @@ internal static class DetailBlocks
     /// <summary>The one class that mutes what the catalogue holds nothing for, on a fact or a whole tab.</summary>
     internal const string Absent = "munin-explorer-absent";
 
-    /// <summary>A heading at the given level, so a view nests wherever it is put.</summary>
+    /// <summary>
+    /// A heading at the given level, so a view nests wherever it is put; <paramref name="focusable"/> lets code give it
+    /// focus (<c>tabindex="-1"</c>).
+    /// </summary>
     internal static RenderFragment Heading(int level, string text, string cssClass,
-                                           string? id = null, string? language = null) => builder =>
+                                           string? id = null, string? language = null,
+                                           bool focusable = false) => builder =>
     {
         builder.OpenElement(0, $"h{level}");
         builder.AddAttribute(1, "class", cssClass);
         builder.AddAttribute(2, "id", id);
         builder.AddAttribute(3, "lang", language);
-        builder.AddContent(4, text);
+
+        if (focusable)
+        {
+            builder.AddAttribute(4, "tabindex", "-1");
+        }
+
+        builder.AddContent(5, text);
         builder.CloseElement();
     };
 
