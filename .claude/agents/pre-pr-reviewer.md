@@ -497,8 +497,8 @@ feature calls, which ship unflagged.
 - **A request count in prose is checked on every path that reaches the call.** «asked once», «two requests per …»:
   follow each caller, with and without the value it may already hold, and count the client calls, the fetch that
   learns a missing value, retries and the caller's own lookups included; where a guard (a set of ids already asked)
-  lets only the first caller send, count by the caller that runs first. A count wrong on one path is Important, in the body, a changelog fragment
-  and an XML doc alike; a count that varies by path says «at most».
+  lets only the first caller send, count by the caller that runs first. A count wrong on one path is Important, in
+  the body, a changelog fragment and an XML doc alike; a count that varies by path says «at most».
 
 ---
 
