@@ -53,7 +53,7 @@ public sealed partial class VariableListView
     private int _browserVersionSeen = -1;
 
     // A row's «Fjern» leaves with it: focus goes to the row now in its place, else the one before it, else the heading;
-    // set only once the page is read again for the change, so the buttons it names are drawn (Fhi.Metadata-emsc0.3.13).
+    // set at the press but used only once the page is read again for it, so the buttons it names are drawn (Fhi.Metadata-emsc0.3.13).
     private (int Index, int Page, int Moves)? _browserRemoveFocus;
     private bool _browserPageReading;
     private bool _browserRowNotRemoved;
