@@ -707,7 +707,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             await WatchPressesOnceAsync();
         }
 
-        // All taken, so a flag none acts on does not linger to move focus on a later render.
+        // All taken, so a flag none acts on does not linger to move focus on a later render; a removal's waits for its row to go.
         var fromSource = TakeSourceFocusTarget();
         var fromMenu = TakeMenuFocusTarget();
         var fromWrite = TakeFocusTarget();
@@ -1712,18 +1712,14 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             return null;
         }
 
-        // Kept while the page is read again: until then the pressed button is drawn and holds focus, so none is lost yet.
-        if (_loading)
+        // Kept while a read is out or the page still shows the row (an older read landing first): until the row goes,
+        // its pressed button is drawn and holds focus, so none is lost yet.
+        if (_loading || _page?.Items.Any(i => VariableDatasamlingKey.Of(i) == _removedRow) == true)
         {
             return null;
         }
 
         _focusAfterRemove = false;
-
-        if (_page?.Items.Any(i => VariableDatasamlingKey.Of(i) == _removedRow) == true)
-        {
-            return null;
-        }
 
         var shown = _page?.Items.FirstOrDefault(i => _removeFocusRow is { } row && VariableDatasamlingKey.Of(i) == row);
         return shown is not null ? RemoveButtonId(shown) : MenuToggleId;

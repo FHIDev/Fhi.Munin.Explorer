@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
 
-// Held-out tests for the signed-in «Fjern» focus move (Fhi.Metadata-emsc0.3.24), written without sight of the fix.
+// The signed-in «Fjern» asks for focus only once its row has left the page, with the press watch on (Fhi.Metadata-emsc0.3.24).
 public class VariableListViewRemoveFocusHeldOutTest : ExplorerTestContext
 {
     private const string FocusIfLost = "focusIfLost";

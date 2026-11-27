@@ -1,5 +1,8 @@
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
+using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.State;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -80,5 +83,68 @@ public partial class VariableListViewTest
         Assert.Equal(before, ElementFocuses());
         Assert.Single(module.Invocations[FocusIfLost]);
         Assert.Contains("er fjernet fra listen", cut.Find(".screenreader-only[role=status]").TextContent, StringComparison.Ordinal);
+    }
+
+    // A page read from before the removal may land after it, still holding the row: its button still has focus then.
+    private sealed class StaleReadClient(params string[] names) : EmptyMuninExplorerClient
+    {
+        private static readonly Guid ListId = new("22222222-2222-2222-2222-222222222222");
+        private readonly List<VariableListItem> _items = [.. names.Select((n, i) => Item(n, $"V_{i}"))];
+        private List<VariableListItem>? _before;
+
+        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<VariableList>>([new VariableList { Id = ListId, Name = "Mine", VariableCount = _items.Count }]);
+
+        public override Task<bool> RemoveVariablesFromMyListAsync(
+            Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
+        {
+            _before = [.. _items];
+            _items.RemoveAll(i => variableIds.Contains(i.VariableId));
+            return Task.FromResult(true);
+        }
+
+        public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
+            Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
+            CancellationToken cancellationToken = default)
+        {
+            // The first read after the removal answers with the rows from before it.
+            var rows = _before ?? _items;
+            _before = null;
+            return Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
+            {
+                Items = [.. rows],
+                TotalCount = rows.Count,
+                PageNumber = page,
+                Size = pageSize,
+                TotalPages = 1,
+            });
+        }
+    }
+
+    [Fact]
+    public async Task View_WhenAReadStillShowingTheRemovedRowLandsFirst_ThenFocusIsAskedOnlyOnceTheRowHasGone()
+    {
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        module.Setup<bool>(FocusIfLost, _ => true).SetResult(true);
+        Services.AddSingleton(new CodePickerSwitch(true));
+        Services.AddSingleton<IMuninExplorerClient>(new StaleReadClient(ThreeRows));
+        Services.AddScoped<VariableListState>();
+        var cut = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true));
+        cut.WaitForAssertion(() => Assert.Equal(3, RemoveButtons(cut).Count));
+        var next = RemoveButtons(cut)[2].Id;
+
+        await cut.InvokeAsync(() => RemoveButtons(cut)[1].Click());
+        for (var i = 0; i < 3; i++)
+        {
+            await cut.InvokeAsync(() => { });
+        }
+
+        Assert.Equal(3, RemoveButtons(cut).Count);
+        Assert.Empty(module.Invocations[FocusIfLost]);
+
+        await cut.InvokeAsync(() => Services.GetRequiredService<VariableListState>().RefreshAsync());
+
+        cut.WaitForAssertion(() => Assert.Equal(2, RemoveButtons(cut).Count));
+        cut.WaitForAssertion(() => Assert.Equal(next, Assert.Single(module.Invocations[FocusIfLost]).Arguments[0]));
     }
 }
