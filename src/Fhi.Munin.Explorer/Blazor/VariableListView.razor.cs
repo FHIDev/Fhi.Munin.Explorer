@@ -1090,7 +1090,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             _pageNumber = Math.Clamp(emptied.TotalPages, 1, readPage - 1);
             _steppedBack = ((readList, readPage), _pageNumber);
 
-            if (_focusAfterRemove && _removeContext == (readList, readPage))
+            // Read only while a removal waits for its focus, and rewritten by the next one, so no pending check is needed.
+            if (_removeContext == (readList, readPage))
             {
                 _removeContext = (readList, _pageNumber);
                 _removeFocusLastRow = true;
@@ -1710,7 +1711,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private VariableDatasamlingKey? _removedRow;
     private (int Forms, int Moves) _atRemove;
 
-    // The list and page a removal was pressed on: a list or page change meanwhile makes its focus and sentence stale.
+    // The list and page a removal's focus belongs to, where it was pressed or where the view stepped back to for it:
+    // a list or page change meanwhile makes that focus stale.
     private (Guid? List, int Page) _removeContext;
     private VariableDatasamlingKey? _removeFocusRow;
     private bool _removeFocusLastRow;

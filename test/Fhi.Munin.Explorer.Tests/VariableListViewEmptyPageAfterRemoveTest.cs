@@ -2,6 +2,7 @@ using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
@@ -13,10 +14,13 @@ public class VariableListViewEmptyPageAfterRemoveTest : ExplorerTestContext
     private const string EmptyText = "Denne listen er tom";
 
     private static readonly Guid ListId = new("22222222-2222-2222-2222-222222222222");
+    private static readonly Guid OtherListId = new("33333333-3333-3333-3333-333333333333");
 
     private sealed class HoldingClient(params string[] names) : EmptyMuninExplorerClient
     {
         private readonly List<VariableListItem> _items = [.. names.Select((n, i) => Item(n, $"V_{i}"))];
+        private readonly List<VariableListItem> _other = [Item("Høyde", "V_OTHER")];
+        private readonly Dictionary<Guid, VariableListItem> _removed = [];
 
         public IReadOnlyList<VariableListItem> Items => _items;
 
@@ -27,14 +31,42 @@ public class VariableListViewEmptyPageAfterRemoveTest : ExplorerTestContext
 
         public TaskCompletionSource ReadEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+        /// <summary>Armed by a test; the next removal is written at once and answers when it is set.</summary>
+        public TaskCompletionSource? HoldRemove { get; set; }
+
+        public TaskCompletionSource RemoveEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        private List<VariableListItem> Rows(Guid id) => id == OtherListId ? _other : _items;
+
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<VariableList>>(
-                [new VariableList { Id = ListId, Name = "Mine hjertevariabler", VariableCount = _items.Count }]);
+                [new VariableList { Id = ListId, Name = "Mine hjertevariabler", VariableCount = _items.Count },
+                 new VariableList { Id = OtherListId, Name = "Mine høydevariabler", VariableCount = _other.Count }]);
 
-        public override Task<bool> RemoveVariablesFromMyListAsync(
+        public override async Task<bool> RemoveVariablesFromMyListAsync(
             Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
         {
-            _items.RemoveAll(i => variableIds.Contains(i.VariableId));
+            foreach (var gone in Rows(id).Where(i => variableIds.Contains(i.VariableId)))
+            {
+                _removed[gone.VariableId] = gone;
+            }
+
+            Rows(id).RemoveAll(i => variableIds.Contains(i.VariableId));
+
+            if (HoldRemove is { } hold)
+            {
+                HoldRemove = null;
+                RemoveEntered.TrySetResult();
+                await hold.Task;
+            }
+
+            return true;
+        }
+
+        public override Task<bool> AddVariablesToMyListAsync(
+            Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
+        {
+            Rows(id).AddRange(variableIds.Select(v => _removed[v]));
             return Task.FromResult(true);
         }
 
@@ -50,13 +82,15 @@ public class VariableListViewEmptyPageAfterRemoveTest : ExplorerTestContext
                 await hold.Task;
             }
 
+            var rows = Rows(id);
+
             return new Page<VariableListItem>
             {
-                Items = [.. _items.Skip((page - 1) * pageSize).Take(pageSize)],
-                TotalCount = _items.Count,
+                Items = [.. rows.Skip((page - 1) * pageSize).Take(pageSize)],
+                TotalCount = rows.Count,
                 PageNumber = page,
                 Size = pageSize,
-                TotalPages = Math.Max(1, (int)Math.Ceiling(_items.Count / (double)pageSize))
+                TotalPages = Math.Max(1, (int)Math.Ceiling(rows.Count / (double)pageSize))
             };
         }
     }
@@ -94,6 +128,30 @@ public class VariableListViewEmptyPageAfterRemoveTest : ExplorerTestContext
     private static List<AngleSharp.Dom.IElement> RemoveButtons(IRenderedComponent<VariableListView> cut) =>
         [.. cut.FindAll("tbody tr td:last-child button")];
 
+    private static Task PressPage(IRenderedComponent<VariableListView> cut, string number) =>
+        cut.InvokeAsync(() => cut.FindAll(".munin-explorer-pagination-pages > button").Single(b => b.TextContent.Trim() == number).Click());
+
+    private static string Said(IRenderedComponent<VariableListView> cut) =>
+        cut.Find("[role=status].screenreader-only").TextContent;
+
+    // The press is held, and the page it was made on is emptied and stepped back from elsewhere meanwhile.
+    private async Task<(IRenderedComponent<VariableListView> Cut, BunitJSModuleInterop Module, Task Press, TaskCompletionSource Release)>
+        StepBackUnderAHeldRemovalAsync(params string[] names)
+    {
+        var client = new HoldingClient(names);
+        var (cut, module) = RenderOnLastPage(client);
+        var state = Services.GetRequiredService<VariableListState>();
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        client.HoldRemove = release;
+        var first = client.Items[0].VariableId;
+
+        var press = cut.InvokeAsync(() => Assert.Single(RemoveButtons(cut)).ClickAsync(new MouseEventArgs()));
+        await client.RemoveEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await cut.InvokeAsync(() => state.RemoveVariablesAsync(ListId, [first]));
+
+        return (cut, module, press, release);
+    }
+
     [Fact]
     public async Task View_WhenTheOnlyRowOfALaterPageGoesWhileTheReReadIsHeld_ThenThePageBeforeShowsAndItsLastRowTakesFocus()
     {
@@ -117,7 +175,7 @@ public class VariableListViewEmptyPageAfterRemoveTest : ExplorerTestContext
     [Fact]
     public async Task View_WhenAPageReadPastPageOneLandsEmptyWhileTheListHasRows_ThenItStepsBackAndMovesNoFocus()
     {
-        // Emptied from outside this view's «Fjern», as another tab or surface would: no removal here owns focus.
+        // Emptied through the list state, as another surface on the same page would: no removal here owns focus.
         var client = new HoldingClient("Alder ved diagnose", "Kjønn", "Bosted");
         var (cut, module) = RenderOnLastPage(client);
         var state = Services.GetRequiredService<VariableListState>();
@@ -157,5 +215,66 @@ public class VariableListViewEmptyPageAfterRemoveTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Equal(2, RemoveButtons(cut).Count));
         Assert.Equal([3, 1], client.PagesAsked);
+    }
+
+    [Fact]
+    public async Task View_WhenTheReaderPagesAfterAStepBackDuringTheirRemoval_ThenTheRemovalIsNotSaidOnThePageTheyChose()
+    {
+        // The step back moved this press's page, and the reader then chose another one: the press is stale there.
+        var (cut, module, press, release) = await StepBackUnderAHeldRemovalAsync("Alder ved diagnose", "Kjønn", "Bosted", "Diagnose", "Vekt");
+        cut.WaitForAssertion(() => Assert.Single(RemoveButtons(cut)));
+
+        await PressPage(cut, "1");
+        cut.WaitForAssertion(() => Assert.Equal(2, RemoveButtons(cut).Count));
+        release.SetResult();
+        await press;
+
+        cut.WaitForAssertion(() => Assert.Contains("Kjønn", cut.Markup));
+        Assert.DoesNotContain("fjernet fra listen", Said(cut));
+        Assert.DoesNotContain(module.Invocations, i => i.Identifier == FocusIfLost);
+    }
+
+    [Fact]
+    public async Task View_WhenTheReaderSwitchesListAfterAStepBackDuringTheirRemoval_ThenTheRemovalIsNotSaidInTheOtherList()
+    {
+        // Page 1 of the other list is the page the step back went to, so only the list tells the two apart.
+        var (cut, module, press, release) = await StepBackUnderAHeldRemovalAsync("Alder ved diagnose", "Kjønn", "Bosted");
+        cut.WaitForAssertion(() => Assert.Single(RemoveButtons(cut)));
+
+        await cut.InvokeAsync(() => cut.Find("label select").Change(OtherListId.ToString()));
+        cut.WaitForAssertion(() => Assert.Contains("Høyde", cut.Markup));
+        release.SetResult();
+        await press;
+
+        Assert.DoesNotContain("fjernet fra listen", Said(cut));
+        Assert.DoesNotContain(module.Invocations, i => i.Identifier == FocusIfLost);
+    }
+
+    [Fact]
+    public async Task View_WhenAnEarlierStepBackMatchesALaterRemovalAndPageTurn_ThenTheLaterRemovalIsNotSaid()
+    {
+        // A step back recorded before this press is not this press's: left standing, it would pass for one.
+        var client = new HoldingClient("Alder ved diagnose", "Kjønn", "Bosted", "Diagnose", "Vekt");
+        var (cut, module) = RenderOnLastPage(client);
+        var state = Services.GetRequiredService<VariableListState>();
+        var last = client.Items[^1].VariableId;
+
+        await cut.InvokeAsync(() => state.RemoveVariablesAsync(ListId, [last]));
+        cut.WaitForAssertion(() => Assert.Equal(2, RemoveButtons(cut).Count));
+        await cut.InvokeAsync(() => state.AddVariablesAsync(ListId, [last]));
+        await PressPage(cut, "3");
+        cut.WaitForAssertion(() => Assert.Single(RemoveButtons(cut)));
+
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        client.HoldRemove = release;
+        var press = cut.InvokeAsync(() => Assert.Single(RemoveButtons(cut)).ClickAsync(new MouseEventArgs()));
+        await client.RemoveEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await PressPage(cut, "2");
+        release.SetResult();
+        await press;
+
+        cut.WaitForAssertion(() => Assert.Equal(2, RemoveButtons(cut).Count));
+        Assert.DoesNotContain("fjernet fra listen", Said(cut));
+        Assert.DoesNotContain(module.Invocations, i => i.Identifier == FocusIfLost);
     }
 }
