@@ -140,6 +140,9 @@ public class AnonymousListTest : ExplorerTestContext
         /// <summary>The 400 names the stale row's variable, as Munin's body does.</summary>
         public bool NamesStale { get; init; }
 
+        /// <summary>The 400 also names the stale (variable, datasamling) pair, as Munin does since emsc0.3.14.</summary>
+        public bool NamesPairs { get; init; }
+
         /// <summary>Munin's write limiter: every add after this many answers 429.</summary>
         public int? ThrottleAfter { get; set; }
 
@@ -167,7 +170,7 @@ public class AnonymousListTest : ExplorerTestContext
             if (Stale is { } stale && items.Contains(stale))
             {
                 throw NamesStale
-                    ? new ListItemsRefusedException([stale.VariableId])
+                    ? new ListItemsRefusedException([stale.VariableId], NamesPairs ? [stale] : null)
                     : new HttpRequestException("stale datasamling", null, System.Net.HttpStatusCode.BadRequest);
             }
 
@@ -1093,6 +1096,53 @@ public class AnonymousListTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Contains(No.BrowserListSavedAs(No.FirstListName), cut.Markup));
         Assert.Equal([VariableDatasamlingKey.Of(other)], Assert.Single(client.Added));
         Assert.Empty(browser.Rows);
+    }
+
+    [Fact]
+    public void VariableListView_WhenMuninNamesTheRefusedPair_ThenTheRestIsSavedAndTheButtonRemovesTheRefusedRow()
+    {
+        // Emsc0.3.25: Munin names the pair, so the variable's valid row is saved with the other, and one row stays here.
+        var browser = new FakeBrowserList();
+        var valid = FakeBrowserList.Row("Alder", Guid.NewGuid());
+        var stale = valid with { DatasamlingId = Guid.NewGuid() };
+        var other = FakeBrowserList.Row("Kjønn");
+        browser.Rows.AddRange([valid, stale, other]);
+        var client = new Client { Stale = VariableDatasamlingKey.Of(stale), NamesStale = true, NamesPairs = true };
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(3), cut.Markup));
+
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListPartlySaved(No.FirstListName, 1, 1), cut.Markup));
+        Assert.DoesNotContain(No.CarryBrowserListOverError, cut.Markup);
+        Assert.Single(client.Lists);
+        Assert.Equal(
+            [VariableDatasamlingKey.Of(valid), VariableDatasamlingKey.Of(other)],
+            Assert.Single(client.Added));
+        Assert.Equal([VariableDatasamlingKey.Of(stale)], browser.Rows.Select(VariableDatasamlingKey.Of));
+
+        ButtonSaying(cut, No.RemoveRefusedFromBrowser(1)).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListRefusedRemoved(1, 0), cut.Markup));
+        Assert.Empty(browser.Rows);
+    }
+
+    [Fact]
+    public void VariableListView_WhenAPartialSaveCannotTakeTheSavedRowsOut_ThenItSaysTheyAreStillHereAndOffersNoRemoval()
+    {
+        // Saved rows still stored would be offered again by another page; the reader is told to empty the list instead.
+        var browser = new FakeBrowserList { KeepsStored = true };
+        var valid = FakeBrowserList.Row("Alder", Guid.NewGuid());
+        var stale = valid with { DatasamlingId = Guid.NewGuid() };
+        browser.Rows.AddRange([valid, stale, FakeBrowserList.Row("Kjønn")]);
+        var client = new Client { Stale = VariableDatasamlingKey.Of(stale), NamesStale = true, NamesPairs = true };
+        var cut = ListView(client, browser, signedIn: true);
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListWaiting(3), cut.Markup));
+
+        ButtonSaying(cut, No.CarryBrowserListOver).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(No.BrowserListSavedButStillHere(No.FirstListName), cut.Markup));
+        Assert.DoesNotContain(No.RemoveRefusedFromBrowser(1), cut.Markup);
     }
 
     [Fact]
