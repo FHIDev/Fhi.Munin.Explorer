@@ -1783,7 +1783,7 @@ table.munin-explorer-data-list > tbody > :where(tr) > th[scope=row] > button > .
   padding: 1px 9px;
 }
 
-/* An imported list's notice of what did not come over, above its table (Fhi.Metadata-9huq2.37). No Stiler rule yet. */
+/* An imported list's notice of what did not come over, above its table (Fhi.Metadata-9huq2.37); Stiler 0.1.219 has it. */
 .munin-explorer-list-import {
   background: var(--grey20);
   border-radius: 0.5rem;
@@ -5646,7 +5646,8 @@ table.munin-explorer-data-list tbody th {
 }
 
 .munin-explorer-datasamling .munin-explorer-page__actions > :is(a, button):focus-visible,
-.munin-explorer-datasamling__main > .munin-explorer-page__section > p > :is(a, button):focus-visible {
+.munin-explorer-datasamling__main > .munin-explorer-page__section > p > :is(a, button):focus-visible,
+.munin-explorer-datasamling__main .munin-explorer-datasamling__criteria :is(a, button):focus-visible {
   background-color: rgb(81, 84, 123);
   color: rgb(255, 255, 255);
 }

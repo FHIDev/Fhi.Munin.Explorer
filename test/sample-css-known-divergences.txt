@@ -538,33 +538,7 @@ invented-selector||.munin-explorer-meta__grid dt|margin-bottom
 invented-selector||.munin-explorer-page__fields dd + dd|margin-top
 invented-selector||.munin-explorer-page__fields dt|margin-bottom
 
-# Fhi.Metadata-l9l2n.139: no Explorer since 2.8.0 renders munin-explorer__dropdown, so the samples dropped its
-# rules; by the baseline before it, the pinned Stiler still carries them. Delete these when a pin drops them.
-missing-selector|@media (max-width:767px)|.munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer__dropdown > summary > .icon--right|
-missing-selector|@media (max-width:767px)|.munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer__dropdown > summary > .icon|
-missing-selector|@media (max-width:767px)|.munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer__dropdown > summary|
-missing-selector||.munin-explorer__dropdown > summary > .icon-keyboard-arrow-up|
-missing-selector||.munin-explorer__dropdown[open] > summary > .icon-keyboard-arrow-down|
-missing-selector||.munin-explorer__dropdown[open] > summary > .icon-keyboard-arrow-up|
-missing-selector||.munin-explorer__dropdown[open]|
-missing-selector||.munin-explorer__dropdown|
-missing-selector||.munin-explorer-header__actions .munin-explorer__dropdown|
-
 # Fhi.Metadata-l9l2n.146: the datasamling description's fold, the kilde page's twin; its Stiler rule is Fhi.Metadata-xdgvm.
 # Delete these two lines when helsedata pins a Stiler that carries it.
 unstyled-name||.munin-explorer-datasamling__description-rest|
 unstyled-name||.munin-explorer-datasamling__description-toggle|
-
-# Fhi.Metadata-l9l2n.190: the «Historisk» mark in a list row's header, after the code when it has one; its Stiler rule is Fhi.Metadata-l9l2n.191.
-# Delete this line when helsedata pins a Stiler that carries it.
-unstyled-name||.munin-explorer-list-status|
-
-# Fhi.Metadata-9huq2.37: the notice on a list imported from the old helsedata; its Stiler rules are Fhi.Metadata-9huq2.41.
-# Delete these lines when helsedata pins a Stiler that carries them.
-unstyled-name||.munin-explorer-list-import|
-unstyled-name||.munin-explorer-list-import__entry|
-
-# Fhi.Metadata-7vquc.3: catalogue text's lists behind CatalogueFormatting; its Stiler rule is Fhi.Metadata-7vquc.4.
-# Delete this line when samples/HostileHost pins Stiler 0.1.218 or later, and give both samples its criteria focus fill:
-# .munin-explorer-datasamling__main .munin-explorer-datasamling__criteria :is(a, button):focus-visible
-unstyled-name||.munin-explorer-text__list|
