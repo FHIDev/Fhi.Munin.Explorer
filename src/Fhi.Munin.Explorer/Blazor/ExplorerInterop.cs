@@ -266,26 +266,28 @@ internal sealed class ExplorerInterop : IAsyncDisposable
         }
     }
 
-    /// <summary>The same, for a component that holds no module of its own.</summary>
+    /// <summary>The same, for a component that holds no module of its own; also true once the host refused the module for good.</summary>
     internal static async Task<bool> WatchFoldsAsync(IJSRuntime js)
     {
         await using var interop = new ExplorerInterop(js);
 
-        return await interop.TryLoadAsync().ConfigureAwait(false) && await interop.WatchFoldsAsync().ConfigureAwait(false);
+        return await interop.TryLoadAsync().ConfigureAwait(false)
+            ? await interop.WatchFoldsAsync().ConfigureAwait(false)
+            : interop.IsRefused;
     }
 
     /// <summary>
     /// Has the page remember what the reader last pressed, for <see cref="FocusIfStillOnAsync"/> and
     /// <see cref="FocusIfLostAsync"/>; once per page.
     /// </summary>
-    /// <returns>False when the module cannot be reached, so the caller asks again on a later render.</returns>
+    /// <returns>False while the module cannot be reached yet, so a later render asks again; true once on or refused for good.</returns>
     internal static async Task<bool> WatchPressesAsync(IJSRuntime js)
     {
         await using var interop = new ExplorerInterop(js);
 
         if (!await interop.TryLoadAsync().ConfigureAwait(false) || interop._module is not { } module)
         {
-            return false;
+            return interop.IsRefused;
         }
 
         return await Tolerated<object>(async () => await module.InvokeAsync<bool>("watchPresses").ConfigureAwait(false))

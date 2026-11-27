@@ -292,12 +292,30 @@ public partial class ExplorerInteropTest
     }
 
     [Fact]
-    public async Task FocusIfStillOnAndWatchPresses_WhenTheModuleCannotBeImported_ThenTheyAnswerFalse()
+    public async Task FocusIfStillOnAsync_WhenTheModuleCannotBeImported_ThenItAnswersFalse()
     {
         var runtime = new RefusingJsRuntime(new JSException("404"));
 
         Assert.False(await ExplorerInterop.FocusIfStillOnAsync(runtime, "share", "code"));
+    }
+
+    [Fact]
+    public async Task WatchPressesAndWatchFolds_WhenTheHostRefusesTheModule_ThenTheyAnswerThatAskingAgainIsFutile()
+    {
+        // Each call is a fresh interop, so its refusal latch would otherwise go with it (Fhi.Metadata-emsc0.3.27).
+        var runtime = new RefusingJsRuntime(new JSException("404"));
+
+        Assert.True(await ExplorerInterop.WatchPressesAsync(runtime));
+        Assert.True(await ExplorerInterop.WatchFoldsAsync(runtime));
+    }
+
+    [Fact]
+    public async Task WatchPressesAndWatchFolds_WhenTheImportFailedTheWayAReconnectDoes_ThenTheyAnswerFalse()
+    {
+        var runtime = new RefusingJsRuntime(new JSDisconnectedException("the circuit is reconnecting"));
+
         Assert.False(await ExplorerInterop.WatchPressesAsync(runtime));
+        Assert.False(await ExplorerInterop.WatchFoldsAsync(runtime));
     }
 
     [Fact]

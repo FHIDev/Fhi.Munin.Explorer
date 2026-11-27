@@ -1225,6 +1225,8 @@ public partial class VariableListViewTest : ExplorerTestContext
     [Fact]
     public async Task RetryLists_WhenTheReaderOpensAFormWhileItReads_ThenFocusIsLeftWhereTheyAre()
     {
+        // A press watch left unanswered asks again every render, adding JS calls while this test reads them.
+        JSInterop.SetupModule(ExplorerInterop.ModulePath).Setup<bool>("watchPresses").SetResult(true);
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListsThrow = true };
         var cut = RenderView(client);
         await cut.InvokeAsync(() => { });
@@ -1237,7 +1239,7 @@ public partial class VariableListViewTest : ExplorerTestContext
 
         // One move, the reader's own: the form they opened took focus into its field. The retry adds none.
         cut.WaitForAssertion(() => Assert.Null(RetryButton(cut)));
-        Assert.Single(JSInterop.Invocations, i => i.Identifier == "Blazor._internal.domWrapper.focus");
+        await cut.InvokeAsync(() => Assert.Single(JSInterop.Invocations, i => i.Identifier == "Blazor._internal.domWrapper.focus"));
     }
 
     [Fact]
