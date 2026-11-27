@@ -674,16 +674,17 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     private Guid? _ownListSeen;
     private int _ownListArrival = -1;
 
-    // The tab opens on the arrival that brought the id; a Back or Forward remount that still carries it does not.
+    // The id is followed on the arrival that brought it; a Back or Forward remount that still carries it, after it
+    // was used and left the address, is not. Only a new id moves the marker, so its consumption cannot reset it.
     private Guid? SearchOwnListId()
     {
-        if (_state.OwnListId != _ownListSeen)
+        if (_state.OwnListId is { } id && id != _ownListSeen)
         {
-            _ownListSeen = _state.OwnListId;
+            _ownListSeen = id;
             _ownListArrival = _arrival;
         }
 
-        return _ownListArrival == _arrival ? _ownListSeen : null;
+        return _ownListArrival == _arrival ? _state.OwnListId : null;
     }
 
     // Off, listeId is not ours: not read, not written, and left in the address as it arrived.
